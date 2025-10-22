@@ -1,0 +1,75 @@
+[project]
+name = "teapot"
+version = "0.0.0"
+description = "Monorepo package for the Teatpot team"
+authors = [
+  {name="Luca Tagliavini", email="luca@teapot.ovh"},
+  {name="Samuele Musiani", email="samu@teapot.ovh"}
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {file = 'LICENSE'}
+dependencies = []
+
+[project.optional-dependencies]
+lint = [
+  "ruff>=0.8.0",
+  "mypy>=1.13.0",
+]
+
+[tool.uv.sources]
+embed = { workspace = true }
+embedd = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  "cmd/embedd",
+  "service/embed"
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pre-commit>=3.8.0",
+    "ipykernel>=6.29.5",
+    "grpcio-tools",
+    # These are added as dev dependencies becuase they should be available
+    #  when developing the project.
+    "embed",
+    "embed-cmd",
+]
+package = false
+
+[tool.ruff]
+line-length = 80
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes
+    "E",   # pycodestyle
+    "I",   # isort
+    "ANN", # flake8 type annotations
+    "RUF", # ruff-specific rules
+    "FAST" # FastAPI rules
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+disallow_untyped_defs = true
+
+[tool.pyright]
+exclude = [".venv", ".github"]
+include = ["src", "scripts"]
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"

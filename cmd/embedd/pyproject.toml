@@ -1,0 +1,22 @@
+[project]
+name = "embedd"
+dynamic = ["version"]
+description = "A gRPC service to generate vector embeddings for text inputs (binary)"
+requires-python = ">=3.13"
+authors = [
+  {name = "Luca Tagliavini", email = "luca@teapot.ovh"},
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+[tool.hatch.version]
+source = "vcs"
+[tool.setuptools_scm]
+search_parent_directories = true
+
+[project.scripts]
+embedd = "embedd:embedd"
+
+[tool.uv.sources]
+embed = { workspace = true }

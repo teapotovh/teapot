@@ -1,0 +1,19 @@
+[project]
+name = "embed"
+dynamic = ["version"]
+description = "A gRPC service to generate vector embeddings for text inputs"
+requires-python = ">=3.13"
+authors = [
+  {name = "Luca Tagliavini", email = "luca@teapot.ovh"},
+]
+dependencies = [
+  "grpcio",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+[tool.hatch.version]
+source = "vcs"
+[tool.setuptools_scm]
+search_parent_directories = true
