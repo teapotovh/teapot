@@ -13,11 +13,12 @@
 # 	$(MAKE) -C $< run
 
 MODULES := $(patsubst %/,%,$(dir $(wildcard cmd/*/Makefile)))
+MAKECMDGOALS := proto
 
-.PHONY: all $(MODULES) echo
+.PHONY: all $(MODULES)
 
-echo:
-	echo $(MODULES)
+proto:
+	$(MAKE) -C proto all
 
 $(MODULES):
 	$(MAKE) -C $@ $(filter-out $(MODULES),$(MAKECMDGOALS))

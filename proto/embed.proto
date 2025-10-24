@@ -1,0 +1,42 @@
+syntax = "proto3";
+package embed;
+option go_package = "/embed";
+
+// Embedder provides RPC calls to generate embeddings from text input.
+service Embedder {
+  // Embed takes a sentence and returns its embedding computed according to
+  // the selected model.
+  rpc Embed (EmbedRequest) returns (EmbedReply) {}
+
+  rpc EmbedSingle (EmbedSingleRequest) returns (EmbedSingleReply) {}
+}
+
+// Embedding represents an embedding vector for a chunk of text
+message Embedding {
+  repeated float vector = 1;
+  string text = 2;
+}
+
+// EmbedRequest carries the request to run the embedding model on a long corpus,
+// creating n embeddings based on chunking, with the configured overlap
+// (hardcoded on the server side).
+message EmbedRequest {
+  string text = 1;
+}
+
+// EmbedReply contains the generated embedding and relative metadata.
+message EmbedReply {
+  repeated Embedding embeddings = 1;
+}
+
+// EmbedSingleRequest carries the request required to generate a single embedding
+// from the model.
+message EmbedSingleRequest {
+  string text = 1;
+}
+
+// EmbedSingleReply carries the request required to generate a single embedding
+// from the model.
+message EmbedSingleReply {
+  Embedding embedding = 1;
+}

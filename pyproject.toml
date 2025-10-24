@@ -18,24 +18,27 @@ lint = [
 ]
 
 [tool.uv.sources]
-embed = { workspace = true }
-embedd = { workspace = true }
+service = { workspace = true }
+cmd = { workspace = true }
+proto = { workspace = true }
 
 [tool.uv.workspace]
 members = [
-  "cmd/embedd",
-  "service/embed"
+  "cmd",
+  "service",
+  "proto"
 ]
 
 [tool.uv]
 dev-dependencies = [
     "pre-commit>=3.8.0",
-    "ipykernel>=6.29.5",
     "grpcio-tools",
+
     # These are added as dev dependencies becuase they should be available
     #  when developing the project.
-    "embed",
-    "embed-cmd",
+    "proto",
+    "service",
+    "cmd",
 ]
 package = false
 
@@ -69,7 +72,7 @@ disallow_untyped_defs = true
 
 [tool.pyright]
 exclude = [".venv", ".github"]
-include = ["src", "scripts"]
+include = ["."]
 pythonVersion = "3.13"
 venvPath = "."
 venv = ".venv"

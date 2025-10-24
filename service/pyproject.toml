@@ -1,0 +1,26 @@
+[project]
+name = "service"
+dynamic = ["version"]
+requires-python = ">=3.13"
+authors = [
+  {name = "Luca Tagliavini", email = "luca@teapot.ovh"},
+  {name="Samuele Musiani", email="samu@teapot.ovh"}
+]
+dependencies = [
+  "grpcio>=1.76.0",
+  "tokenizers>=0.22.1",
+  "onnxruntime>=1.23.2",
+  "semantic-text-splitter>=0.28.0"
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+[tool.hatch.version]
+source = "vcs"
+[tool.hatch.version.raw-options]
+search_parent_directories = true 
+[build.hooks.vcs]
+version-file = "_version.py"
+[tool.hatch.build.targets.wheel]
+packages = ["embed"]
