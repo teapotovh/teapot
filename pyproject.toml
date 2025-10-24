@@ -7,7 +7,6 @@ authors = [
   {name="Samuele Musiani", email="samu@teapot.ovh"}
 ]
 requires-python = ">=3.10"
-readme = "README.md"
 license = {file = 'LICENSE'}
 dependencies = []
 
