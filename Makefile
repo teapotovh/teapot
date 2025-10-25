@@ -22,6 +22,3 @@ proto:
 
 $(MODULES):
 	$(MAKE) -C $@ $(filter-out $(MODULES),$(MAKECMDGOALS))
-
-%: $(MODULES)
-	@:
