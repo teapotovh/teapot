@@ -5,15 +5,14 @@ go 1.24.6
 require (
 	github.com/ammario/tlru v0.4.0
 	github.com/go-ldap/ldap/v3 v3.4.12
-	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/kataras/muxie v1.1.2
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
+	github.com/rs/cors v1.11.1
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/net v0.42.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
-	maragu.dev/gomponents v1.2.0
 )
 
 require (

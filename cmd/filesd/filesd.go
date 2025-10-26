@@ -21,12 +21,21 @@ const (
 )
 
 const (
-	HTTPWebDavPrefix = "/dav/"
+	HTTPWebDavPrefix = "/dav"
 )
 
 func main() {
 	httpAddr := flag.StringP("http-addr", "h", ":8145", "http port to listen on")
 	components := flag.StringSliceP("components", "c", []string{"webdav"}, "list of components to run")
+
+	// TOOD: log package
+	var handler slog.Handler
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	handler = slog.NewTextHandler(os.Stdout, opts)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
 	fs, getSessionsConfig := files.SessionsFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -55,7 +64,7 @@ func main() {
 
 		slog.Info("registered webdav", "path", HTTPWebDavPrefix)
 		handler := webdav.Handler(HTTPWebDavPrefix)
-		mux.Handle(HTTPWebDavPrefix+"*", handler)
+		mux.Handle(HTTPWebDavPrefix+"/*", handler)
 	}
 
 	slog.Info("listening on HTTP", "addr", *httpAddr)
