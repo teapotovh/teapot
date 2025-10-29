@@ -10,6 +10,18 @@ import (
 	"github.com/go-ldap/ldap/v3"
 )
 
+type FactoryConfig struct {
+	URL        string
+	RootDN     string
+	RootPasswd string
+
+	UsersDN      string
+	UsersFilter  string
+	GroupsDN     string
+	AdminGroupDN string
+	AccessesDN   string
+}
+
 // Factory is a constructor for high-level LDAP clients that can perform
 // operations to manage users, as needed by kontakte.
 // One client should be constructed per request.

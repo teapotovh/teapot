@@ -11,11 +11,13 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/service/files"
 	"github.com/teapotovh/teapot/service/files/webdav"
 )
 
 const (
+	CodeLog            = -1
 	CodeFilesSubsystem = -1
 	CodeHTTP           = -2
 )
@@ -28,30 +30,30 @@ func main() {
 	httpAddr := flag.StringP("http-addr", "h", ":8145", "http port to listen on")
 	components := flag.StringSliceP("components", "c", []string{"webdav"}, "list of components to run")
 
-	// TOOD: log package
-	var handler slog.Handler
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	handler = slog.NewTextHandler(os.Stdout, opts)
-	logger := slog.New(handler)
-	slog.SetDefault(logger)
-
 	fs, getSessionsConfig := files.SessionsFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLdapConfig := ldap.LDAPFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-
+	fs, getLogConfig := log.LogFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
+
+	logger, err := log.NewLogger(getLogConfig())
+	if err != nil {
+		// This is the only place where we use the default slog logger,
+		// as our internal one has not been setup yet.
+		slog.Error("error while configuring the logger", "err", err)
+		os.Exit(CodeLog)
+	}
 
 	config := files.FilesConfig{
 		SessionsConfig:    getSessionsConfig(),
 		LDAPFactoryConfig: getLdapConfig(),
 	}
 
-	files, err := files.NewFiles(config, slog.With("subsystem", "files"))
+	files, err := files.NewFiles(config, logger.With("subsystem", "files"))
 	if err != nil {
-		slog.Error("error while initiating files subsystem", "err", err)
+		logger.Error("error while initiating files subsystem", "err", err)
 		os.Exit(CodeFilesSubsystem)
 	}
 
@@ -60,21 +62,21 @@ func main() {
 
 	if slices.Contains(*components, "webdav") {
 		config := webdav.WebDavConfig{}
-		webdav := webdav.NewWebDav(config, slog.With("subsystem", "webdav"), files)
+		webdav := webdav.NewWebDav(config, logger.With("subsystem", "webdav"), files)
 
-		slog.Info("registered webdav", "path", HTTPWebDavPrefix)
+		logger.Info("registered webdav", "path", HTTPWebDavPrefix)
 		handler := webdav.Handler(HTTPWebDavPrefix)
 		mux.Handle(HTTPWebDavPrefix+"/*", handler)
 	}
 
-	slog.Info("listening on HTTP", "addr", *httpAddr)
+	logger.Info("listening on HTTP", "addr", *httpAddr)
 	server := http.Server{Handler: mux, Addr: *httpAddr}
 	if err := server.ListenAndServe(); err != nil {
 		if !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("error while running HTTP server", "err", err)
+			logger.Error("error while running HTTP server", "err", err)
 			os.Exit(CodeHTTP)
 		}
 
-		slog.Info("HTTP server shutdown gracefully")
+		logger.Info("HTTP server shutdown gracefully")
 	}
 }

@@ -1,0 +1,392 @@
+:root {
+  --bg: #ffffff;
+  --fg: #24292f;
+  --accent: #0969da;
+  --secondary: #6e7781;
+
+  --bg-alt1: color-mix(in srgb, var(--bg), black 5%);
+  --bg-alt2: color-mix(in srgb, var(--bg), black 10%);
+  --fg-alt1: color-mix(in srgb, var(--fg), white 10%);
+  --fg-alt2: color-mix(in srgb, var(--fg), white 20%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --fg: #f0f6fc;
+    --accent: #58a6ff;
+    --secondary: #8b949e;
+
+    --bg-alt1: color-mix(in srgb, var(--bg), white 5%);
+    --bg-alt2: color-mix(in srgb, var(--bg), white 10%);
+    --fg-alt1: color-mix(in srgb, var(--fg), black 10%);
+    --fg-alt2: color-mix(in srgb, var(--fg), black 20%);
+  }
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-size: 1.15em;
+
+  --red-bg: #c80815;
+  --red-fg: #f0f6fc;
+  --red-bg-alt1: color-mix(in srgb, var(--red-bg), white 20%);
+  --accent-alt1: color-mix(in srgb, var(--accent), transparent 50%);
+  --green-bg: #228b22;
+  --green-fg: #f0f6fc;
+  --green-bg-alt1: color-mix(in srgb, var(--green-bg), white 20%);
+}
+
+/* Text */
+
+a[href] {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+h1 {
+  font-size: 2em;
+}
+
+h2 {
+  font-size: 1.75em;
+}
+
+h3 {
+  font-size: 1.5em;
+}
+
+/* Input component */
+
+.input {
+  margin: 1em 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.input>label {
+  margin-bottom: .25em;
+}
+
+.input>input {
+  border: 0.125em solid var(--bg-alt2);
+  background: var(--bg-alt1);
+  padding: .125em .35em;
+  transition: outline 0.1s ease-in-out;
+}
+
+.input>input:focus {
+  outline: .25em solid var(--accent-alt1);
+}
+
+/* Field component */
+
+.field {
+  margin: .5em 0;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.field>label {
+  margin-bottom: .25em;
+}
+
+.field>input {
+  font-size: .7em;
+  border: 0.125em solid var(--bg-alt2);
+  background: var(--bg-alt1);
+  padding: .125em .35em;
+  transition: outline 0.1s ease-in-out;
+}
+
+.field>input:focus {
+  outline: .25em solid var(--accent-alt1);
+}
+
+.field>input:disabled {
+  cursor: not-allowed;
+  color: var(--fg-alt2);
+  border: none;
+}
+
+/* Button component */
+
+.button {
+  background: var(--accent);
+  color: var(--bg);
+  padding: .25em .5em;
+  transition: outline 0.1s ease-in-out, background 0.1s ease-in-out;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .button {
+    color: var(--fg);
+  }
+}
+
+.button:hover {
+  background: var(--accent-alt1);
+}
+
+.button:focus {
+  outline: .25em solid var(--accent-alt1);
+}
+
+/* Status components */
+
+.error-dialog,
+.success-dialog {
+  padding: .5em .25em;
+  font-size: 1em;
+}
+
+.error-dialog {
+  background: var(--red-bg);
+  color: var(--red-fg);
+  border: .25em solid var(--red-bg-alt1);
+}
+
+.success-dialog {
+  background: var(--green-bg);
+  color: var(--green-fg);
+  border: .25em solid var(--green-bg-alt1);
+}
+
+/* Page layout */
+
+.header {
+  padding: .5em 12em;
+  border-bottom: 0.125em solid var(--bg-alt2);
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header div .logo {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: bold;
+  margin-right: 1em;
+}
+
+.header div .item {
+  color: var(--fg);
+  margin: 0 .5em;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.5fr 1.75fr 3fr 1.75fr 1.5fr;
+}
+
+/* Error page */
+
+.error {
+  grid-column-start: 2;
+  grid-column-end: 5;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  padding-top: 2em;
+}
+
+.error h2 {
+  color: var(--red-bg);
+}
+
+/* Login page */
+
+.login {
+  grid-column: 3;
+}
+
+.login h2 {
+  margin: 1em 0;
+}
+
+.login .button-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.login #error-container {
+  margin: 1em 0;
+}
+
+/* User page */
+
+.user {
+  grid-column-start: 2;
+  grid-column-end: 5;
+
+  padding-bottom: 2em;
+}
+
+.user h2 {
+  margin: 1em 0;
+}
+
+.user section {
+  padding: 0 2em;
+}
+
+.user .overview .dn {
+  display: flex;
+  flex-direction: column;
+
+  margin-bottom: 1em;
+}
+
+.user .overview .dn div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.user .overview .dn div h3 {
+  font-weight: bold;
+}
+
+.user .overview .dn div .admin {
+  border: 0.125em solid var(--red-bg);
+  font-size: .75em;
+  padding: .15em .3em;
+  margin: 0 1em;
+
+  display: flex;
+  align-items: center;
+  height: 0%;
+}
+
+.user .overview .dn span {
+  font-size: .65em;
+  color: var(--fg-alt2);
+  user-select: none;
+}
+
+.user .overview form {
+  display: flex;
+  flex-direction: column;
+}
+
+.user .overview form .button-container {
+  margin-top: 1em;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.user .overview form .button-container .button:first-child {
+  background: var(--red-bg);
+  color: var(--red-fg);
+  text-decoration: none;
+}
+
+.user .overview form .button-container .button:first-child:hover {
+  background: var(--red-bg-alt1);
+}
+
+.user .groups .group {
+  display: flex;
+  flex-direction: column;
+
+  margin-bottom: 1em;
+}
+
+.user .groups .group span {
+  font-size: .65em;
+  color: var(--fg-alt2);
+  user-select: none;
+}
+
+.user .accesses .access {
+  display: flex;
+  flex-direction: column;
+
+  margin-bottom: 1em;
+}
+
+.user .accesses .access span {
+  font-size: .65em;
+  color: var(--fg-alt2);
+  user-select: none;
+}
+
+/* Passwd page */
+
+.passwd {
+  grid-column: 3;
+}
+
+.passwd h2 {
+  margin: 1em 0;
+}
+
+.passwd .button-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.passwd #error-container {
+  margin: 1em 0;
+}
+
+/* Users page */
+
+.users {
+  grid-column-start: 2;
+  grid-column-end: 5;
+
+  display: flex;
+  flex-direction: column;
+
+  padding-top: 2em;
+}
+
+.users .line {
+  border: 0.125em solid var(--bg-alt2);
+  margin: 1em 0;
+  padding: .5em;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+
+  text-decoration: none;
+}
+
+.users .line .dn {
+  flex: 1;
+}
+
+.users .line .dn h4 {
+  font-weight: bold;
+}
+
+.users .line .dn span {
+  font-size: .65em;
+  color: var(--fg-alt2);
+  user-select: none;
+}
+
+.users .line .button {
+  background: var(--red-bg);
+  color: var(--red-fg);
+  text-decoration: none;
+
+  margin-left: 1em;
+}

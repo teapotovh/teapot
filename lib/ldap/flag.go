@@ -4,18 +4,6 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-type FactoryConfig struct {
-	URL        string
-	RootDN     string
-	RootPasswd string
-
-	UsersDN      string
-	UsersFilter  string
-	GroupsDN     string
-	AdminGroupDN string
-	AccessesDN   string
-}
-
 func LDAPFlagSet() (*flag.FlagSet, func() FactoryConfig) {
 	fs := flag.NewFlagSet("ldap", flag.ExitOnError)
 

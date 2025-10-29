@@ -31,10 +31,6 @@ type Client struct {
 	accessesDN   string
 }
 
-type Authenticator interface {
-	Authenticate(username, password string) (*User, error)
-}
-
 func (c *Client) Authenticate(username string, password string) (*User, error) {
 	entry, err := c.find(username)
 	if err != nil {

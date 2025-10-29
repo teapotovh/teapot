@@ -38,8 +38,6 @@ type FilesConfig struct {
 
 // NewFiles returns a new Files service instance
 func NewFiles(config FilesConfig, logger *slog.Logger) (*Files, error) {
-	slog.Info("initiating files", "config", config)
-
 	sessions, err := NewSessions(config.SessionsConfig, logger.With("component", "sections"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building filesystem sources: %w", err)
