@@ -56,7 +56,7 @@ func (srv *Server) checkAuthCookie(r *http.Request) *Auth {
 	cookie, err := r.Cookie(authCookieName)
 	if err != nil {
 		if !errors.Is(err, http.ErrNoCookie) {
-			slog.ErrorContext(r.Context(), "error while fetching authentication cookie", "err", err)
+			srv.logger.ErrorContext(r.Context(), "error while fetching authentication cookie", "err", err)
 		}
 		return nil
 	}
@@ -68,12 +68,12 @@ func (srv *Server) checkAuthCookie(r *http.Request) *Auth {
 		return srv.jwtSecret, nil
 	})
 	if err != nil {
-		slog.ErrorContext(r.Context(), "error while validating authentication cookie", "err", err)
+		srv.logger.ErrorContext(r.Context(), "error while validating authentication cookie", "err", err)
 		return nil
 	} else if claims, ok := token.Claims.(*Auth); ok {
 		return claims
 	} else {
-		slog.ErrorContext(r.Context(), "validation token is of unexpected type", "err", err)
+		srv.logger.ErrorContext(r.Context(), "validation token is of unexpected type", "err", err)
 		return nil
 	}
 }

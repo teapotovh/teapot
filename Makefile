@@ -21,4 +21,4 @@ proto:
 	$(MAKE) -C proto all
 
 $(MODULES):
-	$(MAKE) -C $@ $(filter-out $(MODULES),$(MAKECMDGOALS))
+	$(MAKE) -C $@ $(filter-out $(MODULES),$(MAKECMDGOALS)) ROOT=$(PWD)

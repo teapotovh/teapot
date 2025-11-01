@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS entries (
+  dn TEXT PRIMARY KEY,
+  attributes JSONB NOT NULL
+);

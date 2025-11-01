@@ -1,13 +1,13 @@
-SERVICE_NAME=service-a
-DOCKER_IMAGE=myorg/$(SERVICE_NAME)
+SERVICE_NAME=kontakted
+DOCKER_IMAGE=github.com/teapotovh/$(SERVICE_NAME)
 
 .PHONY: build run docker
 
 build:
-	go build -o kontakte main.go
+	go build -o $(SERVICE_NAME)
 
 run: build
-	./kontakte
+	./$(SERVICE_NAME)
 
 docker: build
-	docker build -t $(DOCKER_IMAGE) .
+	docker build -t $(DOCKER_IMAGE) . --build-arg root=$(ROOT)
