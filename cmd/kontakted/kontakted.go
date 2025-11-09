@@ -19,8 +19,6 @@ const (
 	CodeListen = -3
 )
 
-var ()
-
 func main() {
 	addr := flag.String("addr", ":8080", "The address to listen on")
 	jwtSecret := flag.String("jwt-secret", "", "The JWT secret key used to sign tokens")
@@ -44,7 +42,7 @@ func main() {
 		logger.Warn("using insecure empty jwt secret")
 	}
 
-	options := kontakte.ServerOptions{
+	options := kontakte.ServerConfig{
 		Addr:           *addr,
 		JWTSecret:      jwt,
 		FactoryOptions: getLdapConfig(),

@@ -54,7 +54,7 @@ type Server struct {
 	http *http.Server
 }
 
-type ServerOptions struct {
+type ServerConfig struct {
 	Addr      string
 	JWTSecret string
 
@@ -74,7 +74,7 @@ func Adapt(h gcohttp.Handler) http.Handler {
 	return http.HandlerFunc(gcohttp.Adapt(fn))
 }
 
-func NewServer(options ServerOptions, logger *slog.Logger) (*Server, error) {
+func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 	factory, err := ldap.NewFactory(options.FactoryOptions, logger.With("component", "ldap"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building LDAP factory: %w", err)

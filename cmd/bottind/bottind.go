@@ -23,17 +23,6 @@ const (
 	CodeListenLDAP  = -5
 	CodeListenLDAPS = -6
 	CodeNoListen    = -7
-
-	// CodeReadConfig      = -1
-	// CodeLoadConfig      = -2
-	// CodeStoreConnect    = -3
-	// CodeStoreUnknown    = -4
-	// CodeServerInit      = -5
-	// CodeMemberOfResync  = -6
-	// CodeListenLDAP      = -7
-	// CodeListenLDAPS     = -8
-	// CodeNoListen        = -9
-	// CodeAdminSSHAEncode = -10
 )
 
 func main() {

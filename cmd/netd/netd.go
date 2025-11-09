@@ -1,0 +1,54 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+
+	flag "github.com/spf13/pflag"
+
+	"github.com/teapotovh/teapot/lib/kubeclient"
+	"github.com/teapotovh/teapot/lib/kubelog"
+	"github.com/teapotovh/teapot/lib/log"
+	"github.com/teapotovh/teapot/service/net"
+)
+
+const (
+	CodeLog    = -1
+	CodeInit   = -2
+	CodeListen = -3
+)
+
+func main() {
+	fs, getKubeClientConfig := kubeclient.KubeClientFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getLogConfig := log.LogFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	flag.Parse()
+
+	logger, err := log.NewLogger(getLogConfig())
+	if err != nil {
+		// This is the only place where we use the default slog logger,
+		// as our internal one has not been setup yet.
+		slog.Error("error while configuring the logger", "err", err)
+		os.Exit(CodeLog)
+	}
+	kubelog.WithLogger(logger.With("sub", "net"))
+
+	config := net.NetConfig{
+		KubeClientConfig: getKubeClientConfig(),
+	}
+
+	net, err := net.NewNet(config, logger.With("sub", "net"))
+	if err != nil {
+		logger.Error("error while initializing net controller", "err", err)
+		os.Exit(CodeInit)
+	}
+
+	ctx := context.Background()
+
+	if err := net.Run(ctx); err != nil {
+		logger.Error("error while running net controller", "err", err)
+		os.Exit(CodeListen)
+	}
+}
