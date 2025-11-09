@@ -1,0 +1,4 @@
+Conventions:
+
+1. all logs/errors are lowercase. try to keep also the text inside lowercase (avoid acronyms where possible, for example for GVK, group-version-kind)
+2. comments are started with uppercase

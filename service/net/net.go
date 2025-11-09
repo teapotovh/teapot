@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -12,8 +13,13 @@ import (
 	"github.com/teapotovh/teapot/lib/kubecontroller"
 )
 
+var (
+	ErrMissingNode = errors.New("no node name provided, net cannot tell which node it's running on")
+)
+
 type NetConfig struct {
 	KubeClientConfig kubeclient.KubeClientConfig
+	Node string
 }
 
 type Net struct {
@@ -24,6 +30,10 @@ type Net struct {
 }
 
 func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
+	if config.Node == "" {
+		return nil, ErrMissingNode
+	}
+
 	client, err := kubeclient.NewKubeClient(config.KubeClientConfig, logger.With("component", "kubeclient"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building kubernetes client: %w", err)
@@ -46,8 +56,14 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 	return &net, nil
 }
 
-func (net *Net) handle(resource *v1.Node, exists bool) error {
-	net.logger.Info("got resource", "resource", resource, "exists", exists)
+func (net *Net) handle(node *v1.Node, exists bool) error {
+	if !exists {
+			net.logger.Debug("node was removed")
+	}
+
+	external, ok := node.Annotations["net.teapot.ovh/external-ip"]
+		net.logger.Info("got node", "external", external, "ok", ok)
+
 	return nil
 }
 
