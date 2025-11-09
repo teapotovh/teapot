@@ -4,10 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	flag "github.com/spf13/pflag"
 
-	"github.com/teapotovh/teapot/lib/kubeclient"
 	"github.com/teapotovh/teapot/lib/kubelog"
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/service/net"
@@ -20,7 +21,8 @@ const (
 )
 
 func main() {
-	fs, getKubeClientConfig := kubeclient.KubeClientFlagSet()
+
+	fs, getNetConfig := net.NetFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -35,17 +37,14 @@ func main() {
 	}
 	kubelog.WithLogger(logger.With("sub", "net"))
 
-	config := net.NetConfig{
-		KubeClientConfig: getKubeClientConfig(),
-	}
-
-	net, err := net.NewNet(config, logger.With("sub", "net"))
+	net, err := net.NewNet(getNetConfig(), logger.With("sub", "net"))
 	if err != nil {
 		logger.Error("error while initializing net controller", "err", err)
 		os.Exit(CodeInit)
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	if err := net.Run(ctx); err != nil {
 		logger.Error("error while running net controller", "err", err)
