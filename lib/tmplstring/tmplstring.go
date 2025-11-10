@@ -28,15 +28,13 @@ func NewTMPL[T any](str string) (*TMPL[T], error) {
 	expressions := exprsInTemplate(tmpl.Root)
 
 	for _, field := range fields {
-		if _, ok := expressions[field]; ok {
-			delete(expressions, field)
-		}
+		delete(expressions, field)
 	}
 
 	if len(expressions) > 0 {
 		var es []error
-		for expr, _ := range expressions {
-			es = append(es, fmt.Errorf("expression '%s' references missing field in parameter struct", expr))
+		for expr := range expressions {
+			es = append(es, fmt.Errorf("expression %q references missing field in parameter struct", expr))
 		}
 
 		return nil, fmt.Errorf("error while validating string template: %w", errors.Join(es...))

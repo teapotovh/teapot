@@ -97,15 +97,15 @@ func (s *Sessions) newSessionFn(username string) func() (*Session, error) {
 		for _, mount := range s.mounts {
 			src, err := mount.src(username)
 			if err != nil {
-				return nil, fmt.Errorf("error while getting filesystem for mountpoint '%s': %w", mount.dst, err)
+				return nil, fmt.Errorf("error while getting filesystem for mountpoint %q: %w", mount.dst, err)
 			}
 
 			if err = memFS.MkdirAll(mount.dst, fs.ModeDir); err != nil {
-				return nil, fmt.Errorf("error while creating mounting directory at '%s': %w", mount.dst, err)
+				return nil, fmt.Errorf("error while creating mounting directory at %q: %w", mount.dst, err)
 			}
 
 			if err = rootFS.AddMount(mount.dst, src); err != nil {
-				return nil, fmt.Errorf("error while mounting '%s' filesystem at '%s': %w", mount.vfs, mount.dst, err)
+				return nil, fmt.Errorf("error while mounting %q filesystem at '%s': %w", mount.vfs, mount.dst, err)
 			}
 		}
 

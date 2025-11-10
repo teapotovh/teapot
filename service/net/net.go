@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/kubeclient"
 	"github.com/teapotovh/teapot/lib/kubecontroller"
 )
@@ -20,13 +21,19 @@ var (
 type NetConfig struct {
 	KubeClientConfig kubeclient.KubeClientConfig
 	Node string
+	Local LocalConfig
+	Wireguard WireguardConfig
 }
 
 type Net struct {
 	logger *slog.Logger
 
 	client *kubernetes.Clientset
+	broker *broker.Broker[Event]
+
 	controller *kubecontroller.Controller[*v1.Node]
+	local *Local
+	wireguard *Wireguard
 }
 
 func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
@@ -44,6 +51,16 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 		client: client,
 	}
 
+	net.local, err = NewLocal(&net, config.Local, logger.With("component", "local"))
+	if err != nil {
+		return nil, fmt.Errorf("error while building net's local component: %w", err)
+	}
+
+	net.wireguard, err = NewWireguard(&net, config.Wireguard, logger.With("component", "wireguard"))
+	if err != nil {
+		return nil, fmt.Errorf("error while building net's wireguard component: %w", err)
+	}
+
 	controllerConfig := kubecontroller.ControllerConfig[*v1.Node]{
 		Client: client,
 		Handler: net.handle,
@@ -56,17 +73,28 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 	return &net, nil
 }
 
-func (net *Net) handle(node *v1.Node, exists bool) error {
-	if !exists {
-			net.logger.Debug("node was removed")
-	}
+func (net *Net) Client() *kubernetes.Clientset {
+	return net.client
+}
 
-	external, ok := node.Annotations["net.teapot.ovh/external-ip"]
-		net.logger.Info("got node", "external", external, "ok", ok)
+func (net *Net) Broker() *broker.Broker[Event] {
+	return net.broker
+}
 
-	return nil
+func (net *Net) Local() *Local {
+	return net.local
+}
+
+func (net *Net) Wireguard() *Wireguard {
+	return net.wireguard
 }
 
 func (net *Net) Run(ctx context.Context) error {
+	net.broker = broker.NewBroker[Event]()
+	go net.broker.Run(ctx)
+
+	go net.local.Run(ctx)
+	go net.wireguard.Run(ctx)
+
 	return net.controller.Run(ctx, 1)
 }

@@ -59,13 +59,14 @@ func getMapper(client *kubernetes.Clientset) (meta.RESTMapper, error) {
 	return restmapper.NewDiscoveryRESTMapper(groupResources), nil
 }
 
-type Handler[Resource runtime.Object] = func(resource Resource, exists bool) error
+type Handler[Resource runtime.Object] = func(name string, resource Resource, exists bool) error
 
 type ControllerConfig[Resource runtime.Object] struct {
-	Client     *kubernetes.Clientset
-	Namespace  string
-	Handler    Handler[Resource]
-	NumRetries int
+	Client       *kubernetes.Clientset
+	Namespace    string
+	Handler      Handler[Resource]
+	FieldSelctor fields.Selector
+	NumRetries   int
 }
 
 // Controller implements a simple kubernetes controller that calls a callback
@@ -74,7 +75,7 @@ type Controller[Resource runtime.Object] struct {
 	logger *slog.Logger
 
 	resource string
-	indexer  cache.Indexer
+	store    cache.Store
 	queue    workqueue.TypedRateLimitingInterface[string]
 	informer cache.Controller
 
@@ -97,7 +98,18 @@ func NewController[Resource runtime.Object](
 		return nil, fmt.Errorf("error while getting the kubernetes resource name to watch for: %w", err)
 	}
 
-	podListWatcher := cache.NewListWatchFromClient(config.Client.CoreV1().RESTClient(), resource, config.Namespace, fields.Everything())
+	var fs fields.Selector
+	if config.FieldSelctor != nil {
+		fs = config.FieldSelctor
+	} else {
+		fs = fields.Everything()
+	}
+	podListWatcher := cache.NewListWatchFromClient(
+		config.Client.CoreV1().RESTClient(),
+		resource,
+		config.Namespace,
+		fs,
+	)
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 
 	// Bind the workqueue to a cache with the help of an informer. This way we make sure that
@@ -105,28 +117,32 @@ func NewController[Resource runtime.Object](
 	// Note that when we finally process the item from the workqueue, we might see a newer version
 	// of the resource than the version which was responsible for triggering the update.
 	var res Resource
-	indexer, informer := cache.NewIndexerInformer(podListWatcher, res, 0, cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(obj)
-			if err == nil {
-				queue.Add(key)
-			}
+	store, informer := cache.NewInformerWithOptions(cache.InformerOptions{
+		ListerWatcher: podListWatcher,
+		ObjectType:    res,
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj any) {
+				key, err := cache.MetaNamespaceKeyFunc(obj)
+				if err == nil {
+					queue.Add(key)
+				}
+			},
+			UpdateFunc: func(old any, new any) {
+				key, err := cache.MetaNamespaceKeyFunc(new)
+				if err == nil {
+					queue.Add(key)
+				}
+			},
+			DeleteFunc: func(obj any) {
+				// IndexerInformer uses a delta queue, therefore for deletes we have to use this
+				// key function.
+				key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+				if err == nil {
+					queue.Add(key)
+				}
+			},
 		},
-		UpdateFunc: func(old interface{}, new interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(new)
-			if err == nil {
-				queue.Add(key)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			// IndexerInformer uses a delta queue, therefore for deletes we have to use this
-			// key function.
-			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-			if err == nil {
-				queue.Add(key)
-			}
-		},
-	}, cache.Indexers{})
+	})
 
 	numRetries := config.NumRetries
 	if numRetries == 0 {
@@ -139,7 +155,7 @@ func NewController[Resource runtime.Object](
 
 		resource: resource,
 		informer: informer,
-		indexer:  indexer,
+		store:    store,
 		queue:    queue,
 
 		numRetries: numRetries,
@@ -166,7 +182,7 @@ func (c *Controller[Resource]) processNextItem() bool {
 }
 
 func (c *Controller[Resource]) callHandler(key string) error {
-	obj, exists, err := c.indexer.GetByKey(key)
+	obj, exists, err := c.store.GetByKey(key)
 	if err != nil {
 		c.logger.Warn("error while fetching kubernetes resource after update", "err", err)
 		return err
@@ -177,7 +193,7 @@ func (c *Controller[Resource]) callHandler(key string) error {
 		resource = obj.(Resource)
 	}
 
-	return c.handler(resource, exists)
+	return c.handler(key, resource, exists)
 }
 
 // handleErr checks if an error happened and makes sure we will retry later.
@@ -222,7 +238,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 		return fmt.Errorf("timed out waiting for caches to sync")
 	}
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}
 
@@ -231,7 +247,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 	return nil
 }
 
-func (c *Controller[Resource]) runWorker(ctx context.Context) {
+func (c *Controller[Resource]) runWorker(_ context.Context) {
 	for c.processNextItem() {
 	}
 }

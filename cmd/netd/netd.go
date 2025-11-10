@@ -21,7 +21,6 @@ const (
 )
 
 func main() {
-
 	fs, getNetConfig := net.NetFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLogConfig := log.LogFlagSet()

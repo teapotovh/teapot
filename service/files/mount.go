@@ -62,7 +62,7 @@ func (m *mount) src(username string) (hpfs.FS, error) {
 	case VFSOS:
 		fs, err := hpfsos.NewFS().Sub(path)
 		if err != nil {
-			return nil, fmt.Errorf("error while opening filesystem for '%s' mount source: %w", m.vfs, err)
+			return nil, fmt.Errorf("error while opening filesystem for %q mount source: %w", m.vfs, err)
 		}
 
 		return fs, nil
@@ -78,7 +78,7 @@ type mountSourceParameters struct {
 func parseMountConfig(mc mountConfig) (mount, error) {
 	srcTmpl, err := tmplstring.NewTMPL[mountSourceParameters](mc.Source)
 	if err != nil {
-		return mount{}, fmt.Errorf("error while parsing mount source: %w")
+		return mount{}, fmt.Errorf("error while parsing mount source %q: %w", mc.Source, err)
 	}
 
 	return mount{
