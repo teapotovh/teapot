@@ -92,6 +92,10 @@ func (s *Subscriber[T]) Iter(ctx context.Context) iter.Seq[T] {
 	}
 }
 
+func (s *Subscriber[T]) Chan() chan T {
+	return s.msgCh
+}
+
 func (s *Subscriber[T]) Unsubscribe() {
 	s.unsubscribe(s.msgCh)
 }

@@ -30,6 +30,7 @@ type ClusterNode struct {
 	ExternalAddress netip.AddrPort
 	PublicKey       *wgtypes.Key
 
+	IsLocal    bool
 	InternalIP netip.Addr
 	CIDRs      []netip.Prefix
 }
@@ -75,6 +76,7 @@ func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
 		ExternalAddress: node.ExternalAddress,
 		PublicKey:       node.PublicKey,
 
+		IsLocal:    node.Name == c.node,
 		InternalIP: internalIP,
 		CIDRs:      cidrs,
 	}, nil
@@ -103,14 +105,14 @@ func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
 			l := c.logger
 			for name, node := range c.state {
 				f := func(field string) string {
-					return fmt.Sprintf("%s.%s", name, field)
+					return fmt.Sprintf("(%s).%s", name, field)
 				}
 				l = l.With(f("externalAddress"), node.ExternalAddress)
 				l = l.With(f("publicKey"), node.PublicKey)
 				l = l.With(f("internalIP"), node.InternalIP)
 				l = l.With(f("cidrs"), node.CIDRs)
 			}
-			c.logger.Debug("updated cluster state")
+			l.Debug("updated cluster state")
 
 			c.broker.Publish(c.state)
 		}

@@ -2,11 +2,11 @@ package wireguard
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
+	"net/netip"
+	"slices"
 	"time"
 
 	"github.com/vishvananda/netlink"
@@ -27,41 +27,18 @@ type Wireguard struct {
 
 	client *wgctrl.Client
 	link   *netlink.Wireguard
-	port   uint16
+
+	// State for the currently configured interface, to avoid unnecessary updates
+	peers      []wgtypes.PeerConfig
+	privateKey wgtypes.Key
+	port       uint16
 
 	cluster tnet.ClusterEvent
+	local   tnet.LocalEvent
 }
 
 type WireguardConfig struct {
 	Device string
-}
-
-func createInterface(name string) (*netlink.Wireguard, error) {
-	prev, err := netlink.LinkByName(name)
-	if err == nil {
-		// remove the previous interface
-		if err := netlink.LinkDel(prev); err != nil {
-			return nil, fmt.Errorf("error while removing the previous interface: %w", err)
-		}
-	}
-	// NOTE: it would be nice to nice to have a branch like
-	// 	 elif !errors.Is(err, <not found error>) { ..
-	//   return nil, fmt.Errorf("error while checking if link previously existed: %w", err)
-	// but the library doesn't support reliable not found checks.
-
-	link := &netlink.Wireguard{LinkAttrs: netlink.LinkAttrs{Name: name}}
-	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, fmt.Errorf("failed to create wireguard device: %w", err)
-	}
-	if err := netlink.LinkSetUp(link); err != nil {
-		return nil, fmt.Errorf("failed to bring up the wireguard device: %w", err)
-	}
-
-	return link, nil
-}
-
-func deleteInterface(link netlink.Link) error {
-	return netlink.LinkDel(link)
 }
 
 func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*Wireguard, error) {
@@ -83,21 +60,22 @@ func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*
 		link:   link,
 	}
 
-	if err := wg.configureWireguard(); err != nil {
-		return nil, fmt.Errorf("error while configuring wireguard interface: %w", err)
-	}
-
 	return wg, nil
 }
 
-func (w *Wireguard) configureWireguard() error {
-	local := w.net.Local()
-	privateKey := local.PrivateKey()
-	port := int(w.port)
+func (w *Wireguard) configureWireguard(source string) error {
+	if w.local.PrivateKey == tnet.DefaultPrivateKey || w.local.Port == 0 {
+		w.logger.Warn("ignoring update, as information for local node hasn't been fetched yet", "source", source)
+		return nil
+	}
 
 	interval := WireguardKeepaliveInterval
-	var peers []wgtypes.PeerConfig
+	var newPeers []wgtypes.PeerConfig
 	for name, node := range w.cluster {
+		if node.IsLocal {
+			continue
+		}
+
 		if node.PublicKey == nil || node.ExternalAddress.Addr().IsUnspecified() {
 			w.logger.Warn("ignoring node, as no wireguard key or endpoint are specified", "node", name)
 			continue
@@ -108,55 +86,74 @@ func (w *Wireguard) configureWireguard() error {
 			return fmt.Errorf("error while computing endpoint for node %q: %w", node, err)
 		}
 
-		// TODO: we should use internal IPs here, not cidrs
-		var ips []net.IPNet
-		for _, cidr := range node.CIDRs {
-			ip, err := prefixToIPNet(cidr)
-			if err != nil {
-				return fmt.Errorf("error while computing allowed IP for node %q: %w", name, err)
-			}
-			ips = append(ips, *ip)
+		ip, err := prefixToIPNet(netip.PrefixFrom(node.InternalIP, 128))
+		if err != nil {
+			return fmt.Errorf("error while computing allowed IP for node %q: %w", name, err)
 		}
+		ips := []net.IPNet{*ip}
 
-		peers = append(peers, wgtypes.PeerConfig{
+		newPeers = append(newPeers, wgtypes.PeerConfig{
 			PublicKey:                   *node.PublicKey,
 			Endpoint:                    endpoint,
 			PersistentKeepaliveInterval: &interval,
-			// TOOD: should we?
-			ReplaceAllowedIPs: true,
-			AllowedIPs:        ips,
+			ReplaceAllowedIPs:           true,
+			AllowedIPs:                  ips,
 		})
 	}
 
-	return w.client.ConfigureDevice(w.link.Name, wgtypes.Config{
-		PrivateKey:   &privateKey,
+	if slices.EqualFunc(newPeers, w.peers, comparePeerConfig) && w.privateKey == w.local.PrivateKey && w.port == w.local.Port {
+		w.logger.Debug("update caused no change in wireguard config", "source", source)
+		return nil
+	}
+	w.peers = newPeers
+	w.privateKey = w.local.PrivateKey
+	w.port = w.local.Port
+
+	port := int(w.local.Port)
+	err := w.client.ConfigureDevice(w.link.Name, wgtypes.Config{
+		PrivateKey:   &w.local.PrivateKey,
 		ListenPort:   &port,
 		ReplacePeers: true,
-		Peers:        peers,
+		Peers:        newPeers,
 	})
-}
+	if err != nil {
+		return fmt.Errorf("error while configuring wireguard device: %w", err)
+	}
 
-func (w *Wireguard) updateCluster(cluster tnet.ClusterEvent) {
-	w.cluster = cluster
-
+	w.logger.Info("updated wireguard with new information", "source", source)
+	return nil
 }
 
 // Run implements run.Runnable
 func (w *Wireguard) Run(ctx context.Context, notify run.Notify) error {
-	sub := w.net.Cluster().Broker().Subscribe()
-	defer sub.Unsubscribe()
+	csub := w.net.Cluster().Broker().Subscribe()
+	defer csub.Unsubscribe()
+	lsub := w.net.Local().Broker().Subscribe()
+	defer lsub.Unsubscribe()
+
 	// TODO: nicer, shared way to handle these errors
 	defer logError(w.logger, w.client.Close)
 	// TODO: handle error
 	defer deleteInterface(w.link)
 
 	notify.Notify()
-	for event := range sub.Iter(ctx) {
-		w.updateCluster(event)
-		if err := w.configureWireguard(); err != nil {
-			return fmt.Errorf("error while configuring wireguard interface: %w", err)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case cluster := <-csub.Chan():
+			w.cluster = cluster
+
+			if err := w.configureWireguard("cluster"); err != nil {
+				return fmt.Errorf("error while configuring wireguard interface: %w", err)
+			}
+
+		case local := <-lsub.Chan():
+			w.local = local
+
+			if err := w.configureWireguard("local"); err != nil {
+				return fmt.Errorf("error while configuring wireguard interface: %w", err)
+			}
 		}
 	}
-
-	return nil
 }

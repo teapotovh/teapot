@@ -5,7 +5,7 @@ import (
 )
 
 func WireguardFlagSet() (*flag.FlagSet, func() WireguardConfig) {
-	fs := flag.NewFlagSet("net/local", flag.ExitOnError)
+	fs := flag.NewFlagSet("net/wireguard", flag.ExitOnError)
 
 	device := fs.String("net-wireguard-device", "teapotnet0", "the wireguard device name to use for the mesh interface")
 

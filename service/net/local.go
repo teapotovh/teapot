@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/netip"
 	"os"
 	"path/filepath"
 
@@ -18,16 +17,26 @@ const (
 	KeyPerm     = os.FileMode(0660)
 )
 
+var (
+	DefaultPrivateKey = wgtypes.Key{}
+)
+
 type Local struct {
 	logger *slog.Logger
 	net    *Net
 
-	node  string
-	key   wgtypes.Key
-	cirds []netip.Prefix
+	node string
+	key  wgtypes.Key
+	port uint16
 
-	broker       *broker.Broker[ClusterEvent]
+	broker       *broker.Broker[LocalEvent]
 	brokerCancel context.CancelFunc
+}
+
+type LocalEvent struct {
+	Node       string
+	PrivateKey wgtypes.Key
+	Port       uint16
 }
 
 type LocalConfig struct {
@@ -58,7 +67,7 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 	logger.Info("loaded wireguard key", "publicKey", key.PublicKey())
 
 	ctx, cancel := context.WithCancel(context.Background())
-	broker := broker.NewBroker[ClusterEvent]()
+	broker := broker.NewBroker[LocalEvent]()
 	go broker.Run(ctx)
 
 	return &Local{
@@ -97,11 +106,22 @@ func storeKey(path string, key wgtypes.Key) error {
 	return nil
 }
 
+func (l *Local) event() LocalEvent {
+	return LocalEvent{
+		Node:       l.node,
+		PrivateKey: l.key,
+		Port:       l.port,
+	}
+}
+
 // Run implements run.Runnable
 func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	defer l.brokerCancel()
 	sub := l.net.broker.Subscribe()
 	defer sub.Unsubscribe()
+
+	// Publish an event when we start with the initial configuration
+	l.broker.Publish(l.event())
 
 	notify.Notify()
 	for event := range sub.Iter(ctx) {
@@ -109,6 +129,7 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 			node := *event.Update
 
 			if node.Name == l.node {
+				l.port = node.ExternalAddress.Port()
 				l.logger.Debug("received update", "node", node)
 
 				pk := l.key.PublicKey()
@@ -121,6 +142,10 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 						l.logger.Info("updated public key", "node", node.Name, "publicKey", pk)
 					}
 				}
+
+				// Always broadcast an update when the local node is updated in
+				// kubernetes
+				l.broker.Publish(l.event())
 			}
 		}
 	}
@@ -128,18 +153,6 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	return nil
 }
 
-func (l *Local) PrivateKey() wgtypes.Key {
-	return l.key
-}
-
-func (l *Local) PublicKey() wgtypes.Key {
-	return l.key.PublicKey()
-}
-
-func (l *Local) CIDRs() []netip.Prefix {
-	return l.cirds
-}
-
-func (l *Local) Node() string {
-	return l.node
+func (l *Local) Broker() *broker.Broker[LocalEvent] {
+	return l.broker
 }
