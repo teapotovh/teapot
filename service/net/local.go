@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/teapotovh/teapot/lib/broker"
+	"github.com/teapotovh/teapot/lib/run"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -23,6 +25,9 @@ type Local struct {
 	node  string
 	key   wgtypes.Key
 	cirds []netip.Prefix
+
+	broker       *broker.Broker[ClusterEvent]
+	brokerCancel context.CancelFunc
 }
 
 type LocalConfig struct {
@@ -50,8 +55,11 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 			return nil, fmt.Errorf("error while generating wireguard key for local node: %w", err)
 		}
 	}
-
 	logger.Info("loaded wireguard key", "publicKey", key.PublicKey())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	broker := broker.NewBroker[ClusterEvent]()
+	go broker.Run(ctx)
 
 	return &Local{
 		logger: logger,
@@ -59,6 +67,9 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 
 		node: config.LocalNode,
 		key:  key,
+
+		broker:       broker,
+		brokerCancel: cancel,
 	}, nil
 }
 
@@ -86,10 +97,13 @@ func storeKey(path string, key wgtypes.Key) error {
 	return nil
 }
 
-func (l *Local) Run(ctx context.Context) {
-	sub := l.net.Broker().Subscribe()
+// Run implements run.Runnable
+func (l *Local) Run(ctx context.Context, notify run.Notify) error {
+	defer l.brokerCancel()
+	sub := l.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 
+	notify.Notify()
 	for event := range sub.Iter(ctx) {
 		if event.Update != nil {
 			node := *event.Update
@@ -102,7 +116,7 @@ func (l *Local) Run(ctx context.Context) {
 					l.logger.Warn("kubernetes wireguard key differs from local, updating", "node", node.Name)
 
 					if err := annotateNode(ctx, l.net.Client(), node.Name, AnnotationPublicKey, pk.String()); err != nil {
-						l.logger.Error("error while storing public key in node annotation", "node", node.Name, "err", err)
+						return fmt.Errorf("error while storing public key in node %q annotation: %w", node.Name, err)
 					} else {
 						l.logger.Info("updated public key", "node", node.Name, "publicKey", pk)
 					}
@@ -110,6 +124,8 @@ func (l *Local) Run(ctx context.Context) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func (l *Local) PrivateKey() wgtypes.Key {
@@ -122,4 +138,8 @@ func (l *Local) PublicKey() wgtypes.Key {
 
 func (l *Local) CIDRs() []netip.Prefix {
 	return l.cirds
+}
+
+func (l *Local) Node() string {
+	return l.node
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/kubeclient"
 	"github.com/teapotovh/teapot/lib/kubecontroller"
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var (
@@ -20,20 +21,21 @@ var (
 
 type NetConfig struct {
 	KubeClientConfig kubeclient.KubeClientConfig
-	Node string
-	Local LocalConfig
-	Wireguard WireguardConfig
+	Node             string
+	Local            LocalConfig
+	Cluster          ClusterConfig
 }
 
 type Net struct {
 	logger *slog.Logger
 
-	client *kubernetes.Clientset
-	broker *broker.Broker[Event]
+	client       *kubernetes.Clientset
+	broker       *broker.Broker[Event]
+	brokerCancel context.CancelFunc
 
 	controller *kubecontroller.Controller[*v1.Node]
-	local *Local
-	wireguard *Wireguard
+	local      *Local
+	cluster    *Cluster
 }
 
 func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
@@ -46,9 +48,12 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 		return nil, fmt.Errorf("error while building kubernetes client: %w", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	net := Net{
-		logger: logger,
-		client: client,
+		logger:       logger,
+		client:       client,
+		broker:       broker.NewBroker[Event](),
+		brokerCancel: cancel,
 	}
 
 	net.local, err = NewLocal(&net, config.Local, logger.With("component", "local"))
@@ -56,13 +61,13 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 		return nil, fmt.Errorf("error while building net's local component: %w", err)
 	}
 
-	net.wireguard, err = NewWireguard(&net, config.Wireguard, logger.With("component", "wireguard"))
+	net.cluster, err = NewCluster(&net, config.Cluster, logger.With("component", "cluster"))
 	if err != nil {
-		return nil, fmt.Errorf("error while building net's wireguard component: %w", err)
+		return nil, fmt.Errorf("error while building net's cluster component: %w", err)
 	}
 
 	controllerConfig := kubecontroller.ControllerConfig[*v1.Node]{
-		Client: client,
+		Client:  client,
 		Handler: net.handle,
 	}
 	net.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
@@ -70,6 +75,7 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
 	}
 
+	go net.broker.Run(ctx)
 	return &net, nil
 }
 
@@ -77,24 +83,18 @@ func (net *Net) Client() *kubernetes.Clientset {
 	return net.client
 }
 
-func (net *Net) Broker() *broker.Broker[Event] {
-	return net.broker
-}
-
 func (net *Net) Local() *Local {
 	return net.local
 }
 
-func (net *Net) Wireguard() *Wireguard {
-	return net.wireguard
+func (net *Net) Cluster() *Cluster {
+	return net.cluster
 }
 
-func (net *Net) Run(ctx context.Context) error {
-	net.broker = broker.NewBroker[Event]()
-	go net.broker.Run(ctx)
+// Run implements run.Runnable
+func (net *Net) Run(ctx context.Context, notify run.Notify) error {
+	defer net.brokerCancel()
 
-	go net.local.Run(ctx)
-	go net.wireguard.Run(ctx)
-
+	notify.Notify()
 	return net.controller.Run(ctx, 1)
 }

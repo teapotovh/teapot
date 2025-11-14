@@ -20,6 +20,7 @@ in pkgs.mkShell {
     uv
 
     grpcurl
+    jool-cli
   ];
   venvDir = "./.venv";
   postVenvCreation = shellHook;

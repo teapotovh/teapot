@@ -16,21 +16,19 @@ func NetFlagSet() (*flag.FlagSet, func() NetConfig) {
 	localFS, getLocalConfig := LocalFlagSet()
 	fs.AddFlagSet(localFS)
 
-	wireguardFS, getWireguardConfig := WireguardFlagSet()
-	fs.AddFlagSet(wireguardFS)
-
 	return fs, func() NetConfig {
 		local := getLocalConfig()
 		local.LocalNode = *node
 
-		wireguard := getWireguardConfig()
-		wireguard.LocalNode = *node
+		cluster := ClusterConfig{
+			LocalNode: *node,
+		}
 
 		return NetConfig{
 			KubeClientConfig: getKubeCilentConfig(),
 			Node:             *node,
 			Local:            local,
-			Wireguard:        wireguard,
+			Cluster:          cluster,
 		}
 	}
 }

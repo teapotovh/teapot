@@ -5,25 +5,34 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
+	"time"
 
 	flag "github.com/spf13/pflag"
 
 	"github.com/teapotovh/teapot/lib/kubelog"
 	"github.com/teapotovh/teapot/lib/log"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/net"
+	"github.com/teapotovh/teapot/service/net/wireguard"
 )
 
 const (
-	CodeLog    = -1
-	CodeInit   = -2
-	CodeListen = -3
+	CodeLog           = -1
+	CodeInitNet       = -2
+	CodeInitWireguard = -3
+	CodeRun           = -5
 )
 
 func main() {
+	components := flag.StringSliceP("components", "c", []string{"wireguard"}, "list of components to run")
+
 	fs, getNetConfig := net.NetFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLogConfig := log.LogFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getWireguardConfig := wireguard.WireguardFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -35,18 +44,35 @@ func main() {
 		os.Exit(CodeLog)
 	}
 	kubelog.WithLogger(logger.With("sub", "net"))
+	logger = logger.With("sub", "net")
 
-	net, err := net.NewNet(getNetConfig(), logger.With("sub", "net"))
+	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("component", "run"))
+
+	net, err := net.NewNet(getNetConfig(), logger)
 	if err != nil {
 		logger.Error("error while initializing net controller", "err", err)
-		os.Exit(CodeInit)
+		os.Exit(CodeInitNet)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := net.Run(ctx); err != nil {
-		logger.Error("error while running net controller", "err", err)
-		os.Exit(CodeListen)
+	if slices.Contains(*components, "wireguard") {
+		wireguard, err := wireguard.NewWireguard(net, getWireguardConfig(), logger.With("component", "wireguard"))
+		if err != nil {
+			logger.Error("error while initializing wireguard component", "err", err)
+			os.Exit(CodeInitWireguard)
+		}
+
+		run.Add("wireguard", wireguard, nil)
+	}
+
+	run.Add("local", net.Local(), nil)
+	run.Add("cluster", net.Cluster(), nil)
+	run.Add("net", net, nil)
+
+	if err := run.Run(ctx); err != nil {
+		logger.Error("error while running net components", "err", err)
+		os.Exit(CodeRun)
 	}
 }

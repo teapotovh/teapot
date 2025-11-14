@@ -3,7 +3,6 @@ package net
 import (
 	"fmt"
 	"net/netip"
-	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	v1 "k8s.io/api/core/v1"
@@ -14,8 +13,7 @@ const (
 	AnnotationExternalPort = "net.teapot.ovh/external-port"
 	AnnotationPublicKey    = "net.teapot.ovh/public-key"
 
-	DefaultWireguardPort       = uint16(51692)
-	WireguardKeepaliveInterval = time.Second * 15
+	DefaultWireguardPort = uint16(51692)
 )
 
 type Event struct {
@@ -27,8 +25,8 @@ type Node struct {
 	Name  string
 	CIDRs []netip.Prefix
 
-	Address   netip.AddrPort
-	PublicKey *wgtypes.Key
+	ExternalAddress netip.AddrPort
+	PublicKey       *wgtypes.Key
 }
 
 func (net *Net) handle(name string, n *v1.Node, exists bool) error {
@@ -81,11 +79,11 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		Name:  n.Name,
 		CIDRs: cidrs,
 
-		Address:   addr,
-		PublicKey: publicKey,
+		ExternalAddress: addr,
+		PublicKey:       publicKey,
 	}
 
-	net.logger.Info("received node update", "name", node.Name, "cidrs", node.CIDRs, "address", node.Address, "publicKey", node.PublicKey)
+	net.logger.Info("received node update", "name", node.Name, "cidrs", node.CIDRs, "address", node.ExternalAddress, "publicKey", node.PublicKey)
 	net.broker.Publish(Event{Update: &node})
 
 	return nil

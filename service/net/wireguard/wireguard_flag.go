@@ -1,4 +1,4 @@
-package net
+package wireguard
 
 import (
 	flag "github.com/spf13/pflag"
