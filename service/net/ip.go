@@ -10,7 +10,7 @@ var (
 	ULA = netip.MustParsePrefix("fdfa:debc:e9ad::/48")
 	// The first /64 subnet of the ULA randomly selected for teapot's netd
 	// is the network where internal node IPs live (used for WireGuard / BGP).
-	InternalPrefix = netip.PrefixFrom(ULA.Addr(), 64)
+	InternalPrefix = netip.PrefixFrom(ULA.Addr(), 96)
 )
 
 func NodeInternalIP(nodeName string) (netip.Addr, error) {
@@ -18,8 +18,8 @@ func NodeInternalIP(nodeName string) (netip.Addr, error) {
 	hash := [md5.Size]byte(hasher.Sum([]byte(nodeName)))
 
 	bytes := InternalPrefix.Addr().AsSlice()
-	for i := range md5.Size / 2 {
-		bytes[8+i] = hash[i] ^ hash[8+i]
+	for i := range 4 {
+		bytes[12+i] = hash[i] ^ hash[4+i] ^ hash[8+i] ^ hash[12+i]
 	}
 
 	addr, ok := netip.AddrFromSlice(bytes)

@@ -83,7 +83,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 
 		endpoint, err := addrPortToUDPAddr(node.ExternalAddress)
 		if err != nil {
-			return fmt.Errorf("error while computing endpoint for node %q: %w", node, err)
+			return fmt.Errorf("error while computing endpoint for node %q: %w", name, err)
 		}
 
 		ip, err := prefixToIPNet(netip.PrefixFrom(node.InternalIP, 128))

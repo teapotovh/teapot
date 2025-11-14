@@ -102,18 +102,6 @@ func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
 
 			c.state[node.Name] = clusterNode
 
-			l := c.logger
-			for name, node := range c.state {
-				f := func(field string) string {
-					return fmt.Sprintf("(%s).%s", name, field)
-				}
-				l = l.With(f("externalAddress"), node.ExternalAddress)
-				l = l.With(f("publicKey"), node.PublicKey)
-				l = l.With(f("internalIP"), node.InternalIP)
-				l = l.With(f("cidrs"), node.CIDRs)
-			}
-			l.Debug("updated cluster state")
-
 			c.broker.Publish(c.state)
 		}
 	}
