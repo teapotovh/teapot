@@ -1,6 +1,7 @@
 package kubeclient
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -40,7 +41,14 @@ func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
 		}
 
 		p := filepath.Join(home, ".kube", "config")
-		path = &p
+		_, err = os.Stat(p)
+		if err == nil {
+			path = &p
+		} else {
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("unexpected error while checking if kubernetes config exists: %w", err)
+			}
+		}
 	} else {
 		path = &kubeconfig
 	}
