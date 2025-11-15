@@ -12,6 +12,7 @@ in pkgs.mkShell {
 
     go
     gopls
+    protoc-gen-go
     protoc-gen-go-vtproto
 
     python313

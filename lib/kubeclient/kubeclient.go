@@ -56,7 +56,7 @@ func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
 	} else {
 		config, err := os.ReadFile(*path)
 		if err != nil {
-			return nil, fmt.Errorf("error while reading kubernetes config file at %s: %w", path, err)
+			return nil, fmt.Errorf("error while reading kubernetes config file at %s: %w", *path, err)
 		}
 
 		cfg, err := clientcmd.RESTConfigFromKubeConfig(config)
