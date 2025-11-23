@@ -21,8 +21,6 @@ in pkgs.mkShell {
     uv
 
     grpcurl
-    jool-cli
-    bird3
   ];
   venvDir = "./.venv";
   postVenvCreation = shellHook;

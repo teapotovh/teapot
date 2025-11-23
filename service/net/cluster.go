@@ -64,10 +64,10 @@ func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
 		return ClusterNode{}, fmt.Errorf("could not convert Node to ClusterNode: %w", err)
 	}
 
-	// This CNI is ipv6-only, so filter only ipv6 addresses
+	// This CNI is ipv4-only, so filter only ipv4 addresses
 	var cidrs []netip.Prefix
 	for _, cidr := range node.CIDRs {
-		if cidr.Addr().Is6() {
+		if cidr.Addr().Is4() {
 			cidrs = append(cidrs, cidr)
 		}
 	}

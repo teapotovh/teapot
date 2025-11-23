@@ -15,7 +15,7 @@ import (
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/net"
-	"github.com/teapotovh/teapot/service/net/bgp"
+	"github.com/teapotovh/teapot/service/net/router"
 	"github.com/teapotovh/teapot/service/net/wireguard"
 )
 
@@ -23,12 +23,12 @@ const (
 	CodeLog           = -1
 	CodeInitNet       = -2
 	CodeInitWireguard = -3
-	CodeInitBGP       = -4
+	CodeInitRouter    = -4
 	CodeRun           = -5
 )
 
 func main() {
-	components := flag.StringSliceP("components", "c", []string{"wireguard", "bgp"}, "list of components to run")
+	components := flag.StringSliceP("components", "c", []string{"wireguard", "router"}, "list of components to run")
 
 	fs, getNetConfig := net.NetFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -36,7 +36,7 @@ func main() {
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getWireguardConfig := wireguard.WireguardFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getBGPConfig := bgp.BGPFlagSet()
+	fs, getRouterConfig := router.RouterFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -71,14 +71,14 @@ func main() {
 		run.Add("wireguard", wireguard, nil)
 	}
 
-	if slices.Contains(*components, "bgp") {
-		bgp, err := bgp.NewBGP(net, getBGPConfig(), logger.With("component", "bgp"))
+	if slices.Contains(*components, "router") {
+		router, err := router.NewRouter(net, getRouterConfig(), logger.With("component", "router"))
 		if err != nil {
-			logger.Error("error while initializing bgp component", "err", err)
-			os.Exit(CodeInitBGP)
+			logger.Error("error while initializing router component", "err", err)
+			os.Exit(CodeInitRouter)
 		}
 
-		run.Add("bgp", bgp, nil)
+		run.Add("router", router, nil)
 	}
 
 	run.Add("local", net.Local(), nil)

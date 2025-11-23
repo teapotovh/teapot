@@ -64,7 +64,7 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 			return nil, fmt.Errorf("error while generating wireguard key for local node: %w", err)
 		}
 	}
-	logger.Info("loaded wireguard key", "publicKey", key.PublicKey())
+	logger.Info("loaded wireguard key", "publicKey", key.PublicKey(), "node", config.LocalNode)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	broker := broker.NewBroker[LocalEvent]()
@@ -149,7 +149,6 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 			}
 		}
 	}
-
 	return nil
 }
 

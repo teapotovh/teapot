@@ -15,10 +15,12 @@ import (
 
 	"github.com/teapotovh/teapot/lib/run"
 	tnet "github.com/teapotovh/teapot/service/net"
+	"github.com/teapotovh/teapot/service/net/internal"
 )
 
 const (
 	WireguardKeepaliveInterval = time.Second * 15
+	NodePrefix                 = 32
 )
 
 type Wireguard struct {
@@ -63,10 +65,53 @@ func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*
 	return wg, nil
 }
 
+func (w *Wireguard) addWireguardIP() error {
+	addrs, err := netlink.AddrList(w.link, netlink.FAMILY_V4)
+	if err != nil {
+		return fmt.Errorf("error while listing addresses for the wireguard interface: %w", err)
+	}
+
+	// We need to fetch the local node from the cluster to get its internal IP
+	var node *tnet.ClusterNode
+	for _, n := range w.cluster {
+		if n.IsLocal {
+			node = &n
+			break
+		}
+	}
+	if node == nil {
+		w.logger.Warn("could not configure IP on wireguard interface as local node is not available in the cluster")
+		return nil
+	}
+
+	for _, a := range addrs {
+		if a.IPNet.IP.Equal(node.InternalIP.AsSlice()) {
+			w.logger.Debug("wireguard interface already has local IP, skipping")
+			return nil
+		}
+	}
+
+	ip, err := internal.PrefixToIPNet(netip.PrefixFrom(node.InternalIP, NodePrefix))
+	if err != nil {
+		return fmt.Errorf("error while computing local node IP: %w", err)
+	}
+
+	addr := &netlink.Addr{IPNet: ip}
+	if err := netlink.AddrAdd(w.link, addr); err != nil {
+		return fmt.Errorf("error while adding local node IP: %w", err)
+	}
+
+	return nil
+}
+
 func (w *Wireguard) configureWireguard(source string) error {
 	if w.local.PrivateKey == tnet.DefaultPrivateKey || w.local.Port == 0 {
 		w.logger.Warn("ignoring update, as information for local node hasn't been fetched yet", "source", source)
 		return nil
+	}
+
+	if err := w.addWireguardIP(); err != nil {
+		return fmt.Errorf("error while adding local node IP to wireguard interface: %w", err)
 	}
 
 	interval := WireguardKeepaliveInterval
@@ -86,11 +131,18 @@ func (w *Wireguard) configureWireguard(source string) error {
 			return fmt.Errorf("error while computing endpoint for node %q: %w", name, err)
 		}
 
-		ip, err := prefixToIPNet(netip.PrefixFrom(node.InternalIP, 128))
+		ip, err := internal.PrefixToIPNet(netip.PrefixFrom(node.InternalIP, NodePrefix))
 		if err != nil {
 			return fmt.Errorf("error while computing allowed IP for node %q: %w", name, err)
 		}
 		ips := []net.IPNet{*ip}
+		for _, c := range node.CIDRs {
+			cidr, err := internal.PrefixToIPNet(c)
+			if err != nil {
+				return fmt.Errorf("error while computing allowed IP for node %q from CIDR %q: %w", name, c, err)
+			}
+			ips = append(ips, *cidr)
+		}
 
 		newPeers = append(newPeers, wgtypes.PeerConfig{
 			PublicKey:                   *node.PublicKey,
@@ -132,7 +184,7 @@ func (w *Wireguard) Run(ctx context.Context, notify run.Notify) error {
 	defer lsub.Unsubscribe()
 
 	// TODO: nicer, shared way to handle these errors
-	defer logError(w.logger, w.client.Close)
+	defer w.client.Close()
 	// TODO: handle error
 	defer deleteInterface(w.link)
 

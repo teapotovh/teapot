@@ -3,7 +3,6 @@ package wireguard
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/netip"
 	"os"
@@ -12,12 +11,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
-
-func logError(logger *slog.Logger, fn func() error) {
-	if err := fn(); err != nil {
-		logger.Error("error in defer call", "err", err)
-	}
-}
 
 func addrPortToUDPAddr(ap netip.AddrPort) (*net.UDPAddr, error) {
 	if !ap.IsValid() {
@@ -31,20 +24,6 @@ func addrPortToUDPAddr(ap netip.AddrPort) (*net.UDPAddr, error) {
 		IP:   ip.AsSlice(),
 		Port: int(ap.Port()),
 		Zone: ip.Zone(),
-	}, nil
-}
-
-func prefixToIPNet(p netip.Prefix) (*net.IPNet, error) {
-	if !p.IsValid() {
-		return nil, net.InvalidAddrError("invalid Prefix")
-	}
-	ip := p.Addr()
-	if !ip.IsValid() {
-		return nil, net.InvalidAddrError("invalid IP address in Prefix")
-	}
-	return &net.IPNet{
-		IP:   ip.AsSlice(),
-		Mask: net.CIDRMask(p.Bits(), ip.BitLen()),
 	}, nil
 }
 
