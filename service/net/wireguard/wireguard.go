@@ -66,11 +66,6 @@ func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*
 }
 
 func (w *Wireguard) addWireguardIP() error {
-	addrs, err := netlink.AddrList(w.link, netlink.FAMILY_V4)
-	if err != nil {
-		return fmt.Errorf("error while listing addresses for the wireguard interface: %w", err)
-	}
-
 	// We need to fetch the local node from the cluster to get its internal IP
 	var node *tnet.ClusterNode
 	for _, n := range w.cluster {
@@ -84,9 +79,14 @@ func (w *Wireguard) addWireguardIP() error {
 		return nil
 	}
 
+	addrs, err := netlink.AddrList(w.link, netlink.FAMILY_V4)
+	if err != nil {
+		return fmt.Errorf("error while listing addresses for the wireguard interface: %w", err)
+	}
+
 	for _, a := range addrs {
 		if a.IPNet.IP.Equal(node.InternalIP.AsSlice()) {
-			w.logger.Debug("wireguard interface already has local IP, skipping")
+			w.logger.Debug("wireguard interface already has local IP, skipping", "ip", node.InternalIP)
 			return nil
 		}
 	}

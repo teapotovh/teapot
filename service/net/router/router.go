@@ -188,6 +188,12 @@ func (r *Router) configureRoutes() error {
 }
 
 func (r *Router) cleanupRoutes() error {
+	for eroute := range r.routes {
+		if err := r.delRoute(eroute); err != nil {
+			return fmt.Errorf("error while removing stale route %q: %s", eroute, err)
+		}
+	}
+
 	return nil
 }
 

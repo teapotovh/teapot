@@ -17,6 +17,7 @@ import (
 	"github.com/teapotovh/teapot/service/net"
 	"github.com/teapotovh/teapot/service/net/router"
 	"github.com/teapotovh/teapot/service/net/wireguard"
+	"github.com/teapotovh/teapot/service/net/cni"
 )
 
 const (
@@ -24,11 +25,12 @@ const (
 	CodeInitNet       = -2
 	CodeInitWireguard = -3
 	CodeInitRouter    = -4
-	CodeRun           = -5
+	CodeInitCNI    = -5
+	CodeRun           = -6
 )
 
 func main() {
-	components := flag.StringSliceP("components", "c", []string{"wireguard", "router"}, "list of components to run")
+	components := flag.StringSliceP("components", "c", []string{"wireguard", "router", "cni"}, "list of components to run")
 
 	fs, getNetConfig := net.NetFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -37,6 +39,8 @@ func main() {
 	fs, getWireguardConfig := wireguard.WireguardFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getRouterConfig := router.RouterFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getCNIConfig := cni.CNIFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -79,6 +83,16 @@ func main() {
 		}
 
 		run.Add("router", router, nil)
+	}
+
+	if slices.Contains(*components, "cni") {
+		cni, err := cni.NewCNI(net, getCNIConfig(), logger.With("component", "cni"))
+		if err != nil {
+			logger.Error("error while initializing cni component", "err", err)
+			os.Exit(CodeInitCNI)
+		}
+
+		run.Add("cni", cni, nil)
 	}
 
 	run.Add("local", net.Local(), nil)

@@ -12,6 +12,10 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+const (
+	OptimalMTU = 1380
+)
+
 func addrPortToUDPAddr(ap netip.AddrPort) (*net.UDPAddr, error) {
 	if !ap.IsValid() {
 		return nil, net.InvalidAddrError("invalid AddrPort")
@@ -40,7 +44,12 @@ func createInterface(name string) (*netlink.Wireguard, error) {
 	//   return nil, fmt.Errorf("error while checking if link previously existed: %w", err)
 	// but the library doesn't support reliable not found checks.
 
-	link := &netlink.Wireguard{LinkAttrs: netlink.LinkAttrs{Name: name}}
+	link := &netlink.Wireguard{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: name,
+			MTU:  OptimalMTU,
+		},
+	}
 	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, fmt.Errorf("failed to create wireguard device: %w", err)
 	}
