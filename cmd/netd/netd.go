@@ -15,9 +15,9 @@ import (
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/net"
+	"github.com/teapotovh/teapot/service/net/cni"
 	"github.com/teapotovh/teapot/service/net/router"
 	"github.com/teapotovh/teapot/service/net/wireguard"
-	"github.com/teapotovh/teapot/service/net/cni"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 	CodeInitNet       = -2
 	CodeInitWireguard = -3
 	CodeInitRouter    = -4
-	CodeInitCNI    = -5
+	CodeInitCNI       = -5
 	CodeRun           = -6
 )
 
@@ -51,8 +51,8 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err)
 		os.Exit(CodeLog)
 	}
-	kubelog.WithLogger(logger.With("sub", "net"))
 	logger = logger.With("sub", "net")
+	kubelog.WithLogger(logger.With("component", "klog"))
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("component", "run"))
 

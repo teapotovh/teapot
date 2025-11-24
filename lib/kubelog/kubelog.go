@@ -7,5 +7,5 @@ import (
 )
 
 func WithLogger(logger *slog.Logger) {
-	klog.SetSlogLogger(logger.With("component", "klog"))
+	klog.SetSlogLogger(logger)
 }
