@@ -11,21 +11,19 @@ import (
 )
 
 var (
-	allRoutes = netip.PrefixFrom(netip.IPv4Unspecified(), 0)
+	ErrCNIInterfaceNotBridge = errors.New("cni interface is not of type bridge")
+	allRoutes                = netip.PrefixFrom(netip.IPv4Unspecified(), 0)
 )
 
 func createInterface(name string) (*netlink.Bridge, error) {
 	prev, err := netlink.LinkByName(name)
 	if err == nil {
-		// remove the previous interface
-		if err := netlink.LinkDel(prev); err != nil {
-			return nil, fmt.Errorf("error while removing the previous interface: %w", err)
+		if prev.Type() != (&netlink.Bridge{}).Type() {
+			return nil, ErrCNIInterfaceNotBridge
 		}
+
+		return prev.(*netlink.Bridge), nil
 	}
-	// NOTE: it would be nice to nice to have a branch like
-	// 	 elif !errors.Is(err, <not found error>) { ..
-	//   return nil, fmt.Errorf("error while checking if link previously existed: %w", err)
-	// but the library doesn't support reliable not found checks.
 
 	link := &netlink.Bridge{LinkAttrs: netlink.LinkAttrs{Name: name}}
 	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {

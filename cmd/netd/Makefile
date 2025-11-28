@@ -1,5 +1,5 @@
 SERVICE_NAME=netd
-DOCKER_IMAGE=github.com/teapotovh/$(SERVICE_NAME)
+DOCKER_IMAGE=ghcr.io/teapotovh/$(SERVICE_NAME)
 
 .PHONY: build run docker
 
