@@ -8,6 +8,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/btree v1.1.3
+	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
 	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150

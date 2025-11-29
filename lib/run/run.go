@@ -61,10 +61,14 @@ func (r runnable) startup(ctx context.Context) error {
 	select {
 	case <-tick:
 		return fmt.Errorf("service %q startup timed out after %s", r.name, r.timeout)
-	case <-notify.ch:
-		// startup was successful, as we received the notification
-		r.logger.Info("successfully started component", "elapsed", time.Since(start))
-		return nil
+	case err := <-notify.ch:
+		if err != nil {
+			return err
+		} else {
+			// startup was successful, as we received the notification
+			r.logger.Info("successfully started component", "elapsed", time.Since(start))
+			return nil
+		}
 	}
 }
 

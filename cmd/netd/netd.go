@@ -21,16 +21,26 @@ import (
 )
 
 const (
-	CodeLog           = -1
-	CodeInitNet       = -2
-	CodeInitWireguard = -3
-	CodeInitRouter    = -4
-	CodeInitCNI       = -5
-	CodeRun           = -6
+	CodeLog                 = -1
+	CodeInitNet             = -2
+	CodeInitWireguard       = -3
+	CodeInitRouter          = -4
+	CodeInitCNI             = -5
+	CodeInitLoadBalancer    = -6
+	CodeInitLoadBalancerARP = -7
+	CodeRun                 = -8
+)
+
+var (
+	defaultComponents = []string{
+		"wireguard",
+		"router",
+		"cni",
+	}
 )
 
 func main() {
-	components := flag.StringSliceP("components", "c", []string{"wireguard", "router", "cni"}, "list of components to run")
+	components := flag.StringSliceP("components", "c", defaultComponents, "list of components to run")
 
 	fs, getNetConfig := net.NetFlagSet()
 	flag.CommandLine.AddFlagSet(fs)

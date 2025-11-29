@@ -25,10 +25,10 @@ func NetFlagSet() (*flag.FlagSet, func() NetConfig) {
 		}
 
 		return NetConfig{
-			KubeClientConfig: getKubeCilentConfig(),
-			Node:             *node,
-			Local:            local,
-			Cluster:          cluster,
+			KubeClient: getKubeCilentConfig(),
+			Node:       *node,
+			Local:      local,
+			Cluster:    cluster,
 		}
 	}
 }

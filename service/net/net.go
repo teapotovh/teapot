@@ -20,10 +20,10 @@ var (
 )
 
 type NetConfig struct {
-	KubeClientConfig kubeclient.KubeClientConfig
-	Node             string
-	Local            LocalConfig
-	Cluster          ClusterConfig
+	KubeClient kubeclient.KubeClientConfig
+	Node       string
+	Local      LocalConfig
+	Cluster    ClusterConfig
 }
 
 type Net struct {
@@ -43,7 +43,7 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 		return nil, ErrMissingNode
 	}
 
-	client, err := kubeclient.NewKubeClient(config.KubeClientConfig, logger.With("component", "kubeclient"))
+	client, err := kubeclient.NewKubeClient(config.KubeClient, logger.With("component", "kubeclient"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building kubernetes client: %w", err)
 	}
