@@ -33,7 +33,7 @@ func NewARP(lb *loadbalancer.LoadBalancer, config ARPConfig, logger *slog.Logger
 	}
 	handle, err := afpacket.NewTPacket(afpacket.OptInterface(config.Device))
 	if err != nil {
-		return nil, fmt.Errorf("error while opening device %q with afpacket: %w", err)
+		return nil, fmt.Errorf("error while opening device %q with afpacket: %w", config.Device, err)
 	}
 
 	arp := &ARP{

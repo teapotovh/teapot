@@ -14,7 +14,7 @@ COPY --from=root lib lib
 
 RUN go vet -v ./...
 
-RUN CGO_ENABLED=0 go build -o /go/bin/netd ./cmd/netd
+RUN go build -o /go/bin/loadbalancerd ./cmd/loadbalancerd
 
 FROM gcr.io/distroless/static-debian12
 
@@ -22,6 +22,7 @@ COPY --from=build /usr/sbin/ip6tables /usr/sbin/ip6tables
 COPY --from=build /usr/sbin/iptables /usr/sbin/iptables
 
 COPY --from=build /lib/x86_64-linux-gnu/libxtables.so.12 /lib/x86_64-linux-gnu/
+COPY --from=build /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/
 COPY --from=build /lib/x86_64-linux-gnu/libmnl.so.0 /lib/x86_64-linux-gnu/
 COPY --from=build /lib/x86_64-linux-gnu/libnftnl.so.11 /lib/x86_64-linux-gnu/
 COPY --from=build /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/
