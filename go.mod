@@ -4,6 +4,7 @@ go 1.24.6
 
 require (
 	github.com/ammario/tlru v0.4.0
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/coreos/go-iptables v0.8.0
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/golang-jwt/jwt/v5 v5.3.0
