@@ -16,6 +16,7 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/net"
 	"github.com/teapotovh/teapot/service/net/cni"
+	"github.com/teapotovh/teapot/service/net/ddns"
 	"github.com/teapotovh/teapot/service/net/router"
 	"github.com/teapotovh/teapot/service/net/wireguard"
 )
@@ -26,9 +27,10 @@ const (
 	CodeInitWireguard       = -3
 	CodeInitRouter          = -4
 	CodeInitCNI             = -5
-	CodeInitLoadBalancer    = -6
-	CodeInitLoadBalancerARP = -7
-	CodeRun                 = -8
+	CodeInitDDNS            = -6
+	CodeInitLoadBalancer    = -7
+	CodeInitLoadBalancerARP = -8
+	CodeRun                 = -9
 )
 
 var (
@@ -51,6 +53,8 @@ func main() {
 	fs, getRouterConfig := router.RouterFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getCNIConfig := cni.CNIFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getDDNSConfig := ddns.CNIFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -103,6 +107,16 @@ func main() {
 		}
 
 		run.Add("cni", cni, nil)
+	}
+
+	if slices.Contains(*components, "ddns") {
+		ddns, err := ddns.NewDDNS(net, getDDNSConfig(), logger.With("component", "ddns"))
+		if err != nil {
+			logger.Error("error while initializing ddns component", "err", err)
+			os.Exit(CodeInitDDNS)
+		}
+
+		run.Add("ddns", ddns, nil)
 	}
 
 	run.Add("local", net.Local(), nil)

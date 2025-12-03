@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"os"
 	"path/filepath"
 
 	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/run"
+	"github.com/teapotovh/teapot/service/net/internal"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -25,9 +27,10 @@ type Local struct {
 	logger *slog.Logger
 	net    *Net
 
-	node string
-	key  wgtypes.Key
-	port uint16
+	node    string
+	key     wgtypes.Key
+	port    uint16
+	address netip.Addr
 
 	broker       *broker.Broker[LocalEvent]
 	brokerCancel context.CancelFunc
@@ -37,6 +40,7 @@ type LocalEvent struct {
 	Node       string
 	PrivateKey wgtypes.Key
 	Port       uint16
+	Address    netip.Addr
 }
 
 type LocalConfig struct {
@@ -111,6 +115,7 @@ func (l *Local) event() LocalEvent {
 		Node:       l.node,
 		PrivateKey: l.key,
 		Port:       l.port,
+		Address:    l.address,
 	}
 }
 
@@ -130,13 +135,14 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 
 			if node.Name == l.node {
 				l.port = node.ExternalAddress.Port()
+				l.address = node.ExternalAddress.Addr()
 				l.logger.Debug("received update", "node", node)
 
 				pk := l.key.PublicKey()
 				if node.PublicKey == nil || *node.PublicKey != pk {
 					l.logger.Warn("kubernetes wireguard key differs from local, updating", "node", node.Name)
 
-					if err := annotateNode(ctx, l.net.Client(), node.Name, AnnotationPublicKey, pk.String()); err != nil {
+					if err := internal.AnnotateNode(ctx, l.net.Client(), node.Name, AnnotationPublicKey, pk.String()); err != nil {
 						return fmt.Errorf("error while storing public key in node %q annotation: %w", node.Name, err)
 					} else {
 						l.logger.Info("updated public key", "node", node.Name, "publicKey", pk)
