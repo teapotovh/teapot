@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/teapotovh/teapot/lib/broker"
+	"github.com/teapotovh/teapot/lib/kubeutil"
 	"github.com/teapotovh/teapot/lib/run"
-	"github.com/teapotovh/teapot/service/net/internal"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -142,7 +142,7 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 				if node.PublicKey == nil || *node.PublicKey != pk {
 					l.logger.Warn("kubernetes wireguard key differs from local, updating", "node", node.Name)
 
-					if err := internal.AnnotateNode(ctx, l.net.Client(), node.Name, AnnotationPublicKey, pk.String()); err != nil {
+					if err := kubeutil.AnnotateNode(ctx, l.net.Client(), node.Name, AnnotationPublicKey, pk.String()); err != nil {
 						return fmt.Errorf("error while storing public key in node %q annotation: %w", node.Name, err)
 					} else {
 						l.logger.Info("updated public key", "node", node.Name, "publicKey", pk)

@@ -1,4 +1,4 @@
-package ddns
+package externalip
 
 import (
 	"context"
@@ -11,22 +11,20 @@ import (
 
 	"github.com/cenkalti/backoff/v5"
 	"github.com/teapotovh/teapot/lib/run"
-	tnet "github.com/teapotovh/teapot/service/net"
-	"github.com/teapotovh/teapot/service/net/internal"
+	"github.com/teapotovh/teapot/service/ccm"
 )
 
-type DDNSConfig struct {
+type ExternalIPConfig struct {
 	Server     string
 	RetryDelay time.Duration
 	MaxRetries uint64
 	Interval   time.Duration
 }
 
-type DDNS struct {
+type ExternalIP struct {
 	logger *slog.Logger
-	net    *tnet.Net
+	ccm    *ccm.CCM
 
-	node       string
 	externalIP netip.Addr
 
 	server     string
@@ -37,11 +35,10 @@ type DDNS struct {
 	httpClient http.Client
 }
 
-func NewDDNS(net *tnet.Net, config DDNSConfig, logger *slog.Logger) (*DDNS, error) {
-	logger.Debug("config", "config", config)
-	return &DDNS{
+func NewExternalIP(ccm *ccm.CCM, config ExternalIPConfig, logger *slog.Logger) (*ExternalIP, error) {
+	return &ExternalIP{
 		logger: logger,
-		net:    net,
+		ccm:    ccm,
 
 		server:     config.Server,
 		retryDelay: config.RetryDelay,
@@ -50,7 +47,7 @@ func NewDDNS(net *tnet.Net, config DDNSConfig, logger *slog.Logger) (*DDNS, erro
 	}, nil
 }
 
-func (d *DDNS) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
+func (d *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	f := func() (addr netip.Addr, err error) {
 		defer func() {
 			if err != nil {
@@ -92,10 +89,20 @@ func (d *DDNS) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	return backoff.Retry(ctx, f, backoff.WithMaxTries(uint(d.maxRetries)), backoff.WithBackOff(expoBackoff))
 }
 
+func (d *ExternalIP) setExternalIP(ctx context.Context, ip netip.Addr, source string) error {
+	if err := d.ccm.SetExternalIP(ctx, ip); err != nil {
+		return fmt.Errorf("error while updating node ExternalIP (source: %s): %w", source, err)
+	} else {
+		d.logger.Info("updated external IP", "ip", ip, "old", d.externalIP, "source", source)
+		d.externalIP = ip
+		return nil
+	}
+}
+
 // Run implements run.Runnable
-func (d *DDNS) Run(ctx context.Context, notify run.Notify) error {
-	lsub := d.net.Local().Broker().Subscribe()
-	defer lsub.Unsubscribe()
+func (d *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
+	sub := d.ccm.Broker().Subscribe()
+	defer sub.Unsubscribe()
 
 	notify.Notify()
 	ticker := time.NewTicker(d.interval)
@@ -104,27 +111,32 @@ func (d *DDNS) Run(ctx context.Context, notify run.Notify) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if d.node == "" || !d.externalIP.IsValid() {
-				d.logger.Warn("skipping DDNS update as local node information is not available yet")
-				continue
-			}
 			publicIP, err := d.fetchPublicIP(ctx)
 			if err != nil {
 				return fmt.Errorf("error while fetching public IP: %w", err)
 			}
 
 			if d.externalIP == publicIP {
-				d.logger.Debug("public IP has not changed, skipping DDNS update", "ip", publicIP)
+				d.logger.Debug("public IP has not changed, skipping ExternalIP update", "ip", publicIP)
 				continue
 			}
-			if err := internal.AnnotateNode(ctx, d.net.Client(), d.node, tnet.AnnotationExternalIP, publicIP.String()); err != nil {
-				return fmt.Errorf("error while storing external IP in node %q annotation: %w", d.node, err)
-			} else {
-				d.logger.Info("updated external IP", "node", d.node, "ip", publicIP)
+
+			if err := d.setExternalIP(ctx, publicIP, "ddns"); err != nil {
+				return err
 			}
-		case local := <-lsub.Chan():
-			d.node = local.Node
-			d.externalIP = local.Address
+		case event := <-sub.Chan():
+			d.logger.Debug("received CCM event", "event", event)
+
+			if d.externalIP.IsValid() {
+				// Ensure noone else tampers with ExternalIP
+				if event.ExternalIP != d.externalIP {
+					if err := d.setExternalIP(ctx, d.externalIP, "event"); err != nil {
+						return err
+					}
+				}
+			} else {
+				d.externalIP = event.ExternalIP
+			}
 		}
 	}
 }

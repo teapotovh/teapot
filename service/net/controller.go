@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net/netip"
 
+	"github.com/teapotovh/teapot/service/ccm"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	v1 "k8s.io/api/core/v1"
 )
 
 const (
-	AnnotationExternalIP   = "net.teapot.ovh/external-ip"
 	AnnotationExternalPort = "net.teapot.ovh/external-port"
 	AnnotationPublicKey    = "net.teapot.ovh/public-key"
 
@@ -46,7 +46,7 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 	}
 
 	var err error
-	rawIP, ok := n.Annotations[AnnotationExternalIP]
+	rawIP, ok := n.Annotations[ccm.AnnotationExternalIP]
 	externalIP := netip.IPv4Unspecified()
 	if ok {
 		externalIP, err = netip.ParseAddr(rawIP)
