@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"os"
 	"slices"
 
 	"github.com/vishvananda/netlink"
@@ -104,7 +105,7 @@ func (r *Router) addRoute(route route) error {
 		return err
 	}
 
-	if err := netlink.RouteAdd(nlr); err != nil {
+	if err := netlink.RouteAdd(nlr); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("error while adding netlink route: %w", err)
 	}
 
