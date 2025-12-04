@@ -131,9 +131,10 @@ func (r *Router) delRoute(route route) error {
 
 func (r *Router) configureRoutes() error {
 	routes := make(map[route]unit)
+
 	// Derive routes from the cluster information:
 	for _, node := range r.cluster {
-		if node.IsLocal {
+		if node.IsLocal || !node.InternalAddress.IsValid() {
 			continue
 		}
 

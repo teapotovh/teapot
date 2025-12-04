@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/netip"
 	"sync"
 
@@ -18,11 +17,6 @@ import (
 	"github.com/teapotovh/teapot/lib/kubeclient"
 	"github.com/teapotovh/teapot/lib/kubecontroller"
 	"github.com/teapotovh/teapot/lib/run"
-)
-
-const (
-	AnnotationExternalIP = "ccm.teapot.ovh/external-ip"
-	AnnotationInternalIP = "ccm.teapot.ovh/internal-ip"
 )
 
 var (
@@ -156,24 +150,19 @@ func (ccm *CCM) update(ctx context.Context) error {
 			Address: ccm.node,
 		},
 	}
-	annotations := map[string]string{}
 
 	if ccm.internalIP.IsValid() {
-		str := ccm.internalIP.String()
 		addresses = append(addresses, v1.NodeAddress{
 			Type:    v1.NodeInternalIP,
-			Address: str,
+			Address: ccm.internalIP.String(),
 		})
-		annotations[AnnotationInternalIP] = str
 	}
 
 	if ccm.externalIP.IsValid() {
-		str := ccm.externalIP.String()
 		addresses = append(addresses, v1.NodeAddress{
 			Type:    v1.NodeExternalIP,
-			Address: str,
+			Address: ccm.externalIP.String(),
 		})
-		annotations[AnnotationExternalIP] = str
 	}
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -183,10 +172,6 @@ func (ccm *CCM) update(ctx context.Context) error {
 		}
 
 		node.Status.Addresses = addresses
-		if node.Annotations == nil {
-			node.Annotations = make(map[string]string)
-		}
-		maps.Insert(node.Annotations, maps.All(annotations))
 
 		if _, err := ccm.client.CoreV1().Nodes().UpdateStatus(ctx, node, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("failed to update kubernetes node %q: %w", node.Name, err)
