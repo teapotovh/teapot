@@ -1,6 +1,7 @@
 package wireguard
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -121,7 +122,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 			continue
 		}
 
-		if node.PublicKey == nil || node.ExternalAddress.Addr().IsUnspecified() {
+		if node.PublicKey == nil || !node.ExternalAddress.Addr().IsValid() {
 			w.logger.Warn("ignoring node, as no wireguard key or endpoint are specified", "node", name)
 			continue
 		}
@@ -153,6 +154,10 @@ func (w *Wireguard) configureWireguard(source string) error {
 		})
 	}
 
+	slices.SortFunc(newPeers, func(a, b wgtypes.PeerConfig) int {
+		return bytes.Compare(a.PublicKey[:], b.PublicKey[:])
+	})
+
 	if slices.EqualFunc(newPeers, w.peers, comparePeerConfig) && w.privateKey == w.local.PrivateKey && w.port == w.local.Port {
 		w.logger.Debug("update caused no change in wireguard config", "source", source)
 		return nil
@@ -161,6 +166,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 	w.privateKey = w.local.PrivateKey
 	w.port = w.local.Port
 
+	w.logger.Debug("applying peers", "peers", newPeers)
 	port := int(w.local.Port)
 	err := w.client.ConfigureDevice(w.link.Name, wgtypes.Config{
 		PrivateKey:   &w.local.PrivateKey,
