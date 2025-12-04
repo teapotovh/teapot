@@ -78,13 +78,14 @@ func (iip *InternalIP) Run(ctx context.Context, notify run.Notify) error {
 		case event := <-sub.Chan():
 			iip.logger.Debug("received CCM event", "event", event)
 
-			newIP, err := nodeInternalIP(iip.prefix, event.Node)
-			if err != nil {
-				return fmt.Errorf("error while computing local node IP: %w", err)
-			}
-
 			if !event.InternalIP.IsValid() || iip.node == event.Node {
 				iip.node = event.Node
+
+				newIP, err := nodeInternalIP(iip.prefix, event.Node)
+				if err != nil {
+					return fmt.Errorf("error while computing local node IP: %w", err)
+				}
+
 				if err := iip.setInternalIP(ctx, newIP, "initial"); err != nil {
 					return err
 				}
