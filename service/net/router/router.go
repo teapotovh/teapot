@@ -138,13 +138,13 @@ func (r *Router) configureRoutes() error {
 		}
 
 		// 1. For each node, we add a point-to-point route over the wireguard device
-		target := netip.PrefixFrom(node.InternalIP, wireguard.NodePrefix)
+		target := netip.PrefixFrom(node.InternalAddress, wireguard.NodePrefix)
 		routes[directRoute(target)] = unit{}
 
 		// 2. For each node's CIDRs we add a route using that node's internal IP
 		// as the destination.
 		for _, cidr := range node.CIDRs {
-			routes[route{target: cidr, via: node.InternalIP}] = unit{}
+			routes[route{target: cidr, via: node.InternalAddress}] = unit{}
 		}
 	}
 

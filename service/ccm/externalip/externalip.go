@@ -47,20 +47,20 @@ func NewExternalIP(ccm *ccm.CCM, config ExternalIPConfig, logger *slog.Logger) (
 	}, nil
 }
 
-func (d *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
+func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	f := func() (addr netip.Addr, err error) {
 		defer func() {
 			if err != nil {
-				d.logger.Warn("failed to fetch public IP address", "error", err)
+				eip.logger.Warn("failed to fetch public IP address", "error", err)
 			}
 		}()
 
-		req, err := http.NewRequest(http.MethodGet, d.server, nil)
+		req, err := http.NewRequest(http.MethodGet, eip.server, nil)
 		if err != nil {
 			return addr, fmt.Errorf("error creating request: %w", err)
 		}
 
-		resp, err := d.httpClient.Do(req.WithContext(ctx))
+		resp, err := eip.httpClient.Do(req.WithContext(ctx))
 		if err != nil {
 			return addr, fmt.Errorf("error performing request: %w", err)
 		}
@@ -84,58 +84,58 @@ func (d *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	}
 
 	expoBackoff := backoff.NewExponentialBackOff()
-	expoBackoff.InitialInterval = d.retryDelay
+	expoBackoff.InitialInterval = eip.retryDelay
 	expoBackoff.Multiplier = 2
-	return backoff.Retry(ctx, f, backoff.WithMaxTries(uint(d.maxRetries)), backoff.WithBackOff(expoBackoff))
+	return backoff.Retry(ctx, f, backoff.WithMaxTries(uint(eip.maxRetries)), backoff.WithBackOff(expoBackoff))
 }
 
-func (d *ExternalIP) setExternalIP(ctx context.Context, ip netip.Addr, source string) error {
-	if err := d.ccm.SetExternalIP(ctx, ip); err != nil {
+func (eip *ExternalIP) setExternalIP(ctx context.Context, ip netip.Addr, source string) error {
+	if err := eip.ccm.SetExternalIP(ctx, ip); err != nil {
 		return fmt.Errorf("error while updating node ExternalIP (source: %s): %w", source, err)
 	} else {
-		d.logger.Info("updated external IP", "ip", ip, "old", d.externalIP, "source", source)
-		d.externalIP = ip
+		eip.logger.Info("updated external IP", "ip", ip, "old", eip.externalIP, "source", source)
+		eip.externalIP = ip
 		return nil
 	}
 }
 
 // Run implements run.Runnable
-func (d *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
-	sub := d.ccm.Broker().Subscribe()
+func (eip *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
+	sub := eip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()
 
 	notify.Notify()
-	ticker := time.NewTicker(d.interval)
+	ticker := time.NewTicker(eip.interval)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			publicIP, err := d.fetchPublicIP(ctx)
+			publicIP, err := eip.fetchPublicIP(ctx)
 			if err != nil {
 				return fmt.Errorf("error while fetching public IP: %w", err)
 			}
 
-			if d.externalIP == publicIP {
-				d.logger.Debug("public IP has not changed, skipping ExternalIP update", "ip", publicIP)
+			if eip.externalIP == publicIP {
+				eip.logger.Debug("public IP has not changed, skipping ExternalIP update", "ip", publicIP)
 				continue
 			}
 
-			if err := d.setExternalIP(ctx, publicIP, "ddns"); err != nil {
+			if err := eip.setExternalIP(ctx, publicIP, "ddns"); err != nil {
 				return err
 			}
 		case event := <-sub.Chan():
-			d.logger.Debug("received CCM event", "event", event)
+			eip.logger.Debug("received CCM event", "event", event)
 
-			if d.externalIP.IsValid() {
+			if eip.externalIP.IsValid() {
 				// Ensure noone else tampers with ExternalIP
-				if event.ExternalIP != d.externalIP {
-					if err := d.setExternalIP(ctx, d.externalIP, "event"); err != nil {
+				if event.ExternalIP != eip.externalIP {
+					if err := eip.setExternalIP(ctx, eip.externalIP, "event"); err != nil {
 						return err
 					}
 				}
 			} else {
-				d.externalIP = event.ExternalIP
+				eip.externalIP = event.ExternalIP
 			}
 		}
 	}

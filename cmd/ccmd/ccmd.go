@@ -16,13 +16,15 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/ccm"
 	"github.com/teapotovh/teapot/service/ccm/externalip"
+	"github.com/teapotovh/teapot/service/ccm/internalip"
 )
 
 const (
 	CodeLog            = -1
 	CodeInitCCM        = -2
 	CodeInitExternalIP = -3
-	CodeRun            = -4
+	CodeInitInternalIP = -4
+	CodeRun            = -5
 )
 
 var (
@@ -40,6 +42,8 @@ func main() {
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getExternalIPConfig := externalip.ExternalIPFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getInternalIPConfig := internalip.InternalIPFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -62,13 +66,23 @@ func main() {
 	}
 
 	if slices.Contains(*components, "externalip") {
-		wireguard, err := externalip.NewExternalIP(ccm, getExternalIPConfig(), logger.With("component", "externalip"))
+		externalip, err := externalip.NewExternalIP(ccm, getExternalIPConfig(), logger.With("component", "externalip"))
 		if err != nil {
-			logger.Error("error while initializing wireguard component", "err", err)
+			logger.Error("error while initializing externalip component", "err", err)
 			os.Exit(CodeInitExternalIP)
 		}
 
-		run.Add("wireguard", wireguard, nil)
+		run.Add("externalip", externalip, nil)
+	}
+
+	if slices.Contains(*components, "internalip") {
+		internalip, err := internalip.NewInternalIP(ccm, getInternalIPConfig(), logger.With("component", "internalip"))
+		if err != nil {
+			logger.Error("error while initializing internalip component", "err", err)
+			os.Exit(CodeInitInternalIP)
+		}
+
+		run.Add("internalip", internalip, nil)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

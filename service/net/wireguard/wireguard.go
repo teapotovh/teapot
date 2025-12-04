@@ -86,13 +86,13 @@ func (w *Wireguard) addWireguardIP() error {
 	}
 
 	for _, a := range addrs {
-		if a.IPNet.IP.Equal(node.InternalIP.AsSlice()) {
-			w.logger.Debug("wireguard interface already has local IP, skipping", "ip", node.InternalIP)
+		if a.IPNet.IP.Equal(node.InternalAddress.AsSlice()) {
+			w.logger.Debug("wireguard interface already has local IP, skipping", "ip", node.InternalAddress)
 			return nil
 		}
 	}
 
-	ip, err := internal.PrefixToIPNet(netip.PrefixFrom(node.InternalIP, NodePrefix))
+	ip, err := internal.PrefixToIPNet(netip.PrefixFrom(node.InternalAddress, NodePrefix))
 	if err != nil {
 		return fmt.Errorf("error while computing local node IP: %w", err)
 	}
@@ -132,7 +132,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 			return fmt.Errorf("error while computing endpoint for node %q: %w", name, err)
 		}
 
-		ip, err := internal.PrefixToIPNet(netip.PrefixFrom(node.InternalIP, NodePrefix))
+		ip, err := internal.PrefixToIPNet(netip.PrefixFrom(node.InternalAddress, NodePrefix))
 		if err != nil {
 			return fmt.Errorf("error while computing allowed IP for node %q: %w", name, err)
 		}

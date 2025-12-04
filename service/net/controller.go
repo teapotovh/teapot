@@ -25,6 +25,7 @@ type Node struct {
 	Name  string
 	CIDRs []netip.Prefix
 
+	InternalAddress netip.Addr
 	ExternalAddress netip.AddrPort
 	PublicKey       *wgtypes.Key
 }
@@ -55,6 +56,15 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		}
 	}
 
+	rawIP, ok := n.Annotations[ccm.AnnotationInternalIP]
+	internalIP := netip.IPv4Unspecified()
+	if ok {
+		internalIP, err = netip.ParseAddr(rawIP)
+		if err != nil {
+			return fmt.Errorf("error while parsing the internal ip %q for node %s: %w", rawIP, n.Name, err)
+		}
+	}
+
 	rawPort, ok := n.Annotations[AnnotationExternalPort]
 	port := DefaultWireguardPort
 	if ok {
@@ -79,6 +89,7 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		Name:  n.Name,
 		CIDRs: cidrs,
 
+		InternalAddress: internalIP,
 		ExternalAddress: addr,
 		PublicKey:       publicKey,
 	}

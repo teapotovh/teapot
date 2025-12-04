@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/netip"
+	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +42,7 @@ type CCM struct {
 	broker       *broker.Broker[Event]
 	brokerCancel context.CancelFunc
 	controller   *kubecontroller.Controller[*v1.Node]
+	lock         sync.Mutex
 
 	internalIP netip.Addr
 	externalIP netip.Addr
@@ -145,6 +147,9 @@ func (ccm *CCM) SetExternalIP(ctx context.Context, addr netip.Addr) error {
 }
 
 func (ccm *CCM) update(ctx context.Context) error {
+	ccm.lock.Lock()
+	defer ccm.lock.Unlock()
+
 	addresses := []v1.NodeAddress{
 		{
 			Type:    v1.NodeHostName,

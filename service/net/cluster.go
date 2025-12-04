@@ -27,12 +27,12 @@ type Cluster struct {
 }
 
 type ClusterNode struct {
+	InternalAddress netip.Addr
 	ExternalAddress netip.AddrPort
 	PublicKey       *wgtypes.Key
 
-	IsLocal    bool
-	InternalIP netip.Addr
-	CIDRs      []netip.Prefix
+	IsLocal bool
+	CIDRs   []netip.Prefix
 }
 
 type ClusterEvent map[string]ClusterNode
@@ -59,11 +59,6 @@ func (c *Cluster) Broker() *broker.Broker[ClusterEvent] {
 }
 
 func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
-	internalIP, err := NodeInternalIP(node.Name)
-	if err != nil {
-		return ClusterNode{}, fmt.Errorf("could not convert Node to ClusterNode: %w", err)
-	}
-
 	// This CNI is ipv4-only, so filter only ipv4 addresses
 	var cidrs []netip.Prefix
 	for _, cidr := range node.CIDRs {
@@ -73,12 +68,12 @@ func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
 	}
 
 	return ClusterNode{
+		InternalAddress: node.InternalAddress,
 		ExternalAddress: node.ExternalAddress,
 		PublicKey:       node.PublicKey,
 
-		IsLocal:    node.Name == c.node,
-		InternalIP: internalIP,
-		CIDRs:      cidrs,
+		IsLocal: node.Name == c.node,
+		CIDRs:   cidrs,
 	}, nil
 }
 
