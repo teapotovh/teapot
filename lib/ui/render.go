@@ -133,7 +133,6 @@ var defaultDependencies = map[dependency.Dependency]unit{
 
 	{Type: dependency.DependencyTypeStyle, Name: "colors"}:    {}, // open-props/colors
 	{Type: dependency.DependencyTypeStyle, Name: "normalize"}: {}, // open-props/normalize
-	{Type: dependency.DependencyTypeStyle, Name: "theme"}:     {}, // teapot/theme
 }
 
 func (rer *Renderer) contextRender(component Component) (context, g.Node) {

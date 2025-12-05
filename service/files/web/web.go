@@ -57,9 +57,12 @@ func (hp HomePage) Render(ctx ui.Context) g.Node {
 		g.Text("this is a test webpage, with a button"),
 		components.Button(ctx,
 			h.Class("primary"),
-			hx.Target("/example"),
+			hx.Post("/example"),
+			hx.Trigger("click"),
+			hx.Swap("outerHTML"),
 			g.Text("some default button"),
 		),
+
 		components.Button(ctx,
 			h.Class("secondary"),
 			hx.Target("/example"),
