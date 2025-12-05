@@ -6,16 +6,23 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
-	"github.com/teapotovh/teapot/lib/ui/openprops"
+	"github.com/teapotovh/teapot/lib/ui/htmx"
 )
 
-const version = "1.7.16"
-const base = "https://unpkg.com/open-props@" + version
+const version = "2.0.4"
+const base = "https://unpkg.com/%s@" + version + "/dist"
 
 func main() {
-	for _, component := range openprops.Components {
-		url := fmt.Sprintf("%s/%s.min.css", base, component)
+	for _, component := range htmx.Components {
+		var name string
+		if component == "htmx.org" {
+			name = "htmx"
+		} else {
+			name = strings.TrimPrefix(component, "htmx-ext-")
+		}
+		url := fmt.Sprintf(base+"/%s.min.js", component, name)
 		log.Printf("Downloading component %q from %q", component, url)
 		res, err := http.Get(url)
 		if err != nil {
@@ -27,7 +34,7 @@ func main() {
 			panic(fmt.Errorf("error while reading response body for component %q: %w", component, err))
 		}
 
-		name := fmt.Sprintf("css/%s.css", component)
+		name = fmt.Sprintf("js/%s.js", name)
 		if err := os.WriteFile(name, contents, 0660); err != nil {
 			panic(fmt.Errorf("error while writing downloaded file for component %q: %w", component, err))
 		}

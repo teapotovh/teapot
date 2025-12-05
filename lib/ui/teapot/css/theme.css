@@ -1,0 +1,33 @@
+html {
+  --theme-brand-light0: var(--orange-6);
+  --theme-brand-light1: var(--green-6);
+
+  --theme-background-light0: var(--gray-0);
+  --theme-foreground-light0: var(--gray-12);
+}
+
+html {
+  --theme-brand-dark0: var(--orange-3);
+  --theme-brand-dark1: var(--green-3);
+
+  --theme-background-dark0: var(--gray-12);
+  --theme-foreground-dark0: var(--gray-0);
+}
+
+:root {
+  --theme-brand0: var(--theme-brand-light0);
+  --theme-brand1: var(--theme-brand-light1);
+
+  --theme-background0: var(--theme-background-light0);
+  --theme-foreground0: var(--theme-foreground-light0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --theme-brand0: var(--theme-brand-dark0);
+    --theme-brand1: var(--theme-brand-dark1);
+
+    --theme-background0: var(--theme-background-dark0);
+    --theme-foreground0: var(--theme-foreground-dark0);
+  }
+}
