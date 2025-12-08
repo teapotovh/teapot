@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	g "maragu.dev/gomponents"
-	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/kataras/muxie"
@@ -53,22 +52,17 @@ type HomePage struct {
 }
 
 func (hp HomePage) Render(ctx ui.Context) g.Node {
-	return h.Div(
-		g.Text("this is a test webpage, with a button"),
-		components.Button(ctx,
-			h.Class("primary"),
-			hx.Post("/example"),
-			hx.Trigger("click"),
-			hx.Swap("outerHTML"),
-			g.Text("some default button"),
+	return g.Group{
+		components.Header(ctx, g.Group{
+			h.A(g.Text("files")),
+		}, g.Group{
+			h.A(g.Text("login")),
+			h.A(g.Text("register")),
+		}),
+		components.Body(ctx,
+			g.Text("this is a test webpage, with a button"),
 		),
-
-		components.Button(ctx,
-			h.Class("secondary"),
-			hx.Target("/example"),
-			g.Text("some secondary button"),
-		),
-	)
+	}
 }
 
 func (web *Web) Handle(w http.ResponseWriter, r *http.Request) {

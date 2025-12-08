@@ -1,13 +1,15 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/teapotovh/teapot/lib/ui/dependency"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
 
 type Context interface {
-	Class(*Style) g.Node
+	Class(...*Style) g.Node
 }
 
 type unit struct{}
@@ -29,10 +31,14 @@ func (c *context) register(style *Style) {
 	}
 }
 
-func (c *context) Class(style *Style) g.Node {
-	if _, ok := c.styles[style]; !ok {
-		c.register(style)
+func (c *context) Class(styles ...*Style) g.Node {
+	var ids = make([]string, len(styles))
+	for _, style := range styles {
+		if _, ok := c.styles[style]; !ok {
+			c.register(style)
+		}
+		ids = append(ids, style.id)
 	}
 
-	return h.Class(style.id)
+	return h.Class(strings.Join(ids, " "))
 }

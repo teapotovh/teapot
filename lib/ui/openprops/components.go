@@ -29,6 +29,11 @@ var (
 	}
 )
 
+var nameMap = map[string]string{
+	"sizes": "size",
+	"fonts": "font",
+}
+
 //go:generate go run ./download/
 //go:embed css/*.css
 var CSS embed.FS
@@ -36,9 +41,13 @@ var CSS embed.FS
 func Dependencies() (map[dependency.Dependency][]byte, error) {
 	result := map[dependency.Dependency][]byte{}
 	for _, component := range Components {
+		name := component
+		if newName, ok := nameMap[component]; ok {
+			name = newName
+		}
 		dep := dependency.Dependency{
 			Type: dependency.DependencyTypeStyle,
-			Name: component,
+			Name: name,
 		}
 
 		path := fmt.Sprintf("css/%s.css", component)

@@ -133,6 +133,7 @@ var defaultDependencies = map[dependency.Dependency]unit{
 
 	{Type: dependency.DependencyTypeStyle, Name: "colors"}:    {}, // open-props/colors
 	{Type: dependency.DependencyTypeStyle, Name: "normalize"}: {}, // open-props/normalize
+	{Type: dependency.DependencyTypeStyle, Name: "font"}:      {}, // open-props/font
 }
 
 func (rer *Renderer) contextRender(component Component) (context, g.Node) {
@@ -188,6 +189,9 @@ func (rer *Renderer) renderWithDependencies(loaded AlreadyLoaded, component Comp
 		styles       []*Style
 	)
 
+	// TODO: the order in which script dependencies are inserted is important.
+	// For example, htmx-ext-response-targets and render need to be registered
+	// after htmx. We need proper dependency tree linearization to handle this.
 	for dep := range ctx.dependencies {
 		if _, ok := loaded.Dependencies[dep]; ok {
 			continue
