@@ -181,6 +181,10 @@ func (ccm *CCM) update(ctx context.Context) error {
 	})
 }
 
+func (ccm *CCM) KubeClient() *kubernetes.Clientset {
+	return ccm.client
+}
+
 // Run implements run.Runnable
 func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
 	defer ccm.brokerCancel()
