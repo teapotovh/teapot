@@ -12,9 +12,9 @@ COPY --from=root lib lib
 
 RUN go vet -v ./...
 
-RUN CGO_ENABLED=0 go build -o /go/bin/bottin ./cmd/bottin
+RUN CGO_ENABLED=0 go build -o /go/bin/bottind ./cmd/bottind
 
 FROM gcr.io/distroless/static-debian12
 
-COPY --from=build /go/bin/bottin /
-ENTRYPOINT ["/bottin"]
+COPY --from=build /go/bin/bottind /
+ENTRYPOINT ["/bottind"]
