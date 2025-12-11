@@ -28,7 +28,7 @@ jobs:
         run: |
           TAG=${{ github.ref_name }}
           for cmd in $(ls cmd/); do
-            if [ -d cmd/$cmd ]; then
+            if [ -f cmd/$cmd/Makefile ]; then
               make -C cmd/$cmd ROOT=$PWD docker
               BUILT_IMAGE=ghcr.io/${{ github.repository_owner }}/$cmd:latest
               IMAGE=ghcr.io/${{ github.repository_owner }}/$cmd:$TAG
