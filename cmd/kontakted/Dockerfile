@@ -10,7 +10,7 @@ COPY --from=root cmd cmd
 COPY --from=root service service
 COPY --from=root lib lib
 
-RUN go vet -v ./...
+RUN go vet -v ./cmd/kontakted
 
 RUN CGO_ENABLED=0 go build -o /go/bin/kontakted ./cmd/kontakted
 

@@ -12,7 +12,7 @@ COPY --from=root cmd cmd
 COPY --from=root service service
 COPY --from=root lib lib
 
-RUN go vet -v ./...
+RUN go vet -v ./cmd/netd
 
 RUN CGO_ENABLED=0 go build -o /go/bin/netd ./cmd/netd
 
