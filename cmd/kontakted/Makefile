@@ -10,4 +10,4 @@ run: build
 	./$(SERVICE_NAME)
 
 docker: build
-	docker build -t $(DOCKER_IMAGE) . --build-arg root=$(ROOT)
+	docker build -t $(DOCKER_IMAGE) --build-context root=$(ROOT) .
