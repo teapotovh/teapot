@@ -16,6 +16,7 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/ccm"
 	"github.com/teapotovh/teapot/service/ccm/externalip"
+	"github.com/teapotovh/teapot/service/ccm/initialize"
 	"github.com/teapotovh/teapot/service/ccm/internalip"
 )
 
@@ -24,13 +25,15 @@ const (
 	CodeInitCCM        = -2
 	CodeInitExternalIP = -3
 	CodeInitInternalIP = -4
-	CodeRun            = -5
+	CodeInitInitialize = -5
+	CodeRun            = -6
 )
 
 var (
 	defaultComponents = []string{
 		"externalip",
 		"internalip",
+		"initilize",
 	}
 )
 
@@ -83,6 +86,16 @@ func main() {
 		}
 
 		run.Add("internalip", internalip, nil)
+	}
+
+	if slices.Contains(*components, "initilize") {
+		initialize, err := initialize.NewInitialize(ccm, logger.With("component", "initialize"))
+		if err != nil {
+			logger.Error("error while initializing initialize component", "err", err)
+			os.Exit(CodeInitInitialize)
+		}
+
+		run.Add("initialize", initialize, nil)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
