@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"unsafe"
 
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
@@ -84,8 +83,11 @@ func (acl ACL) Check(login User, action string, target store.DN, attributes []st
 	return false
 }
 
-func attrstostrs(attrs []store.AttributeKey) []string {
-	return *(*[]string)(unsafe.Pointer(&attrs))
+func attrstostrs(attrs []store.AttributeKey) (strs []string) {
+	for _, attr := range attrs {
+		strs = append(strs, string(attr))
+	}
+	return
 }
 
 func (entry *ACLEntry) Check(login User, action string, target string, attributes []store.AttributeKey) bool {
@@ -145,7 +147,7 @@ func matchAny(pattern string, vals []string) bool {
 
 func anyMatch(patterns []string, val string) bool {
 	for _, pattern := range patterns {
-		if match(string(pattern), string(val)) {
+		if match(pattern, val) {
 			return true
 		}
 	}

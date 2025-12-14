@@ -246,7 +246,7 @@ type ResponseWriter interface {
 
 type responseWriterImpl struct {
 	chanOut   chan *ldap.LDAPMessage
-	messageID int
+	messageID int32
 }
 
 func (w responseWriterImpl) Write(po ldap.ProtocolOp) {
@@ -284,7 +284,7 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 
 	var w responseWriterImpl
 	w.chanOut = c.chanOut
-	w.messageID = m.MessageID().Int()
+	w.messageID = int32(m.MessageID())
 
 	return c.srv.Handler.ServeLDAP(ctx, w, &m)
 }

@@ -26,7 +26,7 @@ func main() {
 		}
 		url := fmt.Sprintf(base+"/%s.min.js", component, name)
 		log.Printf("Downloading component %q from %q", component, url)
-		res, err := http.Get(url)
+		res, err := http.Get(url) //nolint:gosec
 		if err != nil {
 			panic(fmt.Errorf("error while fetching component %q: %w", component, err))
 		}
@@ -37,7 +37,7 @@ func main() {
 		}
 
 		name = fmt.Sprintf("js/%s.js", name)
-		if err := os.WriteFile(name, contents, 0o660); err != nil {
+		if err := os.WriteFile(name, contents, 0o600); err != nil {
 			panic(fmt.Errorf("error while writing downloaded file for component %q: %w", component, err))
 		}
 	}

@@ -24,6 +24,6 @@ func (s SearchResultDone) size() int {
 	return LDAPResult(s).sizeTagged(TagSearchResultDone)
 }
 
-func (s *SearchResultDone) SetResultCode(code int) {
+func (s *SearchResultDone) SetResultCode(code int32) {
 	s.resultCode = ENUMERATED(code)
 }

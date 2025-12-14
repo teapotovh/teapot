@@ -55,7 +55,7 @@ var exactListQuery = `
 		WHERE dn = $1;
 	`
 
-func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, error) {
+func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, er error) {
 	var query string
 	prfx := prefix.String()
 	if exact {
@@ -68,9 +68,12 @@ func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, er
 	if err != nil {
 		return nil, fmt.Errorf("error while listing resources from psql: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if e := rows.Close(); e != nil {
+			err = fmt.Errorf("error while closing psql rows iterator: %w", e)
+		}
+	}()
 
-	var entries []Entry
 	for rows.Next() {
 		var rawPrefix string
 		var rawAttributes []byte

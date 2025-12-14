@@ -5,7 +5,7 @@ import "fmt"
 //
 //        CompareResponse ::= [APPLICATION 15] LDAPResult
 
-func (response *CompareResponse) SetResultCode(code int) {
+func (response *CompareResponse) SetResultCode(code int32) {
 	response.resultCode = ENUMERATED(code)
 }
 

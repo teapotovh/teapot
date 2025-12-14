@@ -241,8 +241,9 @@ func parseInt64(bytes []byte) (ret int64, err error) {
 	}
 
 	// Shift up and down in order to sign extend the result.
-	ret <<= 64 - uint8(len(bytes))*8
-	ret >>= 64 - uint8(len(bytes))*8
+	// casts are safe, as we check for the size of value len(bytes) beforehand
+	ret <<= 64 - uint8(len(bytes))*8 //nolint:gosec
+	ret >>= 64 - uint8(len(bytes))*8 //nolint:gosec
 	return
 }
 
@@ -267,8 +268,10 @@ func writeInt64(bytes *Bytes, i int64) int {
 	buf := [8]byte{}
 
 	for j := range n {
-		b := i >> uint((n-1-j)*8)
-		buf[j] = byte(b)
+		if j < len(buf) {
+			b := i >> uint((n-1-j)*8) //nolint:gosec
+			buf[j] = byte(b)
+		}
 	}
 	bytes.writeBytes(buf[:n])
 
@@ -282,10 +285,11 @@ func parseInt32(bytes []byte) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
-	if ret64 != int64(int32(ret64)) {
+	if ret64 != int64(int32(ret64)) { //nolint:gosec
 		return 0, StructuralError{"integer too large"}
 	}
-	return int32(ret64), nil
+	// this cast is safe after the previous check
+	return int32(ret64), nil //nolint:gosec
 }
 
 func sizeInt32(i int32) int {
@@ -757,14 +761,14 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 			bytes.writeBytes([]byte{byte(val & 0xff)})
 			val >>= 8
 		}
-		bytes.writeBytes([]byte{byte(0x80 | byte(lengthBytes))})
+		bytes.writeBytes([]byte{0x80 | byte(lengthBytes)})
 		size += lengthBytes + 1
 
 	} else if t.Length < 128 {
 		size += bytes.writeBytes([]byte{byte(t.Length)})
 	}
 	// Then write the tag
-	b := uint8(t.Class) << 6
+	b := uint8(t.Class) << 6 //nolint:gosec
 	if t.IsCompound {
 		b |= 0x20
 	}
@@ -772,9 +776,9 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 		b |= 0x1f
 		size += writeBase128Int(bytes, t.Tag)
 	} else {
-		b |= uint8(t.Tag)
+		b |= uint8(t.Tag) //nolint:gosec
 	}
-	size += bytes.writeBytes([]byte{byte(b)})
+	size += bytes.writeBytes([]byte{b})
 	return
 }
 

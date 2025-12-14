@@ -29,8 +29,9 @@ type HTTPSrv struct {
 func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 	mux := muxie.NewMux()
 	inner := http.Server{
-		Handler: mux,
-		Addr:    config.Address,
+		Handler:           mux,
+		ReadHeaderTimeout: time.Minute,
+		Addr:              config.Address,
 	}
 	return &HTTPSrv{
 		logger: logger,

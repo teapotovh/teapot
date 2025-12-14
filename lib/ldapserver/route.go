@@ -155,7 +155,7 @@ func (h *RouteMux) ServeLDAP(ctx context.Context, w ResponseWriter, r *Message) 
 	// Catch a AbandonRequest not handled by user
 	switch v := r.ProtocolOp().(type) {
 	case ldap.AbandonRequest:
-		// retreive the request to abandon, and send a abort signal to it
+		// retrieve the request to abandon, and send a abort signal to it
 		if requestToAbandon, ok := r.Client.GetMessageByID(int(v)); ok {
 			requestToAbandon.Abandon()
 		}

@@ -93,7 +93,7 @@ func (server *Bottin) Init(ctx context.Context) error {
 	// If it does, we're done. Otherwise, we have some initialization to do.
 	exists, err := server.existsEntry(ctx, server.baseDN)
 	if err != nil {
-		return fmt.Errorf("error while checking for root object existance: %w", err)
+		return fmt.Errorf("error while checking for root object existence: %w", err)
 	}
 	if exists {
 		return nil
@@ -179,7 +179,7 @@ func (server *Bottin) HandlePasswordModify(
 	return ctx
 }
 
-func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.ExtendedRequest) (int, error) {
+func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.ExtendedRequest) (int32, error) {
 	passwordModifyRequest, err := r.PasswordModifyRequest()
 	if err != nil {
 		return ldap.ResultCodeInvalidAttributeSyntax, fmt.Errorf("error while parsing PasswordModify: %w", err)
@@ -263,7 +263,7 @@ func (server *Bottin) HandleBind(
 	return ctx
 }
 
-func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindRequest) (context.Context, int, error) {
+func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindRequest) (context.Context, int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 
 	dn, err := server.parseDN(string(r.Name()), false)

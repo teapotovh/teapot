@@ -128,7 +128,7 @@ func (l *LDAPMessage) MessageID() MessageID {
 	return l.messageID
 }
 
-func (l *LDAPMessage) SetMessageID(ID int) {
+func (l *LDAPMessage) SetMessageID(ID int32) {
 	l.messageID = MessageID(ID)
 }
 

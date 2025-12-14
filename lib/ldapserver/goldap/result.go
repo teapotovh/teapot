@@ -255,7 +255,7 @@ func (l LDAPResult) sizeComponents() (size int) {
 	return
 }
 
-func (l *LDAPResult) SetResultCode(code int) {
+func (l *LDAPResult) SetResultCode(code int32) {
 	l.resultCode = ENUMERATED(code)
 }
 

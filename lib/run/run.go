@@ -30,7 +30,7 @@ func (n *notify) Notify() {
 	}
 }
 
-// this funciton is only used internally to signal an immediate crash
+// this function is only used internally to signal an immediate crash
 // before the timeout period
 func (n *notify) notifyError(err error) {
 	n.ch <- err

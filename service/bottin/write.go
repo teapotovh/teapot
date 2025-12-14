@@ -35,7 +35,7 @@ func (server *Bottin) HandleAdd(
 }
 
 //nolint:all
-func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddRequest) (int, error) {
+func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddRequest) (int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
@@ -188,7 +188,7 @@ func (server *Bottin) HandleDelete(
 }
 
 //nolint:gocyclo
-func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelRequest) (int, error) {
+func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelRequest) (int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(*r), false)
 	if err != nil {
@@ -296,7 +296,7 @@ func (server *Bottin) HandleModify(
 }
 
 //nolint:all
-func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.ModifyRequest) (int, error) {
+func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.ModifyRequest) (int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(r.Object()), false)
 	if err != nil {

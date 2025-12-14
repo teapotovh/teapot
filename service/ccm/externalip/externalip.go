@@ -62,7 +62,11 @@ func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 		if err != nil {
 			return addr, fmt.Errorf("error performing request: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if e := resp.Body.Close(); e != nil {
+				err = fmt.Errorf("error while closing request body: %w", e)
+			}
+		}()
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {

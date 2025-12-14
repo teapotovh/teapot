@@ -67,7 +67,7 @@ func (f *Factory) NewClient(ctx context.Context) (*Client, error) {
 	}
 
 	// We always bind as root user, so we can perofrm all operations,
-	// including, possibly, a second bind as a lower-priviledge user to test auth.
+	// including, possibly, a second bind as a lower-privilege user to test auth.
 	if err := conn.Bind(f.rootDN, f.rootPasswd); err != nil {
 		return nil, fmt.Errorf("error while binding as root: %w", err)
 	}

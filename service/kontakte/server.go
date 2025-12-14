@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
@@ -66,7 +67,7 @@ func Adapt(h gcohttp.Handler) http.Handler {
 		return node, err
 	}
 
-	return http.HandlerFunc(gcohttp.Adapt(fn))
+	return gcohttp.Adapt(fn)
 }
 
 func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
@@ -77,8 +78,9 @@ func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 
 	mux := muxie.NewMux()
 	httpsrv := http.Server{
-		Addr:    options.Addr,
-		Handler: mux,
+		Addr:              options.Addr,
+		ReadHeaderTimeout: time.Minute,
+		Handler:           mux,
 	}
 
 	srv := &Server{

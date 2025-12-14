@@ -1,7 +1,7 @@
 package bottin
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -38,8 +38,9 @@ func matchPassword(schemaHash string, passwd string) (bool, error) {
 	}
 
 	switch hashType {
+	// This is required for backwards compatibility with slapd-generated passwords
 	case MD5:
-		bytes := md5.Sum([]byte(passwd))
+		bytes := md5.Sum([]byte(passwd)) //nolint:gosec
 		based := base64.StdEncoding.EncodeToString(bytes[:])
 		return based == hash, nil
 	case SSHA256:

@@ -2,7 +2,7 @@ package internalip
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,11 +19,12 @@ type InternalIPConfig struct {
 }
 
 func nodeInternalIP(prefix netip.Prefix, nodeName string) (netip.Addr, error) {
-	hasher := md5.New()
-	hash := [md5.Size]byte(hasher.Sum([]byte(nodeName)))
+	// Use of md5 is safe here, as it's only used for the computation of the internalIP
+	hash := md5.Sum([]byte(nodeName)) //nolint:gosec
 
 	bytes := prefix.Addr().AsSlice()
 	for i := range 2 {
+		// nolint:gosec // This operation is index-safe
 		bytes[2+i] = hash[i] ^ hash[2+i] ^ hash[4+i] ^ hash[6+i] ^ hash[8+i] ^ hash[10+i] ^ hash[12+i] ^ hash[14+i]
 	}
 

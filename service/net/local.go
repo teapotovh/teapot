@@ -17,7 +17,8 @@ import (
 
 const (
 	KeyFilename = "wireguard.key"
-	KeyPerm     = os.FileMode(0o660)
+	DirPerm     = os.FileMode(0o0750)
+	KeyPerm     = os.FileMode(0o0660)
 )
 
 var DefaultPrivateKey = wgtypes.Key{}
@@ -47,7 +48,7 @@ type LocalConfig struct {
 
 func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error) {
 	path := filepath.Clean(config.Path)
-	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+	if err := os.MkdirAll(path, DirPerm); err != nil {
 		return nil, fmt.Errorf("error while ensuring local state directory exists: %w", err)
 	}
 
@@ -84,7 +85,7 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 }
 
 func getKey(path string) (wgtypes.Key, error) {
-	encodedKey, err := os.ReadFile(path)
+	encodedKey, err := os.ReadFile(path) //nolint:gosec // This is the expected behavior
 	if err != nil {
 		return wgtypes.Key{}, fmt.Errorf("error while reading key file from filesystem: %w", err)
 	}

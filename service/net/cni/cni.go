@@ -21,7 +21,8 @@ import (
 
 const (
 	CNIFilename = "10-teapotnet.conflist"
-	CNIPerm     = os.FileMode(0o664)
+	DirPerm     = os.FileMode(0o0750)
+	CNIPerm     = os.FileMode(0o0664)
 )
 
 type rule struct {
@@ -62,7 +63,7 @@ func NewCNI(net *tnet.Net, config CNIConfig, logger *slog.Logger) (*CNI, error) 
 	}
 
 	path := filepath.Clean(config.Path)
-	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+	if err := os.MkdirAll(path, DirPerm); err != nil {
 		return nil, fmt.Errorf("error while ensuring local CNI directory exists: %w", err)
 	}
 

@@ -8,9 +8,12 @@ linters:
     - revive
     - sloglint
     - modernize
-  disable:
-    - depguard
-    - dupl
+    - staticcheck
+    - govet
+    - errcheck
+    - gosec
+    - misspell
+    - unconvert
   settings:
     errcheck:
       exclude-functions:

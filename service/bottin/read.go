@@ -51,7 +51,7 @@ func (server *Bottin) HandleCompare(
 	return ctx
 }
 
-func (server *Bottin) handleCompareInternal(ctx context.Context, r *goldap.CompareRequest) (int, error) {
+func (server *Bottin) handleCompareInternal(ctx context.Context, r *goldap.CompareRequest) (int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	attr := store.NewAttributeKey(string(r.Ava().AttributeDesc()))
 	expected := string(r.Ava().AssertionValue())
@@ -107,7 +107,7 @@ func (server *Bottin) handleSearchInternal(
 	ctx context.Context,
 	w ldapserver.ResponseWriter,
 	r *goldap.SearchRequest,
-) (int, error) {
+) (int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	baseObject, err := server.parseDN(string(r.BaseObject()), true)
 	if err != nil {
