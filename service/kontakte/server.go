@@ -58,7 +58,7 @@ type ServerConfig struct {
 	Addr      string
 	JWTSecret string
 
-	FactoryOptions ldap.FactoryConfig
+	FactoryOptions ldap.LDAPConfig
 }
 
 func Adapt(h gcohttp.Handler) http.Handler {
