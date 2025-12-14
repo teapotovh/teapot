@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //	LDAPResult ::= SEQUENCE {
 //	     resultCode         ENUMERATED {
 //	          success                      (0),
@@ -62,7 +60,7 @@ import "fmt"
 func readTaggedLDAPResult(bytes *Bytes, class int, tag int) (ret LDAPResult, err error) {
 	err = bytes.ReadSubBytes(class, tag, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedLDAPResult:\n%s", err.Error())}
+		err = LdapError{"readTaggedLDAPResult:\n" + err.Error()}
 	}
 	return
 }
@@ -70,37 +68,37 @@ func readTaggedLDAPResult(bytes *Bytes, class int, tag int) (ret LDAPResult, err
 func (l *LDAPResult) readComponents(bytes *Bytes) (err error) {
 	l.resultCode, err = readENUMERATED(bytes, EnumeratedLDAPResultCode)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	l.matchedDN, err = readLDAPDN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	l.diagnosticMessage, err = readLDAPString(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	if bytes.HasMoreData() {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-			return
+			err = LdapError{"readComponents:\n" + err.Error()}
+			return err
 		}
 		if tag.Tag == TagLDAPResultReferral {
 			var referral Referral
 			referral, err = readTaggedReferral(bytes, classContextSpecific, TagLDAPResultReferral)
 			if err != nil {
-				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-				return
+				err = LdapError{"readComponents:\n" + err.Error()}
+				return err
 			}
 			l.referral = referral.Pointer()
 		}
 	}
-	return
+	return err
 }
 
 //	LDAPResult ::= SEQUENCE {

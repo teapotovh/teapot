@@ -38,7 +38,7 @@ func PathPasswd(username string) string {
 var ErrLDAP = errors.New("error while performing LDAP operation")
 
 // Server is the kontakte HTTP server that renders web pages for users to
-// modify their LDAP information
+// modify their LDAP information.
 type Server struct {
 	logger  *slog.Logger
 	factory *ldap.Factory
@@ -57,10 +57,17 @@ type ServerConfig struct {
 	FactoryOptions ldap.LDAPConfig
 }
 
+var (
+	ErrRedirect = errors.New("redirect")
+)
+
 func Adapt(h gcohttp.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) (g.Node, error) {
 		log := getLogger(r.Context())
 		node, err := h(w, r)
+		if errors.Is(err, ErrRedirect) {
+			err = nil
+		}
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			log.ErrorContext(r.Context(), "error handling request", "err", err)
 		}

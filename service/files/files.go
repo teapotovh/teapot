@@ -7,7 +7,7 @@ import (
 	"github.com/teapotovh/teapot/lib/ldap"
 )
 
-// Files is the service instance for teapot's file storage service
+// Files is the service instance for teapot's file storage service.
 type Files struct {
 	logger *slog.Logger
 
@@ -30,14 +30,14 @@ func (vfs VFS) String() string {
 	}
 }
 
-// FilesConfig is the configuration for the Files service
+// FilesConfig is the configuration for the Files service.
 type FilesConfig struct {
 	LDAP     ldap.LDAPConfig
 	Mounts   []string
 	Sessions SessionsConfig
 }
 
-// NewFiles returns a new Files service instance
+// NewFiles returns a new Files service instance.
 func NewFiles(config FilesConfig, logger *slog.Logger) (*Files, error) {
 	sessions, err := NewSessions(config.Sessions, logger.With("component", "sections"))
 	if err != nil {

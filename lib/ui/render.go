@@ -118,7 +118,7 @@ func (rer *Renderer) Dependency(path string) (dependency.Dependency, []byte, err
 }
 
 type Component interface {
-	Render(Context) g.Node
+	Render(ctx Context) g.Node
 }
 
 var defaultDependencies = map[dependency.Dependency]unit{

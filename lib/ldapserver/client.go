@@ -185,7 +185,7 @@ func (c *client) serve(ctx context.Context) {
 // * signals to all currently running request processor to stop
 // * wait for all request processor to end
 // * close client connection
-// * signal to server that client shutdown is ok
+// * signal to server that client shutdown is ok.
 func (c *client) close(ctx context.Context) error {
 	c.logger.DebugContext(ctx, "closing connection")
 	close(c.closing)

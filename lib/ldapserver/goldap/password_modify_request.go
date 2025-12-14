@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //	PasswdModifyRequestValue ::= SEQUENCE {
 //	  userIdentity    [0]  OCTET STRING OPTIONAL
 //	  oldPasswd       [1]  OCTET STRING OPTIONAL
@@ -22,7 +20,7 @@ func (request *PasswordModifyRequest) NewPassword() *OCTETSTRING {
 func readPasswordModifyRequest(bytes *Bytes) (request PasswordModifyRequest, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, request.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readPasswordModifyRequest:\n%s", err.Error())}
+		err = LdapError{"readPasswordModifyRequest:\n" + err.Error()}
 		return
 	}
 	return
@@ -52,14 +50,14 @@ func readOptionalOctetString(bytes *Bytes, expectedTag int) (ptr *OCTETSTRING, e
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
 		if tag.Tag == expectedTag {
 			var serverSaslCreds OCTETSTRING
 			serverSaslCreds, err = readTaggedOCTETSTRING(bytes, classContextSpecific, expectedTag)
 			if err != nil {
-				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+				err = LdapError{"readComponents:\n" + err.Error()}
 				return
 			}
 			ptr = serverSaslCreds.Pointer()

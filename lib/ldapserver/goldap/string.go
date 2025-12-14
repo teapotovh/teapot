@@ -1,12 +1,10 @@
 package message
 
-import "fmt"
-
 func readTaggedLDAPString(bytes *Bytes, class int, tag int) (ldapstring LDAPString, err error) {
 	var octetstring OCTETSTRING
 	octetstring, err = readTaggedOCTETSTRING(bytes, class, tag)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedLDAPString:\n%s", err.Error())}
+		err = LdapError{"readTaggedLDAPString:\n" + err.Error()}
 		return
 	}
 	ldapstring = LDAPString(octetstring)

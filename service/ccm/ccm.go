@@ -92,7 +92,7 @@ func (ccm *CCM) handle(name string, node *v1.Node, exists bool) error {
 		// NOTE: we don't want to return an error here if address parsing fails.
 		// That's because, we want this controller to overwrite malicious updates,
 		// which may also set these fields to invalid addresses.
-		switch addr.Type {
+		switch addr.Type { //nolint:exhaustive
 		case v1.NodeExternalIP:
 			externalIP, err = netip.ParseAddr(addr.Address)
 			if err != nil {
@@ -181,7 +181,7 @@ func (ccm *CCM) KubeClient() *kubernetes.Clientset {
 	return ccm.client
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
 	defer ccm.brokerCancel()
 

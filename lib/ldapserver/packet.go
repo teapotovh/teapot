@@ -17,8 +17,7 @@ func readMessagePacket(br *bufio.Reader) (*messagePacket, error) {
 	bytes, err = readLdapMessageBytes(br)
 
 	if err == nil {
-		messagePacket := &messagePacket{bytes: *bytes}
-		return messagePacket, err
+		return &messagePacket{bytes: *bytes}, nil
 	}
 	return &messagePacket{}, err
 }
@@ -71,7 +70,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 	var b byte
 	b, err = readBytes(conn, bytes, 1)
 	if err != nil {
-		return
+		return ret, err
 	}
 	ret.Class = int(b >> 6)
 	ret.IsCompound = b&0x20 == 0x20
@@ -88,12 +87,12 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 	// We are expecting the LDAP sequence tag 0x30 as first byte
 	if b != 0x30 {
 		err = fmt.Errorf("expecting 0x30 as first byte, but got %#x instead", b)
-		return
+		return ret, err
 	}
 
 	b, err = readBytes(conn, bytes, 1)
 	if err != nil {
-		return
+		return ret, err
 	}
 	if b&0x80 == 0 {
 		// The length is encoded in the bottom 7 bits.
@@ -103,20 +102,19 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 		numBytes := int(b & 0x7f)
 		if numBytes == 0 {
 			err = ldap.SyntaxError{Msg: "indefinite length found (not DER)"}
-			return
+			return ret, err
 		}
 		ret.Length = 0
 		for range numBytes {
-
 			b, err = readBytes(conn, bytes, 1)
 			if err != nil {
-				return
+				return ret, err
 			}
 			if ret.Length >= 1<<23 {
 				// We can't shift ret.length up without
 				// overflowing.
 				err = ldap.StructuralError{Msg: "length too large"}
-				return
+				return ret, err
 			}
 			ret.Length <<= 8
 			ret.Length |= int(b)
@@ -130,12 +128,12 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 		}
 	}
 
-	return
+	return ret, err
 }
 
 // Read "length" bytes from the connection
 // Append the read bytes to "bytes"
-// Return the last read byte
+// Return the last read byte.
 func readBytes(conn *bufio.Reader, bytes *[]byte, length int) (b byte, err error) {
 	newbytes := make([]byte, length)
 	n, err := conn.Read(newbytes)

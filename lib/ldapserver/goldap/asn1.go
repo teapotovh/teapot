@@ -1,7 +1,7 @@
 package message
 
 // Below code is largely inspired from the standard golang library encoding/asn
-// If put BEGIN / END tags in the comments to give the original library name
+// If put BEGIN / END tags in the comments to give the original library name.
 import (
 	"fmt"
 )
@@ -16,11 +16,11 @@ import (
 const (
 	tagBoolean = 1
 	tagInteger = 2
-	// tagBitString   = 3
+	// tagBitString   = 3.
 	tagOctetString = 4
-	// tagOID         = 6
+	// tagOID         = 6.
 	tagEnum = 10
-	// tagUTF8String = 12
+	// tagUTF8String = 12.
 	tagSequence = 16
 	tagSet      = 17
 	// tagPrintableString = 19
@@ -28,7 +28,7 @@ const (
 	// tagIA5String       = 22
 	// tagUTCTime         = 23
 	// tagGeneralizedTime = 24
-	// tagGeneralString = 27
+	// tagGeneralString = 27.
 )
 
 var tagNames = map[int]string{
@@ -44,7 +44,7 @@ const (
 	classUniversal       = 0
 	classApplication     = 1
 	classContextSpecific = 2
-	// classPrivate         = 3
+	// classPrivate         = 3.
 )
 
 var classNames = map[int]string{
@@ -163,7 +163,7 @@ func ParseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 // ASN.1 is very complex and this package doesn't attempt to implement
 // everything by any means.
 
-//import (
+// import (
 //	"fmt"
 //	"math/big"
 //	"reflect"
@@ -213,7 +213,7 @@ func parseBool(bytes []byte) (ret bool, err error) {
 	return
 }
 
-func sizeBool(b bool) int {
+func sizeBool() int {
 	return 1
 }
 
@@ -488,7 +488,7 @@ func sizeBase128Int(value int) (size int) {
 }
 
 // Write start as the end of the slice and goes back
-// We assume we have enough size
+// We assume we have enough size.
 func writeBase128Int(bytes *Bytes, value int) (size int) {
 	for ; value > 0 || size == 0; value >>= 7 { // Write at least one byte even if the value is 0
 		// Get the 7 lowest bits
@@ -593,7 +593,7 @@ func writeBase128Int(bytes *Bytes, value int) (size int) {
 // 	return bytes.writeString(s)
 // }
 
-// Octet string
+// Octet string.
 func parseOctetString(bytes []byte) (ret []byte, err error) {
 	return bytes, nil
 }
@@ -639,12 +639,12 @@ func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 	if ret.Tag == 0x1f {
 		ret.Tag, offset, err = parseBase128Int(bytes, offset)
 		if err != nil {
-			return
+			return ret, offset, err
 		}
 	}
 	if offset >= len(bytes) {
 		err = SyntaxError{"truncated tag or length"}
-		return
+		return ret, offset, err
 	}
 	b = bytes[offset]
 	offset++
@@ -656,13 +656,13 @@ func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 		numBytes := int(b & 0x7f)
 		if numBytes == 0 {
 			err = SyntaxError{"indefinite length found (not DER)"}
-			return
+			return ret, offset, err
 		}
 		ret.Length = 0
 		for range numBytes {
 			if offset >= len(bytes) {
 				err = SyntaxError{"truncated tag or length"}
-				return
+				return ret, offset, err
 			}
 			b = bytes[offset]
 			offset++
@@ -670,19 +670,19 @@ func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 				// We can't shift ret.length up without
 				// overflowing.
 				err = StructuralError{"length too large"}
-				return
+				return ret, offset, err
 			}
 			ret.Length <<= 8
 			ret.Length |= int(b)
 			if ret.Length == 0 {
 				// DER requires that lengths be minimal.
 				err = StructuralError{"superfluous leading zeros in length"}
-				return
+				return ret, offset, err
 			}
 		}
 	}
 
-	return
+	return ret, offset, err
 }
 
 // func writeTagAndLength(out *forkableWriter, t tagAndLength) (err error) {
@@ -763,7 +763,6 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 		}
 		bytes.writeBytes([]byte{0x80 | byte(lengthBytes)})
 		size += lengthBytes + 1
-
 	} else if t.Length < 128 {
 		size += bytes.writeBytes([]byte{byte(t.Length)})
 	}
@@ -779,7 +778,7 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 		b |= uint8(t.Tag) //nolint:gosec
 	}
 	size += bytes.writeBytes([]byte{b})
-	return
+	return size
 }
 
 //

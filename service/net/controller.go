@@ -49,7 +49,7 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		err                    error
 	)
 	for _, addr := range n.Status.Addresses {
-		switch addr.Type {
+		switch addr.Type { //nolint:exhaustive
 		case v1.NodeInternalIP:
 			internalIP, err = netip.ParseAddr(addr.Address)
 			if err != nil {

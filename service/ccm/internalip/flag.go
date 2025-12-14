@@ -13,6 +13,7 @@ import (
 // be filled with two bytes taken from XORing the MD5 of hostnames.
 var InternalPrefix net.IPNet
 
+//nolint:gochecknoinits
 func init() {
 	_, net, err := net.ParseCIDR("100.64.0.0/16")
 	if err != nil {

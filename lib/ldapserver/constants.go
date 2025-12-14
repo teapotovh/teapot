@@ -2,7 +2,7 @@ package ldapserver
 
 import ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
 
-// LDAP Application Codes
+// LDAP Application Codes.
 const (
 	ApplicationBindRequest           = 0
 	ApplicationBindResponse          = 1
@@ -26,7 +26,7 @@ const (
 	ApplicationExtendedResponse      = 24
 )
 
-// Modify Request Operation code
+// Modify Request Operation code.
 const (
 	ModifyRequestChangeOperationAdd     = 0
 	ModifyRequestChangeOperationDelete  = 1
@@ -39,7 +39,7 @@ const (
 	SearchRequestHomeSubtree     = 2
 )
 
-// Extended operation responseName and requestName
+// Extended operation responseName and requestName.
 const (
 	NoticeOfDisconnection   ldap.LDAPOID = "1.3.6.1.4.1.1466.2003"
 	NoticeOfCancel          ldap.LDAPOID = "1.3.6.1.1.8"

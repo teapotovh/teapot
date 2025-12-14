@@ -5,6 +5,7 @@ import (
 )
 
 func TestSizeLDAPMessage(t *testing.T) {
+	t.Parallel()
 	testData := getLDAPMessageTestData()
 	for i, test := range testData {
 		message, err := ReadLDAPMessage(&test.bytes)
@@ -75,6 +76,7 @@ func getSizeTagAndLengthTestData() (ret []tagAndLengthTestData) {
 }
 
 func TestSizeTagAndLength(t *testing.T) {
+	t.Parallel()
 	for i, test := range getSizeTagAndLengthTestData() {
 		size := sizeTagAndLength(test.tag, test.length)
 		if test.expectedSize != size {

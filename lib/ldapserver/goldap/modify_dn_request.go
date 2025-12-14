@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
 //	     entry           LDAPDN,
 //	     newrdn          RelativeLDAPDN,
@@ -10,7 +8,7 @@ import "fmt"
 func readModifyDNRequest(bytes *Bytes) (ret ModifyDNRequest, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagModifyDNRequest, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readModifyDNRequest:\n%s", err.Error())}
+		err = LdapError{"readModifyDNRequest:\n" + err.Error()}
 		return
 	}
 	return
@@ -19,37 +17,37 @@ func readModifyDNRequest(bytes *Bytes) (ret ModifyDNRequest, err error) {
 func (m *ModifyDNRequest) readComponents(bytes *Bytes) (err error) {
 	m.entry, err = readLDAPDN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	m.newrdn, err = readRelativeLDAPDN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	m.deleteoldrdn, err = readBOOLEAN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	if bytes.HasMoreData() {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-			return
+			err = LdapError{"readComponents:\n" + err.Error()}
+			return err
 		}
 		if tag.Tag == TagModifyDNRequestNewSuperior {
 			var ldapdn LDAPDN
 			ldapdn, err = readTaggedLDAPDN(bytes, classContextSpecific, TagModifyDNRequestNewSuperior)
 			if err != nil {
-				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-				return
+				err = LdapError{"readComponents:\n" + err.Error()}
+				return err
 			}
 			m.newSuperior = ldapdn.Pointer()
 		}
 	}
-	return
+	return err
 }
 
 //	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {

@@ -13,10 +13,10 @@ type PageOptions struct {
 }
 
 type Page interface {
-	Render(PageOptions) g.Node
+	Render(opts PageOptions) g.Node
 }
 
-// Ensure DefaultPage implements Page
+// Ensure DefaultPage implements Page.
 var _ Page = DefaultPage{}
 
 type DefaultPage struct{}

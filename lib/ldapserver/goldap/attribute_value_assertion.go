@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //
 //        AttributeValueAssertion ::= SEQUENCE {
 //             attributeDesc   AttributeDescription,
@@ -18,7 +16,7 @@ func (assertion *AttributeValueAssertion) AssertionValue() AssertionValue {
 func readAttributeValueAssertion(bytes *Bytes) (ret AttributeValueAssertion, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readAttributeValueAssertion:\n%s", err.Error())}
+		err = LdapError{"readAttributeValueAssertion:\n" + err.Error()}
 		return
 	}
 	return
@@ -27,7 +25,7 @@ func readAttributeValueAssertion(bytes *Bytes) (ret AttributeValueAssertion, err
 func readTaggedAttributeValueAssertion(bytes *Bytes, class int, tag int) (ret AttributeValueAssertion, err error) {
 	err = bytes.ReadSubBytes(class, tag, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedAttributeValueAssertion:\n%s", err.Error())}
+		err = LdapError{"readTaggedAttributeValueAssertion:\n" + err.Error()}
 		return
 	}
 	return
@@ -36,12 +34,12 @@ func readTaggedAttributeValueAssertion(bytes *Bytes, class int, tag int) (ret At
 func (assertion *AttributeValueAssertion) readComponents(bytes *Bytes) (err error) {
 	assertion.attributeDesc, err = readAttributeDescription(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	assertion.assertionValue, err = readAssertionValue(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	return

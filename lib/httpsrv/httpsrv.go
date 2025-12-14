@@ -45,8 +45,7 @@ func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 
 type HTTPService interface {
 	// Handler returns an http.Handler for that service being rooted at `prefix`.
-	// The provided argument is the prefix prepended to each HTTP request path.
-	Handler(string) http.Handler
+	Handler(prefix string) http.Handler
 }
 
 func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
@@ -55,7 +54,7 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	h.mux.Handle(path.Join(prefix, "*"), handler)
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 	var ch chan error
 	defer close(ch)

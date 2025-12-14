@@ -1,14 +1,12 @@
 package message
 
-import "fmt"
-
 //
 //        AttributeValue ::= OCTET STRING
 
 func readAttributeValue(bytes *Bytes) (ret AttributeValue, err error) {
 	octetstring, err := readOCTETSTRING(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readAttributeValue:\n%s", err.Error())}
+		err = LdapError{"readAttributeValue:\n" + err.Error()}
 		return
 	}
 	ret = AttributeValue(octetstring)

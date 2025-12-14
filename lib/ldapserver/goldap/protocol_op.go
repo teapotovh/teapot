@@ -6,8 +6,8 @@ import "fmt"
 func readProtocolOp(bytes *Bytes) (ret ProtocolOp, err error) {
 	tagAndLength, err := bytes.PreviewTagAndLength()
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readProtocolOp:\n%s", err.Error())}
-		return
+		err = LdapError{"readProtocolOp:\n" + err.Error()}
+		return ret, err
 	}
 	switch tagAndLength.Tag {
 	case TagBindRequest:
@@ -54,11 +54,11 @@ func readProtocolOp(bytes *Bytes) (ret ProtocolOp, err error) {
 		ret, err = readIntermediateResponse(bytes)
 	default:
 		err = LdapError{fmt.Sprintf("readProtocolOp: invalid tag value %d for protocolOp", tagAndLength.Tag)}
-		return
+		return ret, err
 	}
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readProtocolOp:\n%s", err.Error())}
-		return
+		err = LdapError{"readProtocolOp:\n" + err.Error()}
+		return ret, err
 	}
-	return
+	return ret, err
 }

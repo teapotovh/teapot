@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //
 //        Attribute ::= PartialAttribute(WITH COMPONENTS {
 //             ...,
@@ -19,7 +17,7 @@ func readAttribute(bytes *Bytes) (ret Attribute, err error) {
 	var par PartialAttribute
 	par, err = readPartialAttribute(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readAttribute:\n%s", err.Error())}
+		err = LdapError{"readAttribute:\n" + err.Error()}
 		return
 	}
 	if len(par.vals) == 0 {

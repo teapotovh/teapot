@@ -32,7 +32,7 @@ func (request *BindRequest) AuthenticationChoice() string {
 func readBindRequest(bytes *Bytes) (bindrequest BindRequest, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagBindRequest, bindrequest.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readBindRequest:\n%s", err.Error())}
+		err = LdapError{"readBindRequest:\n" + err.Error()}
 		return
 	}
 	return
@@ -41,7 +41,7 @@ func readBindRequest(bytes *Bytes) (bindrequest BindRequest, err error) {
 func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 	request.version, err = readINTEGER(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	if request.version < BindRequestVersionMin || request.version > BindRequestVersionMax {
@@ -57,12 +57,12 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 	}
 	request.name, err = readLDAPDN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	request.authentication, err = readAuthenticationChoice(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	return

@@ -24,7 +24,7 @@ func nodeInternalIP(prefix netip.Prefix, nodeName string) (netip.Addr, error) {
 
 	bytes := prefix.Addr().AsSlice()
 	for i := range 2 {
-		// nolint:gosec // This operation is index-safe
+		//nolint:gosec // This operation is index-safe
 		bytes[2+i] = hash[i] ^ hash[2+i] ^ hash[4+i] ^ hash[6+i] ^ hash[8+i] ^ hash[10+i] ^ hash[12+i] ^ hash[14+i]
 	}
 
@@ -63,7 +63,7 @@ func (iip *InternalIP) setInternalIP(ctx context.Context, ip netip.Addr, source 
 	}
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (iip *InternalIP) Run(ctx context.Context, notify run.Notify) error {
 	sub := iip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()

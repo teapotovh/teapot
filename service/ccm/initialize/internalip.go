@@ -22,7 +22,7 @@ func NewInitialize(ccm *ccm.CCM, logger *slog.Logger) (*Initialize, error) {
 	}, nil
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (iip *Initialize) Run(ctx context.Context, notify run.Notify) error {
 	sub := iip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()

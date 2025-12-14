@@ -11,7 +11,7 @@ import "fmt"
 //
 //
 //
-//Sermersheim                 Standards Track                    [Page 57]
+// Sermersheim                 Standards Track                    [Page 57]
 //
 //
 //RFC 4511                         LDAPv3                        June 2006
@@ -29,13 +29,13 @@ func readFilter(bytes *Bytes) (filter Filter, err error) {
 	var tagAndLength TagAndLength
 	tagAndLength, err = bytes.PreviewTagAndLength()
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readFilter:\n%s", err.Error())}
-		return
+		err = LdapError{"readFilter:\n" + err.Error()}
+		return filter, err
 	}
 	err = tagAndLength.ExpectClass(classContextSpecific)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readFilter:\n%s", err.Error())}
-		return
+		err = LdapError{"readFilter:\n" + err.Error()}
+		return filter, err
 	}
 	switch tagAndLength.Tag {
 	case TagFilterAnd:
@@ -60,11 +60,11 @@ func readFilter(bytes *Bytes) (filter Filter, err error) {
 		filter, err = readFilterExtensibleMatch(bytes)
 	default:
 		err = LdapError{fmt.Sprintf("readFilter: invalid tag value %d for filter", tagAndLength.Tag)}
-		return
+		return filter, err
 	}
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readFilter:\n%s", err.Error())}
-		return
+		err = LdapError{"readFilter:\n" + err.Error()}
+		return filter, err
 	}
-	return
+	return filter, err
 }

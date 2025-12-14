@@ -2,7 +2,6 @@ package message
 
 import (
 	"errors"
-	"fmt"
 )
 
 var (
@@ -30,7 +29,7 @@ func (control *Control) ControlValue() *OCTETSTRING {
 func readControl(bytes *Bytes) (control Control, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, control.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readControl:\n%s", err.Error())}
+		err = LdapError{"readControl:\n" + err.Error()}
 		return
 	}
 	return
@@ -39,21 +38,21 @@ func readControl(bytes *Bytes) (control Control, err error) {
 func (control *Control) readComponents(bytes *Bytes) (err error) {
 	control.controlType, err = readLDAPOID(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	if bytes.HasMoreData() {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-			return
+			err = LdapError{"readComponents:\n" + err.Error()}
+			return err
 		}
 		if tag.Tag == tagBoolean {
 			control.criticality, err = readBOOLEAN(bytes)
 			if err != nil {
-				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-				return
+				err = LdapError{"readComponents:\n" + err.Error()}
+				return err
 			}
 			if !control.criticality {
 				return ErrCriticalityNotSpecified
@@ -64,12 +63,12 @@ func (control *Control) readComponents(bytes *Bytes) (err error) {
 		var octetstring OCTETSTRING
 		octetstring, err = readOCTETSTRING(bytes)
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-			return
+			err = LdapError{"readComponents:\n" + err.Error()}
+			return err
 		}
 		control.controlValue = octetstring.Pointer()
 	}
-	return
+	return err
 }
 
 func (control Control) write(bytes *Bytes) (size int) {

@@ -44,7 +44,7 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 	return &web, nil
 }
 
-// Handler implements httpsrv.HTTPService
+// Handler implements httpsrv.HTTPService.
 func (web *Web) Handler(prefix string) http.Handler {
 	web.prefix = prefix
 

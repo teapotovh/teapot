@@ -6,6 +6,7 @@ import (
 )
 
 func TestWriteLDAPMessage(t *testing.T) {
+	t.Parallel()
 	testData := getLDAPMessageTestData()
 	for i, test := range testData {
 		bytes, err := test.out.Write()

@@ -1,8 +1,6 @@
 package message
 
-import "fmt"
-
-// equalityMatch   [3] AttributeValueAssertion,
+// equalityMatch   [3] AttributeValueAssertion,.
 func readFilterEqualityMatch(bytes *Bytes) (ret FilterEqualityMatch, err error) {
 	var attributevalueassertion AttributeValueAssertion
 	attributevalueassertion, err = readTaggedAttributeValueAssertion(
@@ -11,14 +9,14 @@ func readFilterEqualityMatch(bytes *Bytes) (ret FilterEqualityMatch, err error) 
 		TagFilterEqualityMatch,
 	)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readFilterEqualityMatch:\n%s", err.Error())}
+		err = LdapError{"readFilterEqualityMatch:\n" + err.Error()}
 		return
 	}
 	ret = FilterEqualityMatch(attributevalueassertion)
 	return
 }
 
-// equalityMatch   [3] AttributeValueAssertion,
+// equalityMatch   [3] AttributeValueAssertion,.
 func (f FilterEqualityMatch) write(bytes *Bytes) int {
 	return AttributeValueAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterEqualityMatch)
 }
@@ -27,7 +25,7 @@ func (f FilterEqualityMatch) getFilterTag() int {
 	return TagFilterEqualityMatch
 }
 
-// equalityMatch   [3] AttributeValueAssertion,
+// equalityMatch   [3] AttributeValueAssertion,.
 func (f FilterEqualityMatch) size() int {
 	return AttributeValueAssertion(f).sizeTagged(TagFilterEqualityMatch)
 }

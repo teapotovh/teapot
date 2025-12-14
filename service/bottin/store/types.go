@@ -72,7 +72,7 @@ func joinComponentSlice(comps []Component, separator string) string {
 	return strings.Join(rawComps, separator)
 }
 
-// DN represents an LDAP DN split by ,
+// DN represents an LDAP DN split by ,.
 type DN []Component
 
 func (dn DN) Prefix() Prefix {

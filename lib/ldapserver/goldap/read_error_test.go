@@ -12,6 +12,7 @@ type LDAPMessageErrorTestData struct {
 }
 
 func TestReadLDAPMessageError(t *testing.T) {
+	t.Parallel()
 	for i, test := range getLDAPMessageErrorTestData() {
 		message, err := ReadLDAPMessage(&test.bytes)
 		if err == nil {

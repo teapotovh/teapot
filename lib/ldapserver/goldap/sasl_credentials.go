@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //	SaslCredentials ::= SEQUENCE {
 //	     mechanism               LDAPString,
 //	     credentials             OCTET STRING OPTIONAL }
@@ -13,7 +11,7 @@ func readSaslCredentials(bytes *Bytes) (authentication SaslCredentials, err erro
 		authentication.readComponents,
 	)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readSaslCredentials:\n%s", err.Error())}
+		err = LdapError{"readSaslCredentials:\n" + err.Error()}
 		return
 	}
 	return
@@ -22,14 +20,14 @@ func readSaslCredentials(bytes *Bytes) (authentication SaslCredentials, err erro
 func (s *SaslCredentials) readComponents(bytes *Bytes) (err error) {
 	s.mechanism, err = readLDAPString(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	if bytes.HasMoreData() {
 		var credentials OCTETSTRING
 		credentials, err = readOCTETSTRING(bytes)
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
 		s.credentials = credentials.Pointer()

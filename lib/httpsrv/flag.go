@@ -1,8 +1,8 @@
 package httpsrv
 
 import (
-	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	flag "github.com/spf13/pflag"
@@ -17,7 +17,7 @@ func HTTPSrvFlagSet() (*flag.FlagSet, func() HTTPSrvConfig) {
 
 	return fs, func() HTTPSrvConfig {
 		return HTTPSrvConfig{
-			Address:       net.JoinHostPort(ip.String(), fmt.Sprintf("%d", *port)),
+			Address:       net.JoinHostPort(ip.String(), strconv.Itoa(int(*port))),
 			ShutdownDelay: *shutdownDelay,
 		}
 	}

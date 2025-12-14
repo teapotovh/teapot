@@ -2,18 +2,22 @@ package message
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
 func toHex(b []byte) (r string) {
 	r = "[ "
+	var rSb10 strings.Builder
 	for _, e := range b {
-		r += fmt.Sprintf("0x%x ", e)
+		rSb10.WriteString(fmt.Sprintf("0x%x ", e))
 	}
+	r += rSb10.String()
 	return r + "]"
 }
 
 func TestMessageID(t *testing.T) {
+	t.Parallel()
 	m := NewLDAPMessageWithProtocolOp(UnbindRequest{})
 	m.SetMessageID(128)
 	buf, err := m.Write()
@@ -36,6 +40,7 @@ func TestMessageID(t *testing.T) {
 }
 
 func TestSearchEntry(t *testing.T) {
+	t.Parallel()
 	m := NewLDAPMessageWithProtocolOp(SearchResultEntry{
 		objectName: "cn=êige€nbgtz,ou=users,dc=deuxfleurs,dc=fr",
 		attributes: PartialAttributeList{

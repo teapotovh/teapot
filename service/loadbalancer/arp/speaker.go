@@ -89,7 +89,7 @@ func (spkr *Speaker) handlePacket(packet *layers.ARP) error {
 	return nil
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (spkr *Speaker) Run(ctx context.Context, notify run.Notify) error {
 	sub := spkr.arp.lb.Broker().Subscribe()
 	defer sub.Unsubscribe()

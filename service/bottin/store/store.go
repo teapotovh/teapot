@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Store provides an interface implemented by all types of stores for LDAP entries
+// Store provides an interface implemented by all types of stores for LDAP entries.
 type Store interface {
 	// Lists all entries under the provided prefix DN. If exact is true, only
 	// entries exactly matching this DN.

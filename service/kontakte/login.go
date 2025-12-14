@@ -44,7 +44,7 @@ func (srv *Server) HandleLoginGet(w http.ResponseWriter, r *http.Request) (g.Nod
 	auth := getAuth(r.Context())
 	if auth != nil {
 		Redirect(w, r, PathUser(auth.Subject))
-		return nil, nil
+		return nil, ErrRedirect
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -93,7 +93,7 @@ func (srv *Server) HandleLoginPost(w http.ResponseWriter, r *http.Request) (g.No
 		Redirect(w, r, PathUser(username))
 	}
 
-	return nil, nil
+	return nil, ErrRedirect
 }
 
 func (srv *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {

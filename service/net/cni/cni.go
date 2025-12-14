@@ -228,7 +228,7 @@ func (c *CNI) cleanupIptables() error {
 	return nil
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (c *CNI) Run(ctx context.Context, notify run.Notify) error {
 	csub := c.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()

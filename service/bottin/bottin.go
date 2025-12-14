@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// System managed attributes (cannot be changed by user, see checkRestrictedAttr)
+	// System managed attributes (cannot be changed by user, see checkRestrictedAttr).
 
 	AttrMemberOf        store.AttributeKey = "memberof"
 	AttrEntryUUID       store.AttributeKey = "entryuuid"
@@ -24,7 +24,7 @@ const (
 	AttrModifiersName   store.AttributeKey = "modifiersname"
 	AttrModifyTimestamp store.AttributeKey = "modifytimestamp"
 
-	// Attributes that we are interested in at various points
+	// Attributes that we are interested in at various points.
 
 	AttrObjectClass  store.AttributeKey = "objectclass"
 	AttrMember       store.AttributeKey = "member"
@@ -309,5 +309,5 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 		}
 	}
 
-	return ctx, ldap.ResultCodeInvalidCredentials, fmt.Errorf("no password match")
+	return ctx, ldap.ResultCodeInvalidCredentials, errors.New("no password match")
 }

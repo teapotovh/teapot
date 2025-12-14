@@ -6,6 +6,7 @@ import (
 )
 
 func TestSizeInt64(t *testing.T) {
+	t.Parallel()
 	s := sizeInt64(0)
 	if s != 1 {
 		t.Errorf("computed size is %d, expected 1", s)
@@ -33,6 +34,7 @@ func TestSizeInt64(t *testing.T) {
 }
 
 func TestWriteInt64(t *testing.T) {
+	t.Parallel()
 	vtests := []int64{0, 127, 128, 50000, -12345}
 	expsize := []int{1, 1, 2, 3, 2}
 	expresult := [][]byte{{0x00}, {0x7F}, {0x00, 0x80}, {0x00, 0xc3, 0x50}, {0xcf, 0xc7}}

@@ -8,7 +8,7 @@ import (
 	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
 )
 
-// Constant to LDAP Request protocol Type names
+// Constant to LDAP Request protocol Type names.
 const (
 	SEARCH   = "SearchRequest"
 	BIND     = "BindRequest"
@@ -26,7 +26,7 @@ const (
 // Handler object that calls f.
 type HandlerFunc func(context.Context, ResponseWriter, *Message) context.Context
 
-// RouteMux manages all routes
+// RouteMux manages all routes.
 type RouteMux struct {
 	logger        *slog.Logger
 	notFoundRoute *route
@@ -49,7 +49,7 @@ type route struct {
 }
 
 // Match return true when the *Message matches the route
-// conditions
+// conditions.
 func (r *route) Match(m *Message) bool {
 	if m.ProtocolOpName() != r.operation {
 		return false
@@ -128,14 +128,14 @@ func (r *route) RequestName(name ldap.LDAPOID) *route {
 }
 
 // NewRouteMux returns a new *RouteMux
-// RouteMux implements ldapserver.Handler
+// RouteMux implements ldapserver.Handler.
 func NewRouteMux(logger *slog.Logger) *RouteMux {
 	return &RouteMux{
 		logger: logger,
 	}
 }
 
-// Handler interface used to serve a LDAP Request message
+// Handler interface used to serve a LDAP Request message.
 type Handler interface {
 	ServeLDAP(ctx context.Context, w ResponseWriter, r *Message) context.Context
 }
@@ -171,7 +171,7 @@ func (h *RouteMux) ServeLDAP(ctx context.Context, w ResponseWriter, r *Message) 
 	}
 }
 
-// Adds a new Route to the Handler
+// Adds a new Route to the Handler.
 func (h *RouteMux) addRoute(r *route) {
 	// and finally append to the list of Routes
 	// create the Route

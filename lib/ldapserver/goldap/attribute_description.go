@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //
 //        AttributeDescription ::= LDAPString
 //                                -- Constrained to <attributedescription>
@@ -13,7 +11,7 @@ func readAttributeDescription(bytes *Bytes) (ret AttributeDescription, err error
 	var ldapstring LDAPString
 	ldapstring, err = readLDAPString(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readAttributeDescription:\n%s", err.Error())}
+		err = LdapError{"readAttributeDescription:\n" + err.Error()}
 		return
 	}
 	// @TODO: check RFC4512
@@ -26,7 +24,7 @@ func readTaggedAttributeDescription(bytes *Bytes, class int, tag int) (ret Attri
 	ldapstring, err = readTaggedLDAPString(bytes, class, tag)
 	// @TODO: check RFC4512
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedAttributeDescription:\n%s", err.Error())}
+		err = LdapError{"readTaggedAttributeDescription:\n" + err.Error()}
 		return
 	}
 	ret = AttributeDescription(ldapstring)

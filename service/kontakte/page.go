@@ -1,7 +1,6 @@
 package kontakte
 
 import (
-	"fmt"
 	"net/http"
 
 	g "maragu.dev/gomponents"
@@ -14,7 +13,7 @@ func Page(r *http.Request, title string, body g.Node) g.Node {
 	auth := getAuth(r.Context())
 
 	return hh.HTML5(hh.HTML5Props{
-		Title: fmt.Sprintf("%s - kontakte", title),
+		Title: title + " - kontakte",
 
 		Head: []g.Node{
 			h.Script(h.Src("https://unpkg.com/htmx.org")),

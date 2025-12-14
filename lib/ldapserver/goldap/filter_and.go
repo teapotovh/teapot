@@ -46,7 +46,7 @@ func (filterAnd FilterAnd) write(bytes *Bytes) (size int) {
 func readFilterAnd(bytes *Bytes) (filterand FilterAnd, err error) {
 	err = bytes.ReadSubBytes(classContextSpecific, TagFilterAnd, filterand.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readFilterAnd:\n%s", err.Error())}
+		err = LdapError{"readFilterAnd:\n" + err.Error()}
 		return
 	}
 	return

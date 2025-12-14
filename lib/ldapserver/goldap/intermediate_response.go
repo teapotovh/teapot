@@ -1,14 +1,12 @@
 package message
 
-import "fmt"
-
 //	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
 //	     responseName     [0] LDAPOID OPTIONAL,
 //	     responseValue    [1] OCTET STRING OPTIONAL }
 func readIntermediateResponse(bytes *Bytes) (ret IntermediateResponse, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagIntermediateResponse, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readIntermediateResponse:\n%s", err.Error())}
+		err = LdapError{"readIntermediateResponse:\n" + err.Error()}
 		return
 	}
 	return
@@ -26,15 +24,15 @@ func (i *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-			return
+			err = LdapError{"readComponents:\n" + err.Error()}
+			return err
 		}
 		if tag.Tag == TagIntermediateResponseName {
 			var oid LDAPOID
 			oid, err = readTaggedLDAPOID(bytes, classContextSpecific, TagIntermediateResponseName)
 			if err != nil {
-				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-				return
+				err = LdapError{"readComponents:\n" + err.Error()}
+				return err
 			}
 			i.responseName = oid.Pointer()
 		}
@@ -43,20 +41,20 @@ func (i *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-			return
+			err = LdapError{"readComponents:\n" + err.Error()}
+			return err
 		}
 		if tag.Tag == TagIntermediateResponseValue {
 			var str OCTETSTRING
 			str, err = readTaggedOCTETSTRING(bytes, classContextSpecific, TagIntermediateResponseValue)
 			if err != nil {
-				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-				return
+				err = LdapError{"readComponents:\n" + err.Error()}
+				return err
 			}
 			i.responseValue = str.Pointer()
 		}
 	}
-	return
+	return err
 }
 
 //	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {

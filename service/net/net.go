@@ -89,7 +89,7 @@ func (net *Net) Cluster() *Cluster {
 	return net.cluster
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (net *Net) Run(ctx context.Context, notify run.Notify) error {
 	defer net.brokerCancel()
 

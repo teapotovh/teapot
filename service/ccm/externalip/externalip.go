@@ -101,7 +101,7 @@ func (eip *ExternalIP) setExternalIP(ctx context.Context, ip netip.Addr, source 
 	}
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (eip *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
 	sub := eip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()

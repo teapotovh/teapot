@@ -11,7 +11,7 @@ import (
 )
 
 // TODO: return ResultCodeNoSuchObject if len(entries) < 1
-// TODO: return ResultCodeOperationsError if len(entries) > 1
+// TODO: return ResultCodeOperationsError if len(entries) > 1.
 func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, error) {
 	entries, err := server.store.List(ctx, dn.Prefix(), true)
 	if err != nil {

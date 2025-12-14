@@ -117,7 +117,7 @@ func (l *Local) event() LocalEvent {
 	}
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	defer l.brokerCancel()
 	sub := l.net.broker.Subscribe()

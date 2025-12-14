@@ -2,7 +2,6 @@ package message
 
 import (
 	"errors"
-	"fmt"
 )
 
 //	SearchRequest ::= [APPLICATION 3] SEQUENCE {
@@ -25,7 +24,7 @@ import (
 func readSearchRequest(bytes *Bytes) (searchrequest SearchRequest, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagSearchRequest, searchrequest.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readSearchRequest:\n%s", err.Error())}
+		err = LdapError{"readSearchRequest:\n" + err.Error()}
 		return
 	}
 	return
@@ -34,45 +33,45 @@ func readSearchRequest(bytes *Bytes) (searchrequest SearchRequest, err error) {
 func (s *SearchRequest) readComponents(bytes *Bytes) (err error) {
 	s.baseObject, err = readLDAPDN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.scope, err = readENUMERATED(bytes, EnumeratedSearchRequestScope)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.derefAliases, err = readENUMERATED(bytes, EnumeratedSearchRequestDerefAliases)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.sizeLimit, err = readPositiveINTEGER(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.timeLimit, err = readPositiveINTEGER(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.typesOnly, err = readBOOLEAN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.filter, err = readFilter(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
 	s.attributes, err = readAttributeSelection(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
-		return
+		err = LdapError{"readComponents:\n" + err.Error()}
+		return err
 	}
-	return
+	return err
 }
 
 //	SearchRequest ::= [APPLICATION 3] SEQUENCE {
@@ -182,7 +181,7 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 
 	ret = "("
 	err = nil
-	childStr := ""
+	var childStr string
 
 	switch f := packet.(type) {
 	case FilterAnd:
@@ -190,7 +189,7 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 		for _, child := range f {
 			childStr, err = s.decompileFilter(child)
 			if err != nil {
-				return
+				return ret, err
 			}
 			ret += childStr
 		}
@@ -199,7 +198,7 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 		for _, child := range f {
 			childStr, err = s.decompileFilter(child)
 			if err != nil {
-				return
+				return ret, err
 			}
 			ret += childStr
 		}
@@ -207,7 +206,7 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 		ret += "!"
 		childStr, err = s.decompileFilter(f.Filter)
 		if err != nil {
-			return
+			return ret, err
 		}
 		ret += childStr
 
@@ -251,5 +250,5 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 	}
 
 	ret += ")"
-	return
+	return ret, err
 }

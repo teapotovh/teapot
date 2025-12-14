@@ -28,6 +28,7 @@ var (
 	re  = regexp.MustCompile(`var\(--([a-zA-Z0-9\-]+)`)
 )
 
+//nolint:gochecknoinits
 func init() {
 	s, err := sqids.New()
 	if err != nil {

@@ -25,7 +25,7 @@ type Server struct {
 	WriteTimeout    time.Duration
 }
 
-// NewServer return a LDAP Server
+// NewServer return a LDAP Server.
 func NewServer(logger *slog.Logger) *Server {
 	return &Server{
 		logger: logger,
@@ -60,7 +60,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string, options ...Opt
 	return s.serve(ctx)
 }
 
-// WithTLS returns an Option that wraps the TLS connection with TLS
+// WithTLS returns an Option that wraps the TLS connection with TLS.
 func WithTLS(config *tls.Config) Option {
 	return func(srv *Server) error {
 		srv.Listener = tls.NewListener(srv.Listener, config)
@@ -68,7 +68,7 @@ func WithTLS(config *tls.Config) Option {
 	}
 }
 
-// Handle requests messages on the ln listener
+// Handle requests messages on the ln listener.
 func (s *Server) serve(ctx context.Context) (err error) {
 	defer func() {
 		if e := s.Listener.Close(); e != nil {
@@ -128,7 +128,7 @@ func (s *Server) serve(ctx context.Context) (err error) {
 }
 
 // Return a new session with the connection
-// client has a writer and reader buffer
+// client has a writer and reader buffer.
 func (s *Server) newClient(rwc net.Conn, id int) (c *client, err error) {
 	c = &client{
 		logger: s.logger.With("client", id),

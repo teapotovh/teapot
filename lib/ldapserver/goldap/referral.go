@@ -1,12 +1,10 @@
 package message
 
-import "fmt"
-
-// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI.
 func readTaggedReferral(bytes *Bytes, class int, tag int) (referral Referral, err error) {
 	err = bytes.ReadSubBytes(class, tag, referral.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedReferral:\n%s", err.Error())}
+		err = LdapError{"readTaggedReferral:\n" + err.Error()}
 		return
 	}
 	return
@@ -17,7 +15,7 @@ func (r *Referral) readComponents(bytes *Bytes) (err error) {
 		var uri URI
 		uri, err = readURI(bytes)
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
 		*r = append(*r, uri)
@@ -29,7 +27,7 @@ func (r *Referral) readComponents(bytes *Bytes) (err error) {
 }
 func (r Referral) Pointer() *Referral { return &r }
 
-// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI.
 func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	for i := len(r) - 1; i >= 0; i-- {
 		size += r[i].write(bytes)
@@ -38,7 +36,7 @@ func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	return
 }
 
-// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI.
 func (r Referral) sizeTagged(tag int) (size int) {
 	for _, uri := range r {
 		size += uri.size()

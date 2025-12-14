@@ -6,6 +6,7 @@ import (
 )
 
 func TestReadLDAPMessage(t *testing.T) {
+	t.Parallel()
 	for i, test := range getLDAPMessageTestData() {
 		message, err := ReadLDAPMessage(&test.bytes)
 		if err != nil {

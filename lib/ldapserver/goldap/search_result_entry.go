@@ -1,14 +1,12 @@
 package message
 
-import "fmt"
-
 //	SearchResultEntry ::= [APPLICATION 4] SEQUENCE {
 //	     objectName      LDAPDN,
 //	     attributes      PartialAttributeList }
 func readSearchResultEntry(bytes *Bytes) (searchresultentry SearchResultEntry, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagSearchResultEntry, searchresultentry.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readSearchResultEntry:\n%s", err.Error())}
+		err = LdapError{"readSearchResultEntry:\n" + err.Error()}
 		return
 	}
 	return
@@ -17,12 +15,12 @@ func readSearchResultEntry(bytes *Bytes) (searchresultentry SearchResultEntry, e
 func (s *SearchResultEntry) readComponents(bytes *Bytes) (err error) {
 	s.objectName, err = readLDAPDN(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	s.attributes, err = readPartialAttributeList(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	return

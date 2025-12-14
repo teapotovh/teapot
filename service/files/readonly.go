@@ -18,7 +18,7 @@ func NewReadOnlyFS[FS hpfs.FS](fs FS) ReadOnlyFS[FS] {
 	return ReadOnlyFS[FS]{fs}
 }
 
-// Open implements hackpadfs.FS
+// Open implements hackpadfs.FS.
 func (fs ReadOnlyFS[FS]) Open(name string) (hpfs.File, error) {
 	return fs.fs.Open(name)
 }

@@ -1,13 +1,11 @@
 package message
 
-import "fmt"
-
-// MatchingRuleId ::= LDAPString
+// MatchingRuleId ::= LDAPString.
 func readTaggedMatchingRuleID(bytes *Bytes, class int, tag int) (matchingruleid MatchingRuleID, err error) {
 	var ldapstring LDAPString
 	ldapstring, err = readTaggedLDAPString(bytes, class, tag)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedMatchingRuleId:\n%s", err.Error())}
+		err = LdapError{"readTaggedMatchingRuleId:\n" + err.Error()}
 		return
 	}
 	matchingruleid = MatchingRuleID(ldapstring)
@@ -15,12 +13,12 @@ func readTaggedMatchingRuleID(bytes *Bytes, class int, tag int) (matchingruleid 
 }
 func (m MatchingRuleID) Pointer() *MatchingRuleID { return &m }
 
-// MatchingRuleId ::= LDAPString
+// MatchingRuleId ::= LDAPString.
 func (m MatchingRuleID) writeTagged(bytes *Bytes, class int, tag int) int {
 	return LDAPString(m).writeTagged(bytes, class, tag)
 }
 
-// MatchingRuleId ::= LDAPString
+// MatchingRuleId ::= LDAPString.
 func (m MatchingRuleID) sizeTagged(tag int) int {
 	return LDAPString(m).sizeTagged(tag)
 }

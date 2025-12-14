@@ -75,7 +75,7 @@ func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
 	}, nil
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
 	defer c.brokerCancel()
 	sub := c.net.broker.Subscribe()

@@ -63,7 +63,7 @@ func (lb *LoadBalancer) Broker() *broker.Broker[Event] {
 	return lb.broker
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (lb *LoadBalancer) Run(ctx context.Context, notify run.Notify) error {
 	defer lb.brokerCancel()
 

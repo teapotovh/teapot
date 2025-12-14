@@ -6,7 +6,7 @@ func readBOOLEAN(bytes *Bytes) (ret BOOLEAN, err error) {
 	var value any
 	value, err = bytes.ReadPrimitiveSubBytes(classUniversal, tagBoolean, tagBoolean)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readBOOLEAN:\n%s", err.Error())}
+		err = LdapError{"readBOOLEAN:\n" + err.Error()}
 		return
 	}
 	ret = BOOLEAN(value.(bool))
@@ -25,7 +25,7 @@ func readTaggedBOOLEAN(bytes *Bytes, class int, tag int) (ret BOOLEAN, err error
 	var value any
 	value, err = bytes.ReadPrimitiveSubBytes(class, tag, tagBoolean)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedBOOLEAN:\n%s", err.Error())}
+		err = LdapError{"readTaggedBOOLEAN:\n" + err.Error()}
 		return
 	}
 	ret = BOOLEAN(value.(bool))
@@ -35,7 +35,7 @@ func readTaggedBOOLEAN(bytes *Bytes, class int, tag int) (ret BOOLEAN, err error
 func SizePrimitiveSubBytes(tag int, value any) (size int) {
 	switch value := value.(type) {
 	case BOOLEAN:
-		size = sizeBool(bool(value))
+		size = sizeBool()
 	case INTEGER:
 		size = sizeInt32(int32(value))
 	case ENUMERATED:

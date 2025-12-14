@@ -62,7 +62,7 @@ func NewMem() *Mem {
 	}
 }
 
-// List implements Store.List
+// List implements Store.List.
 func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -122,7 +122,7 @@ type change struct {
 	kind  changekind
 }
 
-// Store implements Store.Store
+// Store implements Store.Store.
 func (m *MemTransaction) Store(entry Entry) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -135,7 +135,7 @@ func (m *MemTransaction) Store(entry Entry) error {
 	return nil
 }
 
-// Delete implements Store.Delete
+// Delete implements Store.Delete.
 func (m *MemTransaction) Delete(dn DN) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

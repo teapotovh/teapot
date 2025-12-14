@@ -10,7 +10,7 @@ import (
 )
 
 type Context interface {
-	Class(...*Style) g.Node
+	Class(styles ...*Style) g.Node
 }
 
 type unit struct{}
@@ -22,7 +22,7 @@ type context struct {
 	dependencies map[dependency.Dependency]unit
 }
 
-// Ensure *context implements Context
+// Ensure *context implements Context.
 var _ Context = (*context)(nil)
 
 func (c *context) register(style *Style) {
@@ -33,7 +33,7 @@ func (c *context) register(style *Style) {
 }
 
 func (c *context) Class(styles ...*Style) g.Node {
-	ids := make([]string, len(styles))
+	var ids []string
 	for _, style := range styles {
 		if _, ok := c.styles[style]; !ok {
 			c.register(style)

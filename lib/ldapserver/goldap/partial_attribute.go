@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //	PartialAttribute ::= SEQUENCE {
 //	     type       AttributeDescription,
 //	     vals       SET OF value AttributeValue }
@@ -9,7 +7,7 @@ func readPartialAttribute(bytes *Bytes) (ret PartialAttribute, err error) {
 	ret = PartialAttribute{vals: make([]AttributeValue, 0, 10)}
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readPartialAttribute:\n%s", err.Error())}
+		err = LdapError{"readPartialAttribute:\n" + err.Error()}
 		return
 	}
 	return
@@ -18,12 +16,12 @@ func readPartialAttribute(bytes *Bytes) (ret PartialAttribute, err error) {
 func (p *PartialAttribute) readComponents(bytes *Bytes) (err error) {
 	p.type_, err = readAttributeDescription(bytes)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	err = bytes.ReadSubBytes(classUniversal, tagSet, p.readValsComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
 	return
@@ -34,7 +32,7 @@ func (p *PartialAttribute) readValsComponents(bytes *Bytes) (err error) {
 		var attributevalue AttributeValue
 		attributevalue, err = readAttributeValue(bytes)
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readValsComponents:\n%s", err.Error())}
+			err = LdapError{"readValsComponents:\n" + err.Error()}
 			return
 		}
 		p.vals = append(p.vals, attributevalue)

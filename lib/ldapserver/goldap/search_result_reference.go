@@ -1,14 +1,12 @@
 package message
 
-import "fmt"
-
 // SearchResultReference ::= [APPLICATION 19] SEQUENCE
 //
 //	SIZE (1..MAX) OF uri URI
 func readSearchResultReference(bytes *Bytes) (ret SearchResultReference, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagSearchResultReference, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readSearchResultReference:\n%s", err.Error())}
+		err = LdapError{"readSearchResultReference:\n" + err.Error()}
 		return
 	}
 	return
@@ -19,7 +17,7 @@ func (s *SearchResultReference) readComponents(bytes *Bytes) (err error) {
 		var uri URI
 		uri, err = readURI(bytes)
 		if err != nil {
-			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
+			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
 		*s = append(*s, uri)

@@ -180,7 +180,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 	return nil
 }
 
-// Run implements run.Runnable
+// Run implements run.Runnable.
 func (w *Wireguard) Run(ctx context.Context, notify run.Notify) error {
 	csub := w.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()

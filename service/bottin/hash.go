@@ -30,7 +30,7 @@ func ssha512Encode(passwd string) (string, error) {
 	return hash, nil
 }
 
-// Matches matches the encoded password and the raw password
+// Matches matches the encoded password and the raw password.
 func matchPassword(schemaHash string, passwd string) (bool, error) {
 	hashType, hash, err := parseHash(schemaHash)
 	if err != nil {

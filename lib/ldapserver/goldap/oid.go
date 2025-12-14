@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //
 //
 //        LDAPOID ::= OCTET STRING -- Constrained to <numericoid>
@@ -21,7 +19,7 @@ func readTaggedLDAPOID(bytes *Bytes, class int, tag int) (ret LDAPOID, err error
 	var octetstring OCTETSTRING
 	octetstring, err = readTaggedOCTETSTRING(bytes, class, tag)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedLDAPOID:\n%s", err.Error())}
+		err = LdapError{"readTaggedLDAPOID:\n" + err.Error()}
 		return
 	}
 	// @TODO: check RFC4512 for <numericoid>

@@ -9,7 +9,7 @@ import (
 	"github.com/go-ldap/ldap/v3"
 )
 
-// User is an abstracted view over a user entry in LDAP
+// User is an abstracted view over a user entry in LDAP.
 type User struct {
 	DN        string
 	Username  string

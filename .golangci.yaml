@@ -27,7 +27,54 @@ linters:
     - errchkjson
     - errname
     - errorlint
+    - exhaustive
+    - exptostd
+    # - funcorder # nice to have, requires some work
+    - gochecknoinits
+    - gochecksumtype
+    - goconst
+    # - gocritic # very verbose and minor improvements
+    - godot
+    - godox
+    - iface
+    - importas
+    - inamedparam
+    - ineffassign
+    - intrange
+    - iotamixing
+    # - ireturn # nice to have, requires some ignores
+    - makezero
+    - mirror
+    - misspell
+    - nakedret
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - nolintlint
+    - nosprintfhostport
+    - paralleltest
+    - perfsprint
+    - predeclared
+    - reassign
+    - rowserrcheck
+    - sqlclosecheck
+    - tagalign
+    - tagliatelle
+    - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+    - whitespace
+    # - wrapcheck # nice to have, requires some work
   settings:
+    # ireturn:
+    #   allow:
+    #     - anon
+    #     - error
+    #     - empty
+    #     - stdlib
+    #     - generic
+    #     - (Node)$
     errcheck:
       exclude-functions:
         - (*testing.T).Error

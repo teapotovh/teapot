@@ -37,7 +37,7 @@ func (fsw *webDavFSWrapper) sanitizeName(name string) string {
 	return name
 }
 
-// Mkdir implements webdav.FileSystem
+// Mkdir implements webdav.FileSystem.
 func (fsw *webDavFSWrapper) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	name = fsw.sanitizeName(name)
 	fsw.logger.DebugContext(ctx, "performing FS.Mkdir", "name", name, "perm", perm)
@@ -45,7 +45,7 @@ func (fsw *webDavFSWrapper) Mkdir(ctx context.Context, name string, perm os.File
 	return hpfs.Mkdir(fsw.fs, name, perm)
 }
 
-// OpenFile implements webdav.FileSystem
+// OpenFile implements webdav.FileSystem.
 func (fsw *webDavFSWrapper) OpenFile(
 	ctx context.Context,
 	name string,
@@ -63,7 +63,7 @@ func (fsw *webDavFSWrapper) OpenFile(
 	return newWebDavFileWrapper(ctx, file, fsw.logger.With("file", name)), err
 }
 
-// RemoveAll implements webdav.FileSystem
+// RemoveAll implements webdav.FileSystem.
 func (fsw *webDavFSWrapper) RemoveAll(ctx context.Context, name string) error {
 	name = fsw.sanitizeName(name)
 	fsw.logger.DebugContext(ctx, "performing FS.RemoveAll", "name", name)
@@ -71,7 +71,7 @@ func (fsw *webDavFSWrapper) RemoveAll(ctx context.Context, name string) error {
 	return hpfs.RemoveAll(fsw.fs, name)
 }
 
-// Rename implements webdav.FileSystem
+// Rename implements webdav.FileSystem.
 func (fsw *webDavFSWrapper) Rename(ctx context.Context, oldName, newName string) error {
 	oldName = fsw.sanitizeName(oldName)
 	newName = fsw.sanitizeName(newName)
@@ -80,7 +80,7 @@ func (fsw *webDavFSWrapper) Rename(ctx context.Context, oldName, newName string)
 	return hpfs.Rename(fsw.fs, oldName, newName)
 }
 
-// Stat implements webdav.FileSystem
+// Stat implements webdav.FileSystem.
 func (fsw *webDavFSWrapper) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 	name = fsw.sanitizeName(name)
 	fsw.logger.DebugContext(ctx, "performing FS.Stat", "name", name)
@@ -103,31 +103,31 @@ func newWebDavFileWrapper(ctx context.Context, file hpfs.File, logger *slog.Logg
 	}
 }
 
-// Write implements io.Writer (for webdav.File)
+// Write implements io.Writer (for webdav.File).
 func (fw *webDavFileWrapper) Write(p []byte) (n int, err error) {
 	fw.logger.DebugContext(fw.ctx, "performing File.Write", "len(p)", len(p))
 	return hpfs.WriteFile(fw.file, p)
 }
 
-// Close implements io.Closer (for http.File, for webdav.File)
+// Close implements io.Closer (for http.File, for webdav.File).
 func (fw *webDavFileWrapper) Close() error {
 	fw.logger.DebugContext(fw.ctx, "performing File.Close")
 	return fw.file.Close()
 }
 
-// Read implements io.Reader (for http.File, for webdav.File)
+// Read implements io.Reader (for http.File, for webdav.File).
 func (fw *webDavFileWrapper) Read(p []byte) (n int, err error) {
 	fw.logger.DebugContext(fw.ctx, "performing File.Read", "len(p)", len(p))
 	return fw.file.Read(p)
 }
 
-// Seek implements io.Seeker (for http.File, for webdav.File)
+// Seek implements io.Seeker (for http.File, for webdav.File).
 func (fw *webDavFileWrapper) Seek(offset int64, whence int) (int64, error) {
 	fw.logger.DebugContext(fw.ctx, "performing File.Seek", "offset", offset, "whence", whence)
 	return hpfs.SeekFile(fw.file, offset, whence)
 }
 
-// Readdir implements http.File (for webdav.File)
+// Readdir implements http.File (for webdav.File).
 func (fw *webDavFileWrapper) Readdir(count int) ([]fs.FileInfo, error) {
 	fw.logger.DebugContext(fw.ctx, "performing File.Readdir", "count", count)
 
@@ -148,7 +148,7 @@ func (fw *webDavFileWrapper) Readdir(count int) ([]fs.FileInfo, error) {
 	return infos, nil
 }
 
-// Seek implements http.File (for webdav.File)
+// Seek implements http.File (for webdav.File).
 func (fw *webDavFileWrapper) Stat() (fs.FileInfo, error) {
 	fw.logger.DebugContext(fw.ctx, "performing File.Stat")
 	return fw.file.Stat()

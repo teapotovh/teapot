@@ -59,13 +59,13 @@ const TagLDAPMessageControls = 0
 
 type ProtocolOp interface {
 	size() int
-	write(*Bytes) int
+	write(bytes *Bytes) int
 }
 
-// MessageID ::= INTEGER (0 ..  maxInt)
+// MessageID ::= INTEGER (0 ..  maxInt).
 type MessageID INTEGER
 
-// maxInt INTEGER ::= 2147483647 -- (2^^31 - 1) --
+// maxInt INTEGER ::= 2147483647 -- (2^^31 - 1) --.
 const maxInt = INTEGER(2147483647)
 
 // LDAPString ::= OCTET STRING -- UTF-8 encoded,
@@ -97,7 +97,7 @@ type RelativeLDAPDN LDAPString
 //	-- [RFC4512]
 type AttributeDescription LDAPString
 
-// AttributeValue ::= OCTET STRING
+// AttributeValue ::= OCTET STRING.
 type AttributeValue OCTETSTRING
 
 //	AttributeValueAssertion ::= SEQUENCE {
@@ -108,7 +108,7 @@ type AttributeValueAssertion struct {
 	assertionValue AssertionValue
 }
 
-// AssertionValue ::= OCTET STRING
+// AssertionValue ::= OCTET STRING.
 type AssertionValue OCTETSTRING
 
 //	PartialAttribute ::= SEQUENCE {
@@ -124,7 +124,7 @@ type PartialAttribute struct {
 //	     vals (SIZE(1..MAX))})
 type Attribute PartialAttribute
 
-// MatchingRuleID ::= LDAPString
+// MatchingRuleID ::= LDAPString.
 type MatchingRuleID LDAPString
 
 //	LDAPResult ::= SEQUENCE {
@@ -284,7 +284,7 @@ var EnumeratedLDAPResultCode = map[ENUMERATED]string{
 	ResultCodeOther: "other",
 }
 
-// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI.
 type Referral []URI
 
 // URI ::= LDAPString     -- limited to characters permitted in
@@ -292,7 +292,7 @@ type Referral []URI
 //	-- URIs
 type URI LDAPString
 
-// Controls ::= SEQUENCE OF control Control
+// Controls ::= SEQUENCE OF control Control.
 type Controls []Control
 
 //	Control ::= SEQUENCE {
@@ -336,7 +336,7 @@ const (
 )
 
 type AuthenticationChoice interface {
-	sizeTagged(int) int
+	sizeTagged(tag int) int
 }
 
 //	SaslCredentials ::= SEQUENCE {
@@ -361,7 +361,7 @@ type BindResponse struct {
 	serverSaslCreds *OCTETSTRING
 }
 
-// UnbindRequest ::= [APPLICATION 2] NULL
+// UnbindRequest ::= [APPLICATION 2] NULL.
 const TagUnbindRequest = 2
 
 type UnbindRequest struct{}
@@ -482,7 +482,7 @@ const (
 
 type Filter interface {
 	size() int
-	write(*Bytes) int
+	write(bytes *Bytes) int
 	getFilterTag() int
 }
 type (
@@ -570,7 +570,7 @@ const TagSearchResultReference = 19
 
 type SearchResultReference []URI
 
-// SearchResultDone ::= [APPLICATION 5] LDAPResult
+// SearchResultDone ::= [APPLICATION 5] LDAPResult.
 const TagSearchResultDone = 5
 
 type SearchResultDone LDAPResult
@@ -607,7 +607,7 @@ var EnumeratedModifyRequestChangeOperation = map[ENUMERATED]string{
 	ModifyRequestChangeOperationReplace: "replace",
 }
 
-// ModifyResponse ::= [APPLICATION 7] LDAPResult
+// ModifyResponse ::= [APPLICATION 7] LDAPResult.
 const TagModifyResponse = 7
 
 type ModifyResponse LDAPResult
@@ -626,20 +626,20 @@ type AddRequest struct {
 	attributes AttributeList
 }
 
-// AttributeList ::= SEQUENCE OF attribute Attribute
+// AttributeList ::= SEQUENCE OF attribute Attribute.
 type AttributeList []Attribute
 
-// AddResponse ::= [APPLICATION 9] LDAPResult
+// AddResponse ::= [APPLICATION 9] LDAPResult.
 const TagAddResponse = 9
 
 type AddResponse LDAPResult
 
-// DelRequest ::= [APPLICATION 10] LDAPDN
+// DelRequest ::= [APPLICATION 10] LDAPDN.
 const TagDelRequest = 10
 
 type DelRequest LDAPDN
 
-// DelResponse ::= [APPLICATION 11] LDAPResult
+// DelResponse ::= [APPLICATION 11] LDAPResult.
 const TagDelResponse = 11
 
 type DelResponse LDAPResult
@@ -660,7 +660,7 @@ type ModifyDNRequest struct {
 
 const TagModifyDNRequestNewSuperior = 0
 
-// ModifyDNResponse ::= [APPLICATION 13] LDAPResult
+// ModifyDNResponse ::= [APPLICATION 13] LDAPResult.
 const TagModifyDNResponse = 13
 
 type ModifyDNResponse LDAPResult
@@ -675,12 +675,12 @@ type CompareRequest struct {
 	ava   AttributeValueAssertion
 }
 
-// CompareResponse ::= [APPLICATION 15] LDAPResult
+// CompareResponse ::= [APPLICATION 15] LDAPResult.
 const TagCompareResponse = 15
 
 type CompareResponse LDAPResult
 
-// AbandonRequest ::= [APPLICATION 16] MessageID
+// AbandonRequest ::= [APPLICATION 16] MessageID.
 const TagAbandonRequest = 16
 
 type AbandonRequest MessageID

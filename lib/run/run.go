@@ -20,7 +20,7 @@ type notify struct {
 	sent bool
 }
 
-// Notify implements Notify
+// Notify implements Notify.
 func (n *notify) Notify() {
 	n.sent = true
 	// don't wait for the receiving end to receive the notify
@@ -31,13 +31,13 @@ func (n *notify) Notify() {
 }
 
 // this function is only used internally to signal an immediate crash
-// before the timeout period
+// before the timeout period.
 func (n *notify) notifyError(err error) {
 	n.ch <- err
 }
 
 type Runnable interface {
-	Run(context.Context, Notify) error
+	Run(ctx context.Context, notify Notify) error
 }
 
 type runnable struct {
@@ -83,7 +83,7 @@ func (r runnable) watch(ctx context.Context, ntfy *notify) {
 }
 
 // wrap wraps the Runnable service with panic-handling code, so that we return
-// a normal error even if the runnable panics
+// a normal error even if the runnable panics.
 func (r runnable) wrap(ctx context.Context, ntfy *notify) (err error) {
 	defer func() {
 		if recover() != nil {

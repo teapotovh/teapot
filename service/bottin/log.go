@@ -8,7 +8,7 @@ import (
 )
 
 // ContextHandler is a custom slog.Handler that prints values from
-// special keys used by bottin found among Context values
+// special keys used by bottin found among Context values.
 type ContextHandler struct {
 	handler slog.Handler
 }

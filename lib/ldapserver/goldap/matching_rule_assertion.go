@@ -1,7 +1,5 @@
 package message
 
-import "fmt"
-
 //	MatchingRuleAssertion ::= SEQUENCE {
 //	     matchingRule    [1] MatchingRuleId OPTIONAL,
 //	     type            [2] AttributeDescription OPTIONAL,
@@ -10,7 +8,7 @@ import "fmt"
 func readTaggedMatchingRuleAssertion(bytes *Bytes, class int, tag int) (ret MatchingRuleAssertion, err error) {
 	err = bytes.ReadSubBytes(class, tag, ret.readComponents)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedMatchingRuleAssertion:\n%s", err.Error())}
+		err = LdapError{"readTaggedMatchingRuleAssertion:\n" + err.Error()}
 		return
 	}
 	return
@@ -19,11 +17,11 @@ func readTaggedMatchingRuleAssertion(bytes *Bytes, class int, tag int) (ret Matc
 func (m *MatchingRuleAssertion) readComponents(bytes *Bytes) (err error) {
 	err = m.readMatchingRule(bytes)
 	if err != nil {
-		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
+		return LdapError{"readComponents: " + err.Error()}
 	}
 	err = m.readType(bytes)
 	if err != nil {
-		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
+		return LdapError{"readComponents: " + err.Error()}
 	}
 	m.matchValue, err = readTaggedAssertionValue(
 		bytes,
@@ -31,7 +29,7 @@ func (m *MatchingRuleAssertion) readComponents(bytes *Bytes) (err error) {
 		TagMatchingRuleAssertionMatchValue,
 	)
 	if err != nil {
-		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
+		return LdapError{"readComponents: " + err.Error()}
 	}
 	m.dnAttributes, err = readTaggedBOOLEAN(
 		bytes,
@@ -39,7 +37,7 @@ func (m *MatchingRuleAssertion) readComponents(bytes *Bytes) (err error) {
 		TagMatchingRuleAssertionDnAttributes,
 	)
 	if err != nil {
-		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
+		return LdapError{"readComponents: " + err.Error()}
 	}
 	return
 }
@@ -48,13 +46,13 @@ func (m *MatchingRuleAssertion) readMatchingRule(bytes *Bytes) (err error) {
 	var tagAndLength TagAndLength
 	tagAndLength, err = bytes.PreviewTagAndLength()
 	if err != nil {
-		return LdapError{fmt.Sprintf("readMatchingRule: %s", err.Error())}
+		return LdapError{"readMatchingRule: " + err.Error()}
 	}
 	if tagAndLength.Tag == TagMatchingRuleAssertionMatchingRule {
 		var matchingRule MatchingRuleID
 		matchingRule, err = readTaggedMatchingRuleID(bytes, classContextSpecific, TagMatchingRuleAssertionMatchingRule)
 		if err != nil {
-			return LdapError{fmt.Sprintf("readMatchingRule: %s", err.Error())}
+			return LdapError{"readMatchingRule: " + err.Error()}
 		}
 		m.matchingRule = matchingRule.Pointer()
 	}
@@ -65,7 +63,7 @@ func (m *MatchingRuleAssertion) readType(bytes *Bytes) (err error) {
 	var tagAndLength TagAndLength
 	tagAndLength, err = bytes.PreviewTagAndLength()
 	if err != nil {
-		return LdapError{fmt.Sprintf("readType: %s", err.Error())}
+		return LdapError{"readType: " + err.Error()}
 	}
 	if tagAndLength.Tag == TagMatchingRuleAssertionType {
 		var attributedescription AttributeDescription
@@ -75,7 +73,7 @@ func (m *MatchingRuleAssertion) readType(bytes *Bytes) (err error) {
 			TagMatchingRuleAssertionType,
 		)
 		if err != nil {
-			return LdapError{fmt.Sprintf("readType: %s", err.Error())}
+			return LdapError{"readType: " + err.Error()}
 		}
 		m.type_ = &attributedescription
 	}

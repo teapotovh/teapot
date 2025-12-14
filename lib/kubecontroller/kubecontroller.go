@@ -22,7 +22,7 @@ import (
 
 var ErrNoGVK = errors.New("no group-version-kind found for object")
 
-// getResourceName returns the resource name from a type (without instance)
+// getResourceName returns the resource name from a type (without instance).
 func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
 	objType := reflect.TypeFor[T]()
 	if objType.Kind() == reflect.Ptr {
@@ -123,8 +123,8 @@ func NewController[Resource runtime.Object](
 					queue.Add(key)
 				}
 			},
-			UpdateFunc: func(old any, new any) {
-				key, err := cache.MetaNamespaceKeyFunc(new)
+			UpdateFunc: func(old any, recent any) {
+				key, err := cache.MetaNamespaceKeyFunc(recent)
 				if err == nil {
 					queue.Add(key)
 				}
@@ -239,7 +239,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 
 	// Wait for all involved caches to be synced, before processing items from the queue is started
 	if !cache.WaitForNamedCacheSyncWithContext(ctx, c.informer.HasSynced) {
-		return fmt.Errorf("timed out waiting for caches to sync")
+		return errors.New("timed out waiting for caches to sync")
 	}
 
 	for range workers {

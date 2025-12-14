@@ -1,12 +1,10 @@
 package message
 
-import "fmt"
-
 func readOCTETSTRING(bytes *Bytes) (ret OCTETSTRING, err error) {
 	var value any
 	value, err = bytes.ReadPrimitiveSubBytes(classUniversal, tagOctetString, tagOctetString)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readOCTETSTRING:\n%s", err.Error())}
+		err = LdapError{"readOCTETSTRING:\n" + err.Error()}
 		return
 	}
 	ret = OCTETSTRING(value.([]byte))
@@ -17,7 +15,7 @@ func readTaggedOCTETSTRING(bytes *Bytes, class int, tag int) (ret OCTETSTRING, e
 	var value any
 	value, err = bytes.ReadPrimitiveSubBytes(class, tag, tagOctetString)
 	if err != nil {
-		err = LdapError{fmt.Sprintf("readTaggedOCTETSTRING:\n%s", err.Error())}
+		err = LdapError{"readTaggedOCTETSTRING:\n" + err.Error()}
 		return
 	}
 	ret = OCTETSTRING(value.([]byte))

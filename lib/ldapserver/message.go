@@ -18,7 +18,7 @@ func (m *Message) String() string {
 }
 
 // Abandon close the Done channel, to notify handler's user function to stop any
-// running process
+// running process.
 func (m *Message) Abandon() {
 	m.Done <- true
 }
