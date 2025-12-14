@@ -27,6 +27,7 @@ func readSearchRequest(bytes *Bytes) (searchrequest SearchRequest, err error) {
 		err = LdapError{"readSearchRequest:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -36,41 +37,49 @@ func (s *SearchRequest) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.scope, err = readENUMERATED(bytes, EnumeratedSearchRequestScope)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.derefAliases, err = readENUMERATED(bytes, EnumeratedSearchRequestDerefAliases)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.sizeLimit, err = readPositiveINTEGER(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.timeLimit, err = readPositiveINTEGER(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.typesOnly, err = readBOOLEAN(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.filter, err = readFilter(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	s.attributes, err = readAttributeSelection(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	return err
 }
 
@@ -101,6 +110,7 @@ func (s SearchRequest) write(bytes *Bytes) (size int) {
 	size += s.scope.write(bytes)
 	size += s.baseObject.write(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagSearchRequest, size)
+
 	return
 }
 
@@ -131,6 +141,7 @@ func (s SearchRequest) size() (size int) {
 	size += s.filter.size()
 	size += s.attributes.size()
 	size += sizeTagAndLength(TagSearchRequest, size)
+
 	return
 }
 
@@ -181,38 +192,46 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 
 	ret = "("
 	err = nil
+
 	var childStr string
 
 	switch f := packet.(type) {
 	case FilterAnd:
 		ret += "&"
+
 		for _, child := range f {
 			childStr, err = s.decompileFilter(child)
 			if err != nil {
 				return ret, err
 			}
+
 			ret += childStr
 		}
 	case FilterOr:
 		ret += "|"
+
 		for _, child := range f {
 			childStr, err = s.decompileFilter(child)
 			if err != nil {
 				return ret, err
 			}
+
 			ret += childStr
 		}
 	case FilterNot:
 		ret += "!"
+
 		childStr, err = s.decompileFilter(f.Filter)
 		if err != nil {
 			return ret, err
 		}
+
 		ret += childStr
 
 	case FilterSubstrings:
 		ret += string(f.Type_())
 		ret += "="
+
 		for _, fs := range f.Substrings() {
 			switch fsv := fs.(type) {
 			case SubstringInitial:
@@ -250,5 +269,6 @@ func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 	}
 
 	ret += ")"
+
 	return ret, err
 }

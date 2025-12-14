@@ -28,6 +28,7 @@ func (iip *Initialize) Run(ctx context.Context, notify run.Notify) error {
 	defer sub.Unsubscribe()
 
 	notify.Notify()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -38,6 +39,7 @@ func (iip *Initialize) Run(ctx context.Context, notify run.Notify) error {
 			if !event.InternalIP.IsValid() || !event.ExternalIP.IsValid() {
 				continue
 			}
+
 			iip.logger.Info(
 				"node initialization complete",
 				"node",

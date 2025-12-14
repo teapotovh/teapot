@@ -32,15 +32,18 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 	if !exists {
 		net.logger.Debug("node was removed", "name", name)
 		net.broker.Publish(Event{Delete: &name})
+
 		return nil
 	}
 
 	var cidrs []netip.Prefix
+
 	for _, cidr := range n.Spec.PodCIDRs {
 		prefix, err := netip.ParsePrefix(cidr)
 		if err != nil {
 			return fmt.Errorf("error while parsing CIDR %q as network prefix: %w", cidr, err)
 		}
+
 		cidrs = append(cidrs, prefix)
 	}
 
@@ -48,6 +51,7 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		externalIP, internalIP netip.Addr
 		err                    error
 	)
+
 	for _, addr := range n.Status.Addresses {
 		switch addr.Type { //nolint:exhaustive
 		case v1.NodeInternalIP:
@@ -64,6 +68,7 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 	}
 
 	rawPort, ok := n.Annotations[AnnotationExternalPort]
+
 	port := DefaultWireguardPort
 	if ok {
 		_, err := fmt.Sscanf(rawPort, "%d", &port)
@@ -73,12 +78,15 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 	}
 
 	rawPublicKey, ok := n.Annotations[AnnotationPublicKey]
+
 	var publicKey *wgtypes.Key
+
 	if ok {
 		pk, err := wgtypes.ParseKey(rawPublicKey)
 		if err != nil {
 			return fmt.Errorf("error while parsing the public key %q for node %s: %w", rawPublicKey, n.Name, err)
 		}
+
 		publicKey = &pk
 	}
 

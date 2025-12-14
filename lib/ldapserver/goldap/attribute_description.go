@@ -9,6 +9,7 @@ func (description AttributeDescription) Pointer() *AttributeDescription { return
 
 func readAttributeDescription(bytes *Bytes) (ret AttributeDescription, err error) {
 	var ldapstring LDAPString
+
 	ldapstring, err = readLDAPString(bytes)
 	if err != nil {
 		err = LdapError{"readAttributeDescription:\n" + err.Error()}
@@ -16,18 +17,22 @@ func readAttributeDescription(bytes *Bytes) (ret AttributeDescription, err error
 	}
 	// @TODO: check RFC4512
 	ret = AttributeDescription(ldapstring)
+
 	return
 }
 
 func readTaggedAttributeDescription(bytes *Bytes, class int, tag int) (ret AttributeDescription, err error) {
 	var ldapstring LDAPString
+
 	ldapstring, err = readTaggedLDAPString(bytes, class, tag)
 	// @TODO: check RFC4512
 	if err != nil {
 		err = LdapError{"readTaggedAttributeDescription:\n" + err.Error()}
 		return
 	}
+
 	ret = AttributeDescription(ldapstring)
+
 	return
 }
 

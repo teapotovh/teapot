@@ -66,6 +66,7 @@ linters:
     - wastedassign
     - whitespace
     # - wrapcheck # nice to have, requires some work
+    - wsl_v5
   settings:
     # ireturn:
     #   allow:

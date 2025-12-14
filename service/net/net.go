@@ -68,12 +68,14 @@ func NewNet(config NetConfig, logger *slog.Logger) (*Net, error) {
 		Client:  client,
 		Handler: net.handle,
 	}
+
 	net.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
 	}
 
 	go net.broker.Run(ctx)
+
 	return &net, nil
 }
 
@@ -94,5 +96,6 @@ func (net *Net) Run(ctx context.Context, notify run.Notify) error {
 	defer net.brokerCancel()
 
 	notify.Notify()
+
 	return net.controller.Run(ctx, 1)
 }

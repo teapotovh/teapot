@@ -3,6 +3,7 @@ package message
 // equalityMatch   [3] AttributeValueAssertion,.
 func readFilterEqualityMatch(bytes *Bytes) (ret FilterEqualityMatch, err error) {
 	var attributevalueassertion AttributeValueAssertion
+
 	attributevalueassertion, err = readTaggedAttributeValueAssertion(
 		bytes,
 		classContextSpecific,
@@ -12,7 +13,9 @@ func readFilterEqualityMatch(bytes *Bytes) (ret FilterEqualityMatch, err error) 
 		err = LdapError{"readFilterEqualityMatch:\n" + err.Error()}
 		return
 	}
+
 	ret = FilterEqualityMatch(attributevalueassertion)
+
 	return
 }
 

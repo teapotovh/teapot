@@ -65,12 +65,14 @@ func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*
 func (w *Wireguard) addWireguardIP() error {
 	// We need to fetch the local node from the cluster to get its internal IP
 	var node *tnet.ClusterNode
+
 	for _, n := range w.cluster {
 		if n.IsLocal {
 			node = &n
 			break
 		}
 	}
+
 	if node == nil {
 		w.logger.Warn("could not configure IP on wireguard interface as local node is not available in the cluster")
 		return nil
@@ -113,7 +115,9 @@ func (w *Wireguard) configureWireguard(source string) error {
 	}
 
 	interval := WireguardKeepaliveInterval
+
 	var newPeers []wgtypes.PeerConfig
+
 	for name, node := range w.cluster {
 		if node.IsLocal {
 			continue
@@ -133,12 +137,15 @@ func (w *Wireguard) configureWireguard(source string) error {
 		if err != nil {
 			return fmt.Errorf("error while computing allowed IP for node %q: %w", name, err)
 		}
+
 		ips := []net.IPNet{*ip}
+
 		for _, c := range node.CIDRs {
 			cidr, err := internal.PrefixToIPNet(c)
 			if err != nil {
 				return fmt.Errorf("error while computing allowed IP for node %q from CIDR %q: %w", name, c, err)
 			}
+
 			ips = append(ips, *cidr)
 		}
 
@@ -160,12 +167,14 @@ func (w *Wireguard) configureWireguard(source string) error {
 		w.logger.Debug("update caused no change in wireguard config", "source", source)
 		return nil
 	}
+
 	w.peers = newPeers
 	w.privateKey = w.local.PrivateKey
 	w.port = w.local.Port
 
 	w.logger.Debug("applying peers", "peers", newPeers)
 	port := int(w.local.Port)
+
 	err := w.client.ConfigureDevice(w.link.Name, wgtypes.Config{
 		PrivateKey:   &w.local.PrivateKey,
 		ListenPort:   &port,
@@ -177,6 +186,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 	}
 
 	w.logger.Info("updated wireguard with new information", "source", source)
+
 	return nil
 }
 
@@ -184,6 +194,7 @@ func (w *Wireguard) configureWireguard(source string) error {
 func (w *Wireguard) Run(ctx context.Context, notify run.Notify) error {
 	csub := w.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
+
 	lsub := w.net.Local().Broker().Subscribe()
 	defer lsub.Unsubscribe()
 
@@ -193,6 +204,7 @@ func (w *Wireguard) Run(ctx context.Context, notify run.Notify) error {
 	defer deleteInterface(w.link)
 
 	notify.Notify()
+
 	for {
 		select {
 		case <-ctx.Done():

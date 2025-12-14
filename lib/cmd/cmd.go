@@ -39,6 +39,7 @@ func (c *Command) Start(name string, args ...string) error {
 
 	c.logger.Debug("starting command", "name", name, "args", args)
 	c.cmd = exec.Command(name, args...)
+
 	stdout, err := c.cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to get stdout pipe: %w", err)
@@ -55,6 +56,7 @@ func (c *Command) Start(name string, args ...string) error {
 
 	go c.logOutput(stdout, c.levelStdout)
 	go c.logOutput(stderr, c.levelStderr)
+
 	return nil
 }
 
@@ -89,5 +91,6 @@ func (c *Command) Wait() error {
 	if c.cmd == nil {
 		return ErrNotStarted
 	}
+
 	return c.cmd.Wait()
 }

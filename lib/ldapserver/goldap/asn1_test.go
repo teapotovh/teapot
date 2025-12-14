@@ -7,6 +7,7 @@ import (
 
 func TestSizeInt64(t *testing.T) {
 	t.Parallel()
+
 	s := sizeInt64(0)
 	if s != 1 {
 		t.Errorf("computed size is %d, expected 1", s)
@@ -35,6 +36,7 @@ func TestSizeInt64(t *testing.T) {
 
 func TestWriteInt64(t *testing.T) {
 	t.Parallel()
+
 	vtests := []int64{0, 127, 128, 50000, -12345}
 	expsize := []int{1, 1, 2, 3, 2}
 	expresult := [][]byte{{0x00}, {0x7F}, {0x00, 0x80}, {0x00, 0xc3, 0x50}, {0xcf, 0xc7}}
@@ -42,14 +44,18 @@ func TestWriteInt64(t *testing.T) {
 	for idx, v := range vtests {
 		fs := sizeInt64(v)
 		b := NewBytes(fs, make([]byte, fs))
+
 		t.Log("computing", v)
+
 		s := writeInt64(b, v)
 		if s != expsize[idx] {
 			t.Errorf("computed size is %d, expected %d", s, expsize[idx])
 		}
+
 		if !bytes.Equal(b.Bytes(), expresult[idx]) {
 			t.Errorf("wrong computed bytes, got %v, expected %v", b.Bytes(), expresult[idx])
 		}
+
 		a, e := parseInt64(b.Bytes())
 		t.Log("parse", a, e)
 	}

@@ -6,13 +6,16 @@ import (
 
 func TestSizeLDAPMessage(t *testing.T) {
 	t.Parallel()
+
 	testData := getLDAPMessageTestData()
 	for i, test := range testData {
 		message, err := ReadLDAPMessage(&test.bytes)
 		if err != nil {
 			t.Errorf("#%d error at offset %d (%s): %s", i, test.bytes.offset, test.bytes.DumpCurrentBytes(), err)
 		}
+
 		size := message.size()
+
 		expected := len(test.bytes.bytes)
 		if size != expected {
 			t.Errorf("#%d: wrong size, GOT: %d, EXPECTED: %d", i, size, expected)
@@ -77,6 +80,7 @@ func getSizeTagAndLengthTestData() (ret []tagAndLengthTestData) {
 
 func TestSizeTagAndLength(t *testing.T) {
 	t.Parallel()
+
 	for i, test := range getSizeTagAndLengthTestData() {
 		size := sizeTagAndLength(test.tag, test.length)
 		if test.expectedSize != size {

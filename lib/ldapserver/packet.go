@@ -12,13 +12,16 @@ type messagePacket struct {
 }
 
 func readMessagePacket(br *bufio.Reader) (*messagePacket, error) {
-	var err error
-	var bytes *[]byte
-	bytes, err = readLdapMessageBytes(br)
+	var (
+		err   error
+		bytes *[]byte
+	)
 
+	bytes, err = readLdapMessageBytes(br)
 	if err == nil {
 		return &messagePacket{bytes: *bytes}, nil
 	}
+
 	return &messagePacket{}, err
 }
 
@@ -38,24 +41,31 @@ func decodeMessage(bytes []byte) (ret ldap.LDAPMessage, err error) {
 			err = fmt.Errorf("%s", e)
 		}
 	}()
+
 	zero := 0
 	ret, err = ldap.ReadLDAPMessage(ldap.NewBytes(zero, bytes))
+
 	return
 }
 
 // BELLOW SHOULD BE IN ROOX PACKAGE
 
 func readLdapMessageBytes(br *bufio.Reader) (ret *[]byte, err error) {
-	var bytes []byte
-	var tagAndLength ldap.TagAndLength
+	var (
+		bytes        []byte
+		tagAndLength ldap.TagAndLength
+	)
+
 	tagAndLength, err = readTagAndLength(br, &bytes)
 	if err != nil {
 		return
 	}
+
 	_, err = readBytes(br, &bytes, tagAndLength.Length)
 	if err != nil {
 		return
 	}
+
 	return &bytes, err
 }
 
@@ -68,10 +78,12 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 	// b := bytes[offset]
 	// offset++
 	var b byte
+
 	b, err = readBytes(conn, bytes, 1)
 	if err != nil {
 		return ret, err
 	}
+
 	ret.Class = int(b >> 6)
 	ret.IsCompound = b&0x20 == 0x20
 	ret.Tag = int(b & 0x1f)
@@ -94,6 +106,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 	if err != nil {
 		return ret, err
 	}
+
 	if b&0x80 == 0 {
 		// The length is encoded in the bottom 7 bits.
 		ret.Length = int(b & 0x7f)
@@ -104,18 +117,22 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 			err = ldap.SyntaxError{Msg: "indefinite length found (not DER)"}
 			return ret, err
 		}
+
 		ret.Length = 0
+
 		for range numBytes {
 			b, err = readBytes(conn, bytes, 1)
 			if err != nil {
 				return ret, err
 			}
+
 			if ret.Length >= 1<<23 {
 				// We can't shift ret.length up without
 				// overflowing.
 				err = ldap.StructuralError{Msg: "length too large"}
 				return ret, err
 			}
+
 			ret.Length <<= 8
 			ret.Length |= int(b)
 			// Compat some lib which use go-ldap or someone else,
@@ -136,13 +153,16 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 // Return the last read byte.
 func readBytes(conn *bufio.Reader, bytes *[]byte, length int) (b byte, err error) {
 	newbytes := make([]byte, length)
+
 	n, err := conn.Read(newbytes)
 	if n != length {
 		return 0, fmt.Errorf("%d bytes read instead of %d", n, length)
 	} else if err != nil {
 		return
 	}
+
 	*bytes = append(*bytes, newbytes...)
 	b = (*bytes)[len(*bytes)-1]
+
 	return
 }

@@ -53,6 +53,7 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 	}
 
 	keyPath := filepath.Join(path, KeyFilename)
+
 	key, err := getKey(keyPath)
 	if err != nil {
 		logger.Warn("error while loading previous wireguard key, generating a new one", "err", err)
@@ -66,9 +67,11 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 			return nil, fmt.Errorf("error while generating wireguard key for local node: %w", err)
 		}
 	}
+
 	logger.Info("loaded wireguard key", "public_key", key.PublicKey(), "node", config.LocalNode)
 
 	ctx, cancel := context.WithCancel(context.Background())
+
 	broker := broker.NewBroker[LocalEvent]()
 	go broker.Run(ctx)
 
@@ -100,6 +103,7 @@ func getKey(path string) (wgtypes.Key, error) {
 
 func storeKey(path string, key wgtypes.Key) error {
 	encodedKey := key.String()
+
 	err := os.WriteFile(path, []byte(encodedKey), KeyPerm)
 	if err != nil {
 		return fmt.Errorf("error while writing wireguard key to filesystem: %w", err)
@@ -120,6 +124,7 @@ func (l *Local) event() LocalEvent {
 // Run implements run.Runnable.
 func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	defer l.brokerCancel()
+
 	sub := l.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 
@@ -127,6 +132,7 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	l.broker.Publish(l.event())
 
 	notify.Notify()
+
 	for event := range sub.Iter(ctx) {
 		if event.Update != nil {
 			node := *event.Update
@@ -153,6 +159,7 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 			}
 		}
 	}
+
 	return nil
 }
 

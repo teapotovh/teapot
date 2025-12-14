@@ -9,6 +9,7 @@ func readIntermediateResponse(bytes *Bytes) (ret IntermediateResponse, err error
 		err = LdapError{"readIntermediateResponse:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -16,44 +17,55 @@ func (bytes *Bytes) PreviewTagAndLength() (tagAndLength TagAndLength, err error)
 	previousOffset := bytes.offset // Save offset
 	tagAndLength, err = bytes.ParseTagAndLength()
 	bytes.offset = previousOffset // Restore offset
+
 	return
 }
 
 func (i *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return err
 		}
+
 		if tag.Tag == TagIntermediateResponseName {
 			var oid LDAPOID
+
 			oid, err = readTaggedLDAPOID(bytes, classContextSpecific, TagIntermediateResponseName)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return err
 			}
+
 			i.responseName = oid.Pointer()
 		}
 	}
+
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return err
 		}
+
 		if tag.Tag == TagIntermediateResponseValue {
 			var str OCTETSTRING
+
 			str, err = readTaggedOCTETSTRING(bytes, classContextSpecific, TagIntermediateResponseValue)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return err
 			}
+
 			i.responseValue = str.Pointer()
 		}
 	}
+
 	return err
 }
 
@@ -64,10 +76,13 @@ func (i IntermediateResponse) write(bytes *Bytes) (size int) {
 	if i.responseValue != nil {
 		size += i.responseValue.writeTagged(bytes, classContextSpecific, TagIntermediateResponseValue)
 	}
+
 	if i.responseName != nil {
 		size += i.responseName.writeTagged(bytes, classContextSpecific, TagIntermediateResponseName)
 	}
+
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagIntermediateResponse, size)
+
 	return
 }
 
@@ -78,9 +93,12 @@ func (i IntermediateResponse) size() (size int) {
 	if i.responseName != nil {
 		size += i.responseName.sizeTagged(TagIntermediateResponseName)
 	}
+
 	if i.responseValue != nil {
 		size += i.responseValue.sizeTagged(TagIntermediateResponseValue)
 	}
+
 	size += sizeTagAndLength(TagIntermediateResponse, size)
+
 	return
 }

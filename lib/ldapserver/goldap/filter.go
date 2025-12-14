@@ -27,16 +27,19 @@ import "fmt"
 
 func readFilter(bytes *Bytes) (filter Filter, err error) {
 	var tagAndLength TagAndLength
+
 	tagAndLength, err = bytes.PreviewTagAndLength()
 	if err != nil {
 		err = LdapError{"readFilter:\n" + err.Error()}
 		return filter, err
 	}
+
 	err = tagAndLength.ExpectClass(classContextSpecific)
 	if err != nil {
 		err = LdapError{"readFilter:\n" + err.Error()}
 		return filter, err
 	}
+
 	switch tagAndLength.Tag {
 	case TagFilterAnd:
 		filter, err = readFilterAnd(bytes)
@@ -62,9 +65,11 @@ func readFilter(bytes *Bytes) (filter Filter, err error) {
 		err = LdapError{fmt.Sprintf("readFilter: invalid tag value %d for filter", tagAndLength.Tag)}
 		return filter, err
 	}
+
 	if err != nil {
 		err = LdapError{"readFilter:\n" + err.Error()}
 		return filter, err
 	}
+
 	return filter, err
 }

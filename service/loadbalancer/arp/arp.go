@@ -30,6 +30,7 @@ func NewARP(lb *loadbalancer.LoadBalancer, config ARPConfig, logger *slog.Logger
 	if err != nil {
 		return nil, fmt.Errorf("error while getting MAC address for interface %q: %w", config.Device, err)
 	}
+
 	handle, err := afpacket.NewTPacket(afpacket.OptInterface(config.Device))
 	if err != nil {
 		return nil, fmt.Errorf("error while opening device %q with afpacket: %w", config.Device, err)
@@ -46,6 +47,7 @@ func NewARP(lb *loadbalancer.LoadBalancer, config ARPConfig, logger *slog.Logger
 	}
 
 	arp.speaker = NewSpeaker(arp, logger.With("component", "speaker"))
+
 	arp.listener, err = NewListener(arp, ListenerConfig(config), logger.With("component", "listener"))
 	if err != nil {
 		return nil, fmt.Errorf("error while initializing listener subcomponent: %w", err)

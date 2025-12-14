@@ -12,6 +12,7 @@ func readBindResponse(bytes *Bytes) (bindresponse BindResponse, err error) {
 		err = LdapError{"readBindResponse:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -19,23 +20,29 @@ func (response *BindResponse) readComponents(bytes *Bytes) (err error) {
 	if err := response.LDAPResult.readComponents(bytes); err != nil {
 		return fmt.Errorf("error while reading LDAP result: %w", err)
 	}
+
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
+
 		if tag.Tag == TagBindResponseServerSaslCreds {
 			var serverSaslCreds OCTETSTRING
+
 			serverSaslCreds, err = readTaggedOCTETSTRING(bytes, classContextSpecific, TagBindResponseServerSaslCreds)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return
 			}
+
 			response.serverSaslCreds = serverSaslCreds.Pointer()
 		}
 	}
+
 	return
 }
 
@@ -43,8 +50,10 @@ func (response BindResponse) write(bytes *Bytes) (size int) {
 	if response.serverSaslCreds != nil {
 		size += response.serverSaslCreds.writeTagged(bytes, classContextSpecific, TagBindResponseServerSaslCreds)
 	}
+
 	size += response.writeComponents(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagBindResponse, size)
+
 	return
 }
 
@@ -52,7 +61,9 @@ func (response BindResponse) size() (size int) {
 	if response.serverSaslCreds != nil {
 		size += response.serverSaslCreds.sizeTagged(TagBindResponseServerSaslCreds)
 	}
+
 	size += response.sizeComponents()
 	size += sizeTagAndLength(TagBindResponse, size)
+
 	return
 }

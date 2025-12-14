@@ -5,11 +5,13 @@ package message
 //	     vals       SET OF value AttributeValue }
 func readPartialAttribute(bytes *Bytes) (ret PartialAttribute, err error) {
 	ret = PartialAttribute{vals: make([]AttributeValue, 0, 10)}
+
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, ret.readComponents)
 	if err != nil {
 		err = LdapError{"readPartialAttribute:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -19,24 +21,29 @@ func (p *PartialAttribute) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	err = bytes.ReadSubBytes(classUniversal, tagSet, p.readValsComponents)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
 func (p *PartialAttribute) readValsComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var attributevalue AttributeValue
+
 		attributevalue, err = readAttributeValue(bytes)
 		if err != nil {
 			err = LdapError{"readValsComponents:\n" + err.Error()}
 			return
 		}
+
 		p.vals = append(p.vals, attributevalue)
 	}
+
 	return
 }
 
@@ -47,9 +54,11 @@ func (p PartialAttribute) write(bytes *Bytes) (size int) {
 	for i := len(p.vals) - 1; i >= 0; i-- {
 		size += p.vals[i].write(bytes)
 	}
+
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSet, size)
 	size += p.type_.write(bytes)
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
+
 	return
 }
 
@@ -60,9 +69,11 @@ func (p PartialAttribute) size() (size int) {
 	for _, value := range p.vals {
 		size += value.size()
 	}
+
 	size += sizeTagAndLength(tagSet, size)
 	size += p.type_.size()
 	size += sizeTagAndLength(tagSequence, size)
+
 	return
 }
 

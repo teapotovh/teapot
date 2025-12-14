@@ -2,12 +2,15 @@ package message
 
 func readTaggedLDAPString(bytes *Bytes, class int, tag int) (ldapstring LDAPString, err error) {
 	var octetstring OCTETSTRING
+
 	octetstring, err = readTaggedOCTETSTRING(bytes, class, tag)
 	if err != nil {
 		err = LdapError{"readTaggedLDAPString:\n" + err.Error()}
 		return
 	}
+
 	ldapstring = LDAPString(octetstring)
+
 	return
 }
 

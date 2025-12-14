@@ -62,6 +62,7 @@ func readTaggedLDAPResult(bytes *Bytes, class int, tag int) (ret LDAPResult, err
 	if err != nil {
 		err = LdapError{"readTaggedLDAPResult:\n" + err.Error()}
 	}
+
 	return
 }
 
@@ -71,33 +72,41 @@ func (l *LDAPResult) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	l.matchedDN, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	l.diagnosticMessage, err = readLDAPString(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return err
 		}
+
 		if tag.Tag == TagLDAPResultReferral {
 			var referral Referral
+
 			referral, err = readTaggedReferral(bytes, classContextSpecific, TagLDAPResultReferral)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return err
 			}
+
 			l.referral = referral.Pointer()
 		}
 	}
+
 	return err
 }
 
@@ -161,6 +170,7 @@ func (l *LDAPResult) readComponents(bytes *Bytes) (err error) {
 func (l LDAPResult) write(bytes *Bytes) (size int) {
 	size += l.writeComponents(bytes)
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
+
 	return
 }
 
@@ -168,9 +178,11 @@ func (l LDAPResult) writeComponents(bytes *Bytes) (size int) {
 	if l.referral != nil {
 		size += l.referral.writeTagged(bytes, classContextSpecific, TagLDAPResultReferral)
 	}
+
 	size += l.diagnosticMessage.write(bytes)
 	size += l.matchedDN.write(bytes)
 	size += l.resultCode.write(bytes)
+
 	return
 }
 
@@ -234,12 +246,14 @@ func (l LDAPResult) writeComponents(bytes *Bytes) (size int) {
 func (l LDAPResult) size() (size int) {
 	size += l.sizeComponents()
 	size += sizeTagAndLength(tagSequence, size)
+
 	return
 }
 
 func (l LDAPResult) sizeTagged(tag int) (size int) {
 	size += l.sizeComponents()
 	size += sizeTagAndLength(tag, size)
+
 	return
 }
 
@@ -247,9 +261,11 @@ func (l LDAPResult) sizeComponents() (size int) {
 	if l.referral != nil {
 		size += l.referral.sizeTagged(TagLDAPResultReferral)
 	}
+
 	size += l.diagnosticMessage.size()
 	size += l.matchedDN.size()
 	size += l.resultCode.size()
+
 	return
 }
 

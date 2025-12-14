@@ -38,17 +38,20 @@ var CSS embed.FS
 
 func Dependencies() (map[dependency.Dependency][]byte, error) {
 	result := map[dependency.Dependency][]byte{}
+
 	for _, component := range Components {
 		name := component
 		if newName, ok := nameMap[component]; ok {
 			name = newName
 		}
+
 		dep := dependency.Dependency{
 			Type: dependency.DependencyTypeStyle,
 			Name: name,
 		}
 
 		path := fmt.Sprintf("css/%s.css", component)
+
 		bytes, err := CSS.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("error while loading file from bundle at %q for dependency %q: %w", path, dep, err)

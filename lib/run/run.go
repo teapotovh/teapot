@@ -54,6 +54,7 @@ func (r runnable) startup(ctx context.Context) error {
 	go r.watch(ctx, notify)
 
 	start := time.Now()
+
 	tick := time.Tick(r.timeout)
 	select {
 	case <-tick:
@@ -93,6 +94,7 @@ func (r runnable) wrap(ctx context.Context, ntfy *notify) (err error) {
 	}()
 
 	err = r.runnable.Run(ctx, ntfy)
+
 	return
 }
 
@@ -148,6 +150,7 @@ func (r *Run) Run(ctx context.Context) error {
 	}
 
 	done := ctx.Done()
+
 	var err error
 	select {
 	case <-done:

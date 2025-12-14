@@ -19,6 +19,7 @@ var JS embed.FS
 
 func Dependencies() (map[dependency.Dependency][]byte, error) {
 	result := map[dependency.Dependency][]byte{}
+
 	for i, component := range Components {
 		var name string
 		if i == 0 {
@@ -33,6 +34,7 @@ func Dependencies() (map[dependency.Dependency][]byte, error) {
 		}
 
 		path := fmt.Sprintf("js/%s.js", name)
+
 		bytes, err := JS.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("error while loading file from bundle at %q for dependency %q: %w", path, dep, err)

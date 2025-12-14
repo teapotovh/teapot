@@ -62,12 +62,14 @@ func (r *route) Match(m *Message) bool {
 				return false
 			}
 		}
+
 		return true
 
 	case ldap.ExtendedRequest:
 		if string(v.RequestName()) != r.exoName {
 			return false
 		}
+
 		return true
 
 	case ldap.SearchRequest:
@@ -88,8 +90,10 @@ func (r *route) Match(m *Message) bool {
 				return false
 			}
 		}
+
 		return true
 	}
+
 	return true
 }
 
@@ -101,24 +105,28 @@ func (r *route) Label(label string) *route {
 func (r *route) BaseDn(dn string) *route {
 	r.sBasedn = strings.ToLower(dn)
 	r.uBasedn = true
+
 	return r
 }
 
 func (r *route) AuthenticationChoice(choice string) *route {
 	r.sAuthChoice = strings.ToLower(choice)
 	r.uAuthChoice = true
+
 	return r
 }
 
 func (r *route) Filter(pattern string) *route {
 	r.sFilter = strings.ToLower(pattern)
 	r.uFilter = true
+
 	return r
 }
 
 func (r *route) Scope(scope int) *route {
 	r.sScope = scope
 	r.uScope = true
+
 	return r
 }
 
@@ -149,6 +157,7 @@ func (h *RouteMux) ServeLDAP(ctx context.Context, w ResponseWriter, r *Message) 
 		}
 
 		h.logger.DebugContext(ctx, "matched route", "label", route.label, "route", route)
+
 		return route.handler(ctx, w, r)
 	}
 
@@ -167,6 +176,7 @@ func (h *RouteMux) ServeLDAP(ctx context.Context, w ResponseWriter, r *Message) 
 		res := NewResponse(ldap.ResultCodeUnwillingToPerform)
 		res.SetDiagnosticMessage("Operation not implemented by server")
 		w.Write(res)
+
 		return ctx
 	}
 }
@@ -182,6 +192,7 @@ func (h *RouteMux) NotFound(handler HandlerFunc) *route {
 	route := &route{}
 	route.handler = handler
 	h.notFoundRoute = route
+
 	return route
 }
 
@@ -190,6 +201,7 @@ func (h *RouteMux) Bind(handler HandlerFunc) *route {
 	route.operation = BIND
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -198,6 +210,7 @@ func (h *RouteMux) Search(handler HandlerFunc) *route {
 	route.operation = SEARCH
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -206,6 +219,7 @@ func (h *RouteMux) Add(handler HandlerFunc) *route {
 	route.operation = ADD
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -214,6 +228,7 @@ func (h *RouteMux) Delete(handler HandlerFunc) *route {
 	route.operation = DELETE
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -222,6 +237,7 @@ func (h *RouteMux) Modify(handler HandlerFunc) *route {
 	route.operation = MODIFY
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -230,6 +246,7 @@ func (h *RouteMux) Compare(handler HandlerFunc) *route {
 	route.operation = COMPARE
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -238,6 +255,7 @@ func (h *RouteMux) Extended(handler HandlerFunc) *route {
 	route.operation = EXTENDED
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }
 
@@ -246,5 +264,6 @@ func (h *RouteMux) Abandon(handler HandlerFunc) *route {
 	route.operation = ABANDON
 	route.handler = handler
 	h.addRoute(route)
+
 	return route
 }

@@ -40,6 +40,7 @@ func (srv *Server) HandleUsersGet(w http.ResponseWriter, r *http.Request) (g.Nod
 			fmt.Errorf("error while constructing LDAP client: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorPage(r, ErrLDAP), err
 	}
 	defer client.Close()
@@ -50,9 +51,11 @@ func (srv *Server) HandleUsersGet(w http.ResponseWriter, r *http.Request) (g.Nod
 			fmt.Errorf("error while fetching user from LDAP: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorPage(r, ErrListUsers), err
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	return Page(r, "Users", srv.users(users)), nil
 }

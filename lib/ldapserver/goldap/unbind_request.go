@@ -3,20 +3,24 @@ package message
 // UnbindRequest ::= [APPLICATION 2] NULL.
 func readUnbindRequest(bytes *Bytes) (unbindrequest UnbindRequest, err error) {
 	var tagAndLength TagAndLength
+
 	tagAndLength, err = bytes.ParseTagAndLength()
 	if err != nil {
 		err = LdapError{"readUnbindRequest:\n" + err.Error()}
 		return
 	}
+
 	err = tagAndLength.Expect(classApplication, TagUnbindRequest, isNotCompound)
 	if err != nil {
 		err = LdapError{"readUnbindRequest:\n" + err.Error()}
 		return
 	}
+
 	if tagAndLength.Length != 0 {
 		err = LdapError{"readUnbindRequest: expecting NULL"}
 		return
 	}
+
 	return
 }
 

@@ -36,6 +36,7 @@ func (srv *Server) authCookie(username string, admin bool) (*http.Cookie, error)
 		Admin: admin,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	ss, err := token.SignedString(srv.jwtSecret)
 	if err != nil {
 		return nil, fmt.Errorf("error while signing JWT: %w", err)
@@ -55,8 +56,10 @@ func (srv *Server) checkAuthCookie(r *http.Request) *Auth {
 		if !errors.Is(err, http.ErrNoCookie) {
 			srv.logger.ErrorContext(r.Context(), "error while fetching authentication cookie", "err", err)
 		}
+
 		return nil
 	}
+
 	if cookie == nil {
 		return nil
 	}

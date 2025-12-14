@@ -6,6 +6,7 @@ func ReadLDAPMessage(bytes *Bytes) (message LDAPMessage, err error) {
 		err = LdapError{"ReadLDAPMessage:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 

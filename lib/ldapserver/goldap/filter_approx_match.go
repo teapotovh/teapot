@@ -3,12 +3,15 @@ package message
 // approxMatch     [8] AttributeValueAssertion,.
 func readFilterApproxMatch(bytes *Bytes) (ret FilterApproxMatch, err error) {
 	var attributevalueassertion AttributeValueAssertion
+
 	attributevalueassertion, err = readTaggedAttributeValueAssertion(bytes, classContextSpecific, TagFilterApproxMatch)
 	if err != nil {
 		err = LdapError{"readFilterApproxMatch:\n" + err.Error()}
 		return
 	}
+
 	ret = FilterApproxMatch(attributevalueassertion)
+
 	return
 }
 

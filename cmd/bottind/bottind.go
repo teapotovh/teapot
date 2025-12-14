@@ -42,17 +42,21 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
+
 	logger = logger.With("sub", "bottin")
 
 	bottinConfig := getBottinConfig()
 	ctx := context.Background()
+
 	if bottinConfig.Passwd == "" {
 		adminPassBytes := make([]byte, 8)
+
 		_, err := rand.Read(adminPassBytes)
 		if err != nil {
 			logger.Error("error while generating random root password", "err", err)
 			os.Exit(CodePasswd)
 		}
+
 		bottinConfig.Passwd = base64.RawURLEncoding.EncodeToString(adminPassBytes)
 		logger.Info("using randomly generated root password", "passwd", bottinConfig.Passwd)
 	}
@@ -62,6 +66,7 @@ func main() {
 		logger.Error("error while constructing server", "err", err)
 		os.Exit(CodeConstruct)
 	}
+
 	if err = bottin.Init(ctx); err != nil {
 		logger.Error("error while initializing ldap server", "err", err)
 		os.Exit(CodeInit)
@@ -84,8 +89,10 @@ func main() {
 
 	ldapServer := ldapserver.NewServer(logger.With("component", "ldapserver", "kind", "ldap"))
 	ldapServer.Handle(routes)
+
 	go func() {
 		logger.Info("listening ldap://", "addr", *addr)
+
 		if err := ldapServer.ListenAndServe(ctx, *addr); err != nil {
 			logger.Error("error while listening on ldap://", "addr", *addr, "err", err)
 			os.Exit(CodeListenLDAP)

@@ -6,17 +6,21 @@ package message
 
 func readLDAPDN(bytes *Bytes) (ret LDAPDN, err error) {
 	var str LDAPString
+
 	str, err = readLDAPString(bytes)
 	if err != nil {
 		err = LdapError{"readLDAPDN:\n" + err.Error()}
 		return
 	}
+
 	ret = LDAPDN(str)
+
 	return
 }
 
 func readTaggedLDAPDN(bytes *Bytes, class int, tag int) (ret LDAPDN, err error) {
 	var ldapstring LDAPString
+
 	ldapstring, err = readTaggedLDAPString(bytes, class, tag)
 	if err != nil {
 		err = LdapError{"readTaggedLDAPDN:\n" + err.Error()}
@@ -24,6 +28,7 @@ func readTaggedLDAPDN(bytes *Bytes, class int, tag int) (ret LDAPDN, err error) 
 	}
 	// @TODO: check RFC4514
 	ret = LDAPDN(ldapstring)
+
 	return
 }
 
@@ -31,6 +36,7 @@ func (l LDAPDN) Pointer() *LDAPDN { return &l }
 
 func readRelativeLDAPDN(bytes *Bytes) (ret RelativeLDAPDN, err error) {
 	var ldapstring LDAPString
+
 	ldapstring, err = readLDAPString(bytes)
 	if err != nil {
 		err = LdapError{"readRelativeLDAPDN:\n" + err.Error()}
@@ -38,6 +44,7 @@ func readRelativeLDAPDN(bytes *Bytes) (ret RelativeLDAPDN, err error) {
 	}
 	// @TODO: check RFC4514
 	ret = RelativeLDAPDN(ldapstring)
+
 	return
 }
 

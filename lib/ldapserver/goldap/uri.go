@@ -5,13 +5,16 @@ package message
 //	-- URIs
 func readURI(bytes *Bytes) (uri URI, err error) {
 	var ldapstring LDAPString
+
 	ldapstring, err = readLDAPString(bytes)
 	// @TODO: check permitted chars in URI
 	if err != nil {
 		err = LdapError{"readURI:\n" + err.Error()}
 		return
 	}
+
 	uri = URI(ldapstring)
+
 	return
 }
 

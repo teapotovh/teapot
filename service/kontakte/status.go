@@ -47,18 +47,21 @@ func ErrorPage(r *http.Request, err error) g.Node {
 		h.H2(g.Textf("Error: %d %s", status, http.StatusText(status))),
 		h.H3(g.Text(err.Error())),
 	)
+
 	return Page(r, "Error", body)
 }
 
 func NotFound(r *http.Request) (g.Node, error) {
 	err := fmt.Errorf("could not %s %s", r.Method, r.URL)
 	err = ErrorWithStatus(err, http.StatusNotFound)
+
 	return ErrorPage(r, err), ErrorWithStatus(errors.Join(err, ErrNotFound), http.StatusNotFound)
 }
 
 func Unauthorized(r *http.Request) (g.Node, error) {
 	err := fmt.Errorf("could not %s %s", r.Method, r.URL)
 	err = ErrorWithStatus(err, http.StatusUnauthorized)
+
 	return ErrorPage(r, err), err
 }
 

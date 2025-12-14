@@ -22,11 +22,13 @@ func RemoveTaint(ctx context.Context, clientset *kubernetes.Clientset, nodeName,
 	if index == -1 {
 		return nil
 	}
+
 	node.Spec.Taints = slices.Delete(node.Spec.Taints, index, index+1)
 
 	_, err = clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update taint %q kubernetes node %q: %w", key, node.Name, err)
 	}
+
 	return nil
 }

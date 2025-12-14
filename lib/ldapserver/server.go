@@ -37,6 +37,7 @@ func (s *Server) Handle(h Handler) {
 	if s.Handler != nil {
 		s.logger.Warn("overwriting ldap handler", "old", s.Handler, "new", h)
 	}
+
 	s.Handler = h
 }
 
@@ -101,6 +102,7 @@ func (s *Server) serve(ctx context.Context) (err error) {
 			}
 
 			s.logger.WarnContext(ctx, "error while handling incoming connection", "err", err)
+
 			continue
 		}
 
@@ -110,6 +112,7 @@ func (s *Server) serve(ctx context.Context) (err error) {
 				continue
 			}
 		}
+
 		if s.WriteTimeout != 0 {
 			if err := rw.SetWriteDeadline(time.Now().Add(s.WriteTimeout)); err != nil {
 				s.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
@@ -118,11 +121,13 @@ func (s *Server) serve(ctx context.Context) (err error) {
 		}
 
 		s.logger.DebugContext(ctx, "accepted connection", "addr", rw.RemoteAddr().String())
+
 		cli, err := s.newClient(rw, i)
 		if err != nil {
 			s.logger.WarnContext(ctx, "error while creating a new client for the connection", "err", err)
 			continue
 		}
+
 		go cli.serve(ctx)
 	}
 }
@@ -138,6 +143,7 @@ func (s *Server) newClient(rwc net.Conn, id int) (c *client, err error) {
 		br:     bufio.NewReader(rwc),
 		bw:     bufio.NewWriter(rwc),
 	}
+
 	return c, nil
 }
 

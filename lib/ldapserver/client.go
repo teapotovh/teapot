@@ -51,6 +51,7 @@ func (c *client) GetMessageByID(messageID int) (*Message, bool) {
 	if requestToAbandon, ok := c.requestList[messageID]; ok {
 		return requestToAbandon, true
 	}
+
 	return nil, false
 }
 
@@ -62,6 +63,7 @@ func (c *client) ReadPacket() (*messagePacket, error) {
 	mP, err := readMessagePacket(c.br)
 	c.rawData = make([]byte, len(mP.bytes))
 	copy(c.rawData, mP.bytes)
+
 	return mP, err
 }
 
@@ -197,10 +199,13 @@ func (c *client) close(ctx context.Context) error {
 
 	// signals to all currently running request processor to stop
 	c.mutex.Lock()
+
 	for messageID, request := range c.requestList {
 		c.logger.DebugContext(ctx, "abandoning message", "mid", messageID)
+
 		go request.Abandon()
 	}
+
 	c.mutex.Unlock()
 
 	c.wg.Wait()      // wait for all current running request processor to end
@@ -211,9 +216,11 @@ func (c *client) close(ctx context.Context) error {
 	if err := c.rwc.Close(); err != nil {
 		return fmt.Errorf("error while closing network connection: %w", err)
 	}
+
 	c.logger.DebugContext(ctx, "connection closed successfully")
 
 	c.srv.wg.Done() // signal to server that client shutdown is ok
+
 	return nil
 }
 
@@ -224,16 +231,20 @@ func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error 
 	}
 
 	c.logger.DebugContext(ctx, "sending message", "msg", msg)
+
 	l, err := c.bw.Write(data.Bytes())
 	if err != nil {
 		return fmt.Errorf("error while writing message: %w", err)
 	}
+
 	if l != len(data.Bytes()) {
 		return ErrMessageNotFullyWritten
 	}
+
 	if err := c.bw.Flush(); err != nil {
 		return fmt.Errorf("error while flushing message: %w", err)
 	}
+
 	return nil
 }
 
@@ -252,6 +263,7 @@ type responseWriterImpl struct {
 func (w responseWriterImpl) Write(po ldap.ProtocolOp) {
 	m := ldap.NewLDAPMessageWithProtocolOp(po)
 	m.SetMessageID(w.messageID)
+
 	w.chanOut <- m
 }
 
@@ -283,6 +295,7 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 	defer c.unregisterRequest(&m)
 
 	var w responseWriterImpl
+
 	w.chanOut = c.chanOut
 	w.messageID = int32(m.MessageID())
 

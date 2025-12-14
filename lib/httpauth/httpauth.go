@@ -18,6 +18,7 @@ func GetAuth(r *http.Request) *Auth {
 	if val == nil {
 		return nil
 	}
+
 	return val.(*Auth)
 }
 

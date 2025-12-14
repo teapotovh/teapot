@@ -26,6 +26,7 @@ func (request *BindRequest) AuthenticationChoice() string {
 	case SaslCredentials:
 		return "sasl"
 	}
+
 	return ""
 }
 
@@ -35,6 +36,7 @@ func readBindRequest(bytes *Bytes) (bindrequest BindRequest, err error) {
 		err = LdapError{"readBindRequest:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -44,6 +46,7 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	if request.version < BindRequestVersionMin || request.version > BindRequestVersionMax {
 		err = LdapError{
 			fmt.Sprintf(
@@ -53,18 +56,22 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 				BindRequestVersionMax,
 			),
 		}
+
 		return
 	}
+
 	request.name, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	request.authentication, err = readAuthenticationChoice(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -77,14 +84,17 @@ func (request BindRequest) write(bytes *Bytes) (size int) {
 	default:
 		panic(fmt.Sprintf("Unknown authentication choice: %#v", request.authentication))
 	}
+
 	size += request.name.write(bytes)
 	size += request.version.write(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagBindRequest, size)
+
 	return
 }
 
 func (request BindRequest) size() (size int) {
 	size += request.version.size()
+
 	size += request.name.size()
 	switch request.authentication.(type) {
 	case OCTETSTRING:
@@ -96,5 +106,6 @@ func (request BindRequest) size() (size int) {
 	}
 
 	size += sizeTagAndLength(TagBindRequest, size)
+
 	return
 }

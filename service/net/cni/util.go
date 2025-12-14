@@ -30,6 +30,7 @@ func createInterface(name string) (*netlink.Bridge, error) {
 	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, fmt.Errorf("failed to create bridge device: %w", err)
 	}
+
 	if err := netlink.LinkSetUp(link); err != nil {
 		return nil, fmt.Errorf("failed to bring up the bridge device: %w", err)
 	}
@@ -95,8 +96,10 @@ func cniConfig(device string, cidrs []netip.Prefix) cniConfigList {
 			},
 		})
 	}
+
 	bridgePlugin.IPAM.Routes = []hostLocalIPAMRoute{{Dst: allRoutes.String()}}
 
 	config.Plugins = append(config.Plugins, bridgePlugin)
+
 	return config
 }

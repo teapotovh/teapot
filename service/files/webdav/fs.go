@@ -28,6 +28,7 @@ func newWebDavFSWrapper(fs hpfs.FS, logger *slog.Logger) *webDavFSWrapper {
 
 func (fsw *webDavFSWrapper) sanitizeName(name string) string {
 	name = path.Clean(name)
+
 	name = strings.TrimPrefix(name, "/")
 	if name == "" {
 		// Use relative indexing as required by hpfs
@@ -137,6 +138,7 @@ func (fw *webDavFileWrapper) Readdir(count int) ([]fs.FileInfo, error) {
 	}
 
 	var infos []fs.FileInfo
+
 	for _, entry := range dirEntries {
 		info, err := entry.Info()
 		if err != nil {
@@ -145,6 +147,7 @@ func (fw *webDavFileWrapper) Readdir(count int) ([]fs.FileInfo, error) {
 
 		infos = append(infos, info)
 	}
+
 	return infos, nil
 }
 

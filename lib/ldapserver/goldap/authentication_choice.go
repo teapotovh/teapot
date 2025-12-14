@@ -15,11 +15,13 @@ func readAuthenticationChoice(bytes *Bytes) (ret AuthenticationChoice, err error
 		err = LdapError{"readAuthenticationChoice:\n" + err.Error()}
 		return
 	}
+
 	err = tagAndLength.ExpectClass(classContextSpecific)
 	if err != nil {
 		err = LdapError{"readAuthenticationChoice:\n" + err.Error()}
 		return
 	}
+
 	switch tagAndLength.Tag {
 	case TagAuthenticationChoiceSimple:
 		ret, err = readTaggedOCTETSTRING(bytes, classContextSpecific, TagAuthenticationChoiceSimple)
@@ -29,11 +31,14 @@ func readAuthenticationChoice(bytes *Bytes) (ret AuthenticationChoice, err error
 		err = LdapError{
 			fmt.Sprintf("readAuthenticationChoice: invalid tag value %d for AuthenticationChoice", tagAndLength.Tag),
 		}
+
 		return
 	}
+
 	if err != nil {
 		err = LdapError{"readAuthenticationChoice:\n" + err.Error()}
 		return
 	}
+
 	return
 }

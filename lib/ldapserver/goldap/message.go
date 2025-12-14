@@ -53,28 +53,35 @@ func (l *LDAPMessage) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	l.protocolOp, err = readProtocolOp(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
+
 		if tag.Tag == TagLDAPMessageControls {
 			var controls Controls
+
 			controls, err = readTaggedControls(bytes, classContextSpecific, TagLDAPMessageControls)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return
 			}
+
 			l.controls = controls.Pointer()
 		}
 	}
+
 	return
 }
 
@@ -97,6 +104,7 @@ func (l *LDAPMessage) Write() (bytes *Bytes, err error) {
 	if l.controls != nil {
 		size += l.controls.writeTagged(bytes, classContextSpecific, TagLDAPMessageControls)
 	}
+
 	size += l.protocolOp.write(bytes)
 	size += l.messageID.write(bytes)
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
@@ -111,16 +119,20 @@ func (l *LDAPMessage) Write() (bytes *Bytes, err error) {
 			),
 		}
 	}
+
 	return bytes, err
 }
 
 func (l *LDAPMessage) size() (size int) {
 	size += l.messageID.size()
+
 	size += l.protocolOp.size()
 	if l.controls != nil {
 		size += l.controls.sizeTagged(TagLDAPMessageControls)
 	}
+
 	size += sizeTagAndLength(tagSequence, size)
+
 	return
 }
 
@@ -149,5 +161,6 @@ func (l *LDAPMessage) ProtocolOpType() int {
 	case BindRequest:
 		return TagBindRequest
 	}
+
 	return 0
 }

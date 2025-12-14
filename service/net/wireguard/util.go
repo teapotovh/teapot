@@ -20,10 +20,12 @@ func addrPortToUDPAddr(ap netip.AddrPort) (*net.UDPAddr, error) {
 	if !ap.IsValid() {
 		return nil, net.InvalidAddrError("invalid AddrPort")
 	}
+
 	ip := ap.Addr()
 	if !ip.IsValid() {
 		return nil, net.InvalidAddrError("invalid IP address")
 	}
+
 	return &net.UDPAddr{
 		IP:   ip.AsSlice(),
 		Port: int(ap.Port()),
@@ -53,6 +55,7 @@ func createInterface(name string) (*netlink.Wireguard, error) {
 	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, fmt.Errorf("failed to create wireguard device: %w", err)
 	}
+
 	if err := netlink.LinkSetUp(link); err != nil {
 		return nil, fmt.Errorf("failed to bring up the wireguard device: %w", err)
 	}

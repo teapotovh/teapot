@@ -9,12 +9,15 @@ func (del *DelResponse) SetResultCode(code int32) {
 
 func readDelResponse(bytes *Bytes) (ret DelResponse, err error) {
 	var res LDAPResult
+
 	res, err = readTaggedLDAPResult(bytes, classApplication, TagDelResponse)
 	if err != nil {
 		err = LdapError{"readDelResponse:\n" + err.Error()}
 		return
 	}
+
 	ret = DelResponse(res)
+
 	return
 }
 

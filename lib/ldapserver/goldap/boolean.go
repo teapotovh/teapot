@@ -4,12 +4,15 @@ import "fmt"
 
 func readBOOLEAN(bytes *Bytes) (ret BOOLEAN, err error) {
 	var value any
+
 	value, err = bytes.ReadPrimitiveSubBytes(classUniversal, tagBoolean, tagBoolean)
 	if err != nil {
 		err = LdapError{"readBOOLEAN:\n" + err.Error()}
 		return
 	}
+
 	ret = BOOLEAN(value.(bool))
+
 	return
 }
 
@@ -23,12 +26,15 @@ func (boolean BOOLEAN) writeTagged(bytes *Bytes, class int, tag int) int {
 
 func readTaggedBOOLEAN(bytes *Bytes, class int, tag int) (ret BOOLEAN, err error) {
 	var value any
+
 	value, err = bytes.ReadPrimitiveSubBytes(class, tag, tagBoolean)
 	if err != nil {
 		err = LdapError{"readTaggedBOOLEAN:\n" + err.Error()}
 		return
 	}
+
 	ret = BOOLEAN(value.(bool))
+
 	return
 }
 
@@ -45,7 +51,9 @@ func SizePrimitiveSubBytes(tag int, value any) (size int) {
 	default:
 		panic(fmt.Sprintf("SizePrimitiveSubBytes: invalid value type %v", value))
 	}
+
 	size += sizeTagAndLength(tag, size)
+
 	return
 }
 

@@ -59,6 +59,7 @@ func (iip *InternalIP) setInternalIP(ctx context.Context, ip netip.Addr, source 
 	} else {
 		iip.logger.Info("updated internal IP", "ip", ip, "old", iip.internalIP, "source", source)
 		iip.internalIP = ip
+
 		return nil
 	}
 }
@@ -69,6 +70,7 @@ func (iip *InternalIP) Run(ctx context.Context, notify run.Notify) error {
 	defer sub.Unsubscribe()
 
 	notify.Notify()
+
 	for {
 		select {
 		case <-ctx.Done():

@@ -62,6 +62,7 @@ func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 		if err != nil {
 			return addr, fmt.Errorf("error performing request: %w", err)
 		}
+
 		defer func() {
 			if e := resp.Body.Close(); e != nil {
 				err = fmt.Errorf("error while closing request body: %w", e)
@@ -88,6 +89,7 @@ func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	expoBackoff := backoff.NewExponentialBackOff()
 	expoBackoff.InitialInterval = eip.retryDelay
 	expoBackoff.Multiplier = 2
+
 	return backoff.Retry(ctx, f, backoff.WithMaxTries(uint(eip.maxRetries)), backoff.WithBackOff(expoBackoff))
 }
 
@@ -97,6 +99,7 @@ func (eip *ExternalIP) setExternalIP(ctx context.Context, ip netip.Addr, source 
 	} else {
 		eip.logger.Info("updated external IP", "ip", ip, "old", eip.externalIP, "source", source)
 		eip.externalIP = ip
+
 		return nil
 	}
 }
@@ -107,7 +110,9 @@ func (eip *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
 	defer sub.Unsubscribe()
 
 	notify.Notify()
+
 	ticker := time.NewTicker(eip.interval)
+
 	for {
 		select {
 		case <-ctx.Done():

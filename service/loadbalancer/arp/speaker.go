@@ -33,20 +33,24 @@ func NewSpeaker(arp *ARP, logger *slog.Logger) *Speaker {
 
 func filterIPv4s(ips []netip.Addr) []netip.Addr {
 	var result []netip.Addr
+
 	for _, ip := range ips {
 		if ip.Is4() {
 			result = append(result, ip)
 		}
 	}
+
 	return result
 }
 
 func (spkr *Speaker) handlePacket(packet *layers.ARP) error {
 	srcIP := netip.AddrFrom4([net.IPv4len]byte(packet.SourceProtAddress))
+
 	dstIP := netip.AddrFrom4([net.IPv4len]byte(packet.DstProtAddress))
 	if _, registered := spkr.ips[dstIP]; !registered || packet.Operation == layers.ARPRequest {
 		return nil
 	}
+
 	spkr.logger.Debug(
 		"received APR request",
 		"dst_ip",
@@ -81,11 +85,13 @@ func (spkr *Speaker) handlePacket(packet *layers.ARP) error {
 	if err := gopacket.SerializeLayers(buf, gopacket.SerializeOptions{}, eth, reply); err != nil {
 		return fmt.Errorf("error while serializing ARP reply: %w", err)
 	}
+
 	if err := spkr.arp.handle.WritePacketData(buf.Bytes()); err != nil {
 		return fmt.Errorf("error while writing ARP reply on the wire: %w", err)
 	}
 
 	spkr.logger.Debug("repleid to ARP request", "packet", reply)
+
 	return nil
 }
 
@@ -104,6 +110,7 @@ L:
 		case update := <-sub.Chan():
 			filtered := filterIPv4s(update)
 			spkr.logger.Info("updated handled IPs", "ips", filtered)
+
 			for _, ip := range filtered {
 				spkr.ips[ip] = unit{}
 			}

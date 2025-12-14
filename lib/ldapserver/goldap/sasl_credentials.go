@@ -5,6 +5,7 @@ package message
 //	     credentials             OCTET STRING OPTIONAL }
 func readSaslCredentials(bytes *Bytes) (authentication SaslCredentials, err error) {
 	authentication = SaslCredentials{}
+
 	err = bytes.ReadSubBytes(
 		classContextSpecific,
 		TagAuthenticationChoiceSaslCredentials,
@@ -14,6 +15,7 @@ func readSaslCredentials(bytes *Bytes) (authentication SaslCredentials, err erro
 		err = LdapError{"readSaslCredentials:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -23,15 +25,19 @@ func (s *SaslCredentials) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	if bytes.HasMoreData() {
 		var credentials OCTETSTRING
+
 		credentials, err = readOCTETSTRING(bytes)
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
+
 		s.credentials = credentials.Pointer()
 	}
+
 	return
 }
 
@@ -42,8 +48,10 @@ func (s SaslCredentials) writeTagged(bytes *Bytes, class int, tag int) (size int
 	if s.credentials != nil {
 		size += s.credentials.write(bytes)
 	}
+
 	size += s.mechanism.write(bytes)
 	size += bytes.WriteTagAndLength(class, isCompound, tag, size)
+
 	return
 }
 
@@ -54,7 +62,9 @@ func (s SaslCredentials) sizeTagged(tag int) (size int) {
 	if s.credentials != nil {
 		size += s.credentials.size()
 	}
+
 	size += s.mechanism.size()
 	size += sizeTagAndLength(tag, size)
+
 	return
 }

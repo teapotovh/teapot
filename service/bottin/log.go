@@ -21,6 +21,7 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 	if cID := ctx.Value(ldapserver.ContextKeyConnectionID); cID != nil {
 		r.AddAttrs(slog.Int("client", cID.(int)))
 	}
+
 	if user := ctx.Value(ldapserver.ContextKeyUser); user != nil {
 		r.AddAttrs(slog.Any("user", user.(User)))
 	}

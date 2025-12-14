@@ -61,12 +61,14 @@ func NewCCM(config CCMConfig, logger *slog.Logger) (*CCM, error) {
 		Client:  client,
 		Handler: ccm.handle,
 	}
+
 	ccm.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
 	}
 
 	go ccm.broker.Run(ctx)
+
 	return &ccm, nil
 }
 
@@ -119,6 +121,7 @@ func (ccm *CCM) handle(name string, node *v1.Node, exists bool) error {
 		InternalIP: internalIP,
 		Hostname:   hostname,
 	})
+
 	return nil
 }
 
@@ -186,5 +189,6 @@ func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
 	defer ccm.brokerCancel()
 
 	notify.Notify()
+
 	return ccm.controller.Run(ctx, 1)
 }

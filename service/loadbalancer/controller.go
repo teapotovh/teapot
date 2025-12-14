@@ -12,6 +12,7 @@ type Event []netip.Addr
 
 func serviceIPs(s *v1.Service) ([]netip.Addr, error) {
 	var result []netip.Addr
+
 	for _, ip := range s.Spec.ExternalIPs {
 		addr, err := netip.ParseAddr(ip)
 		if err != nil {
@@ -43,6 +44,7 @@ func (lb *LoadBalancer) handle(name string, s *v1.Service, exists bool) error {
 		lb.broker.Publish(event)
 		lb.prevEvent = event
 	}
+
 	return nil
 }
 
@@ -50,6 +52,7 @@ type unit struct{}
 
 func (lb *LoadBalancer) event() Event {
 	set := map[netip.Addr]unit{}
+
 	for _, ips := range lb.state {
 		for _, ip := range ips {
 			if _, ok := set[ip]; !ok {
@@ -62,8 +65,10 @@ func (lb *LoadBalancer) event() Event {
 	for ip := range set {
 		result = append(result, ip)
 	}
+
 	slices.SortFunc(result, func(a, b netip.Addr) int {
 		return a.Compare(b)
 	})
+
 	return result
 }

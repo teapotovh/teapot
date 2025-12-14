@@ -3,12 +3,15 @@ package message
 // SearchResultDone ::= [APPLICATION 5] LDAPResult.
 func readSearchResultDone(bytes *Bytes) (ret SearchResultDone, err error) {
 	var ldapresult LDAPResult
+
 	ldapresult, err = readTaggedLDAPResult(bytes, classApplication, TagSearchResultDone)
 	if err != nil {
 		err = LdapError{"readSearchResultDone:\n" + err.Error()}
 		return
 	}
+
 	ret = SearchResultDone(ldapresult)
+
 	return
 }
 

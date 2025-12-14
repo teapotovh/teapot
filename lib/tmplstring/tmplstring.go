@@ -49,5 +49,6 @@ func (t *TMPL[T]) Render(params T) (string, error) {
 	if err := t.tmpl.Execute(builder, params); err != nil {
 		return "", fmt.Errorf("could not execute templated string: %w", err)
 	}
+
 	return builder.String(), nil
 }

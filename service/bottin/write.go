@@ -25,12 +25,15 @@ func (server *Bottin) HandleAdd(
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	if code == goldap.ResultCodeSuccess {
 		server.logger.InfoContext(ctx, "successfully added", "entry", r.Entry())
 	} else {
 		server.logger.ErrorContext(ctx, "error while adding entry", "entry", r.Entry(), "err", err)
 	}
+
 	w.Write(goldap.AddResponse(res))
+
 	return ctx
 }
 
@@ -178,18 +181,22 @@ func (server *Bottin) HandleDelete(
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	if code == goldap.ResultCodeSuccess {
 		server.logger.InfoContext(ctx, "successfully deleted", "req", r)
 	} else {
 		server.logger.ErrorContext(ctx, "error while deleting entry", "req", r, "err", err)
 	}
+
 	w.Write(goldap.DelResponse(res))
+
 	return ctx
 }
 
 //nolint:gocyclo
 func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelRequest) (int32, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
+
 	dn, err := server.parseDN(string(*r), false)
 	if err != nil {
 		return goldap.ResultCodeInvalidDNSyntax, err
@@ -211,12 +218,14 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	if len(entries) == 0 {
 		return goldap.ResultCodeNoSuchObject, fmt.Errorf("not found: %q", dn)
 	}
+
 	for _, entry := range entries {
 		if !entry.DN.Equal(dn) {
 			return goldap.ResultCodeNotAllowedOnNonLeaf, fmt.Errorf(
 				"cannot delete %q as it has children", dn)
 		}
 	}
+
 	entry := entries[0]
 
 	// Retrieve group membership before we delete everything
@@ -286,12 +295,15 @@ func (server *Bottin) HandleModify(
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	if code == goldap.ResultCodeSuccess {
 		server.logger.InfoContext(ctx, "successfully modified", "entry", r.Object())
 	} else {
 		server.logger.ErrorContext(ctx, "error while modifying entry", "entry", r.Object(), "err", err)
 	}
+
 	w.Write(goldap.ModifyResponse(res))
+
 	return ctx
 }
 

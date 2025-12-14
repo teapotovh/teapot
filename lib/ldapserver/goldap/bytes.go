@@ -24,12 +24,15 @@ func (bytes Bytes) Debug() {
 // Example: 0x01, [0x02], 0x03.
 func (bytes *Bytes) DumpCurrentBytes() (ret string) {
 	var strings [3]string
+
 	for i := -1; i <= 1; i++ {
 		if bytes.offset+i >= 0 && bytes.offset+i < len(bytes.bytes) {
 			strings[i+1] = fmt.Sprintf("%#x", bytes.bytes[bytes.offset+i])
 		}
 	}
+
 	ret = fmt.Sprintf("%s, [%s], %s", strings[0], strings[1], strings[2])
+
 	return
 }
 
@@ -39,6 +42,7 @@ func (bytes *Bytes) HasMoreData() bool {
 
 func (bytes *Bytes) ParseTagAndLength() (ret TagAndLength, err error) {
 	var offset int
+
 	ret, offset, err = ParseTagAndLength(bytes.bytes, bytes.offset)
 	if err != nil {
 		err = LdapError{"ParseTagAndLength: " + err.Error()}
@@ -46,6 +50,7 @@ func (bytes *Bytes) ParseTagAndLength() (ret TagAndLength, err error) {
 	} else {
 		bytes.offset = offset
 	}
+
 	return
 }
 
@@ -55,6 +60,7 @@ func (bytes *Bytes) ReadSubBytes(class int, tag int, callback func(bytes *Bytes)
 	if err != nil {
 		return LdapError{"ReadSubBytes:\n" + err.Error()}
 	}
+
 	err = tagAndLength.Expect(class, tag, isCompound)
 	if err != nil {
 		return LdapError{"ReadSubBytes:\n" + err.Error()}
@@ -75,10 +81,12 @@ func (bytes *Bytes) ReadSubBytes(class int, tag int, callback func(bytes *Bytes)
 	}
 	// Process sub-bytes
 	subBytes := Bytes{offset: 0, bytes: bytes.bytes[start:end]}
+
 	err = callback(&subBytes)
 	if err != nil {
 		bytes.offset += subBytes.offset
 		err = LdapError{"ReadSubBytes:\n" + err.Error()}
+
 		return err
 	}
 	// Check we got no more bytes to process
@@ -93,12 +101,14 @@ func (bytes *Bytes) ReadSubBytes(class int, tag int, callback func(bytes *Bytes)
 	}
 	// Move offset
 	bytes.offset = end
+
 	return err
 }
 
 func SizeSubBytes(tag int, callback func() int) (size int) {
 	size = callback()
 	size += sizeTagAndLength(tag, size)
+
 	return
 }
 
@@ -115,7 +125,9 @@ func (bytes *Bytes) WritePrimitiveSubBytes(class int, tag int, value any) (size 
 	default:
 		panic(fmt.Sprintf("WritePrimitiveSubBytes: invalid value type %v", value))
 	}
+
 	size += bytes.WriteTagAndLength(class, isNotCompound, tag, size)
+
 	return
 }
 
@@ -125,12 +137,15 @@ func (bytes *Bytes) WriteTagAndLength(class int, compound bool, tag int, length 
 
 func (bytes *Bytes) writeBytes(b []byte) (size int) {
 	size = len(b)
+
 	start := bytes.offset - size
 	if start < 0 {
 		panic("Not enough space for bytes")
 	}
+
 	copy(bytes.bytes[start:], b)
 	bytes.offset = start
+
 	return
 }
 
@@ -153,6 +168,7 @@ func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (valu
 		err = LdapError{"ReadPrimitiveSubBytes:\n" + err.Error()}
 		return value, err
 	}
+
 	err = tagAndLength.Expect(class, tag, isNotCompound)
 	if err != nil {
 		err = LdapError{"ReadPrimitiveSubBytes:\n" + err.Error()}
@@ -175,10 +191,12 @@ func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (valu
 				len(bytes.bytes)-start,
 			),
 		}
+
 		return value, err
 	}
 	// Process sub-bytes
 	subBytes := bytes.bytes[start:end]
+
 	switch typeTag {
 	case tagBoolean:
 		value, err = parseBool(subBytes)
@@ -192,12 +210,14 @@ func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (valu
 		err = LdapError{fmt.Sprintf("ReadPrimitiveSubBytes: invalid type tag value %d", typeTag)}
 		return value, err
 	}
+
 	if err != nil {
 		err = LdapError{"ReadPrimitiveSubBytes:\n" + err.Error()}
 		return value, err
 	}
 	// Move offset
 	bytes.offset = end
+
 	return value, err
 }
 

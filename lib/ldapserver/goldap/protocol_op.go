@@ -9,6 +9,7 @@ func readProtocolOp(bytes *Bytes) (ret ProtocolOp, err error) {
 		err = LdapError{"readProtocolOp:\n" + err.Error()}
 		return ret, err
 	}
+
 	switch tagAndLength.Tag {
 	case TagBindRequest:
 		ret, err = readBindRequest(bytes)
@@ -56,9 +57,11 @@ func readProtocolOp(bytes *Bytes) (ret ProtocolOp, err error) {
 		err = LdapError{fmt.Sprintf("readProtocolOp: invalid tag value %d for protocolOp", tagAndLength.Tag)}
 		return ret, err
 	}
+
 	if err != nil {
 		err = LdapError{"readProtocolOp:\n" + err.Error()}
 		return ret, err
 	}
+
 	return ret, err
 }

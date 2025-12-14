@@ -108,6 +108,7 @@ func (r *Router) addRoute(route route) error {
 	}
 
 	r.routes[route] = unit{}
+
 	return nil
 }
 
@@ -124,6 +125,7 @@ func (r *Router) delRoute(route route) error {
 	}
 
 	delete(r.routes, route)
+
 	return nil
 }
 
@@ -159,6 +161,7 @@ func (r *Router) configureRoutes() error {
 
 	// Diff the currently configured routes with the derived desired state
 	var toadd []route
+
 	for droute := range routes {
 		if _, ok := r.routes[droute]; !ok {
 			toadd = append(toadd, droute)
@@ -207,6 +210,7 @@ func (r *Router) Run(ctx context.Context, notify run.Notify) error {
 	defer r.cleanupRoutes()
 
 	notify.Notify()
+
 	for cluster := range csub.Iter(ctx) {
 		r.cluster = cluster
 

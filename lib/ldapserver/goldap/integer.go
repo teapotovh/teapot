@@ -4,23 +4,29 @@ import "fmt"
 
 func readINTEGER(bytes *Bytes) (ret INTEGER, err error) {
 	var value any
+
 	value, err = bytes.ReadPrimitiveSubBytes(classUniversal, tagInteger, tagInteger)
 	if err != nil {
 		err = LdapError{"readINTEGER:\n" + err.Error()}
 		return
 	}
+
 	ret = INTEGER(value.(int32))
+
 	return
 }
 
 func readTaggedINTEGER(bytes *Bytes, class int, tag int) (ret INTEGER, err error) {
 	var value any
+
 	value, err = bytes.ReadPrimitiveSubBytes(class, tag, tagInteger)
 	if err != nil {
 		err = LdapError{"readTaggedINTEGER:\n" + err.Error()}
 		return
 	}
+
 	ret = INTEGER(value.(int32))
+
 	return
 }
 
@@ -30,6 +36,7 @@ func readTaggedPositiveINTEGER(bytes *Bytes, class int, tag int) (ret INTEGER, e
 		err = LdapError{"readTaggedPositiveINTEGER:\n" + err.Error()}
 		return
 	}
+
 	if ret < 0 || ret > maxInt {
 		err = LdapError{
 			fmt.Sprintf(
@@ -39,6 +46,7 @@ func readTaggedPositiveINTEGER(bytes *Bytes, class int, tag int) (ret INTEGER, e
 			),
 		}
 	}
+
 	return
 }
 

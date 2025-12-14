@@ -47,7 +47,9 @@ func (server *Bottin) HandleCompare(
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	w.Write(goldap.CompareResponse(res))
+
 	return ctx
 }
 
@@ -95,10 +97,13 @@ func (server *Bottin) HandleSearch(
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	if code != goldap.ResultCodeSuccess {
 		server.logger.ErrorContext(ctx, "error while performing search", "req", r, "err", err)
 	}
+
 	w.Write(goldap.SearchResultDone(res))
+
 	return ctx
 }
 
@@ -214,10 +219,12 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 			if err != nil {
 				return false, err
 			}
+
 			if !res {
 				return false, nil
 			}
 		}
+
 		return true, nil
 	} else if fOr, ok := filter.(goldap.FilterOr); ok {
 		for _, cond := range fOr {
@@ -225,16 +232,19 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 			if err != nil {
 				return false, err
 			}
+
 			if res {
 				return true, nil
 			}
 		}
+
 		return false, nil
 	} else if fNot, ok := filter.(goldap.FilterNot); ok {
 		res, err := applyFilter(entry, fNot.Filter)
 		if err != nil {
 			return false, err
 		}
+
 		return !res, nil
 	} else if fPresent, ok := filter.(goldap.FilterPresent); ok {
 		what := string(fPresent)
@@ -244,6 +254,7 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 				return len(values) > 0, nil
 			}
 		}
+
 		return false, nil
 	} else if fEquality, ok := filter.(goldap.FilterEqualityMatch); ok {
 		desc := string(fEquality.AttributeDesc())
@@ -256,9 +267,11 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 						return true, nil
 					}
 				}
+
 				return false, nil
 			}
 		}
+
 		return false, nil
 	} else {
 		return false, fmt.Errorf("unsupported filter: %#v %T", filter, filter)

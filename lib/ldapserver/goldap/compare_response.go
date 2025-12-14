@@ -9,12 +9,15 @@ func (response *CompareResponse) SetResultCode(code int32) {
 
 func readCompareResponse(bytes *Bytes) (ret CompareResponse, err error) {
 	var res LDAPResult
+
 	res, err = readTaggedLDAPResult(bytes, classApplication, TagCompareResponse)
 	if err != nil {
 		err = LdapError{"readCompareResponse:\n" + err.Error()}
 		return
 	}
+
 	ret = CompareResponse(res)
+
 	return
 }
 

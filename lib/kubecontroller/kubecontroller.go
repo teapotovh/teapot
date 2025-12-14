@@ -28,17 +28,20 @@ func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
 	}
+
 	obj := reflect.New(objType).Interface().(runtime.Object)
 
 	gvks, _, err := scheme.Scheme.ObjectKinds(obj)
 	if err != nil {
 		return "", fmt.Errorf("failed to get group-version-kind: %w", err)
 	}
+
 	if len(gvks) == 0 {
 		return "", ErrNoGVK
 	}
 
 	gvk := gvks[0]
+
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return "", fmt.Errorf("failed to get rest mapping: %w", err)
@@ -49,6 +52,7 @@ func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
 
 func getMapper(client *kubernetes.Clientset) (meta.RESTMapper, error) {
 	dc := client.Discovery()
+
 	groupResources, err := restmapper.GetAPIGroupResources(dc)
 	if err != nil {
 		return nil, fmt.Errorf("error while getting all api group resources: %w", err)
@@ -100,6 +104,7 @@ func NewController[Resource runtime.Object](
 	} else {
 		fs = fields.Everything()
 	}
+
 	podListWatcher := cache.NewListWatchFromClient(
 		config.Client.CoreV1().RESTClient(),
 		resource,
@@ -113,6 +118,7 @@ func NewController[Resource runtime.Object](
 	// Note that when we finally process the item from the workqueue, we might see a newer version
 	// of the resource than the version which was responsible for triggering the update.
 	var res Resource
+
 	store, informer := cache.NewInformerWithOptions(cache.InformerOptions{
 		ListerWatcher: podListWatcher,
 		ObjectType:    res,
@@ -174,6 +180,7 @@ func (c *Controller[Resource]) processNextItem() bool {
 	err := c.callHandler(key)
 	// Handle the error if something went wrong during the execution of the business logic
 	c.handleErr(err, key)
+
 	return true
 }
 
@@ -210,6 +217,7 @@ func (c *Controller[Resource]) handleErr(err error, key string) {
 		// Re-enqueue the key rate limited. Based on the rate limiter on the
 		// queue and the re-enqueue history, the key will be processed later again.
 		c.queue.AddRateLimited(key)
+
 		return
 	}
 
@@ -233,6 +241,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 
 	// Let the workers stop when we are done
 	defer c.queue.ShutDown()
+
 	c.logger.Debug("starting the kubernetes controller", "resource", c.resource)
 
 	go c.informer.RunWithContext(ctx)
@@ -248,6 +257,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 
 	<-ctx.Done()
 	c.logger.Debug("stopping the kubernetes controller", "resource", c.resource)
+
 	return nil
 }
 

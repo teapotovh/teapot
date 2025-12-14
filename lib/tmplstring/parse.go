@@ -10,7 +10,9 @@ type unit struct{}
 // involved.
 func exprsInTemplate(n parse.Node) map[string]unit {
 	used := map[string]unit{}
+
 	var walk func(parse.Node)
+
 	walk = func(node parse.Node) {
 		switch x := node.(type) {
 		case *parse.ActionNode:
@@ -29,21 +31,25 @@ func exprsInTemplate(n parse.Node) map[string]unit {
 			}
 		case *parse.IfNode:
 			walk(x.List)
+
 			if x.ElseList != nil {
 				walk(x.ElseList)
 			}
 		case *parse.RangeNode:
 			walk(x.List)
+
 			if x.ElseList != nil {
 				walk(x.ElseList)
 			}
 		case *parse.WithNode:
 			walk(x.List)
+
 			if x.ElseList != nil {
 				walk(x.ElseList)
 			}
 		}
 	}
 	walk(n)
+
 	return used
 }

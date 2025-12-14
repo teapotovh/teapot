@@ -24,6 +24,7 @@ var JS embed.FS
 
 func Dependencies() (map[dependency.Dependency][]byte, error) {
 	result := map[dependency.Dependency][]byte{}
+
 	for _, component := range CSSComponents {
 		dep := dependency.Dependency{
 			Type: dependency.DependencyTypeStyle,
@@ -31,6 +32,7 @@ func Dependencies() (map[dependency.Dependency][]byte, error) {
 		}
 
 		path := fmt.Sprintf("css/%s.css", component)
+
 		bytes, err := CSS.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("error while loading file from bundle at %q for dependency %q: %w", path, dep, err)
@@ -46,6 +48,7 @@ func Dependencies() (map[dependency.Dependency][]byte, error) {
 		}
 
 		path := fmt.Sprintf("js/%s.js", component)
+
 		bytes, err := JS.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("error while loading file from bundle at %q for dependency %q: %w", path, dep, err)

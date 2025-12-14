@@ -3,12 +3,15 @@ package message
 // present         [7] AttributeDescription,.
 func readFilterPresent(bytes *Bytes) (ret FilterPresent, err error) {
 	var attributedescription AttributeDescription
+
 	attributedescription, err = readTaggedAttributeDescription(bytes, classContextSpecific, TagFilterPresent)
 	if err != nil {
 		err = LdapError{"readFilterPresent:\n" + err.Error()}
 		return
 	}
+
 	ret = FilterPresent(attributedescription)
+
 	return
 }
 

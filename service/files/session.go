@@ -29,6 +29,7 @@ type SessionsConfig struct {
 
 func NewSessions(config SessionsConfig, logger *slog.Logger) (*Sessions, error) {
 	var mounts []mount
+
 	for _, m := range config.Mounts {
 		mc, err := parseRawMount(m)
 		if err != nil {
@@ -69,7 +70,9 @@ func (s *Sessions) newSessionFn(username string) func() (*Session, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error while creating root memory filesystem: %w", err)
 		}
+
 		readonlyFS := NewReadOnlyFS(memFS)
+
 		rootFS, err := hpfsmount.NewFS(readonlyFS)
 		if err != nil {
 			return nil, fmt.Errorf("error while creating root mount filesystem: %w", err)

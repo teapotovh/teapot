@@ -95,6 +95,7 @@ func (server *Bottin) Init(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error while checking for root object existence: %w", err)
 	}
+
 	if exists {
 		return nil
 	}
@@ -117,6 +118,7 @@ func (server *Bottin) Init(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error while beginning store transaction: %w", err)
 	}
+
 	entry := store.NewEntry(server.baseDN, baseAttributes)
 	if err = tx.Store(entry); err != nil {
 		return fmt.Errorf("error while storing base entry: %w", err)
@@ -127,6 +129,7 @@ func (server *Bottin) Init(ctx context.Context) error {
 	}
 
 	server.logger.InfoContext(ctx, "initialized base entry", "dn", server.baseDN)
+
 	return nil
 }
 
@@ -167,15 +170,19 @@ func (server *Bottin) HandlePasswordModify(
 
 	res := ldapserver.NewExtendedResponse(resultCode)
 	res.SetResponseName(ldapserver.NoticeOfPasswordModify)
+
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	if resultCode == ldap.ResultCodeSuccess {
 		server.logger.InfoContext(ctx, "passwd successful")
 	} else {
 		server.logger.InfoContext(ctx, "passwd failed", "err", err)
 	}
+
 	w.Write(res)
+
 	return ctx
 }
 
@@ -188,6 +195,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	if passwordModifyRequest.NewPassword() == nil {
 		return ldap.ResultCodeAuthMethodNotSupported, errors.New("new password is missing")
 	}
+
 	passwd := passwordModifyRequest.NewPassword()
 
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
@@ -201,6 +209,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	if passwordModifyRequest.UserIdentity() != nil {
 		rawDN = string(*passwordModifyRequest.UserIdentity())
 	}
+
 	dn, err := server.parseDN(rawDN, false)
 	if err != nil {
 		return ldap.ResultCodeInvalidDNSyntax, err
@@ -210,6 +219,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{AttrUserPassword}) {
 		return ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("insufficient access rights for %#v", user)
 	}
+
 	if dn.Equal(server.baseDN) {
 		return ldap.ResultCodeInvalidDNSyntax, errors.New("root entry password cannot be set")
 	}
@@ -218,14 +228,17 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	if err != nil {
 		return ldap.ResultCodeOperationsError, err
 	}
+
 	hash, err := ssha512Encode(string(*passwd))
 	if err != nil {
 		return ldap.ResultCodeOperationsError, fmt.Errorf("error while hashing passwd: %w", err)
 	}
+
 	server.logger.InfoContext(ctx, "updating passwd", "dn", dn, "hash", hash)
 
 	attrs := maps.Clone(entry.Attributes)
 	attrs[AttrUserPassword] = store.AttributeValue{hash}
+
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
 		return ldap.ResultCodeOperationsError, fmt.Errorf("error while beginning transaction: %w", err)
@@ -254,12 +267,15 @@ func (server *Bottin) HandleBind(
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
+
 	if resultCode == ldap.ResultCodeSuccess {
 		server.logger.InfoContext(ctx, "bind successful", "user", r.Name())
 	} else {
 		server.logger.InfoContext(ctx, "bind failed", "user", r.Name(), "err", err)
 	}
+
 	w.Write(res)
+
 	return ctx
 }
 
@@ -284,6 +300,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 	}
 
 	passwd := string(r.AuthenticationSimple())
+
 	var hashes store.AttributeValue
 	if dn.Equal(server.baseDN) {
 		hashes = store.AttributeValue{server.rootPasswd}
@@ -293,6 +310,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 
 	for _, hash := range hashes {
 		server.logger.InfoContext(ctx, "matching against hash", "hash", hash)
+
 		valid, err := matchPassword(hash, passwd)
 		if err != nil {
 			return ctx, ldap.ResultCodeInvalidCredentials, fmt.Errorf("can't authenticate: %w", err)

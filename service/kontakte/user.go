@@ -54,6 +54,7 @@ func (srv *Server) user(user *ldap.User) g.Node {
 		h.Section(h.Class("groups"),
 			g.Map(user.Groups, func(group string) g.Node {
 				first := strings.Split(group, ",")[0]
+
 				var name string
 				if n, err := fmt.Sscanf(first, "cn=%s", &name); err != nil || n < 1 {
 					name = InvalidGroupDN
@@ -70,6 +71,7 @@ func (srv *Server) user(user *ldap.User) g.Node {
 		h.Section(h.Class("accesses"),
 			g.Map(user.Accesses, func(access string) g.Node {
 				first := strings.Split(access, ",")[0]
+
 				var name string
 				if n, err := fmt.Sscanf(first, "cn=%s", &name); err != nil || n < 1 {
 					name = InvalidGroupDN
@@ -86,12 +88,14 @@ func (srv *Server) user(user *ldap.User) g.Node {
 
 func (srv *Server) HandleUserGet(w http.ResponseWriter, r *http.Request) (g.Node, error) {
 	username := muxie.GetParam(w, "username")
+
 	client, err := srv.factory.NewClient(r.Context())
 	if err != nil {
 		err = ErrorWithStatus(
 			fmt.Errorf("error while constructing LDAP client: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorPage(r, ErrLDAP), err
 	}
 	defer client.Close()
@@ -102,9 +106,11 @@ func (srv *Server) HandleUserGet(w http.ResponseWriter, r *http.Request) (g.Node
 			fmt.Errorf("error while fetching user from LDAP: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorPage(r, ErrFetchUser), err
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	return Page(r, "User", srv.user(u)), nil
 }

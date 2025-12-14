@@ -32,6 +32,7 @@ func NewKubeClient(config KubeClientConfig, logger *slog.Logger) (*kubernetes.Cl
 
 func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
 	var path *string
+
 	if kubeconfig == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -40,6 +41,7 @@ func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
 		}
 
 		p := filepath.Join(home, ".kube", "config")
+
 		_, err = os.Stat(p)
 		if err == nil {
 			path = &p
@@ -54,6 +56,7 @@ func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
 
 	if path == nil {
 		logger.Warn("no kubeconfig path provided, falling back to in-cluster config")
+
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
 			return nil, fmt.Errorf("error while getting kubernetes in-cluster config: %w", err)

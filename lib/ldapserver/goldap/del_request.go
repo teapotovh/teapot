@@ -3,12 +3,15 @@ package message
 // DelRequest ::= [APPLICATION 10] LDAPDN.
 func readDelRequest(bytes *Bytes) (ret DelRequest, err error) {
 	var res LDAPDN
+
 	res, err = readTaggedLDAPDN(bytes, classApplication, TagDelRequest)
 	if err != nil {
 		err = LdapError{"readDelRequest:\n" + err.Error()}
 		return
 	}
+
 	ret = DelRequest(res)
+
 	return
 }
 

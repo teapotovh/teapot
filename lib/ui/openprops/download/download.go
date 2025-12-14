@@ -19,10 +19,12 @@ func main() {
 	for _, component := range openprops.Components {
 		url := fmt.Sprintf("%s/%s.min.css", base, component)
 		log.Printf("Downloading component %q from %q", component, url)
+
 		res, err := http.Get(url) //nolint:gosec
 		if err != nil {
 			panic(fmt.Errorf("error while fetching component %q: %w", component, err))
 		}
+
 		defer func() {
 			if err := res.Body.Close(); err != nil {
 				panic(fmt.Errorf("error while closing request body: %w", err))

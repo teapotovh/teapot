@@ -44,6 +44,7 @@ func prefixEnd(prefix Prefix) Prefix {
 		Type:  lastComponent.Type,
 		Value: lastComponentValue,
 	}
+
 	return cpy
 }
 
@@ -70,6 +71,7 @@ func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, err
 	start := mementryFromPrefix(prefix)
 	end := mementryFromPrefix(prefixEnd(prefix))
 	collected := []Entry{}
+
 	m.tr.AscendRange(start, end, func(entry mementry) bool {
 		// For non-exact matches, continue looping and collect all results
 		if !exact {
@@ -82,6 +84,7 @@ func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, err
 			collected = append(collected, entry.entry)
 			return false
 		}
+
 		return true
 	})
 
@@ -132,6 +135,7 @@ func (m *MemTransaction) Store(entry Entry) error {
 		entry: newmementry(entry),
 	}
 	m.changes = append(m.changes, c)
+
 	return nil
 }
 
@@ -145,6 +149,7 @@ func (m *MemTransaction) Delete(dn DN) error {
 		entry: mementryFromPrefix(dn.Prefix()),
 	}
 	m.changes = append(m.changes, c)
+
 	return nil
 }
 
@@ -171,5 +176,6 @@ func (m *MemTransaction) Commit() error {
 	}
 
 	m.changes = m.changes[:0]
+
 	return nil
 }

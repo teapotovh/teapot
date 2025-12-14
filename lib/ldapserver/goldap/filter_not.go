@@ -8,6 +8,7 @@ func (filterNot FilterNot) getFilterTag() int {
 func (filterNot FilterNot) size() (size int) {
 	size = filterNot.Filter.size()
 	size += sizeTagAndLength(tagSequence, size)
+
 	return
 }
 
@@ -17,6 +18,7 @@ func (filterNot *FilterNot) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -24,6 +26,7 @@ func (filterNot *FilterNot) readComponents(bytes *Bytes) (err error) {
 func (filterNot FilterNot) write(bytes *Bytes) (size int) {
 	size = filterNot.Filter.write(bytes)
 	size += bytes.WriteTagAndLength(classContextSpecific, isCompound, TagFilterNot, size)
+
 	return
 }
 
@@ -34,5 +37,6 @@ func readFilterNot(bytes *Bytes) (filternot FilterNot, err error) {
 		err = LdapError{"readFilterNot:\n" + err.Error()}
 		return
 	}
+
 	return
 }

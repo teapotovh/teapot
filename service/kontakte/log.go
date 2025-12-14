@@ -17,6 +17,7 @@ func getLogger(ctx context.Context) *slog.Logger {
 func LogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := getAuth(r.Context())
+
 		log := slog.Default()
 		if auth != nil {
 			log = log.With("user", auth.Subject, "admin", auth.Admin)

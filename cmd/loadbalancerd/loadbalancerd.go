@@ -47,6 +47,7 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
+
 	kubelog.WithLogger(logger.With("sub", "klog"))
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))

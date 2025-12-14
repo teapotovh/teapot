@@ -50,12 +50,14 @@ func NewLoadBalancer(config LoadBalancerConfig, logger *slog.Logger) (*LoadBalan
 		Client:  client,
 		Handler: lb.handle,
 	}
+
 	lb.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
 	}
 
 	go lb.broker.Run(ctx)
+
 	return &lb, nil
 }
 
@@ -68,5 +70,6 @@ func (lb *LoadBalancer) Run(ctx context.Context, notify run.Notify) error {
 	defer lb.brokerCancel()
 
 	notify.Notify()
+
 	return lb.controller.Run(ctx, 1)
 }

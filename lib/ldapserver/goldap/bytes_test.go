@@ -7,6 +7,7 @@ import (
 
 func TestReadPrimitiveSubBytesTestData(t *testing.T) {
 	t.Parallel()
+
 	for i, test := range PrimitiveSubBytesTestData() {
 		value, err := test.bytes.ReadPrimitiveSubBytes(test.class, test.tag, test.typeTag)
 		if err != nil {
@@ -21,6 +22,7 @@ func TestReadPrimitiveSubBytesTestData(t *testing.T) {
 
 func TestSizePrimitiveSubBytesTestData(t *testing.T) {
 	t.Parallel()
+
 	for i, test := range PrimitiveSubBytesTestData() {
 		value, err := test.bytes.ReadPrimitiveSubBytes(test.class, test.tag, test.typeTag)
 		if err != nil {

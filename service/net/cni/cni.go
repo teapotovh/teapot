@@ -73,6 +73,7 @@ func NewCNI(net *tnet.Net, config CNIConfig, logger *slog.Logger) (*CNI, error) 
 	}
 
 	cniPath := filepath.Join(path, CNIFilename)
+
 	return &CNI{
 		logger: logger,
 		net:    net,
@@ -133,6 +134,7 @@ func (c *CNI) writeCNIConfig(source string) error {
 	}
 
 	c.cniConfig = rawConfig
+
 	return nil
 }
 
@@ -170,6 +172,7 @@ func (c *CNI) addCNIRules(source string) error {
 	}
 
 	c.rules = rules
+
 	return nil
 }
 
@@ -181,13 +184,16 @@ func (c *CNI) configureCNI(source string) error {
 
 	// We need to fetch the local node from the cluster to get its CIDRs
 	found := false
+
 	for _, n := range c.cluster {
 		if n.IsLocal {
 			c.localNode = n
 			found = true
+
 			break
 		}
 	}
+
 	if !found {
 		c.logger.Warn("could not configure CNI as local node is not available in the cluster", "source", source)
 		return nil
@@ -232,6 +238,7 @@ func (c *CNI) cleanupIptables() error {
 func (c *CNI) Run(ctx context.Context, notify run.Notify) error {
 	csub := c.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
+
 	lsub := c.net.Local().Broker().Subscribe()
 	defer lsub.Unsubscribe()
 
@@ -243,6 +250,7 @@ func (c *CNI) Run(ctx context.Context, notify run.Notify) error {
 	defer c.cleanupIptables()
 
 	notify.Notify()
+
 	for {
 		select {
 		case <-ctx.Done():

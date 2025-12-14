@@ -20,9 +20,11 @@ func NewLogger(config LogConfig) (*slog.Logger, error) {
 	}
 
 	var handler slog.Handler
+
 	opts := &slog.HandlerOptions{
 		Level: level,
 	}
+
 	switch config.Format {
 	case "json":
 		handler = slog.NewJSONHandler(os.Stdout, opts)
@@ -33,5 +35,6 @@ func NewLogger(config LogConfig) (*slog.Logger, error) {
 	default:
 		return nil, fmt.Errorf("invalid log format: %s", config.Format)
 	}
+
 	return slog.New(handler), nil
 }

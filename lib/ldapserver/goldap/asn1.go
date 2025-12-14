@@ -77,14 +77,17 @@ func (t *TagAndLength) Expect(class int, tag int, isCompound bool) (err error) {
 	if err != nil {
 		return LdapError{fmt.Sprintf("Expect: %s.", err)}
 	}
+
 	err = t.ExpectTag(tag)
 	if err != nil {
 		return LdapError{fmt.Sprintf("Expect: %s.", err)}
 	}
+
 	err = t.ExpectCompound(isCompound)
 	if err != nil {
 		return LdapError{fmt.Sprintf("Expect: %s.", err)}
 	}
+
 	return
 }
 
@@ -100,6 +103,7 @@ func (t *TagAndLength) ExpectClass(class int) (err error) {
 			),
 		}
 	}
+
 	return
 }
 
@@ -115,6 +119,7 @@ func (t *TagAndLength) ExpectTag(tag int) (err error) {
 			),
 		}
 	}
+
 	return
 }
 
@@ -130,6 +135,7 @@ func (t *TagAndLength) ExpectCompound(isCompound bool) (err error) {
 			),
 		}
 	}
+
 	return
 }
 
@@ -235,6 +241,7 @@ func parseInt64(bytes []byte) (ret int64, err error) {
 		err = StructuralError{"integer too large"}
 		return
 	}
+
 	for bytesRead := range bytes {
 		ret <<= 8
 		ret |= int64(bytes[bytesRead])
@@ -244,6 +251,7 @@ func parseInt64(bytes []byte) (ret int64, err error) {
 	// casts are safe, as we check for the size of value len(bytes) beforehand
 	ret <<= 64 - uint8(len(bytes))*8 //nolint:gosec
 	ret >>= 64 - uint8(len(bytes))*8 //nolint:gosec
+
 	return
 }
 
@@ -273,6 +281,7 @@ func writeInt64(bytes *Bytes, i int64) int {
 			buf[j] = byte(b)
 		}
 	}
+
 	bytes.writeBytes(buf[:n])
 
 	return n
@@ -285,6 +294,7 @@ func parseInt32(bytes []byte) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	if ret64 != int64(int32(ret64)) { //nolint:gosec
 		return 0, StructuralError{"integer too large"}
 	}
@@ -468,15 +478,19 @@ func parseBase128Int(bytes []byte, initOffset int) (ret, offset int, err error) 
 			err = StructuralError{"base 128 integer too large"}
 			return
 		}
+
 		ret <<= 7
 		b := bytes[offset]
 		ret |= int(b & 0x7f)
 		offset++
+
 		if b&0x80 == 0 {
 			return
 		}
 	}
+
 	err = SyntaxError{"truncated base 128 integer"}
+
 	return
 }
 
@@ -484,6 +498,7 @@ func sizeBase128Int(value int) (size int) {
 	for i := value; i > 0; i >>= 7 {
 		size++
 	}
+
 	return
 }
 
@@ -496,9 +511,12 @@ func writeBase128Int(bytes *Bytes, value int) (size int) {
 		if value < 128 {
 			b |= 0x80
 		}
+
 		bytes.writeBytes([]byte{b})
+
 		size++
 	}
+
 	return
 }
 
@@ -642,12 +660,15 @@ func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 			return ret, offset, err
 		}
 	}
+
 	if offset >= len(bytes) {
 		err = SyntaxError{"truncated tag or length"}
 		return ret, offset, err
 	}
+
 	b = bytes[offset]
 	offset++
+
 	if b&0x80 == 0 {
 		// The length is encoded in the bottom 7 bits.
 		ret.Length = int(b & 0x7f)
@@ -658,21 +679,27 @@ func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 			err = SyntaxError{"indefinite length found (not DER)"}
 			return ret, offset, err
 		}
+
 		ret.Length = 0
+
 		for range numBytes {
 			if offset >= len(bytes) {
 				err = SyntaxError{"truncated tag or length"}
 				return ret, offset, err
 			}
+
 			b = bytes[offset]
 			offset++
+
 			if ret.Length >= 1<<23 {
 				// We can't shift ret.length up without
 				// overflowing.
 				err = StructuralError{"length too large"}
 				return ret, offset, err
 			}
+
 			ret.Length <<= 8
+
 			ret.Length |= int(b)
 			if ret.Length == 0 {
 				// DER requires that lengths be minimal.
@@ -746,6 +773,7 @@ func sizeTagAndLength(tag int, length int) (size int) {
 			length >>= 8
 		}
 	}
+
 	return
 }
 
@@ -755,12 +783,15 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 		panic("Can't have a negative length")
 	} else if t.Length >= 128 {
 		lengthBytes := 0
+
 		val := t.Length
 		for val > 0 {
 			lengthBytes++
+
 			bytes.writeBytes([]byte{byte(val & 0xff)})
 			val >>= 8
 		}
+
 		bytes.writeBytes([]byte{0x80 | byte(lengthBytes)})
 		size += lengthBytes + 1
 	} else if t.Length < 128 {
@@ -771,13 +802,16 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 	if t.IsCompound {
 		b |= 0x20
 	}
+
 	if t.Tag >= 31 {
 		b |= 0x1f
 		size += writeBase128Int(bytes, t.Tag)
 	} else {
 		b |= uint8(t.Tag) //nolint:gosec
 	}
+
 	size += bytes.writeBytes([]byte{b})
+
 	return size
 }
 

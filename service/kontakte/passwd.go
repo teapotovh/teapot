@@ -62,6 +62,7 @@ func (srv *Server) HandlePasswdGet(w http.ResponseWriter, r *http.Request) (g.No
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	return Page(r, "Passwd", passwd(r, username)), nil
 }
 
@@ -94,6 +95,7 @@ func (srv *Server) HandlePasswdPost(w http.ResponseWriter, r *http.Request) (g.N
 			fmt.Errorf("error while constructing LDAP client: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorDialog(ErrLDAP), err
 	}
 	defer client.Close()
@@ -104,6 +106,7 @@ func (srv *Server) HandlePasswdPost(w http.ResponseWriter, r *http.Request) (g.N
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	return SuccessDialog(
 		h.Span(g.Text("Password successfully updated! "),
 			h.A(hx.Boost("true"), h.Href(PathUser(username)), g.Text("Go back")),

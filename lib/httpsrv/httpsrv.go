@@ -34,6 +34,7 @@ func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 		ReadHeaderTimeout: time.Minute,
 		Addr:              config.Address,
 	}
+
 	return &HTTPSrv{
 		logger: logger,
 
@@ -64,6 +65,7 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 	go func() {
 		h.logger.Info("opening HTTP server", "address", h.inner.Addr)
 		notify.Notify()
+
 		if err := h.inner.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			ch <- err
 		} else {
@@ -80,11 +82,13 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 			if err := h.inner.Shutdown(ctx); err != nil {
 				return fmt.Errorf("error while shutting down the HTTP server: %w", err)
 			}
+
 			return <-ch
 		case err := <-ch:
 			if err != nil {
 				return fmt.Errorf("error while running the HTTP server: %w", err)
 			}
+
 			return nil
 		}
 	}

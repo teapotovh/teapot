@@ -15,16 +15,20 @@ func (attribute *Attribute) Vals() []AttributeValue {
 
 func readAttribute(bytes *Bytes) (ret Attribute, err error) {
 	var par PartialAttribute
+
 	par, err = readPartialAttribute(bytes)
 	if err != nil {
 		err = LdapError{"readAttribute:\n" + err.Error()}
 		return
 	}
+
 	if len(par.vals) == 0 {
 		err = LdapError{"readAttribute: expecting at least one value"}
 		return
 	}
+
 	ret = Attribute(par)
+
 	return
 }
 

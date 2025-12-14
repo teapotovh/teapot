@@ -2,11 +2,13 @@ package message
 
 func readTaggedMessageID(bytes *Bytes, class int, tag int) (ret MessageID, err error) {
 	var integer INTEGER
+
 	integer, err = readTaggedPositiveINTEGER(bytes, class, tag)
 	if err != nil {
 		err = LdapError{"readTaggedMessageID:\n" + err.Error()}
 		return
 	}
+
 	return MessageID(integer), err
 }
 

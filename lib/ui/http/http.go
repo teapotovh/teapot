@@ -18,14 +18,17 @@ func ServeDependencies(renderer *ui.Renderer, logger *slog.Logger) http.Handler 
 		logger.Debug("serving dependency", "dependency", dep, "bytes", len(bytes))
 
 		ct := "text/plain"
+
 		switch dep.Type {
 		case dependency.DependencyTypeStyle:
 			ct = "text/css"
 		case dependency.DependencyTypeScript:
 			ct = "application/javascript"
 		}
+
 		w.Header().Add("Content-Type", ct)
 		w.WriteHeader(http.StatusOK)
+
 		l, err := w.Write(bytes)
 		if err != nil {
 			logger.Error("error while serving dependency", "dependency", dep, "err", err)

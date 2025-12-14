@@ -33,6 +33,7 @@ func (b *Broker[T]) Run(ctx context.Context) {
 			for msgCh := range subs {
 				close(msgCh)
 			}
+
 			return
 
 		case msgCh := <-b.subCh:
@@ -69,6 +70,7 @@ type Subscriber[T any] struct {
 func (b *Broker[T]) Subscribe() Subscriber[T] {
 	msgCh := make(chan T, bufferSize)
 	b.subCh <- msgCh
+
 	return Subscriber[T]{
 		msgCh:       msgCh,
 		unsubscribe: b.unsubscribe,
@@ -77,6 +79,7 @@ func (b *Broker[T]) Subscribe() Subscriber[T] {
 
 func (s *Subscriber[T]) Iter(ctx context.Context) iter.Seq[T] {
 	doneCh := ctx.Done()
+
 	return func(yield func(T) bool) {
 	L:
 		for {

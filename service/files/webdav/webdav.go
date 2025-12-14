@@ -58,6 +58,7 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := httpauth.MustGetAuth(r)
+
 		session, err := wd.files.Sesssions().Get(auth.Username)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -83,5 +84,6 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 	handler = wd.basicAuth.Required(handler)
 	handler = wd.basicAuth.Middleware(handler)
 	handler = wd.cors.Handler(handler)
+
 	return handler
 }

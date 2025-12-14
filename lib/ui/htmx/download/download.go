@@ -24,12 +24,15 @@ func main() {
 		} else {
 			name = strings.TrimPrefix(component, "htmx-ext-")
 		}
+
 		url := fmt.Sprintf(base+"/%s.min.js", component, name)
 		log.Printf("Downloading component %q from %q", component, url)
+
 		res, err := http.Get(url) //nolint:gosec
 		if err != nil {
 			panic(fmt.Errorf("error while fetching component %q: %w", component, err))
 		}
+
 		defer func() {
 			if err := res.Body.Close(); err != nil {
 				panic(fmt.Errorf("error while closing request body: %w", err))

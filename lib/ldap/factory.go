@@ -73,6 +73,7 @@ func (f *Factory) NewClient(ctx context.Context) (*Client, error) {
 	}
 
 	defer func() { f.clients.Add(1) }()
+
 	return &Client{
 		logger: f.logger.With("client", f.clients.Load()),
 

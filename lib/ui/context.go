@@ -34,10 +34,12 @@ func (c *context) register(style *Style) {
 
 func (c *context) Class(styles ...*Style) g.Node {
 	var ids []string
+
 	for _, style := range styles {
 		if _, ok := c.styles[style]; !ok {
 			c.register(style)
 		}
+
 		ids = append(ids, style.id)
 	}
 

@@ -19,6 +19,7 @@ func readAddRequest(bytes *Bytes) (ret AddRequest, err error) {
 		err = LdapError{"readAddRequest:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -28,11 +29,13 @@ func (add *AddRequest) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	add.attributes, err = readAttributeList(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -40,6 +43,7 @@ func (add AddRequest) size() (size int) {
 	size += add.entry.size()
 	size += add.attributes.size()
 	size += sizeTagAndLength(TagAddRequest, size)
+
 	return
 }
 
@@ -47,5 +51,6 @@ func (add AddRequest) write(bytes *Bytes) (size int) {
 	size += add.attributes.write(bytes)
 	size += add.entry.write(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagAddRequest, size)
+
 	return
 }

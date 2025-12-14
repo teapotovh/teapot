@@ -3,12 +3,15 @@ package message
 // lessOrEqual     [6] AttributeValueAssertion,.
 func readFilterLessOrEqual(bytes *Bytes) (ret FilterLessOrEqual, err error) {
 	var attributevalueassertion AttributeValueAssertion
+
 	attributevalueassertion, err = readTaggedAttributeValueAssertion(bytes, classContextSpecific, TagFilterLessOrEqual)
 	if err != nil {
 		err = LdapError{"readFilterLessOrEqual:\n" + err.Error()}
 		return
 	}
+
 	ret = FilterLessOrEqual(attributevalueassertion)
+
 	return
 }
 

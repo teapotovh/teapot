@@ -41,6 +41,7 @@ func parseRawMount(mount string) (cfg mountConfig, err error) {
 
 	cfg.Source = path.Clean(parts[1])
 	cfg.Destination = path.Clean(parts[2])
+
 	return cfg, nil
 }
 

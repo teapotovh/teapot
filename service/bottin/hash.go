@@ -42,6 +42,7 @@ func matchPassword(schemaHash string, passwd string) (bool, error) {
 	case MD5:
 		bytes := md5.Sum([]byte(passwd)) //nolint:gosec
 		based := base64.StdEncoding.EncodeToString(bytes[:])
+
 		return based == hash, nil
 	case SSHA256:
 		return ssha256.Validate(passwd, string(SSHA256)+hash)

@@ -9,7 +9,9 @@ func readAttributeValue(bytes *Bytes) (ret AttributeValue, err error) {
 		err = LdapError{"readAttributeValue:\n" + err.Error()}
 		return
 	}
+
 	ret = AttributeValue(octetstring)
+
 	return
 }
 

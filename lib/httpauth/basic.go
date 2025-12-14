@@ -28,6 +28,7 @@ func GetBasicAuthErr(r *http.Request) error {
 	if val == nil {
 		return nil
 	}
+
 	return val.(error)
 }
 
@@ -57,6 +58,7 @@ func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 			if err != nil {
 				ba.logger.Error("error while creating LDAP client", "err", err)
 				ba.errorHandler.ServeHTTP(w, r)
+
 				return
 			}
 			defer client.Close()
@@ -70,6 +72,7 @@ func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 
 				r := r.WithContext(context.WithValue(r.Context(), basicAuthErrContextKey, err))
 				ba.errorHandler.ServeHTTP(w, r)
+
 				return
 			}
 

@@ -29,25 +29,30 @@ type ACLEntry struct {
 func splitNoEmpty(s string) []string {
 	tmp := strings.Split(s, " ")
 	ret := []string{}
+
 	for _, s := range tmp {
 		if len(s) > 0 {
 			ret = append(ret, s)
 		}
 	}
+
 	return ret
 }
 
 func parseACL(def []string) (ACL, error) {
 	acl := []ACLEntry{}
+
 	for _, item := range def {
 		parts := strings.Split(item, ":")
 		if len(parts) != 5 {
 			return nil, fmt.Errorf("invalid ACL entry: %s", item)
 		}
+
 		var (
 			attr     []store.AttributeKey
 			exclAttr []store.AttributeKey
 		)
+
 		for _, s := range splitNoEmpty(parts[4]) {
 			if s[0] == '!' {
 				exclAttr = append(exclAttr, store.NewAttributeKey(s[1:]))
@@ -55,6 +60,7 @@ func parseACL(def []string) (ACL, error) {
 				attr = append(attr, store.NewAttributeKey(s))
 			}
 		}
+
 		entry := ACLEntry{
 			User:               parts[0],
 			RequiredGroups:     splitNoEmpty(parts[1]),
@@ -65,6 +71,7 @@ func parseACL(def []string) (ACL, error) {
 		}
 		acl = append(acl, entry)
 	}
+
 	return acl, nil
 }
 
@@ -80,6 +87,7 @@ func (acl ACL) Check(login User, action string, target store.DN, attributes []st
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -87,6 +95,7 @@ func attrstostrs(attrs []store.AttributeKey) (strs []string) {
 	for _, attr := range attrs {
 		strs = append(strs, string(attr))
 	}
+
 	return
 }
 
@@ -108,6 +117,7 @@ func (entry *ACLEntry) Check(login User, action string, target string, attribute
 			matchTarget = match(entry.Target, target[:start]+"SELF")
 		}
 	}
+
 	if !matchTarget {
 		return false
 	}
@@ -142,6 +152,7 @@ func matchAny(pattern string, vals []string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -151,5 +162,6 @@ func anyMatch(patterns []string, val string) bool {
 			return true
 		}
 	}
+
 	return false
 }

@@ -17,6 +17,7 @@ func (l LDAPOID) Pointer() *LDAPOID { return &l }
 
 func readTaggedLDAPOID(bytes *Bytes, class int, tag int) (ret LDAPOID, err error) {
 	var octetstring OCTETSTRING
+
 	octetstring, err = readTaggedOCTETSTRING(bytes, class, tag)
 	if err != nil {
 		err = LdapError{"readTaggedLDAPOID:\n" + err.Error()}
@@ -24,6 +25,7 @@ func readTaggedLDAPOID(bytes *Bytes, class int, tag int) (ret LDAPOID, err error
 	}
 	// @TODO: check RFC4512 for <numericoid>
 	ret = LDAPOID(octetstring)
+
 	return
 }
 

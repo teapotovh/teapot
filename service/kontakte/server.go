@@ -64,13 +64,16 @@ var (
 func Adapt(h gcohttp.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) (g.Node, error) {
 		log := getLogger(r.Context())
+
 		node, err := h(w, r)
 		if errors.Is(err, ErrRedirect) {
 			err = nil
 		}
+
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			log.ErrorContext(r.Context(), "error handling request", "err", err)
 		}
+
 		return node, err
 	}
 

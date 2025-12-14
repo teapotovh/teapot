@@ -25,6 +25,7 @@ func (server *Bottin) membershipAdd(
 
 	// Add group to the membership attribute
 	membership = append(membership, group.String())
+
 	entity.Attributes[attr] = membership
 	if err = tx.Store(store.NewEntry(entity.DN, entity.Attributes)); err != nil {
 		return fmt.Errorf("error while updating membership %s value (adding): %w", attr, err)
@@ -47,6 +48,7 @@ func (server *Bottin) membershipRemove(
 	// Filter out group
 	membership := entity.Get(attr)
 	newMembership := []string{}
+
 	for _, g := range membership {
 		gdn, err := server.parseDN(g, false)
 		if err != nil {

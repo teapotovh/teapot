@@ -41,15 +41,19 @@ func (c *Client) mapUser(entry *ldap.Entry) (*User, error) {
 	lastname := entry.GetAttributeValue("sn")
 	mail := entry.GetAttributeValue("mail")
 	rawUID := entry.GetAttributeValue("uidnumber")
+
 	uid, err := strconv.Atoi(rawUID)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing uid: %w", err)
 	}
+
 	rawGID := entry.GetAttributeValue("gidnumber")
+
 	gid, err := strconv.Atoi(rawGID)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing gid: %w", err)
 	}
+
 	home := entry.GetAttributeValue("homedirectory")
 
 	memberof := entry.GetAttributeValues("memberof")
@@ -80,6 +84,7 @@ func (c *Client) Users() ([]*User, error) {
 	}
 
 	var users []*User
+
 	for _, entry := range entries {
 		user, err := c.mapUser(entry)
 		if err != nil {

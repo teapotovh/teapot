@@ -34,6 +34,7 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("could not create squids ID encoder: %w", err))
 	}
+
 	ids = s
 }
 
@@ -42,9 +43,11 @@ func ParseStyle(css string) (*Style, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error while computing hash for style: %w", err)
 	}
+
 	counter.Add(1)
 
 	var dependencies []dependency.Dependency
+
 	matches := re.FindAllStringSubmatch(css, -1)
 	for _, m := range matches {
 		parts := strings.Split(m[1], "-")
@@ -60,6 +63,7 @@ func ParseStyle(css string) (*Style, error) {
 		css:          css,
 		dependencies: dependencies,
 	}
+
 	return &style, nil
 }
 
@@ -68,5 +72,6 @@ func MustParseStyle(css string) *Style {
 	if err != nil {
 		panic(fmt.Errorf("error while parsing style: %w", err))
 	}
+
 	return style
 }

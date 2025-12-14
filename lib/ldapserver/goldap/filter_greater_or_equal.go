@@ -3,6 +3,7 @@ package message
 // greaterOrEqual  [5] AttributeValueAssertion,.
 func readFilterGreaterOrEqual(bytes *Bytes) (ret FilterGreaterOrEqual, err error) {
 	var attributevalueassertion AttributeValueAssertion
+
 	attributevalueassertion, err = readTaggedAttributeValueAssertion(
 		bytes,
 		classContextSpecific,
@@ -12,7 +13,9 @@ func readFilterGreaterOrEqual(bytes *Bytes) (ret FilterGreaterOrEqual, err error
 		err = LdapError{"readFilterGreaterOrEqual:\n" + err.Error()}
 		return
 	}
+
 	ret = FilterGreaterOrEqual(attributevalueassertion)
+
 	return
 }
 

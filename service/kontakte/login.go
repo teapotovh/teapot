@@ -48,6 +48,7 @@ func (srv *Server) HandleLoginGet(w http.ResponseWriter, r *http.Request) (g.Nod
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	return Page(r, "Login", login()), nil
 }
 
@@ -66,6 +67,7 @@ func (srv *Server) HandleLoginPost(w http.ResponseWriter, r *http.Request) (g.No
 			fmt.Errorf("error while constructing LDAP client: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorDialog(ErrLDAP), err
 	}
 	defer client.Close()
@@ -82,10 +84,12 @@ func (srv *Server) HandleLoginPost(w http.ResponseWriter, r *http.Request) (g.No
 			fmt.Errorf("error while generating authentication cookie: %w", err),
 			http.StatusInternalServerError,
 		)
+
 		return ErrorDialog(ErrAuthToken), err
 	}
 
 	http.SetCookie(w, cookie)
+
 	redirectURL := r.URL.Query().Get("redirect")
 	if redirectURL != "" {
 		http.Redirect(w, r, redirectURL, http.StatusFound)
@@ -103,6 +107,7 @@ func (srv *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		Path:    PathIndex,
 		Expires: time.Now(),
 	})
+
 	if hxhttp.IsRequest(r.Header) {
 		// If the request was sent from HTMX, it will not follow multiple redirects,
 		// so we want to skip the redirect to login from the index page.

@@ -80,6 +80,7 @@ type DependenciesFunc func() (map[dependency.Dependency][]byte, error)
 
 func (rer *Renderer) RegisterDependencies(fns ...DependenciesFunc) error {
 	var errs []error
+
 	for i, fn := range fns {
 		deps, err := fn()
 		if err != nil {
@@ -138,6 +139,7 @@ func (rer *Renderer) contextRender(component Component) (context, g.Node) {
 		dependencies: defaultDependencies,
 	}
 	node := component.Render(&ctx)
+
 	return ctx, node
 }
 
@@ -214,12 +216,14 @@ func (rer *Renderer) renderWithDependencies(
 
 	// Generate style element for all components in this page
 	var stylesheet strings.Builder
+
 	for style := range ctx.styles {
 		if _, ok := loaded.Styles[style.id]; ok {
 			continue
 		}
 
 		rule := fmt.Sprintf(".%s {\n  %s\n}", style.id, strings.ReplaceAll(style.css, "\n", "\n  "))
+
 		_, err := stylesheet.WriteString(rule)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error while generating stylesheet for %q: %w", style.id, err)
@@ -227,6 +231,7 @@ func (rer *Renderer) renderWithDependencies(
 
 		styles = append(styles, style)
 	}
+
 	links = append(links, h.StyleEl(g.Raw(stylesheet.String())))
 
 	// Add script tags to update the list of styles and dependencies registered
@@ -234,12 +239,14 @@ func (rer *Renderer) renderWithDependencies(
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating styles register code: %w", err)
 	}
+
 	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(src)))
 
 	drc, err := registerScript("dependencies", dependencies)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating dependencies register code: %w", err)
 	}
+
 	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(drc)))
 
 	return links, scripts, node, nil
@@ -260,12 +267,14 @@ func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Compone
 	if err := all.Render(w); err != nil {
 		return fmt.Errorf("error while rendering component: %w", err)
 	}
+
 	return nil
 }
 
 // RenderPage renders a full page to the response. It adds styles as necessary.
 func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) error {
 	loaded := emptyAlreadyLoaded()
+
 	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
 	if err != nil {
 		return err
@@ -282,5 +291,6 @@ func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) 
 	if err := page.Render(w); err != nil {
 		return fmt.Errorf("error while rendering page: %w", err)
 	}
+
 	return nil
 }

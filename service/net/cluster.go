@@ -37,6 +37,7 @@ type ClusterEvent map[string]ClusterNode
 
 func NewCluster(net *Net, config ClusterConfig, logger *slog.Logger) (*Cluster, error) {
 	ctx, cancel := context.WithCancel(context.Background())
+
 	broker := broker.NewBroker[ClusterEvent]()
 	go broker.Run(ctx)
 
@@ -59,6 +60,7 @@ func (c *Cluster) Broker() *broker.Broker[ClusterEvent] {
 func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
 	// This CNI is ipv4-only, so filter only ipv4 addresses
 	var cidrs []netip.Prefix
+
 	for _, cidr := range node.CIDRs {
 		if cidr.Addr().Is4() {
 			cidrs = append(cidrs, cidr)
@@ -78,16 +80,19 @@ func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
 // Run implements run.Runnable.
 func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
 	defer c.brokerCancel()
+
 	sub := c.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 
 	notify.Notify()
+
 	for event := range sub.Iter(ctx) {
 		if event.Delete != nil {
 			name := *event.Delete
 			delete(c.state, name)
 		} else if event.Update != nil {
 			node := *event.Update
+
 			clusterNode, err := c.toClusterNode(node)
 			if err != nil {
 				return fmt.Errorf("error getting ClusterNode for event: %w", err)

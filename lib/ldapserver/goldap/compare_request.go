@@ -19,6 +19,7 @@ func readCompareRequest(bytes *Bytes) (ret CompareRequest, err error) {
 		err = LdapError{"readCompareRequest:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -28,11 +29,13 @@ func (request *CompareRequest) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	request.ava, err = readAttributeValueAssertion(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -40,6 +43,7 @@ func (request CompareRequest) write(bytes *Bytes) (size int) {
 	size += request.ava.write(bytes)
 	size += request.entry.write(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagCompareRequest, size)
+
 	return
 }
 
@@ -47,5 +51,6 @@ func (request CompareRequest) size() (size int) {
 	size += request.entry.size()
 	size += request.ava.size()
 	size += sizeTagAndLength(TagCompareRequest, size)
+
 	return
 }

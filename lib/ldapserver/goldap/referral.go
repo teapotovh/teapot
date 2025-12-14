@@ -7,22 +7,27 @@ func readTaggedReferral(bytes *Bytes, class int, tag int) (referral Referral, er
 		err = LdapError{"readTaggedReferral:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
 func (r *Referral) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var uri URI
+
 		uri, err = readURI(bytes)
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
+
 		*r = append(*r, uri)
 	}
+
 	if len(*r) == 0 {
 		return LdapError{"readComponents: expecting at least one URI"}
 	}
+
 	return
 }
 func (r Referral) Pointer() *Referral { return &r }
@@ -32,7 +37,9 @@ func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	for i := len(r) - 1; i >= 0; i-- {
 		size += r[i].write(bytes)
 	}
+
 	size += bytes.WriteTagAndLength(class, isCompound, tag, size)
+
 	return
 }
 
@@ -41,6 +48,8 @@ func (r Referral) sizeTagged(tag int) (size int) {
 	for _, uri := range r {
 		size += uri.size()
 	}
+
 	size += sizeTagAndLength(tag, size)
+
 	return
 }

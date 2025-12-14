@@ -37,6 +37,7 @@ func readExtendedRequest(bytes *Bytes) (ret ExtendedRequest, err error) {
 		err = LdapError{"readExtendedRequest:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -46,23 +47,29 @@ func (extended *ExtendedRequest) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return
 	}
+
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return
 		}
+
 		if tag.Tag == TagExtendedRequestValue {
 			var requestValue OCTETSTRING
+
 			requestValue, err = readTaggedOCTETSTRING(bytes, classContextSpecific, TagExtendedRequestValue)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return
 			}
+
 			extended.requestValue = requestValue.Pointer()
 		}
 	}
+
 	return
 }
 
@@ -70,8 +77,10 @@ func (extended ExtendedRequest) write(bytes *Bytes) (size int) {
 	if extended.requestValue != nil {
 		size += extended.requestValue.writeTagged(bytes, classContextSpecific, TagExtendedRequestValue)
 	}
+
 	size += extended.requestName.writeTagged(bytes, classContextSpecific, TagExtendedRequestName)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagExtendedRequest, size)
+
 	return
 }
 
@@ -80,6 +89,8 @@ func (extended ExtendedRequest) size() (size int) {
 	if extended.requestValue != nil {
 		size += extended.requestValue.sizeTagged(TagExtendedRequestValue)
 	}
+
 	size += sizeTagAndLength(TagExtendedRequest, size)
+
 	return
 }

@@ -18,6 +18,7 @@ var ErrMissingEquals = errors.New("missing = in DN, expected exactly one")
 func reverse[T any](slice []T) []T {
 	cpy := slices.Clone(slice)
 	slices.Reverse(cpy)
+
 	return cpy
 }
 
@@ -49,6 +50,7 @@ func ParseComponent(rawComp string) (Component, error) {
 
 func parseComponentSlice(raw, separator string) ([]Component, error) {
 	strs := strings.Split(raw, separator)
+
 	var components []Component
 
 	for _, str := range strs {
@@ -170,6 +172,7 @@ type Entry struct {
 
 func NewEntry(dn DN, attributes Attributes) Entry {
 	attrs := maps.Clone(attributes)
+
 	if len(dn) > 0 {
 		dnFirstComponent := dn[0]
 		attrs[NewAttributeKey(dnFirstComponent.Type)] = AttributeValue{dnFirstComponent.Value}

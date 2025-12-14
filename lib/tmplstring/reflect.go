@@ -15,14 +15,18 @@ func fieldsInStruct[T any]() ([]string, error) {
 	}
 
 	var t T
+
 	tt := reflect.TypeOf(t)
+
 	return fieldsInStructHelper(tt), nil
 }
 
 // isStruct returns true if the generic type is a struct.
 func isStruct[T any]() bool {
 	var t T
+
 	tt := reflect.TypeOf(t)
+
 	return tt.Kind() == reflect.Struct
 }
 
@@ -34,6 +38,7 @@ func fieldsInStructHelper(t reflect.Type) []string {
 	}
 
 	var fields []string
+
 	for i := range t.NumField() {
 		field := t.Field(i)
 
@@ -46,5 +51,6 @@ func fieldsInStructHelper(t reflect.Type) []string {
 			}
 		}
 	}
+
 	return fields
 }

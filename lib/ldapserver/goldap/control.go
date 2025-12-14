@@ -32,6 +32,7 @@ func readControl(bytes *Bytes) (control Control, err error) {
 		err = LdapError{"readControl:\n" + err.Error()}
 		return
 	}
+
 	return
 }
 
@@ -41,33 +42,41 @@ func (control *Control) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{"readComponents:\n" + err.Error()}
 		return err
 	}
+
 	if bytes.HasMoreData() {
 		var tag TagAndLength
+
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return err
 		}
+
 		if tag.Tag == tagBoolean {
 			control.criticality, err = readBOOLEAN(bytes)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
 				return err
 			}
+
 			if !control.criticality {
 				return ErrCriticalityNotSpecified
 			}
 		}
 	}
+
 	if bytes.HasMoreData() {
 		var octetstring OCTETSTRING
+
 		octetstring, err = readOCTETSTRING(bytes)
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
 			return err
 		}
+
 		control.controlValue = octetstring.Pointer()
 	}
+
 	return err
 }
 
@@ -75,11 +84,14 @@ func (control Control) write(bytes *Bytes) (size int) {
 	if control.controlValue != nil {
 		size += control.controlValue.write(bytes)
 	}
+
 	if control.criticality != BOOLEAN(false) {
 		size += control.criticality.write(bytes)
 	}
+
 	size += control.controlType.write(bytes)
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
+
 	return
 }
 
@@ -87,10 +99,13 @@ func (control Control) size() (size int) {
 	if control.controlValue != nil {
 		size += control.controlValue.size()
 	}
+
 	if control.criticality != BOOLEAN(false) {
 		size += control.criticality.size()
 	}
+
 	size += control.controlType.size()
 	size += sizeTagAndLength(tagSequence, size)
+
 	return
 }
