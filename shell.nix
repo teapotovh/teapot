@@ -14,7 +14,8 @@ in pkgs.mkShell {
     gopls
     protoc-gen-go
     protoc-gen-go-vtproto
-    go-tools
+    golangci-lint
+    golangci-lint-langserver
 
     python313
     python313Packages.venvShellHook

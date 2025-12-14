@@ -1,0 +1,49 @@
+run:
+  timeout: 3m
+  tests: true
+  go: "1.24"
+
+linters-settings:
+  staticcheck:
+    checks: ["all"]
+  govet:
+    enable-all: true
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+  gocyclo:
+    min-complexity: 15
+  errcheck:
+    exclude-functions:
+      - (*testing.T).Error
+      - (*testing.T).Fatal
+      - (*testing.T).Fatalf
+      - (*testing.T).Log
+      - (*testing.T).Logf
+      - (*testing.T).Errorf
+
+linters:
+  enable:
+    - gosimple
+    - govet
+    - staticcheck
+    - revive
+    - errcheck
+    - ineffassign
+    - gocyclo
+    - gofumpt
+  disable:
+    - depguard
+    - dupl
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-dirs:
+    - vendor
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
