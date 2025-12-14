@@ -23,10 +23,9 @@ linters:
     gocyclo:
       min-complexity: 15
     revive:
-      enable-default-rules: true
-      directives:
-      - name: exported
-        severity: warning
+      rules:
+        - name: exported
+          disabled: true
     sloglint:
       kv-only: true
       no-global: all

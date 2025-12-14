@@ -17,7 +17,7 @@ func HTTPSrvFlagSet() (*flag.FlagSet, func() HTTPSrvConfig) {
 
 	return fs, func() HTTPSrvConfig {
 		return HTTPSrvConfig{
-			Address:       fmt.Sprintf("%s:%d", ip, *port),
+			Address:       net.JoinHostPort(ip.String(), fmt.Sprintf("%d", *port)),
 			ShutdownDelay: *shutdownDelay,
 		}
 	}
