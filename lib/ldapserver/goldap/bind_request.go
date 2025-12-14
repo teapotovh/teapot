@@ -44,7 +44,7 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 	request.version, err = readINTEGER(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
-		return
+		return err
 	}
 
 	if request.version < BindRequestVersionMin || request.version > BindRequestVersionMax {
@@ -57,22 +57,22 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 			),
 		}
 
-		return
+		return err
 	}
 
 	request.name, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
-		return
+		return err
 	}
 
 	request.authentication, err = readAuthenticationChoice(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
-		return
+		return err
 	}
 
-	return
+	return err
 }
 
 func (request BindRequest) write(bytes *Bytes) (size int) {

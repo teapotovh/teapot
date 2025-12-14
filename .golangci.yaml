@@ -55,6 +55,7 @@ linters:
     - paralleltest
     - perfsprint
     - predeclared
+    - protogetter
     - reassign
     - rowserrcheck
     - sqlclosecheck

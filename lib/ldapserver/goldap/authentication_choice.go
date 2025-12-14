@@ -13,13 +13,13 @@ func readAuthenticationChoice(bytes *Bytes) (ret AuthenticationChoice, err error
 	tagAndLength, err := bytes.PreviewTagAndLength()
 	if err != nil {
 		err = LdapError{"readAuthenticationChoice:\n" + err.Error()}
-		return
+		return ret, err
 	}
 
 	err = tagAndLength.ExpectClass(classContextSpecific)
 	if err != nil {
 		err = LdapError{"readAuthenticationChoice:\n" + err.Error()}
-		return
+		return ret, err
 	}
 
 	switch tagAndLength.Tag {
@@ -32,13 +32,13 @@ func readAuthenticationChoice(bytes *Bytes) (ret AuthenticationChoice, err error
 			fmt.Sprintf("readAuthenticationChoice: invalid tag value %d for AuthenticationChoice", tagAndLength.Tag),
 		}
 
-		return
+		return ret, err
 	}
 
 	if err != nil {
 		err = LdapError{"readAuthenticationChoice:\n" + err.Error()}
-		return
+		return ret, err
 	}
 
-	return
+	return ret, err
 }

@@ -51,13 +51,13 @@ func (l *LDAPMessage) readComponents(bytes *Bytes) (err error) {
 	l.messageID, err = readMessageID(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
-		return
+		return err
 	}
 
 	l.protocolOp, err = readProtocolOp(bytes)
 	if err != nil {
 		err = LdapError{"readComponents:\n" + err.Error()}
-		return
+		return err
 	}
 
 	if bytes.HasMoreData() {
@@ -66,7 +66,7 @@ func (l *LDAPMessage) readComponents(bytes *Bytes) (err error) {
 		tag, err = bytes.PreviewTagAndLength()
 		if err != nil {
 			err = LdapError{"readComponents:\n" + err.Error()}
-			return
+			return err
 		}
 
 		if tag.Tag == TagLDAPMessageControls {
@@ -75,14 +75,14 @@ func (l *LDAPMessage) readComponents(bytes *Bytes) (err error) {
 			controls, err = readTaggedControls(bytes, classContextSpecific, TagLDAPMessageControls)
 			if err != nil {
 				err = LdapError{"readComponents:\n" + err.Error()}
-				return
+				return err
 			}
 
 			l.controls = controls.Pointer()
 		}
 	}
 
-	return
+	return err
 }
 
 func (l *LDAPMessage) Write() (bytes *Bytes, err error) {
