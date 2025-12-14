@@ -44,7 +44,7 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	if !(request.version >= BindRequestVersionMin && request.version <= BindRequestVersionMax) {
+	if request.version < BindRequestVersionMin || request.version > BindRequestVersionMax {
 		err = LdapError{
 			fmt.Sprintf(
 				"readComponents: invalid version %d, must be between %d and %d",

@@ -32,9 +32,9 @@ func (vfs VFS) String() string {
 
 // FilesConfig is the configuration for the Files service
 type FilesConfig struct {
+	LDAP     ldap.LDAPConfig
 	Mounts   []string
 	Sessions SessionsConfig
-	LDAP     ldap.LDAPConfig
 }
 
 // NewFiles returns a new Files service instance

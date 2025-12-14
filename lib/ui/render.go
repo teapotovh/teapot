@@ -47,14 +47,12 @@ func RendererFlagSet() (*flag.FlagSet, func() RendererConfig) {
 type stlyesheetID [sha512.Size]byte
 
 type Renderer struct {
-	logger *slog.Logger
-
-	assetPath string
-	page      Page
-
+	page             Page
+	logger           *slog.Logger
 	dependencies     map[dependency.Dependency][]byte
 	dependencyPaths  map[dependency.Dependency]string
 	pathDependencies map[string]dependency.Dependency
+	assetPath        string
 }
 
 func NewRenderer(config RendererConfig, page Page, logger *slog.Logger) (*Renderer, error) {

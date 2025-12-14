@@ -12,20 +12,19 @@ import (
 )
 
 type client struct {
-	logger *slog.Logger
-	srv    *Server
-
-	id          int
 	rwc         net.Conn
+	chanOut     chan *ldap.LDAPMessage
+	srv         *Server
 	br          *bufio.Reader
 	bw          *bufio.Writer
-	chanOut     chan *ldap.LDAPMessage
-	wg          sync.WaitGroup
+	logger      *slog.Logger
 	closing     chan bool
 	requestList map[int]*Message
-	mutex       sync.Mutex
 	writeDone   chan bool
 	rawData     []byte
+	wg          sync.WaitGroup
+	id          int
+	mutex       sync.Mutex
 }
 
 func (c *client) GetConn() net.Conn {
@@ -242,8 +241,7 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 	c.wg.Add(1)
 	defer c.wg.Done()
 
-	var m Message
-	m = Message{
+	var m Message = Message{
 		LDAPMessage: message,
 		Done:        make(chan bool, 2),
 		Client:      c,

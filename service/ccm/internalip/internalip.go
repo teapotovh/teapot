@@ -36,12 +36,11 @@ func nodeInternalIP(prefix netip.Prefix, nodeName string) (netip.Addr, error) {
 }
 
 type InternalIP struct {
-	logger *slog.Logger
-	ccm    *ccm.CCM
-
+	internalIP netip.Addr
+	logger     *slog.Logger
+	ccm        *ccm.CCM
 	prefix     netip.Prefix
 	node       string
-	internalIP netip.Addr
 }
 
 func NewInternalIP(ccm *ccm.CCM, config InternalIPConfig, logger *slog.Logger) (*InternalIP, error) {

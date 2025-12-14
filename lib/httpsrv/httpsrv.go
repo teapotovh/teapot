@@ -20,11 +20,10 @@ type HttpSrvConfig struct {
 }
 
 type HttpSrv struct {
-	logger *slog.Logger
-
-	shutdownDelay time.Duration
+	logger        *slog.Logger
 	inner         *http.Server
 	mux           *muxie.Mux
+	shutdownDelay time.Duration
 }
 
 func NewHttpSrv(config HttpSrvConfig, logger *slog.Logger) (*HttpSrv, error) {

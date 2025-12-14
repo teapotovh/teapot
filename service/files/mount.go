@@ -15,9 +15,9 @@ import (
 var ErrExpectMountFormat = errors.New("expected mount format to be: <vfs>:<src>:<dest>, missing some parts")
 
 type mountConfig struct {
-	VFS         VFS
 	Source      string
 	Destination string
+	VFS         VFS
 }
 
 // parseRawMount parses a mount string format into a configuration struct.
@@ -45,9 +45,9 @@ func parseRawMount(mount string) (cfg mountConfig, err error) {
 }
 
 type mount struct {
-	vfs     VFS
 	srcTmpl *tmplstring.TMPL[mountSourceParameters]
 	dst     string
+	vfs     VFS
 }
 
 func (m *mount) src(username string) (hpfs.FS, error) {

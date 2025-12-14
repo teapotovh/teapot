@@ -20,12 +20,11 @@ type WebConfig struct {
 }
 
 type Web struct {
-	logger *slog.Logger
-
+	dependenciesHandler http.Handler
+	logger              *slog.Logger
+	renderer            *ui.Renderer
 	prefix              string
 	assetPath           string
-	renderer            *ui.Renderer
-	dependenciesHandler http.Handler
 }
 
 func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, error) {

@@ -37,7 +37,7 @@ func (msg *messagePacket) readMessage() (m ldap.LDAPMessage, err error) {
 func decodeMessage(bytes []byte) (ret ldap.LDAPMessage, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = errors.New(fmt.Sprintf("%s", e))
+			err = fmt.Errorf("%s", e)
 		}
 	}()
 	zero := 0
@@ -104,7 +104,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 			return
 		}
 		ret.Length = 0
-		for i := 0; i < numBytes; i++ {
+		for range numBytes {
 
 			b, err = readBytes(conn, bytes, 1)
 			if err != nil {

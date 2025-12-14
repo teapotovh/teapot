@@ -24,7 +24,7 @@ var ErrNoGVK = errors.New("no group-version-kind found for object")
 
 // getResourceName returns the resource name from a type (without instance)
 func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
-	objType := reflect.TypeOf((*T)(nil)).Elem()
+	objType := reflect.TypeFor[T]()
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
 	}
@@ -60,25 +60,23 @@ func getMapper(client *kubernetes.Clientset) (meta.RESTMapper, error) {
 type Handler[Resource runtime.Object] = func(name string, resource Resource, exists bool) error
 
 type ControllerConfig[Resource runtime.Object] struct {
-	Client       *kubernetes.Clientset
-	Namespace    string
-	Handler      Handler[Resource]
 	FieldSelctor fields.Selector
+	Client       *kubernetes.Clientset
+	Handler      Handler[Resource]
+	Namespace    string
 	NumRetries   int
 }
 
 // Controller implements a simple kubernetes controller that calls a callback
 // function (in parallel) on each update to any resource being watched.
 type Controller[Resource runtime.Object] struct {
-	logger *slog.Logger
-
-	resource string
-	store    cache.Store
-	queue    workqueue.TypedRateLimitingInterface[string]
-	informer cache.Controller
-
-	numRetries int
+	store      cache.Store
+	queue      workqueue.TypedRateLimitingInterface[string]
+	informer   cache.Controller
+	logger     *slog.Logger
 	handler    Handler[Resource]
+	resource   string
+	numRetries int
 }
 
 // NewController creates a new Controller.

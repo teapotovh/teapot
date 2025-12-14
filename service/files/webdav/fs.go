@@ -75,7 +75,7 @@ func (fsw *webDavFSWrapper) RemoveAll(ctx context.Context, name string) error {
 func (fsw *webDavFSWrapper) Rename(ctx context.Context, oldName, newName string) error {
 	oldName = fsw.sanitizeName(oldName)
 	newName = fsw.sanitizeName(newName)
-	fsw.logger.DebugContext(ctx, "performing FS.Rename", "oldName", oldName, "newName", newName)
+	fsw.logger.DebugContext(ctx, "performing FS.Rename", "old_name", oldName, "new_name", newName)
 
 	return hpfs.Rename(fsw.fs, oldName, newName)
 }

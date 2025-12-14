@@ -32,23 +32,21 @@ const (
 )
 
 type BottinConfig struct {
-	BaseDN string
-	Passwd string
-	ACL    []string
-
+	Store         store.StoreConfig
+	BaseDN        string
+	Passwd        string
 	TLSCertFile   string
 	TLSKeyFile    string
 	TLSServerName string
-
-	Store store.StoreConfig
+	ACL           []string
 }
 
 type Bottin struct {
-	logger     *slog.Logger
-	baseDN     store.DN
-	rootPasswd string
-	acl        ACL
 	store      store.Store
+	logger     *slog.Logger
+	rootPasswd string
+	baseDN     store.DN
+	acl        ACL
 }
 
 func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {

@@ -39,17 +39,15 @@ var ErrLDAP = errors.New("error while performing LDAP operation")
 // Server is the kontakte HTTP server that renders web pages for users to
 // modify their LDAP information
 type Server struct {
-	logger     *slog.Logger
-	factory    *ldap.Factory
-	groupsDN   string
-	adminGroup string
-	accessesDN string
-
-	jwtSecret    []byte
+	logger       *slog.Logger
+	factory      *ldap.Factory
 	oauthClients map[string]oauthClient
-
-	mux  *muxie.Mux
-	http *http.Server
+	mux          *muxie.Mux
+	http         *http.Server
+	groupsDN     string
+	adminGroup   string
+	accessesDN   string
+	jwtSecret    []byte
 }
 
 type ServerConfig struct {

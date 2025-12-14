@@ -16,15 +16,13 @@ type ARPConfig struct {
 }
 
 type ARP struct {
-	logger *slog.Logger
-
-	lb     *loadbalancer.LoadBalancer
-	mac    net.HardwareAddr
-	handle *afpacket.TPacket
-
+	logger   *slog.Logger
+	lb       *loadbalancer.LoadBalancer
+	handle   *afpacket.TPacket
 	packets  chan *layers.ARP
 	listener *Listener
 	speaker  *Speaker
+	mac      net.HardwareAddr
 }
 
 func NewARP(lb *loadbalancer.LoadBalancer, config ARPConfig, logger *slog.Logger) (*ARP, error) {
@@ -48,7 +46,7 @@ func NewARP(lb *loadbalancer.LoadBalancer, config ARPConfig, logger *slog.Logger
 	}
 
 	arp.speaker = NewSpeaker(arp, logger.With("component", "speaker"))
-	arp.listener, err = NewListener(arp, ListenerConfig{Device: config.Device}, logger.With("component", "listener"))
+	arp.listener, err = NewListener(arp, ListenerConfig(config), logger.With("component", "listener"))
 	if err != nil {
 		return nil, fmt.Errorf("error while initializing listener subcomponent: %w", err)
 	}

@@ -16,20 +16,13 @@ var ErrMissingHandler = errors.New("ldap server has no defined handler function"
 
 // Server is an LDAP server.
 type Server struct {
-	logger *slog.Logger
-
-	Listener     net.Listener
-	ReadTimeout  time.Duration  // optional read timeout
-	WriteTimeout time.Duration  // optional write timeout
-	wg           sync.WaitGroup // group of goroutines (1 by client)
-
-	// OnNewConnection, if non-nil, is called on new connections.
-	// If it returns non-nil, the connection is closed.
+	Listener        net.Listener
+	Handler         Handler
+	logger          *slog.Logger
 	OnNewConnection func(c net.Conn) error
-
-	// Handler handles ldap message received from client
-	// it SHOULD "implement" RequestHandler interface
-	Handler Handler
+	wg              sync.WaitGroup
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
 }
 
 // NewServer return a LDAP Server

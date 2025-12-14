@@ -16,8 +16,8 @@ type Notify interface {
 }
 
 type notify struct {
-	sent bool
 	ch   chan error
+	sent bool
 }
 
 // Notify implements Notify
@@ -41,12 +41,11 @@ type Runnable interface {
 }
 
 type runnable struct {
-	logger *slog.Logger
-
-	name     string
 	runnable Runnable
-	timeout  time.Duration
+	logger   *slog.Logger
 	errors   chan error
+	name     string
+	timeout  time.Duration
 }
 
 func (r runnable) startup(ctx context.Context) error {
@@ -98,11 +97,10 @@ func (r runnable) wrap(ctx context.Context, ntfy *notify) (err error) {
 }
 
 type Run struct {
-	logger  *slog.Logger
-	timeout time.Duration
-
-	services []runnable
+	logger   *slog.Logger
 	errors   chan error
+	services []runnable
+	timeout  time.Duration
 }
 
 type RunConfig struct {

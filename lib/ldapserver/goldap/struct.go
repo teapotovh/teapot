@@ -46,9 +46,9 @@ type (
 //	          intermediateResponse  IntermediateResponse },
 //	     controls       [0] Controls OPTIONAL }
 type LDAPMessage struct {
-	messageID  MessageID
 	protocolOp ProtocolOp
 	controls   *Controls
+	messageID  MessageID
 }
 
 const TagLDAPMessageControls = 0
@@ -181,10 +181,10 @@ type MatchingRuleId LDAPString
 //	diagnosticMessage  LDAPString,
 //	referral           [3] Referral OPTIONAL }
 type LDAPResult struct {
-	resultCode        ENUMERATED
+	referral          *Referral
 	matchedDN         LDAPDN
 	diagnosticMessage LDAPString
-	referral          *Referral
+	resultCode        ENUMERATED
 }
 
 const TagLDAPResultReferral = 3
@@ -296,9 +296,9 @@ type Controls []Control
 //	     criticality             BOOLEAN DEFAULT FALSE,
 //	     controlValue            OCTET STRING OPTIONAL }
 type Control struct {
+	controlValue *OCTETSTRING
 	controlType  LDAPOID
 	criticality  BOOLEAN
-	controlValue *OCTETSTRING
 }
 
 // Sermersheim                 Standards Track                    [Page 56]
@@ -316,9 +316,9 @@ const (
 )
 
 type BindRequest struct {
-	version        INTEGER
-	name           LDAPDN
 	authentication AuthenticationChoice
+	name           LDAPDN
+	version        INTEGER
 }
 
 //	AuthenticationChoice ::= CHOICE {
@@ -339,8 +339,8 @@ type AuthenticationChoice interface {
 //	     mechanism               LDAPString,
 //	     credentials             OCTET STRING OPTIONAL }
 type SaslCredentials struct {
-	mechanism   LDAPString
 	credentials *OCTETSTRING
+	mechanism   LDAPString
 }
 
 //	BindResponse ::= [APPLICATION 1] SEQUENCE {
@@ -403,14 +403,14 @@ type PasswordModifyResponse struct {
 const TagSearchRequest = 3
 
 type SearchRequest struct {
+	filter       Filter
 	baseObject   LDAPDN
+	attributes   AttributeSelection
 	scope        ENUMERATED
 	derefAliases ENUMERATED
 	sizeLimit    INTEGER
 	timeLimit    INTEGER
 	typesOnly    BOOLEAN
-	filter       Filter
-	attributes   AttributeSelection
 }
 
 const (
@@ -586,8 +586,8 @@ type ModifyRequest struct {
 	changes []ModifyRequestChange
 }
 type ModifyRequestChange struct {
-	operation    ENUMERATED
 	modification PartialAttribute
+	operation    ENUMERATED
 }
 
 const (
@@ -647,10 +647,10 @@ type DelResponse LDAPResult
 const TagModifyDNRequest = 12
 
 type ModifyDNRequest struct {
+	newSuperior  *LDAPDN
 	entry        LDAPDN
 	newrdn       RelativeLDAPDN
 	deleteoldrdn BOOLEAN
-	newSuperior  *LDAPDN
 }
 
 const TagModifyDNRequestNewSuperior = 0
@@ -686,8 +686,8 @@ type AbandonRequest MessageID
 const TagExtendedRequest = 23
 
 type ExtendedRequest struct {
-	requestName  LDAPOID
 	requestValue *OCTETSTRING
+	requestName  LDAPOID
 }
 
 const (

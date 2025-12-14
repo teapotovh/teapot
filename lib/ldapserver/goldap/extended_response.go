@@ -67,13 +67,13 @@ func (extended ExtendedResponse) write(bytes *Bytes) (size int) {
 	if extended.responseName != nil {
 		size += extended.responseName.writeTagged(bytes, classContextSpecific, TagExtendedResponseName)
 	}
-	size += extended.LDAPResult.writeComponents(bytes)
+	size += extended.writeComponents(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagExtendedResponse, size)
 	return
 }
 
 func (extended ExtendedResponse) size() (size int) {
-	size += extended.LDAPResult.sizeComponents()
+	size += extended.sizeComponents()
 	if extended.responseName != nil {
 		size += extended.responseName.sizeTagged(TagExtendedResponseName)
 	}

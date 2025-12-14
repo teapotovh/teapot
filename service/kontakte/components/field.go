@@ -8,7 +8,7 @@ import (
 )
 
 func Field(name, value string, enabled bool, opts ...g.Node) g.Node {
-	id := strings.ToLower(strings.Replace(name, " ", "-", -1))
+	id := strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 
 	attrs := []g.Node{h.Type("text"), h.ID(id), h.Name(id), h.Value(value)}
 	if !enabled {

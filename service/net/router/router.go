@@ -24,8 +24,8 @@ const (
 )
 
 type route struct {
-	target netip.Prefix
 	via    netip.Addr
+	target netip.Prefix
 }
 
 func directRoute(target netip.Prefix) route {

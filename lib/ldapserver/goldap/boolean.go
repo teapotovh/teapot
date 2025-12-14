@@ -33,15 +33,15 @@ func readTaggedBOOLEAN(bytes *Bytes, class int, tag int) (ret BOOLEAN, err error
 }
 
 func SizePrimitiveSubBytes(tag int, value any) (size int) {
-	switch value.(type) {
+	switch value := value.(type) {
 	case BOOLEAN:
-		size = sizeBool(bool(value.(BOOLEAN)))
+		size = sizeBool(bool(value))
 	case INTEGER:
-		size = sizeInt32(int32(value.(INTEGER)))
+		size = sizeInt32(int32(value))
 	case ENUMERATED:
-		size = sizeInt32(int32(value.(ENUMERATED)))
+		size = sizeInt32(int32(value))
 	case OCTETSTRING:
-		size = sizeOctetString([]byte(string(value.(OCTETSTRING))))
+		size = sizeOctetString([]byte(string(value)))
 	default:
 		panic(fmt.Sprintf("SizePrimitiveSubBytes: invalid value type %v", value))
 	}

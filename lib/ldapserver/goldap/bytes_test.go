@@ -37,12 +37,12 @@ func NewInt(value int) (ret *int) {
 }
 
 type PrimitiveSubBytesTestSingleData struct {
-	bytes   Bytes // Input
-	class   int   // Expected class
-	tag     int   // Expected tag
-	typeTag int   // Expected type
-	value   any   // Expected output
-	offset  int   // Expected offset after processing
+	value   any
+	bytes   Bytes
+	class   int
+	tag     int
+	typeTag int
+	offset  int
 }
 
 func PrimitiveSubBytesTestData() []PrimitiveSubBytesTestSingleData {

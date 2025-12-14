@@ -7,8 +7,8 @@ import (
 
 type LDAPMessageErrorTestData struct {
 	label string
-	bytes Bytes
 	err   string
+	bytes Bytes
 }
 
 func TestReadLDAPMessageError(t *testing.T) {

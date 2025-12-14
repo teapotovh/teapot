@@ -30,7 +30,7 @@ func readTaggedPositiveINTEGER(bytes *Bytes, class int, tag int) (ret INTEGER, e
 		err = LdapError{fmt.Sprintf("readTaggedPositiveINTEGER:\n%s", err.Error())}
 		return
 	}
-	if !(ret >= 0 && ret <= maxInt) {
+	if ret < 0 || ret > maxInt {
 		err = LdapError{
 			fmt.Sprintf(
 				"readTaggedPositiveINTEGER: Invalid INTEGER value %d ! Expected value between 0 and %d",

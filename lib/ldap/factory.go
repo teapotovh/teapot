@@ -26,18 +26,16 @@ type LDAPConfig struct {
 // operations to manage users, as needed by kontakte.
 // One client should be constructed per request.
 type Factory struct {
-	logger  *slog.Logger
-	clients atomic.Int32
-
-	url        string
-	rootDN     string
-	rootPasswd string
-
-	usersDN      string
+	logger       *slog.Logger
 	usersFilter  *template.Template
+	url          string
+	rootDN       string
+	rootPasswd   string
+	usersDN      string
 	groupsDN     string
 	adminGroupDN string
 	accessesDN   string
+	clients      atomic.Int32
 }
 
 func NewFactory(options LDAPConfig, logger *slog.Logger) (*Factory, error) {

@@ -19,10 +19,9 @@ var (
 
 type Command struct {
 	logger      *slog.Logger
+	cmd         *exec.Cmd
 	levelStdout slog.Level
 	levelStderr slog.Level
-
-	cmd *exec.Cmd
 }
 
 func NewCommand(logger *slog.Logger, levelStdout, levelStderr slog.Level) *Command {

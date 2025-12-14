@@ -15,10 +15,9 @@ import (
 type SessionsCache = *tlru.Cache[string, *Session]
 
 type Sessions struct {
-	logger *slog.Logger
-
-	mounts        []mount
+	logger        *slog.Logger
 	cache         SessionsCache
+	mounts        []mount
 	cacheLifetime time.Duration
 }
 

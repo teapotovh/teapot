@@ -27,17 +27,15 @@ type CCMConfig struct {
 }
 
 type CCM struct {
-	logger *slog.Logger
-
-	node         string
+	internalIP   netip.Addr
+	externalIP   netip.Addr
+	logger       *slog.Logger
 	client       *kubernetes.Clientset
 	broker       *broker.Broker[Event]
 	brokerCancel context.CancelFunc
 	controller   *kubecontroller.Controller[*v1.Node]
+	node         string
 	lock         sync.Mutex
-
-	internalIP netip.Addr
-	externalIP netip.Addr
 }
 
 func NewCCM(config CCMConfig, logger *slog.Logger) (*CCM, error) {

@@ -16,13 +16,12 @@ type User struct {
 	Firstname string
 	Lastname  string
 	Mail      string
+	Home      string
+	Groups    []string
+	Accesses  []string
 	UID       int
 	GID       int
-	Home      string
-
-	Groups   []string
-	Accesses []string
-	Admin    bool
+	Admin     bool
 }
 
 func filterDN(dns []string, suffix string) (result []string) {

@@ -50,10 +50,10 @@ type cniConfigList struct {
 type bridgePlugin struct {
 	Type      string        `json:"type"`
 	Bridge    string        `json:"bridge,omitempty"`
+	IPAM      hostLocalIPAM `json:"ipam,omitempty"`
+	MTU       int           `json:"mtu,omitempty"`
 	IsGateway bool          `json:"isGateway,omitempty"`
 	IPMasq    bool          `json:"ipMasq,omitempty"`
-	MTU       int           `json:"mtu,omitempty"`
-	IPAM      hostLocalIPAM `json:"ipam,omitempty"`
 }
 
 type hostLocalIPAM struct {

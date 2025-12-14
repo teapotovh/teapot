@@ -220,7 +220,7 @@ func sizeBool(b bool) int {
 }
 
 func writeBool(bytes *Bytes, b bool) int {
-	if b == false {
+	if !b {
 		return bytes.writeBytes([]byte{0x00})
 	} else {
 		return bytes.writeBytes([]byte{0xff})
@@ -237,7 +237,7 @@ func parseInt64(bytes []byte) (ret int64, err error) {
 		err = StructuralError{"integer too large"}
 		return
 	}
-	for bytesRead := 0; bytesRead < len(bytes); bytesRead++ {
+	for bytesRead := range bytes {
 		ret <<= 8
 		ret |= int64(bytes[bytesRead])
 	}
@@ -268,7 +268,7 @@ func writeInt64(bytes *Bytes, i int64) int {
 	n := sizeInt64(i)
 	buf := [8]byte{}
 
-	for j := 0; j < n; j++ {
+	for j := range n {
 		b := i >> uint((n-1-j)*8)
 		buf[j] = byte(b)
 	}
@@ -608,10 +608,11 @@ func writeOctetString(bytes *Bytes, s []byte) int {
 
 // A RawValue represents an undecoded ASN.1 object.
 type RawValue struct {
-	Class, Tag int
-	IsCompound bool
 	Bytes      []byte
-	FullBytes  []byte // includes the tag and length
+	FullBytes  []byte
+	Class      int
+	Tag        int
+	IsCompound bool
 }
 
 // RawContent is used to signal that the undecoded, DER data needs to be
@@ -658,7 +659,7 @@ func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset i
 			return
 		}
 		ret.Length = 0
-		for i := 0; i < numBytes; i++ {
+		for range numBytes {
 			if offset >= len(bytes) {
 				err = SyntaxError{"truncated tag or length"}
 				return

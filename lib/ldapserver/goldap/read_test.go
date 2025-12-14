@@ -23,8 +23,8 @@ func TestReadLDAPMessage(t *testing.T) {
 }
 
 type LDAPMessageTestData struct {
-	bytes Bytes
 	out   LDAPMessage
+	bytes Bytes
 }
 
 func getLDAPMessageTestData() (ret []LDAPMessageTestData) {

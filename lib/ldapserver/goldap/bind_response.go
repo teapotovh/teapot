@@ -41,7 +41,7 @@ func (response BindResponse) write(bytes *Bytes) (size int) {
 	if response.serverSaslCreds != nil {
 		size += response.serverSaslCreds.writeTagged(bytes, classContextSpecific, TagBindResponseServerSaslCreds)
 	}
-	size += response.LDAPResult.writeComponents(bytes)
+	size += response.writeComponents(bytes)
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagBindResponse, size)
 	return
 }
@@ -50,7 +50,7 @@ func (response BindResponse) size() (size int) {
 	if response.serverSaslCreds != nil {
 		size += response.serverSaslCreds.sizeTagged(TagBindResponseServerSaslCreds)
 	}
-	size += response.LDAPResult.sizeComponents()
+	size += response.sizeComponents()
 	size += sizeTagAndLength(TagBindResponse, size)
 	return
 }

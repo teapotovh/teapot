@@ -49,13 +49,13 @@ func (spkr *Speaker) handlePacket(packet *layers.ARP) error {
 	}
 	spkr.logger.Debug(
 		"received APR request",
-		"dst.ip",
+		"dst_ip",
 		dstIP,
-		"dst.mac",
+		"dst_mac",
 		spkr.arp.mac,
-		"src.ip",
+		"src_ip",
 		srcIP,
-		"src.mac",
+		"src_mac",
 		packet.DstHwAddress,
 	)
 

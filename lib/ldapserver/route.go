@@ -29,22 +29,22 @@ type HandlerFunc func(context.Context, ResponseWriter, *Message) context.Context
 // RouteMux manages all routes
 type RouteMux struct {
 	logger        *slog.Logger
-	routes        []*route
 	notFoundRoute *route
+	routes        []*route
 }
 
 type route struct {
+	handler     HandlerFunc
 	label       string
 	operation   string
-	handler     HandlerFunc
 	exoName     string
 	sBasedn     string
-	uBasedn     bool
 	sFilter     string
-	uFilter     bool
-	sScope      int
-	uScope      bool
 	sAuthChoice string
+	sScope      int
+	uBasedn     bool
+	uFilter     bool
+	uScope      bool
 	uAuthChoice bool
 }
 
@@ -57,7 +57,7 @@ func (r *route) Match(m *Message) bool {
 
 	switch v := m.ProtocolOp().(type) {
 	case ldap.BindRequest:
-		if r.uAuthChoice == true {
+		if r.uAuthChoice {
 			if strings.ToLower(v.AuthenticationChoice()) != r.sAuthChoice {
 				return false
 			}
@@ -71,19 +71,19 @@ func (r *route) Match(m *Message) bool {
 		return true
 
 	case ldap.SearchRequest:
-		if r.uBasedn == true {
+		if r.uBasedn {
 			if strings.ToLower(string(v.BaseObject())) != r.sBasedn {
 				return false
 			}
 		}
 
-		if r.uFilter == true {
+		if r.uFilter {
 			if strings.ToLower(v.FilterString()) != r.sFilter {
 				return false
 			}
 		}
 
-		if r.uScope == true {
+		if r.uScope {
 			if int(v.Scope()) != r.sScope {
 				return false
 			}

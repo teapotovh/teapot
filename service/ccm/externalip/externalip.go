@@ -23,17 +23,14 @@ type ExternalIPConfig struct {
 }
 
 type ExternalIP struct {
-	logger *slog.Logger
-	ccm    *ccm.CCM
-
 	externalIP netip.Addr
-
+	logger     *slog.Logger
+	ccm        *ccm.CCM
+	httpClient http.Client
 	server     string
 	retryDelay time.Duration
 	maxRetries uint64
 	interval   time.Duration
-
-	httpClient http.Client
 }
 
 func NewExternalIP(ccm *ccm.CCM, config ExternalIPConfig, logger *slog.Logger) (*ExternalIP, error) {

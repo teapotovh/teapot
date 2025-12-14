@@ -21,12 +21,11 @@ type Event struct {
 }
 
 type Node struct {
-	Name  string
-	CIDRs []netip.Prefix
-
 	InternalAddress netip.Addr
-	ExternalAddress netip.AddrPort
 	PublicKey       *wgtypes.Key
+	ExternalAddress netip.AddrPort
+	Name            string
+	CIDRs           []netip.Prefix
 }
 
 func (net *Net) handle(name string, n *v1.Node, exists bool) error {

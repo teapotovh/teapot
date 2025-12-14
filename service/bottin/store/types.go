@@ -164,8 +164,8 @@ func (ak1 AttributeKey) EqualFold(ak2 AttributeKey) bool {
 }
 
 type Entry struct {
-	DN         DN
 	Attributes Attributes
+	DN         DN
 }
 
 func NewEntry(dn DN, attributes Attributes) Entry {

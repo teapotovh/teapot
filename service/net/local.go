@@ -23,23 +23,21 @@ const (
 var DefaultPrivateKey = wgtypes.Key{}
 
 type Local struct {
-	logger *slog.Logger
-	net    *Net
-
-	node    string
-	key     wgtypes.Key
-	port    uint16
-	address netip.Addr
-
+	address      netip.Addr
+	logger       *slog.Logger
+	net          *Net
 	broker       *broker.Broker[LocalEvent]
 	brokerCancel context.CancelFunc
+	node         string
+	port         uint16
+	key          wgtypes.Key
 }
 
 type LocalEvent struct {
-	Node       string
-	PrivateKey wgtypes.Key
-	Port       uint16
 	Address    netip.Addr
+	Node       string
+	Port       uint16
+	PrivateKey wgtypes.Key
 }
 
 type LocalConfig struct {
@@ -67,7 +65,7 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 			return nil, fmt.Errorf("error while generating wireguard key for local node: %w", err)
 		}
 	}
-	logger.Info("loaded wireguard key", "publicKey", key.PublicKey(), "node", config.LocalNode)
+	logger.Info("loaded wireguard key", "public_key", key.PublicKey(), "node", config.LocalNode)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	broker := broker.NewBroker[LocalEvent]()

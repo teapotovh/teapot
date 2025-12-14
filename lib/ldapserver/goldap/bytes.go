@@ -5,8 +5,8 @@ import (
 )
 
 type Bytes struct {
-	offset int
 	bytes  []byte
+	offset int
 }
 
 func (bytes *Bytes) getBytes() []byte {
@@ -105,15 +105,15 @@ func SizeSubBytes(tag int, callback func() int) (size int) {
 }
 
 func (bytes *Bytes) WritePrimitiveSubBytes(class int, tag int, value any) (size int) {
-	switch value.(type) {
+	switch value := value.(type) {
 	case BOOLEAN:
-		size = writeBool(bytes, bool(value.(BOOLEAN)))
+		size = writeBool(bytes, bool(value))
 	case INTEGER:
-		size = writeInt32(bytes, int32(value.(INTEGER)))
+		size = writeInt32(bytes, int32(value))
 	case ENUMERATED:
-		size = writeInt32(bytes, int32(value.(ENUMERATED)))
+		size = writeInt32(bytes, int32(value))
 	case OCTETSTRING:
-		size = writeOctetString(bytes, []byte(string(value.(OCTETSTRING))))
+		size = writeOctetString(bytes, []byte(string(value)))
 	default:
 		panic(fmt.Sprintf("WritePrimitiveSubBytes: invalid value type %v", value))
 	}

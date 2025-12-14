@@ -93,7 +93,7 @@ func (c *CNI) addCNIIP(source string) error {
 		ip := cidr.Addr().Next()
 
 		for _, a := range addrs {
-			if a.IPNet.IP.Equal(ip.AsSlice()) {
+			if a.IP.Equal(ip.AsSlice()) {
 				c.logger.Debug("CNI interface already has CIDR IP, skipping", "cidr", cidr, "source", source)
 				return nil
 			}

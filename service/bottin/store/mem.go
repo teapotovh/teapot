@@ -11,8 +11,8 @@ import (
 )
 
 type mementry struct {
-	prefix Prefix
 	entry  Entry
+	prefix Prefix
 }
 
 func newmementry(entry Entry) mementry {
@@ -52,8 +52,8 @@ func mementryLess(a, b mementry) bool {
 }
 
 type Mem struct {
-	mu sync.RWMutex
 	tr *btree.BTreeG[mementry]
+	mu sync.RWMutex
 }
 
 func NewMem() *Mem {
@@ -100,11 +100,10 @@ func (m *Mem) Begin(ctx context.Context) (Transaction, error) {
 }
 
 type MemTransaction struct {
-	ctx context.Context
-	mem *Mem
-
-	mu      sync.Mutex
+	ctx     context.Context
+	mem     *Mem
 	changes []change
+	mu      sync.Mutex
 }
 
 func (m *MemTransaction) Context() context.Context {
@@ -119,8 +118,8 @@ const (
 )
 
 type change struct {
-	kind  changekind
 	entry mementry
+	kind  changekind
 }
 
 // Store implements Store.Store

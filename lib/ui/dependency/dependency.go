@@ -23,8 +23,8 @@ func (dt DependencyType) String() string {
 }
 
 type Dependency struct {
-	Type DependencyType
 	Name string
+	Type DependencyType
 }
 
 func (d Dependency) String() string {

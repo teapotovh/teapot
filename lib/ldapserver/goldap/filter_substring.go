@@ -116,13 +116,13 @@ func (f FilterSubstrings) write(bytes *Bytes) int {
 func (s SubstringFilter) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	for i := len(s.substrings) - 1; i >= 0; i-- {
 		substring := s.substrings[i]
-		switch substring.(type) {
+		switch substring := substring.(type) {
 		case SubstringInitial:
-			size += AssertionValue(substring.(SubstringInitial)).writeTagged(bytes, classContextSpecific, TagSubstringInitial)
+			size += AssertionValue(substring).writeTagged(bytes, classContextSpecific, TagSubstringInitial)
 		case SubstringAny:
-			size += AssertionValue(substring.(SubstringAny)).writeTagged(bytes, classContextSpecific, TagSubstringAny)
+			size += AssertionValue(substring).writeTagged(bytes, classContextSpecific, TagSubstringAny)
 		case SubstringFinal:
-			size += AssertionValue(substring.(SubstringFinal)).writeTagged(bytes, classContextSpecific, TagSubstringFinal)
+			size += AssertionValue(substring).writeTagged(bytes, classContextSpecific, TagSubstringFinal)
 		default:
 			panic("Unknown type for SubstringFilter substring")
 		}
@@ -166,13 +166,13 @@ func (s SubstringFilter) size() (size int) {
 
 func (s SubstringFilter) sizeTagged(tag int) (size int) {
 	for _, substring := range s.substrings {
-		switch substring.(type) {
+		switch substring := substring.(type) {
 		case SubstringInitial:
-			size += AssertionValue(substring.(SubstringInitial)).sizeTagged(TagSubstringInitial)
+			size += AssertionValue(substring).sizeTagged(TagSubstringInitial)
 		case SubstringAny:
-			size += AssertionValue(substring.(SubstringAny)).sizeTagged(TagSubstringAny)
+			size += AssertionValue(substring).sizeTagged(TagSubstringAny)
 		case SubstringFinal:
-			size += AssertionValue(substring.(SubstringFinal)).sizeTagged(TagSubstringFinal)
+			size += AssertionValue(substring).sizeTagged(TagSubstringFinal)
 		default:
 			panic("Unknown type for SubstringFilter substring")
 		}

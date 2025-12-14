@@ -17,23 +17,20 @@ type ClusterConfig struct {
 }
 
 type Cluster struct {
-	logger *slog.Logger
-	net    *Net
-
-	node  string
-	state map[string]ClusterNode
-
+	logger       *slog.Logger
+	net          *Net
+	state        map[string]ClusterNode
 	broker       *broker.Broker[ClusterEvent]
 	brokerCancel context.CancelFunc
+	node         string
 }
 
 type ClusterNode struct {
 	InternalAddress netip.Addr
-	ExternalAddress netip.AddrPort
 	PublicKey       *wgtypes.Key
-
-	IsLocal bool
-	CIDRs   []netip.Prefix
+	ExternalAddress netip.AddrPort
+	CIDRs           []netip.Prefix
+	IsLocal         bool
 }
 
 type ClusterEvent map[string]ClusterNode

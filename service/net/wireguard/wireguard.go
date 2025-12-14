@@ -25,19 +25,15 @@ const (
 )
 
 type Wireguard struct {
-	logger *slog.Logger
-	net    *tnet.Net
-
-	client *wgctrl.Client
-	link   *netlink.Wireguard
-
-	// State for the currently configured interface, to avoid unnecessary updates
+	local      tnet.LocalEvent
+	logger     *slog.Logger
+	net        *tnet.Net
+	client     *wgctrl.Client
+	link       *netlink.Wireguard
+	cluster    tnet.ClusterEvent
 	peers      []wgtypes.PeerConfig
-	privateKey wgtypes.Key
 	port       uint16
-
-	cluster tnet.ClusterEvent
-	local   tnet.LocalEvent
+	privateKey wgtypes.Key
 }
 
 type WireguardConfig struct {
@@ -86,7 +82,7 @@ func (w *Wireguard) addWireguardIP() error {
 	}
 
 	for _, a := range addrs {
-		if a.IPNet.IP.Equal(node.InternalAddress.AsSlice()) {
+		if a.IP.Equal(node.InternalAddress.AsSlice()) {
 			w.logger.Debug("wireguard interface already has local IP, skipping", "ip", node.InternalAddress)
 			return nil
 		}
