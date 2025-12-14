@@ -14,6 +14,7 @@ in pkgs.mkShell {
     gopls
     protoc-gen-go
     protoc-gen-go-vtproto
+    go-tools
 
     python313
     python313Packages.venvShellHook
