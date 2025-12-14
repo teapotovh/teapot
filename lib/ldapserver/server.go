@@ -60,7 +60,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string, options ...Opt
 	return s.serve(ctx)
 }
 
-// WIthTLS returns an Option that wraps the TLS connection with TLS
+// WithTLS returns an Option that wraps the TLS connection with TLS
 func WithTLS(config *tls.Config) Option {
 	return func(srv *Server) error {
 		srv.Listener = tls.NewListener(srv.Listener, config)
@@ -71,7 +71,7 @@ func WithTLS(config *tls.Config) Option {
 // Handle requests messages on the ln listener
 func (s *Server) serve(ctx context.Context) (err error) {
 	defer func() {
-		if err := s.Listener.Close(); err != nil {
+		if e := s.Listener.Close(); e != nil {
 			err = fmt.Errorf("error while closing ldap listener: %w", err)
 		}
 	}()
@@ -118,6 +118,10 @@ func (s *Server) serve(ctx context.Context) (err error) {
 
 		s.logger.DebugContext(ctx, "accepted connection", "addr", rw.RemoteAddr().String())
 		cli, err := s.newClient(rw, i)
+		if err != nil {
+			s.logger.WarnContext(ctx, "error while creating a new client for the connection", "err", err)
+			continue
+		}
 		go cli.serve(ctx)
 	}
 }

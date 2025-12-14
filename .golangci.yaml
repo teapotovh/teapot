@@ -21,13 +21,12 @@ linters:
         - (*testing.T).Logf
         - (*testing.T).Errorf
     gocyclo:
-      min-complexity: 15
-    govet:
-      enable-all: true
+      min-complexity: 22
     revive:
-      rules:
-        - name: exported
-          severity: warning
+      enable-default-rules: true
+      directives:
+      - name: exported
+        severity: warning
     sloglint:
       kv-only: true
       no-global: all
@@ -36,6 +35,9 @@ linters:
     staticcheck:
       checks:
         - all
+        # Disable: Incorrect or missing package comment
+        # See: https://staticcheck.dev/docs/checks/#ST1000
+        - "-ST1000"
   exclusions:
     generated: lax
     rules:

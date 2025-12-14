@@ -2,7 +2,6 @@ package ldapserver
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 
 	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
@@ -54,7 +53,10 @@ func readLdapMessageBytes(br *bufio.Reader) (ret *[]byte, err error) {
 	if err != nil {
 		return
 	}
-	readBytes(br, &bytes, tagAndLength.Length)
+	_, err = readBytes(br, &bytes, tagAndLength.Length)
+	if err != nil {
+		return
+	}
 	return &bytes, err
 }
 
@@ -85,7 +87,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 	//	}
 	// We are expecting the LDAP sequence tag 0x30 as first byte
 	if b != 0x30 {
-		err = fmt.Errorf("Expecting 0x30 as first byte, but got %#x instead", b)
+		err = fmt.Errorf("expecting 0x30 as first byte, but got %#x instead", b)
 		return
 	}
 

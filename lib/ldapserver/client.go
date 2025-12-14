@@ -3,12 +3,18 @@ package ldapserver
 import (
 	"bufio"
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"sync"
 	"time"
 
 	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+)
+
+var (
+	ErrMessageNotFullyWritten = errors.New("message bytes were not fully written")
 )
 
 type client struct {
@@ -62,7 +68,11 @@ func (c *client) ReadPacket() (*messagePacket, error) {
 func (c *client) serve(ctx context.Context) {
 	c.srv.wg.Add(1)
 	c.closing = make(chan bool)
-	defer c.close(ctx)
+	defer func() {
+		if err := c.close(ctx); err != nil {
+			c.logger.DebugContext(ctx, "error while closing client", "err", err)
+		}
+	}()
 
 	if onc := c.srv.OnNewConnection; onc != nil {
 		if err := onc(c.rwc); err != nil {
@@ -79,7 +89,9 @@ func (c *client) serve(ctx context.Context) {
 	// for each message in c.chanOut send it to client
 	go func() {
 		for msg := range c.chanOut {
-			c.writeMessage(ctx, msg)
+			if err := c.writeMessage(ctx, msg); err != nil {
+				c.logger.ErrorContext(ctx, "error while marshaling response", "err", err, "msg", msg)
+			}
 		}
 		close(c.writeDone)
 	}()
@@ -98,7 +110,9 @@ func (c *client) serve(ctx context.Context) {
 
 				c.chanOut <- m
 				c.wg.Done()
-				c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond))
+				if err := c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond)); err != nil {
+					c.logger.WarnContext(ctx, "error while setting read deadline when shutting down", "err", err)
+				}
 				return
 			case <-c.closing:
 				return
@@ -109,12 +123,15 @@ func (c *client) serve(ctx context.Context) {
 	c.requestList = make(map[int]*Message)
 
 	for {
-
 		if c.srv.ReadTimeout != 0 {
-			c.rwc.SetReadDeadline(time.Now().Add(c.srv.ReadTimeout))
+			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.ReadTimeout)); err != nil {
+				c.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
+			}
 		}
 		if c.srv.WriteTimeout != 0 {
-			c.rwc.SetWriteDeadline(time.Now().Add(c.srv.WriteTimeout))
+			if err := c.rwc.SetWriteDeadline(time.Now().Add(c.srv.WriteTimeout)); err != nil {
+				c.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
+			}
 		}
 
 		// Read client input as a ASN1/BER binary message
@@ -168,12 +185,14 @@ func (c *client) serve(ctx context.Context) {
 // * wait for all request processor to end
 // * close client connection
 // * signal to server that client shutdown is ok
-func (c *client) close(ctx context.Context) {
+func (c *client) close(ctx context.Context) error {
 	c.logger.DebugContext(ctx, "closing connection")
 	close(c.closing)
 
 	// stop reading from client
-	c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond))
+	if err := c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond)); err != nil {
+		return fmt.Errorf("error while setting read deadline when closing connection: %w", err)
+	}
 
 	// signals to all currently running request processor to stop
 	c.mutex.Lock()
@@ -187,22 +206,34 @@ func (c *client) close(ctx context.Context) {
 	close(c.chanOut) // No more message will be sent to client, close chanOUT
 
 	<-c.writeDone // Wait for the last message sent to be written
-	c.rwc.Close() // close client connection
+	// close client connection
+	if err := c.rwc.Close(); err != nil {
+		return fmt.Errorf("error while closing network connection: %w", err)
+	}
 	c.logger.DebugContext(ctx, "connection closed successfully")
 
 	c.srv.wg.Done() // signal to server that client shutdown is ok
+	return nil
 }
 
-func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) {
+func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error {
 	data, err := msg.Write()
 	if err != nil {
-		c.logger.ErrorContext(ctx, "error while marshaling response", "err", err, "msg", msg)
-		return
+		return fmt.Errorf("error while encoding message: %w", err)
 	}
 
 	c.logger.DebugContext(ctx, "sending message", "msg", msg)
-	c.bw.Write(data.Bytes())
-	c.bw.Flush()
+	l, err := c.bw.Write(data.Bytes())
+	if err != nil {
+		return fmt.Errorf("error while writing message: %w", err)
+	}
+	if l != len(data.Bytes()) {
+		return ErrMessageNotFullyWritten
+	}
+	if err := c.bw.Flush(); err != nil {
+		return fmt.Errorf("error while flushing message: %w", err)
+	}
+	return nil
 }
 
 // ResponseWriter interface is used by an LDAP handler to
@@ -241,7 +272,7 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 	c.wg.Add(1)
 	defer c.wg.Done()
 
-	var m Message = Message{
+	m := Message{
 		LDAPMessage: message,
 		Done:        make(chan bool, 2),
 		Client:      c,

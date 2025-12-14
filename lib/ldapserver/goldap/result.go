@@ -67,10 +67,6 @@ func readTaggedLDAPResult(bytes *Bytes, class int, tag int) (ret LDAPResult, err
 	return
 }
 
-func readLDAPResult(bytes *Bytes) (ldapresult LDAPResult, err error) {
-	return readTaggedLDAPResult(bytes, classUniversal, tagSequence)
-}
-
 func (ldapresult *LDAPResult) readComponents(bytes *Bytes) (err error) {
 	ldapresult.resultCode, err = readENUMERATED(bytes, EnumeratedLDAPResultCode)
 	if err != nil {
