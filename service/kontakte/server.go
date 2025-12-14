@@ -39,15 +39,14 @@ var ErrLDAP = errors.New("error while performing LDAP operation")
 // Server is the kontakte HTTP server that renders web pages for users to
 // modify their LDAP information
 type Server struct {
-	logger       *slog.Logger
-	factory      *ldap.Factory
-	oauthClients map[string]oauthClient
-	mux          *muxie.Mux
-	http         *http.Server
-	groupsDN     string
-	adminGroup   string
-	accessesDN   string
-	jwtSecret    []byte
+	logger  *slog.Logger
+	factory *ldap.Factory
+	mux     *muxie.Mux
+	http    *http.Server
+	// groupsDN     string
+	// adminGroup   string
+	// accessesDN   string
+	jwtSecret []byte
 }
 
 type ServerConfig struct {
@@ -92,14 +91,6 @@ func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 		http: &httpsrv,
 	}
 
-	srv.oauthClients = map[string]oauthClient{
-		"kontakte-cli": {
-			ID:          "kontakte-cli",
-			Secret:      "kontakte-secret",
-			RedirectURI: "http://127.0.0.1:3000/callback",
-		},
-	}
-
 	mux.PathCorrection = true
 	mux.Use(
 		srv.AuthMiddleware,
@@ -107,8 +98,6 @@ func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 	)
 	mux.HandleFunc(PathIndex, srv.HandleIndex)
 	mux.HandleFunc(PathStyle, srv.HandleStyle)
-	mux.HandleFunc("/authorize", srv.authorizeHandler)
-	mux.HandleFunc("/token", srv.tokenHandler)
 	mux.Handle("/*path", Adapt(srv.HandleNotFound))
 
 	mux.Handle(PathLogin, muxie.Methods().

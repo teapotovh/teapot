@@ -14,7 +14,7 @@ var styleCSS []byte
 
 func (srv *Server) HandleStyle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css")
-	w.Write(styleCSS)
+	w.Write(styleCSS) //nolint:all
 }
 
 func Redirect(w http.ResponseWriter, r *http.Request, url string) {

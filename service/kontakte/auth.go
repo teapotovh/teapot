@@ -74,7 +74,7 @@ func (srv *Server) checkAuthCookie(r *http.Request) *Auth {
 	}
 }
 
-const authContextKey = "auth"
+const authContextKey contextKey = "auth"
 
 func getAuth(ctx context.Context) *Auth {
 	return ctx.Value(authContextKey).(*Auth)

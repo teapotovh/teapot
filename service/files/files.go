@@ -18,12 +18,12 @@ type Files struct {
 type VFS uint8
 
 const (
-	VFS_OS VFS = iota
+	VFSOS VFS = iota
 )
 
 func (vfs VFS) String() string {
 	switch vfs {
-	case VFS_OS:
+	case VFSOS:
 		return "os"
 	default:
 		return ""

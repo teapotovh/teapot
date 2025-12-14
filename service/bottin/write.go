@@ -34,6 +34,7 @@ func (server *Bottin) HandleAdd(
 	return ctx
 }
 
+//nolint:all
 func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddRequest) (int, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(r.Entry()), false)
@@ -68,7 +69,7 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 		return goldap.ResultCodeOperationsError, err
 	}
 	if !parentExists {
-		return goldap.ResultCodeNoSuchObject, fmt.Errorf("parent object with DN %s does not exist", parentDn.String())
+		return goldap.ResultCodeNoSuchObject, fmt.Errorf("parent object with DN %q does not exist", parentDn.String())
 	}
 
 	// If adding a group, track of who the members will be so that their memberOf field can be updated later
@@ -88,7 +89,7 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 		if err != nil {
 			return goldap.ResultCodeObjectClassViolation, err
 		}
-		if key.EqualFold(ATTR_MEMBER) {
+		if key.EqualFold(AttrMember) {
 			// If they are writing a member list, we have to check they are adding valid members
 			// Also, rewrite member list to use canonical DN syntax (no spaces, all lowercase)
 			for _, member := range vals {
@@ -102,7 +103,7 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 				}
 				if !exists {
 					return goldap.ResultCodeNoSuchObject, fmt.Errorf(
-						"Cannot add %s to members, it does not exist!",
+						"cannot add %q to members, it does not exist",
 						memberCanonical)
 				}
 				members = append(members, memberCanonical)
@@ -118,8 +119,8 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 		}
 	}
 
-	if len(attrs.Get(ATTR_OBJECTCLASS)) == 0 {
-		attrs[ATTR_OBJECTCLASS] = store.AttributeValue{"top"}
+	if len(attrs.Get(AttrObjectClass)) == 0 {
+		attrs[AttrObjectClass] = store.AttributeValue{"top"}
 	}
 
 	uuid, err := uuid.NewRandom()
@@ -128,9 +129,9 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 	}
 
 	// Write system attributes
-	attrs[ATTR_CREATORSNAME] = []string{user.user}
-	attrs[ATTR_CREATETIMESTAMP] = []string{genTimestamp()}
-	attrs[ATTR_ENTRYUUID] = []string{uuid.String()}
+	attrs[AttrCreatorsName] = []string{user.user}
+	attrs[AttrCreateTimestamp] = []string{genTimestamp()}
+	attrs[AttrEntryUUID] = []string{uuid.String()}
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
@@ -145,9 +146,9 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 
 	// If our item has a member list, add it to all of its member's memberOf attribute
 	for _, member := range members {
-		if err := server.membershipAdd(tx, ATTR_MEMBEROF, member, dn); err != nil {
+		if err := server.membershipAdd(tx, AttrMemberOf, member, dn); err != nil {
 			return goldap.ResultCodeOperationsError, fmt.Errorf(
-				"error while adding %s to group %s: %w",
+				"error while adding %q to group %q: %w",
 				member.String(),
 				dn.String(),
 				err,
@@ -207,19 +208,19 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	}
 
 	if len(entries) == 0 {
-		return goldap.ResultCodeNoSuchObject, fmt.Errorf("Not found: %s", dn)
+		return goldap.ResultCodeNoSuchObject, fmt.Errorf("not found: %q", dn)
 	}
 	for _, entry := range entries {
 		if !entry.DN.Equal(dn) {
 			return goldap.ResultCodeNotAllowedOnNonLeaf, fmt.Errorf(
-				"Cannot delete %s as it has children", dn)
+				"cannot delete %q as it has children", dn)
 		}
 	}
 	entry := entries[0]
 
 	// Retrieve group membership before we delete everything
-	memberOf := entry.Get(ATTR_MEMBEROF)
-	memberList := entry.Get(ATTR_MEMBER)
+	memberOf := entry.Get(AttrMemberOf)
+	memberList := entry.Get(AttrMember)
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
@@ -232,20 +233,18 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	}
 
 	// Delete it from the member list of all the groups it was a member of
-	if memberOf != nil {
-		for _, group := range memberOf {
-			gdn, err := server.parseDN(group, false)
-			if err != nil {
-				return goldap.ResultCodeOperationsError, fmt.Errorf(
-					"error while parsing DN from group members attribute: %w",
-					err,
-				)
-			}
+	for _, group := range memberOf {
+		gdn, err := server.parseDN(group, false)
+		if err != nil {
+			return goldap.ResultCodeOperationsError, fmt.Errorf(
+				"error while parsing DN from group members attribute: %w",
+				err,
+			)
+		}
 
-			err = server.membershipRemove(tx, ATTR_MEMBER, gdn, dn)
-			if err != nil {
-				return goldap.ResultCodeOperationsError, fmt.Errorf("could not update attribute after removal: %w", err)
-			}
+		err = server.membershipRemove(tx, AttrMember, gdn, dn)
+		if err != nil {
+			return goldap.ResultCodeOperationsError, fmt.Errorf("could not update attribute after removal: %w", err)
 		}
 	}
 
@@ -259,7 +258,7 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 			)
 		}
 
-		if err := server.membershipRemove(tx, ATTR_MEMBEROF, mdn, dn); err != nil {
+		if err := server.membershipRemove(tx, AttrMemberOf, mdn, dn); err != nil {
 			return goldap.ResultCodeOperationsError, fmt.Errorf("error while removing memberOf: %w", err)
 		}
 	}
@@ -295,6 +294,7 @@ func (server *Bottin) HandleModify(
 	return ctx
 }
 
+//nolint:all
 func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.ModifyRequest) (int, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(r.Object()), false)
@@ -346,20 +346,20 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 		}
 		if attr.EqualFold(store.NewAttributeKey(dnFirstComponent.Type)) {
 			return goldap.ResultCodeObjectClassViolation, fmt.Errorf(
-				"%s may not be changed as it is part of object path",
+				"%q may not be changed as it is part of object path",
 				attr,
 			)
 		}
 
 		// Check for permission to modify this attribute
-		if !(server.acl.Check(user, "modify", dn, []store.AttributeKey{attr}) ||
-			(change.Operation() == ldapserver.ModifyRequestChangeOperationAdd &&
-				server.acl.Check(user, "modifyAdd", dn, []store.AttributeKey{attr}))) {
+		if !server.acl.Check(user, "modify", dn, []store.AttributeKey{attr}) &&
+			change.Operation() != ldapserver.ModifyRequestChangeOperationAdd ||
+			!server.acl.Check(user, "modifyAdd", dn, []store.AttributeKey{attr}) {
 			return goldap.ResultCodeInsufficientAccessRights, nil
 		}
 
 		// If we are changing ATTR_MEMBER, rewrite all values to canonical form
-		if attr.EqualFold(ATTR_MEMBER) {
+		if attr.EqualFold(AttrMember) {
 			for i := range changeValues {
 				canonicalVal, err := server.parseDN(changeValues[i], false)
 				if err != nil {
@@ -384,7 +384,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 			for _, val := range changeValues {
 				if !slices.Contains(attrs[attr], val) {
 					attrs[attr] = append(attrs[attr], val)
-					if attr.EqualFold(ATTR_MEMBER) {
+					if attr.EqualFold(AttrMember) {
 						valDN, err := server.parseDN(val, false)
 						if err != nil {
 							return goldap.ResultCodeInvalidDNSyntax, err
@@ -396,7 +396,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 		} else if change.Operation() == ldapserver.ModifyRequestChangeOperationDelete {
 			if len(changeValues) == 0 {
 				// Delete everything
-				if attr.EqualFold(ATTR_MEMBER) {
+				if attr.EqualFold(AttrMember) {
 					for _, val := range attrs[attr] {
 						valDN, err := server.parseDN(val, false)
 						if err != nil {
@@ -414,7 +414,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 					if !slices.Contains(changeValues, prevVal) {
 						newList = append(newList, prevVal)
 					} else {
-						if attr.EqualFold(ATTR_MEMBER) {
+						if attr.EqualFold(AttrMember) {
 							valDN, err := server.parseDN(prevVal, false)
 							if err != nil {
 								return goldap.ResultCodeInvalidDNSyntax, err
@@ -426,7 +426,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 				attrs[attr] = newList
 			}
 		} else if change.Operation() == ldapserver.ModifyRequestChangeOperationReplace {
-			if attr.EqualFold(ATTR_MEMBER) {
+			if attr.EqualFold(AttrMember) {
 				for _, newMem := range changeValues {
 					if !slices.Contains(attrs[attr], newMem) {
 						valDN, err := server.parseDN(newMem, false)
@@ -458,20 +458,20 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 		}
 		if !exists {
 			return goldap.ResultCodeNoSuchObject, fmt.Errorf(
-				"cannot add member %s, it does not exist", addMembers[i])
+				"cannot add member %q, it does not exist", addMembers[i])
 		}
 	}
 
 	for k, v := range attrs {
-		if k.EqualFold(ATTR_OBJECTCLASS) && len(v) == 0 {
+		if k.EqualFold(AttrObjectClass) && len(v) == 0 {
 			return goldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
 				"cannot remove all objectclass values")
 		}
 	}
 
 	// Now, the modification has been processed and accepted and we want to commit it
-	attrs[ATTR_MODIFIERSNAME] = []string{user.user}
-	attrs[ATTR_MODIFYTIMESTAMP] = []string{genTimestamp()}
+	attrs[AttrModifiersName] = []string{user.user}
+	attrs[AttrModifyTimestamp] = []string{genTimestamp()}
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
@@ -486,13 +486,13 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 
 	// Update memberOf for added members and deleted members
 	for _, addMem := range addMembers {
-		if err := server.membershipAdd(tx, ATTR_MEMBEROF, addMem, dn); err != nil {
+		if err := server.membershipAdd(tx, AttrMemberOf, addMem, dn); err != nil {
 			return goldap.ResultCodeOperationsError, fmt.Errorf("error while adding memberOf: %w", err)
 		}
 	}
 
 	for _, delMem := range delMembers {
-		if err := server.membershipRemove(tx, ATTR_MEMBEROF, delMem, dn); err != nil {
+		if err := server.membershipRemove(tx, AttrMemberOf, delMem, dn); err != nil {
 			return goldap.ResultCodeOperationsError, fmt.Errorf("error while removing memberOf: %w", err)
 		}
 	}

@@ -6,7 +6,9 @@ import (
 	"net/http"
 )
 
-const logContextKey = "log"
+type contextKey string
+
+const logContextKey contextKey = "log"
 
 func getLogger(ctx context.Context) *slog.Logger {
 	return ctx.Value(logContextKey).(*slog.Logger)

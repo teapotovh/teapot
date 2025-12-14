@@ -33,8 +33,8 @@ func parseRawMount(mount string) (cfg mountConfig, err error) {
 	}
 
 	switch parts[0] {
-	case VFS_OS.String():
-		cfg.VFS = VFS_OS
+	case VFSOS.String():
+		cfg.VFS = VFSOS
 	default:
 		return cfg, fmt.Errorf("unexpected VFS type: %s", parts[0])
 	}
@@ -57,7 +57,7 @@ func (m *mount) src(username string) (hpfs.FS, error) {
 	}
 
 	switch m.vfs {
-	case VFS_OS:
+	case VFSOS:
 		fs, err := hpfsos.NewFS().Sub(path)
 		if err != nil {
 			return nil, fmt.Errorf("error while opening filesystem for %q mount source: %w", m.vfs, err)

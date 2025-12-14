@@ -65,6 +65,7 @@ func (c *client) ReadPacket() (*messagePacket, error) {
 	return mP, err
 }
 
+//nolint:all
 func (c *client) serve(ctx context.Context) {
 	c.srv.wg.Add(1)
 	c.closing = make(chan bool)

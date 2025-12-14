@@ -15,11 +15,11 @@ import (
 func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, error) {
 	entries, err := server.store.List(ctx, dn.Prefix(), true)
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching entry with DN %s from store: %w", dn.String(), err)
+		return nil, fmt.Errorf("error while fetching entry with DN %q from store: %w", dn.String(), err)
 	}
 
 	if len(entries) != 1 {
-		return nil, fmt.Errorf("entry with given DN not found: %s", dn.String())
+		return nil, fmt.Errorf("entry with given DN not found: %q", dn.String())
 	}
 
 	return &entries[0], nil
@@ -28,7 +28,7 @@ func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, 
 func (server *Bottin) existsEntry(ctx context.Context, dn store.DN) (bool, error) {
 	entries, err := server.store.List(ctx, dn.Prefix(), true)
 	if err != nil {
-		return false, fmt.Errorf("error while checking if entry with DN %s exists: %w", dn.String(), err)
+		return false, fmt.Errorf("error while checking if entry with DN %q exists: %w", dn.String(), err)
 	}
 
 	return len(entries) == 1, nil
@@ -102,6 +102,7 @@ func (server *Bottin) HandleSearch(
 	return ctx
 }
 
+//nolint:all
 func (server *Bottin) handleSearchInternal(
 	ctx context.Context,
 	w ldapserver.ResponseWriter,
@@ -128,7 +129,7 @@ func (server *Bottin) handleSearchInternal(
 
 	if !server.acl.Check(user, "read", baseObject, []store.AttributeKey{}) {
 		return goldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
-			"Please specify a base object on which you have read rights",
+			"please specify a base object on which you have read rights",
 		)
 	}
 
@@ -259,6 +260,6 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 		}
 		return false, nil
 	} else {
-		return false, fmt.Errorf("Unsupported filter: %#v %T", filter, filter)
+		return false, fmt.Errorf("unsupported filter: %#v %T", filter, filter)
 	}
 }

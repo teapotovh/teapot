@@ -21,7 +21,7 @@ linters:
         - (*testing.T).Logf
         - (*testing.T).Errorf
     gocyclo:
-      min-complexity: 22
+      min-complexity: 15
     revive:
       enable-default-rules: true
       directives:

@@ -43,7 +43,7 @@ func parseACL(def []string) (ACL, error) {
 	for _, item := range def {
 		parts := strings.Split(item, ":")
 		if len(parts) != 5 {
-			return nil, fmt.Errorf("Invalid ACL entry: %s", item)
+			return nil, fmt.Errorf("invalid ACL entry: %s", item)
 		}
 		var (
 			attr     []store.AttributeKey
@@ -56,7 +56,7 @@ func parseACL(def []string) (ACL, error) {
 				attr = append(attr, store.NewAttributeKey(s))
 			}
 		}
-		item_def := ACLEntry{
+		entry := ACLEntry{
 			User:               parts[0],
 			RequiredGroups:     splitNoEmpty(parts[1]),
 			Actions:            splitNoEmpty(parts[2]),
@@ -64,7 +64,7 @@ func parseACL(def []string) (ACL, error) {
 			Attributes:         attr,
 			ExcludedAttributes: exclAttr,
 		}
-		acl = append(acl, item_def)
+		acl = append(acl, entry)
 	}
 	return acl, nil
 }

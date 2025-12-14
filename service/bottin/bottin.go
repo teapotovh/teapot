@@ -17,18 +17,18 @@ import (
 const (
 	// System managed attributes (cannot be changed by user, see checkRestrictedAttr)
 
-	ATTR_MEMBEROF        store.AttributeKey = "memberof"
-	ATTR_ENTRYUUID       store.AttributeKey = "entryuuid"
-	ATTR_CREATORSNAME    store.AttributeKey = "creatorsname"
-	ATTR_CREATETIMESTAMP store.AttributeKey = "createtimestamp"
-	ATTR_MODIFIERSNAME   store.AttributeKey = "modifiersname"
-	ATTR_MODIFYTIMESTAMP store.AttributeKey = "modifytimestamp"
+	AttrMemberOf        store.AttributeKey = "memberof"
+	AttrEntryUUID       store.AttributeKey = "entryuuid"
+	AttrCreatorsName    store.AttributeKey = "creatorsname"
+	AttrCreateTimestamp store.AttributeKey = "createtimestamp"
+	AttrModifiersName   store.AttributeKey = "modifiersname"
+	AttrModifyTimestamp store.AttributeKey = "modifytimestamp"
 
 	// Attributes that we are interested in at various points
 
-	ATTR_OBJECTCLASS  store.AttributeKey = "objectclass"
-	ATTR_MEMBER       store.AttributeKey = "member"
-	ATTR_USERPASSWORD store.AttributeKey = "userpassword"
+	AttrObjectClass  store.AttributeKey = "objectclass"
+	AttrMember       store.AttributeKey = "member"
+	AttrUserPassword store.AttributeKey = "userpassword"
 )
 
 type BottinConfig struct {
@@ -106,11 +106,11 @@ func (server *Bottin) Init(ctx context.Context) error {
 
 	// We have to initialize the server. Create a root object.
 	baseAttributes := store.Attributes{
-		ATTR_OBJECTCLASS:        store.AttributeValue{"top", "dcObject", "organization"},
+		AttrObjectClass:         store.AttributeValue{"top", "dcObject", "organization"},
 		"structuralobjectclass": store.AttributeValue{"organization"},
-		ATTR_CREATORSNAME:       store.AttributeValue{server.baseDN.String()},
-		ATTR_CREATETIMESTAMP:    store.AttributeValue{genTimestamp()},
-		ATTR_ENTRYUUID:          store.AttributeValue{uuid.String()},
+		AttrCreatorsName:        store.AttributeValue{server.baseDN.String()},
+		AttrCreateTimestamp:     store.AttributeValue{genTimestamp()},
+		AttrEntryUUID:           store.AttributeValue{uuid.String()},
 	}
 
 	tx, err := server.store.Begin(ctx)
@@ -207,8 +207,8 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	}
 
 	// Check permissions
-	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{ATTR_USERPASSWORD}) {
-		return ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("Insufficient access rights for %#v", user)
+	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{AttrUserPassword}) {
+		return ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("insufficient access rights for %#v", user)
 	}
 	if dn.Equal(server.baseDN) {
 		return ldap.ResultCodeInvalidDNSyntax, errors.New("root entry password cannot be set")
@@ -225,7 +225,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	server.logger.InfoContext(ctx, "updating passwd", "dn", dn, "hash", hash)
 
 	attrs := maps.Clone(entry.Attributes)
-	attrs[ATTR_USERPASSWORD] = store.AttributeValue{hash}
+	attrs[AttrUserPassword] = store.AttributeValue{hash}
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
 		return ldap.ResultCodeOperationsError, fmt.Errorf("error while beginning transaction: %w", err)
@@ -275,7 +275,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 
 	// Check permissions
 	if !server.acl.Check(user, "bind", dn, []store.AttributeKey{}) {
-		return ctx, ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("Insufficient access rights for %#v", user)
+		return ctx, ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("insufficient access rights for %#v", user)
 	}
 
 	entry, err := server.getEntry(ctx, dn)
@@ -288,7 +288,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 	if dn.Equal(server.baseDN) {
 		hashes = store.AttributeValue{server.rootPasswd}
 	} else {
-		hashes = entry.Get(ATTR_USERPASSWORD)
+		hashes = entry.Get(AttrUserPassword)
 	}
 
 	for _, hash := range hashes {
@@ -299,7 +299,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 		}
 
 		if valid {
-			groups := entry.Get(ATTR_MEMBEROF)
+			groups := entry.Get(AttrMemberOf)
 			ctx = ldapserver.WithUser(ctx, User{
 				user:   string(r.Name()),
 				groups: groups,
@@ -309,5 +309,5 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 		}
 	}
 
-	return ctx, ldap.ResultCodeInvalidCredentials, fmt.Errorf("No password match")
+	return ctx, ldap.ResultCodeInvalidCredentials, fmt.Errorf("no password match")
 }
