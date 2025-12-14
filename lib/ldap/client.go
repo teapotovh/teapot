@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"text/template"
 
 	"github.com/go-ldap/ldap/v3"
+
+	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
 var (
@@ -15,6 +16,10 @@ var (
 	ErrTooManyMatches     = errors.New("too many matches for user search")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
+
+type filterTemplateValues struct {
+	Username string
+}
 
 // Client holds a connection to an LDAP server and can be used to perform
 // high-level user-management instructions on that server.
@@ -25,7 +30,7 @@ type Client struct {
 	conn *ldap.Conn
 
 	usersDN      string
-	usersFilter  *template.Template
+	usersFilter  *tmplstring.TMPL[filterTemplateValues]
 	groupsDN     string
 	adminGroupDN string
 	accessesDN   string

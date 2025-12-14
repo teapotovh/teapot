@@ -61,7 +61,7 @@ func (c *Command) Start(name string, args ...string) error {
 func (c *Command) logOutput(r io.Reader, level slog.Level) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		c.logger.Log(context.Background(), level, scanner.Text())
+		c.logger.Log(context.Background(), level, scanner.Text()) //nolint:sloglint
 	}
 }
 

@@ -38,7 +38,7 @@ func main() {
 
 	fs, getFilesConfig := files.FilesFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getHttpSrvConfig := httpsrv.HttpSrvFlagSet()
+	fs, getHttpSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getWebConfig := web.WebFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -62,7 +62,7 @@ func main() {
 		os.Exit(CodeFiles)
 	}
 
-	httpsrv, err := httpsrv.NewHttpSrv(getHttpSrvConfig(), logger.With("sub", "httpsrv"))
+	httpsrv, err := httpsrv.NewHTTPSrv(getHttpSrvConfig(), logger.With("sub", "httpsrv"))
 	if err != nil {
 		logger.Error("error while initiating the httpsrv subsystem", "err", err)
 		os.Exit(CodeWeb)

@@ -52,6 +52,7 @@ func NewWebDav(files *files.Files, config WebDavConfig, logger *slog.Logger) (*W
 	return &wd, nil
 }
 
+// Handler implements httpsrv.HTTPService
 func (wd *WebDav) Handler(prefix string) http.Handler {
 	logger := wd.logger.With("component", "webdav")
 

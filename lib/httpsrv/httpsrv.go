@@ -14,25 +14,25 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 )
 
-type HttpSrvConfig struct {
+type HTTPSrvConfig struct {
 	Address       string
 	ShutdownDelay time.Duration
 }
 
-type HttpSrv struct {
+type HTTPSrv struct {
 	logger        *slog.Logger
 	inner         *http.Server
 	mux           *muxie.Mux
 	shutdownDelay time.Duration
 }
 
-func NewHttpSrv(config HttpSrvConfig, logger *slog.Logger) (*HttpSrv, error) {
+func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 	mux := muxie.NewMux()
 	inner := http.Server{
 		Handler: mux,
 		Addr:    config.Address,
 	}
-	return &HttpSrv{
+	return &HTTPSrv{
 		logger: logger,
 
 		shutdownDelay: config.ShutdownDelay,
@@ -41,20 +41,20 @@ func NewHttpSrv(config HttpSrvConfig, logger *slog.Logger) (*HttpSrv, error) {
 	}, nil
 }
 
-type HttpService interface {
+type HTTPService interface {
 	// Handler returns an http.Handler for that service being rooted at `prefix`.
 	// The provided argument is the prefix prepended to each HTTP request path.
 	Handler(string) http.Handler
 }
 
-func (h *HttpSrv) Register(name string, service HttpService, prefix string) {
+func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler := service.Handler(prefix)
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
 	h.mux.Handle(path.Join(prefix, "*"), handler)
 }
 
 // Run implements run.Runnable
-func (h *HttpSrv) Run(ctx context.Context, notify run.Notify) error {
+func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 	var ch chan error
 	defer close(ch)
 

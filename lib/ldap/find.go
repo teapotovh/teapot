@@ -2,21 +2,15 @@ package ldap
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/go-ldap/ldap/v3"
 )
 
-type filterTemplateValues struct {
-	Username string
-}
-
 func (c *Client) list() ([]*ldap.Entry, error) {
-	builder := new(strings.Builder)
-	c.usersFilter.Execute(builder, filterTemplateValues{
-		Username: "*",
-	})
-	filter := builder.String()
+	filter, err := c.usersFilter.Render(filterTemplateValues{Username: "*"})
+	if err != nil {
+		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
+	}
 
 	searchRequest := ldap.NewSearchRequest(
 		c.usersDN,
@@ -44,11 +38,12 @@ func (c *Client) list() ([]*ldap.Entry, error) {
 }
 
 func (c *Client) find(username string) (*ldap.Entry, error) {
-	builder := new(strings.Builder)
-	c.usersFilter.Execute(builder, filterTemplateValues{
+	filter, err := c.usersFilter.Render(filterTemplateValues{
 		Username: username,
 	})
-	filter := builder.String()
+	if err != nil {
+		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
+	}
 
 	searchRequest := ldap.NewSearchRequest(
 		c.usersDN,

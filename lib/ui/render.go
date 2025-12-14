@@ -2,7 +2,6 @@ package ui
 
 import (
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,8 +42,6 @@ func RendererFlagSet() (*flag.FlagSet, func() RendererConfig) {
 		}
 	}
 }
-
-type stlyesheetID [sha512.Size]byte
 
 type Renderer struct {
 	page             Page
@@ -261,12 +258,12 @@ func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Compone
 	))
 
 	if err := all.Render(w); err != nil {
-		err = fmt.Errorf("error while rendering component: %w", err)
+		return fmt.Errorf("error while rendering component: %w", err)
 	}
-	return err
+	return nil
 }
 
-// Render renders a full page to the response. It adds styles as necessary.
+// RenderPage renders a full page to the response. It adds styles as necessary.
 func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) error {
 	loaded := emptyAlreadyLoaded()
 	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
@@ -283,7 +280,7 @@ func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) 
 	page := rer.page.Render(props)
 
 	if err := page.Render(w); err != nil {
-		err = fmt.Errorf("error while rendering page: %w", err)
+		return fmt.Errorf("error while rendering page: %w", err)
 	}
-	return err
+	return nil
 }

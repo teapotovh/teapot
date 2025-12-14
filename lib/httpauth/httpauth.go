@@ -7,8 +7,10 @@ import (
 	"github.com/teapotovh/teapot/lib/ldap"
 )
 
+type contextKey string
+
 const (
-	authContextKey = "auth"
+	authContextKey contextKey = "auth"
 )
 
 func GetAuth(r *http.Request) *Auth {

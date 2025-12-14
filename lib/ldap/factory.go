@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"sync/atomic"
-	"text/template"
 
 	"github.com/go-ldap/ldap/v3"
+
+	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
 type LDAPConfig struct {
@@ -27,7 +28,7 @@ type LDAPConfig struct {
 // One client should be constructed per request.
 type Factory struct {
 	logger       *slog.Logger
-	usersFilter  *template.Template
+	usersFilter  *tmplstring.TMPL[filterTemplateValues]
 	url          string
 	rootDN       string
 	rootPasswd   string
@@ -38,8 +39,8 @@ type Factory struct {
 	clients      atomic.Int32
 }
 
-func NewFactory(options LDAPConfig, logger *slog.Logger) (*Factory, error) {
-	usersFilter, err := template.New("usersFilter").Parse(options.UsersFilter)
+func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
+	usersFilter, err := tmplstring.NewTMPL[filterTemplateValues](config.UsersFilter)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing user filter template: %w", err)
 	}
@@ -47,15 +48,15 @@ func NewFactory(options LDAPConfig, logger *slog.Logger) (*Factory, error) {
 	return &Factory{
 		logger: logger,
 
-		url:        options.URL,
-		rootDN:     options.RootDN,
-		rootPasswd: options.RootPasswd,
+		url:        config.URL,
+		rootDN:     config.RootDN,
+		rootPasswd: config.RootPasswd,
 
-		usersDN:      options.UsersDN,
+		usersDN:      config.UsersDN,
 		usersFilter:  usersFilter,
-		groupsDN:     options.GroupsDN,
-		adminGroupDN: options.AdminGroupDN,
-		accessesDN:   options.AccessesDN,
+		groupsDN:     config.GroupsDN,
+		adminGroupDN: config.AdminGroupDN,
+		accessesDN:   config.AccessesDN,
 	}, nil
 }
 

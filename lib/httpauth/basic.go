@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	basicAuthErrContextKey = "basic-auth-err"
+	basicAuthErrContextKey contextKey = "basic-auth-err"
 )
 
 type BasicAuthData struct {
