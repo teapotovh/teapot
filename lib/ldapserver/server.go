@@ -95,7 +95,8 @@ func (s *Server) serve(ctx context.Context) (err error) {
 
 		rw, err := s.Listener.Accept()
 		if nil != err {
-			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+			var ne *net.OpError
+			if ok := errors.As(err, &ne); ok && ne.Timeout() {
 				continue
 			}
 

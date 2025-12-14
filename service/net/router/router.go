@@ -173,7 +173,7 @@ func (r *Router) configureRoutes() error {
 	for _, route := range toadd {
 		// Desired route is missing, let's add it
 		if err := r.addRoute(route); err != nil {
-			return fmt.Errorf("error while adding new route %q: %s", route, err)
+			return fmt.Errorf("error while adding new route %q: %w", route, err)
 		}
 	}
 
@@ -181,7 +181,7 @@ func (r *Router) configureRoutes() error {
 		if _, ok := routes[eroute]; !ok {
 			// Existing route is no longer desired, let's remove it
 			if err := r.delRoute(eroute); err != nil {
-				return fmt.Errorf("error while removing stale route %q: %s", eroute, err)
+				return fmt.Errorf("error while removing stale route %q: %w", eroute, err)
 			}
 		}
 	}
@@ -192,7 +192,7 @@ func (r *Router) configureRoutes() error {
 func (r *Router) cleanupRoutes() error {
 	for eroute := range r.routes {
 		if err := r.delRoute(eroute); err != nil {
-			return fmt.Errorf("error while removing stale route %q: %s", eroute, err)
+			return fmt.Errorf("error while removing stale route %q: %w", eroute, err)
 		}
 	}
 

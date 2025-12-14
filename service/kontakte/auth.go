@@ -21,6 +21,7 @@ var ErrInvalidAuthTokenType = errors.New("")
 
 type Auth struct {
 	jwt.RegisteredClaims
+
 	Admin bool `json:"admin"`
 }
 

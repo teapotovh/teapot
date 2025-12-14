@@ -2,6 +2,7 @@ package httpsrv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -64,7 +65,7 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 	go func() {
 		h.logger.Info("opening HTTP server", "address", h.inner.Addr)
 		notify.Notify()
-		if err := h.inner.ListenAndServe(); err != http.ErrServerClosed {
+		if err := h.inner.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			ch <- err
 		} else {
 			ch <- nil

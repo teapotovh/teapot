@@ -8,6 +8,7 @@ import (
 
 type Message struct {
 	*ldap.LDAPMessage
+
 	Client *client
 	Done   chan bool
 }

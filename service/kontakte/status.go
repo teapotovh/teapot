@@ -11,21 +11,22 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-type errorStatus struct {
+type statusError struct {
 	error
+
 	status int
 }
 
-func (e errorStatus) StatusCode() int {
+func (e statusError) StatusCode() int {
 	return e.status
 }
 
-func (e errorStatus) Unwrap() error {
+func (e statusError) Unwrap() error {
 	return e.error
 }
 
 func ErrorWithStatus(err error, status int) error {
-	return errorStatus{error: err, status: status}
+	return statusError{error: err, status: status}
 }
 
 func ErrorDialog(err error) g.Node {

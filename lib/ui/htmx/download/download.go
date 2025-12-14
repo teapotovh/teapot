@@ -30,6 +30,11 @@ func main() {
 		if err != nil {
 			panic(fmt.Errorf("error while fetching component %q: %w", component, err))
 		}
+		defer func() {
+			if err := res.Body.Close(); err != nil {
+				panic(fmt.Errorf("error while closing request body: %w", err))
+			}
+		}()
 
 		contents, err := io.ReadAll(res.Body)
 		if err != nil {

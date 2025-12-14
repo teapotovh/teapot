@@ -221,7 +221,7 @@ func (c *CNI) cleanupCNIFile() error {
 func (c *CNI) cleanupIptables() error {
 	for _, r := range c.rules {
 		if err := c.iptables.Delete(r.table, r.chain, r.rule...); err != nil {
-			return fmt.Errorf("error while removing stale iptables rule %q: %s", r, err)
+			return fmt.Errorf("error while removing stale iptables rule %q: %w", r, err)
 		}
 	}
 

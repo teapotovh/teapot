@@ -2,6 +2,7 @@ package arp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -47,9 +48,9 @@ L:
 		}
 
 		packet, err := lsnr.source.NextPacket()
-		if err == afpacket.ErrTimeout {
+		if errors.Is(err, afpacket.ErrTimeout) {
 			continue
-		} else if err == io.EOF {
+		} else if errors.Is(err, io.EOF) {
 			break L
 		} else if err != nil {
 			return fmt.Errorf("error while reading ARP packet: %w", err)

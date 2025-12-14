@@ -357,6 +357,7 @@ const (
 
 type BindResponse struct {
 	LDAPResult
+
 	serverSaslCreds *OCTETSTRING
 }
 
@@ -707,6 +708,7 @@ const TagExtendedResponse = 24
 
 type ExtendedResponse struct {
 	LDAPResult
+
 	responseName  *LDAPOID
 	responseValue *OCTETSTRING
 }
