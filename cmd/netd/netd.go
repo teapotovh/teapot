@@ -56,7 +56,7 @@ func main() {
 	if err != nil {
 		// This is the only place where we use the default slog logger,
 		// as our internal one has not been setup yet.
-		slog.Error("error while configuring the logger", "err", err)
+		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
 	kubelog.WithLogger(logger.With("sub", "klog"))

@@ -38,7 +38,7 @@ func main() {
 
 	fs, getFilesConfig := files.FilesFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getHttpSrvConfig := httpsrv.HTTPSrvFlagSet()
+	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getWebConfig := web.WebFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -50,7 +50,7 @@ func main() {
 	if err != nil {
 		// This is the only place where we use the default slog logger,
 		// as our internal one has not been setup yet.
-		slog.Error("error while configuring the logger", "err", err)
+		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
 
@@ -62,7 +62,7 @@ func main() {
 		os.Exit(CodeFiles)
 	}
 
-	httpsrv, err := httpsrv.NewHTTPSrv(getHttpSrvConfig(), logger.With("sub", "httpsrv"))
+	httpsrv, err := httpsrv.NewHTTPSrv(getHTTPSrvConfig(), logger.With("sub", "httpsrv"))
 	if err != nil {
 		logger.Error("error while initiating the httpsrv subsystem", "err", err)
 		os.Exit(CodeWeb)
