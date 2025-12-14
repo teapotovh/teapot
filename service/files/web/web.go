@@ -5,13 +5,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/kataras/muxie"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
 	httpui "github.com/teapotovh/teapot/lib/ui/http"
+	"github.com/teapotovh/teapot/service/files"
 )
 
 type WebConfig struct {
@@ -21,12 +22,13 @@ type WebConfig struct {
 type Web struct {
 	logger *slog.Logger
 
+	prefix              string
 	assetPath           string
 	renderer            *ui.Renderer
 	dependenciesHandler http.Handler
 }
 
-func NewWeb(config WebConfig, logger *slog.Logger) (*Web, error) {
+func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, error) {
 	renderer, err := ui.NewRenderer(config.UI.Renderer, ui.DefaultPage{}, logger.With("component", "renderer"))
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing renderer: %w", err)
@@ -43,9 +45,14 @@ func NewWeb(config WebConfig, logger *slog.Logger) (*Web, error) {
 	return &web, nil
 }
 
-func (web *Web) Register(mux *muxie.Mux) {
+func (web *Web) Handler(prefix string) http.Handler {
+	web.prefix = prefix
+
+	mux := muxie.NewMux()
 	mux.Handle(web.assetPath+"*", web.dependenciesHandler)
 	mux.HandleFunc("/", web.Handle)
+
+	return mux
 }
 
 type HomePage struct {
@@ -54,10 +61,10 @@ type HomePage struct {
 func (hp HomePage) Render(ctx ui.Context) g.Node {
 	return g.Group{
 		components.Header(ctx, g.Group{
-			h.A(g.Text("files")),
+			components.HeaderTitle(ctx, h.Href("/"), g.Text("Files")),
 		}, g.Group{
-			h.A(g.Text("login")),
-			h.A(g.Text("register")),
+			components.HeaderLink(ctx, h.Href("/login"), g.Text("login")),
+			components.HeaderLink(ctx, h.Href("/register"), g.Text("register")),
 		}),
 		components.Body(ctx,
 			g.Text("this is a test webpage, with a button"),

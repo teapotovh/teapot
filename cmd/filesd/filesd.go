@@ -1,41 +1,45 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"log/slog"
-	"net/http"
 	"os"
-	// "slices"
+	"os/signal"
+	"slices"
+	"syscall"
+	"time"
 
-	"github.com/kataras/muxie"
 	flag "github.com/spf13/pflag"
 
-	// "github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/log"
-	// "github.com/teapotovh/teapot/service/files"
+	"github.com/teapotovh/teapot/lib/run"
+	"github.com/teapotovh/teapot/service/files"
 	"github.com/teapotovh/teapot/service/files/web"
-	// "github.com/teapotovh/teapot/service/files/webdav"
+	"github.com/teapotovh/teapot/service/files/webdav"
 )
 
 const (
-	CodeLog            = -1
-	CodeFilesSubsystem = -1
-	CodeWebSubsystem   = -2
-	CodeHTTP           = -3
+	CodeLog    = -1
+	CodeFiles  = -1
+	CodeWebDav = -2
+	CodeWeb    = -3
+	CodeHTTP   = -4
+	CodeRun    = -5
 )
 
 const (
 	HTTPWebDavPrefix = "/dav"
+	HTTPWebPrefix    = "/"
 )
 
 func main() {
-	httpAddr := flag.StringP("http-addr", "h", ":8145", "http port to listen on")
-	// components := flag.StringSliceP("components", "c", []string{"webdav"}, "list of components to run")
+	components := flag.StringSliceP("components", "c", []string{"webdav", "web"}, "list of components to run")
 
-	// fs, getSessionsConfig := files.SessionsFlagSet()
-	// flag.CommandLine.AddFlagSet(fs)
-	// fs, getLdapConfig := ldap.LDAPFlagSet()
-	// flag.CommandLine.AddFlagSet(fs)
+	fs, getFilesConfig := files.FilesFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getHttpSrvConfig := httpsrv.HttpSrvFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
 	fs, getWebConfig := web.WebFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLogConfig := log.LogFlagSet()
@@ -50,44 +54,47 @@ func main() {
 		os.Exit(CodeLog)
 	}
 
-	// config := files.FilesConfig{
-	// 	SessionsConfig:    getSessionsConfig(),
-	// 	LDAPFactoryConfig: getLdapConfig(),
-	// }
-	//
-	// files, err := files.NewFiles(config, logger.With("subsystem", "files"))
-	// if err != nil {
-	// 	logger.Error("error while initiating files subsystem", "err", err)
-	// 	os.Exit(CodeFilesSubsystem)
-	// }
-	//
-	// // HTTP-based services
-	mux := muxie.NewMux()
+	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	// if slices.Contains(*components, "webdav") {
-	// 	config := webdav.WebDavConfig{}
-	// 	webdav := webdav.NewWebDav(config, logger.With("subsystem", "webdav"), files)
-	//
-	// 	logger.Info("registered webdav", "path", HTTPWebDavPrefix)
-	// 	handler := webdav.Handler(HTTPWebDavPrefix)
-	// 	mux.Handle(HTTPWebDavPrefix+"/*", handler)
-	// }
-
-	web, err := web.NewWeb(getWebConfig(), logger.With("sub", "web"))
+	files, err := files.NewFiles(getFilesConfig(), logger.With("sub", "files"))
 	if err != nil {
-		logger.Error("error while initiating web subsystem", "err", err)
-		os.Exit(CodeWebSubsystem)
+		logger.Error("error while initiating the files subsystem", "err", err)
+		os.Exit(CodeFiles)
 	}
-	web.Register(mux)
 
-	server := http.Server{Handler: mux, Addr: *httpAddr}
-	logger.Info("listening on HTTP", "addr", *httpAddr)
-	if err := server.ListenAndServe(); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("error while running HTTP server", "err", err)
-			os.Exit(CodeHTTP)
+	httpsrv, err := httpsrv.NewHttpSrv(getHttpSrvConfig(), logger.With("sub", "httpsrv"))
+	if err != nil {
+		logger.Error("error while initiating the httpsrv subsystem", "err", err)
+		os.Exit(CodeWeb)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if slices.Contains(*components, "webdav") {
+		webdav, err := webdav.NewWebDav(files, webdav.WebDavConfig{}, logger.With("sub", "webdav"))
+		if err != nil {
+			logger.Error("error while initiating the webdav subsystem", "err", err)
+			os.Exit(CodeWeb)
 		}
 
-		logger.Info("HTTP server shutdown gracefully")
+		httpsrv.Register("webdav", webdav, HTTPWebDavPrefix)
+	}
+
+	if slices.Contains(*components, "web") {
+		web, err := web.NewWeb(files, getWebConfig(), logger.With("sub", "web"))
+		if err != nil {
+			logger.Error("error while initiating the web subsystem", "err", err)
+			os.Exit(CodeWeb)
+		}
+
+		httpsrv.Register("web", web, HTTPWebPrefix)
+	}
+
+	run.Add("httpsrv", httpsrv, nil)
+
+	if err := run.Run(ctx); err != nil {
+		logger.Error("error while running net components", "err", err)
+		os.Exit(CodeRun)
 	}
 }

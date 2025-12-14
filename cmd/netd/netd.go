@@ -61,12 +61,11 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err)
 		os.Exit(CodeLog)
 	}
-	logger = logger.With("sub", "net")
-	kubelog.WithLogger(logger.With("component", "klog"))
+	kubelog.WithLogger(logger.With("sub", "klog"))
 
-	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("component", "run"))
+	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	net, err := net.NewNet(getNetConfig(), logger)
+	net, err := net.NewNet(getNetConfig(), logger.With("sub", "net"))
 	if err != nil {
 		logger.Error("error while initializing net controller", "err", err)
 		os.Exit(CodeInitNet)
@@ -76,7 +75,7 @@ func main() {
 	defer stop()
 
 	if slices.Contains(*components, "wireguard") {
-		wireguard, err := wireguard.NewWireguard(net, getWireguardConfig(), logger.With("component", "wireguard"))
+		wireguard, err := wireguard.NewWireguard(net, getWireguardConfig(), logger.With("sub", "wireguard"))
 		if err != nil {
 			logger.Error("error while initializing wireguard component", "err", err)
 			os.Exit(CodeInitWireguard)
@@ -86,7 +85,7 @@ func main() {
 	}
 
 	if slices.Contains(*components, "router") {
-		router, err := router.NewRouter(net, getRouterConfig(), logger.With("component", "router"))
+		router, err := router.NewRouter(net, getRouterConfig(), logger.With("sub", "router"))
 		if err != nil {
 			logger.Error("error while initializing router component", "err", err)
 			os.Exit(CodeInitRouter)
@@ -96,7 +95,7 @@ func main() {
 	}
 
 	if slices.Contains(*components, "cni") {
-		cni, err := cni.NewCNI(net, getCNIConfig(), logger.With("component", "cni"))
+		cni, err := cni.NewCNI(net, getCNIConfig(), logger.With("sub", "cni"))
 		if err != nil {
 			logger.Error("error while initializing cni component", "err", err)
 			os.Exit(CodeInitCNI)

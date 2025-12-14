@@ -4,7 +4,7 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-func LDAPFlagSet() (*flag.FlagSet, func() FactoryConfig) {
+func LDAPFlagSet() (*flag.FlagSet, func() LDAPConfig) {
 	fs := flag.NewFlagSet("ldap", flag.ExitOnError)
 
 	url := fs.String("ldap-url", "ldap://localhost:389", "the URI used to connect to LDAP")
@@ -16,8 +16,8 @@ func LDAPFlagSet() (*flag.FlagSet, func() FactoryConfig) {
 	adminGroupDN := fs.String("ldap-admin-group-dn", "cn=admin,ou=groups,dc=teapot,dc=ovh", "the DN of the group for admin users")
 	accessesDN := fs.String("ldap-accesses-dn", "ou=accesses,dc=teapot,dc=ovh", "the base DN where access groups are stored")
 
-	return fs, func() FactoryConfig {
-		return FactoryConfig{
+	return fs, func() LDAPConfig {
+		return LDAPConfig{
 			URL:        *url,
 			RootDN:     *rootDN,
 			RootPasswd: *rootPasswd,

@@ -32,18 +32,19 @@ func (vfs VFS) String() string {
 
 // FilesConfig is the configuration for the Files service
 type FilesConfig struct {
-	SessionsConfig    SessionsConfig
-	LDAPFactoryConfig ldap.FactoryConfig
+	Mounts   []string
+	Sessions SessionsConfig
+	LDAP     ldap.LDAPConfig
 }
 
 // NewFiles returns a new Files service instance
 func NewFiles(config FilesConfig, logger *slog.Logger) (*Files, error) {
-	sessions, err := NewSessions(config.SessionsConfig, logger.With("component", "sections"))
+	sessions, err := NewSessions(config.Sessions, logger.With("component", "sections"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building filesystem sources: %w", err)
 	}
 
-	ldapFactory, err := ldap.NewFactory(config.LDAPFactoryConfig, logger.With("component", "ldap"))
+	ldapFactory, err := ldap.NewFactory(config.LDAP, logger.With("component", "ldap"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building LDAP factory: %w", err)
 	}

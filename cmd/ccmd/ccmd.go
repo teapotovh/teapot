@@ -57,19 +57,18 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err)
 		os.Exit(CodeLog)
 	}
-	logger = logger.With("sub", "loadbalancer")
-	kubelog.WithLogger(logger.With("component", "klog"))
+	kubelog.WithLogger(logger.With("sub", "klog"))
 
-	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("component", "run"))
+	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	ccm, err := ccm.NewCCM(getCCMConfig(), logger)
+	ccm, err := ccm.NewCCM(getCCMConfig(), logger.With("sub", "ccm"))
 	if err != nil {
 		logger.Error("error while initializing ccm controller", "err", err)
 		os.Exit(CodeInitCCM)
 	}
 
 	if slices.Contains(*components, "externalip") {
-		externalip, err := externalip.NewExternalIP(ccm, getExternalIPConfig(), logger.With("component", "externalip"))
+		externalip, err := externalip.NewExternalIP(ccm, getExternalIPConfig(), logger.With("sub", "externalip"))
 		if err != nil {
 			logger.Error("error while initializing externalip component", "err", err)
 			os.Exit(CodeInitExternalIP)
@@ -79,7 +78,7 @@ func main() {
 	}
 
 	if slices.Contains(*components, "internalip") {
-		internalip, err := internalip.NewInternalIP(ccm, getInternalIPConfig(), logger.With("component", "internalip"))
+		internalip, err := internalip.NewInternalIP(ccm, getInternalIPConfig(), logger.With("sub", "internalip"))
 		if err != nil {
 			logger.Error("error while initializing internalip component", "err", err)
 			os.Exit(CodeInitInternalIP)
@@ -89,7 +88,7 @@ func main() {
 	}
 
 	if slices.Contains(*components, "initilize") {
-		initialize, err := initialize.NewInitialize(ccm, logger.With("component", "initialize"))
+		initialize, err := initialize.NewInitialize(ccm, logger.With("sub", "initialize"))
 		if err != nil {
 			logger.Error("error while initializing initialize component", "err", err)
 			os.Exit(CodeInitInitialize)

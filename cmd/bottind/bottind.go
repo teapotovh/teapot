@@ -27,7 +27,6 @@ const (
 
 func main() {
 	addr := flag.String("addr", "0.0.0.0:1389", "the address to listen at")
-	addrSecure := flag.String("addr-secure", "", "the address to listen at with TLS")
 
 	fs, getBottinConfig := bottin.BottinFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -42,6 +41,7 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err)
 		os.Exit(CodeLog)
 	}
+	logger = logger.With("sub", "bottin")
 
 	bottinConfig := getBottinConfig()
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func main() {
 	}
 
 	// Create routes
-	routes := ldapserver.NewRouteMux(logger.With("sub", "bottin", "component", "router"))
+	routes := ldapserver.NewRouteMux(logger.With("sub", "router"))
 
 	routes.Bind(bottin.HandleBind)
 	routes.Search(bottin.HandleSearch)
@@ -78,58 +78,22 @@ func main() {
 	routes.Extended(bottin.HandlePasswordModify).
 		RequestName(ldapserver.NoticeOfPasswordModify).Label("PasswordModify")
 
-	if bottin.TLS() != nil {
-		routes.Extended(bottin.HandleStartTLS).
-			RequestName(ldapserver.NoticeOfStartTLS).Label("StartTLS")
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// Stop server gracefully when SIGINT and SIGTERM are received
-	ctx, _ = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-
-	// Create LDAP servers
-	var ldapServer, ldapServerSecure *ldapserver.Server = nil, nil
-
-	// Bind on standard LDAP port without TLS
-	if *addr != "" {
-		ldapServer = ldapserver.NewServer(logger.With("sub", "bottin", "component", "ldapserver", "kind", "ldap"))
-		ldapServer.Handle(routes)
-		go func() {
-			logger.Info("listening ldap://", "addr", *addr)
-			if err := ldapServer.ListenAndServe(ctx, *addr); err != nil {
-				logger.Error("error while listening on ldap://", "addr", *addr, "err", err)
-				os.Exit(CodeListenLDAP)
-			}
-		}()
-	}
-
-	// Bind on LDAP secure port with TLS
-	if *addrSecure != "" {
-		if bottin.TLS() != nil {
-			ldapServerSecure = ldapserver.NewServer(logger.With("sub", "bottin", "component", "ldapserver", "kind", "ldap"))
-			ldapServerSecure.Handle(routes)
-			go func() {
-				logger.Info("listening ldaps://", "addr", *addrSecure)
-				if err := ldapServerSecure.ListenAndServe(ctx, *addrSecure, ldapserver.WithTLS(bottin.TLS())); err != nil {
-					logger.Error("error while listening on ldaps://", "addr", *addrSecure, "err", err)
-					os.Exit(CodeListenLDAPS)
-				}
-			}()
-		} else {
-			logger.Warn("no TLS config provided, not listening on ldaps://")
+	ldapServer := ldapserver.NewServer(logger.With("component", "ldapserver", "kind", "ldap"))
+	ldapServer.Handle(routes)
+	go func() {
+		logger.Info("listening ldap://", "addr", *addr)
+		if err := ldapServer.ListenAndServe(ctx, *addr); err != nil {
+			logger.Error("error while listening on ldap://", "addr", *addr, "err", err)
+			os.Exit(CodeListenLDAP)
 		}
-	}
-
-	if ldapServer == nil && ldapServerSecure == nil {
-		logger.Error("no server started listening")
-		os.Exit(CodeNoListen)
-	}
+	}()
 
 	<-ctx.Done()
 
 	if ldapServer != nil {
 		ldapServer.Wait()
-	}
-	if ldapServerSecure != nil {
-		ldapServerSecure.Wait()
 	}
 }

@@ -24,10 +24,6 @@ func BottinFlagSet() (*flag.FlagSet, func() BottinConfig) {
 	passwd := fs.String("bottin-passwd", "", "the passwd for binding to the root object")
 	acl := fs.StringArray("bottin-acl", DefaultACL, "the list of ACL rules to apply for permission checking")
 
-	certFile := fs.String("bottin-tls-cert", "", "the path to the TLS certificate file")
-	keyFile := fs.String("bottin-key-file", "", "the path to the TLS key file")
-	serverName := fs.String("bottin-server-name", "", "the DNS name of the LDAP server for TLS")
-
 	storeFS, getStoreConfig := store.StoreFlagSet()
 	fs.AddFlagSet(storeFS)
 
@@ -36,10 +32,6 @@ func BottinFlagSet() (*flag.FlagSet, func() BottinConfig) {
 			BaseDN: *baseDN,
 			Passwd: *passwd,
 			ACL:    *acl,
-
-			TLSCertFile:   *certFile,
-			TLSKeyFile:    *keyFile,
-			TLSServerName: *serverName,
 
 			Store: getStoreConfig(),
 		}

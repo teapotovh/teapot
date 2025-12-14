@@ -2,6 +2,8 @@ package components
 
 import (
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
+	c "maragu.dev/gomponents/components"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/teapotovh/teapot/lib/ui"
@@ -48,4 +50,30 @@ func Header(ctx ui.Context, left g.Node, right g.Node) g.Node {
 			h.Div(h.Class("right"), right),
 		),
 	)
+}
+
+var HeaderTitleStyle = ui.MustParseStyle(`
+		font-size: var(--font-size-3);
+		font-weight: var(--font-weight-6);
+
+		& a {
+				color: var(--theme-foreground-0);
+				text-decoration: none;
+		}
+`)
+
+func HeaderTitle(ctx ui.Context, opts ...g.Node) g.Node {
+	return h.H1(ctx.Class(HeaderTitleStyle), h.A(append(g.Group{hx.Boost("true")}, opts...)...))
+}
+
+var HeaderLinkStyle = ui.MustParseStyle(`
+		font-size: var(--font-size-2);
+		color: var(--theme-foreground-0);
+		text-decoration: underline;
+		
+		padding-left: var(--size-2);
+`)
+
+func HeaderLink(ctx ui.Context, opts ...g.Node) g.Node {
+	return h.A(hx.Boost("true"), c.JoinAttrs("class", g.Group(opts), ctx.Class(HeaderLinkStyle)))
 }

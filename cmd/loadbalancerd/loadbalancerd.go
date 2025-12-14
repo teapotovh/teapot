@@ -49,12 +49,11 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err)
 		os.Exit(CodeLog)
 	}
-	logger = logger.With("sub", "loadbalancer")
-	kubelog.WithLogger(logger.With("component", "klog"))
+	kubelog.WithLogger(logger.With("sub", "klog"))
 
-	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("component", "run"))
+	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	lb, err := loadbalancer.NewLoadBalancer(getLoadBalancerConfig(), logger)
+	lb, err := loadbalancer.NewLoadBalancer(getLoadBalancerConfig(), logger.With("sub", "loadbalancer"))
 	if err != nil {
 		logger.Error("error while initializing loadbalancer controller", "err", err)
 		os.Exit(CodeInitLoadBalancer)
@@ -64,7 +63,7 @@ func main() {
 	defer stop()
 
 	if slices.Contains(*components, "arp") {
-		arp, err := arp.NewARP(lb, getLoadBalancerARPConfig(), logger.With("component", "arp"))
+		arp, err := arp.NewARP(lb, getLoadBalancerARPConfig(), logger.With("sub", "arp"))
 		if err != nil {
 			logger.Error("error while initializing arp component", "err", err)
 			os.Exit(CodeInitARP)

@@ -20,10 +20,9 @@ type WebDav struct {
 	cors *cors.Cors
 }
 
-type WebDavConfig struct {
-}
+type WebDavConfig struct{}
 
-func NewWebDav(config WebDavConfig, logger *slog.Logger, files *files.Files) *WebDav {
+func NewWebDav(files *files.Files, config WebDavConfig, logger *slog.Logger) (*WebDav, error) {
 	cors := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{
@@ -37,7 +36,7 @@ func NewWebDav(config WebDavConfig, logger *slog.Logger, files *files.Files) *We
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
 	})
-	return &WebDav{
+	wd := WebDav{
 		logger: logger,
 
 		files:     files,
@@ -45,6 +44,8 @@ func NewWebDav(config WebDavConfig, logger *slog.Logger, files *files.Files) *We
 
 		cors: cors,
 	}
+
+	return &wd, nil
 }
 
 func (wd *WebDav) Handler(prefix string) http.Handler {

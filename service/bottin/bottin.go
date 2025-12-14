@@ -2,12 +2,10 @@ package bottin
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/teapotovh/teapot/lib/ldapserver"
@@ -50,8 +48,6 @@ type Bottin struct {
 	rootPasswd string
 	acl        ACL
 	store      store.Store
-
-	tlsConfig *tls.Config
 }
 
 func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
@@ -63,28 +59,6 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 	baseDN, err := store.ParseDN(config.BaseDN)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing baseDN: %w", err)
-	}
-
-	var tlsConfig *tls.Config = nil
-	if config.TLSCertFile != "" && config.TLSKeyFile != "" && config.TLSServerName != "" {
-		cert_txt, err := os.ReadFile(config.TLSCertFile)
-		if err != nil {
-			return nil, fmt.Errorf("error while reaing TLS cert at %s: %w", config.TLSCertFile, err)
-		}
-		key_txt, err := os.ReadFile(config.TLSKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("error while reaing TLS key at %s: %w", config.TLSKeyFile, err)
-		}
-		cert, err := tls.X509KeyPair(cert_txt, key_txt)
-		if err != nil {
-			return nil, fmt.Errorf("error while parsing x509 key pair: %w", err)
-		}
-		tlsConfig = &tls.Config{
-			MinVersion:   tls.VersionTLS10,
-			MaxVersion:   tls.VersionTLS12,
-			Certificates: []tls.Certificate{cert},
-			ServerName:   config.TLSServerName,
-		}
 	}
 
 	hash, err := ssha512Encode(config.Passwd)
@@ -99,7 +73,6 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 
 	return &Bottin{
 		logger:     slog.New(NewContextHandler(logger.Handler())),
-		tlsConfig:  tlsConfig,
 		baseDN:     baseDN,
 		rootPasswd: hash,
 		acl:        acl,
@@ -158,10 +131,6 @@ func (server *Bottin) Init(ctx context.Context) error {
 	return nil
 }
 
-func (server *Bottin) TLS() *tls.Config {
-	return server.tlsConfig
-}
-
 func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) {
 	dn, err := store.ParseDN(rawDN)
 	if err != nil {
@@ -183,25 +152,6 @@ func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) 
 	}
 
 	return nil, fmt.Errorf("DN %s is not under baseDN (%s), and should not be extended for this operation", dn.String(), baseDN.String())
-}
-
-func (server *Bottin) HandleStartTLS(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
-	tlsConn := tls.Server(m.Client.GetConn(), server.tlsConfig)
-	res := ldapserver.NewExtendedResponse(ldap.ResultCodeSuccess)
-	res.SetResponseName(ldapserver.NoticeOfStartTLS)
-	w.Write(res)
-
-	if err := tlsConn.Handshake(); err != nil {
-		server.logger.WarnContext(ctx, "error while performing StartTLS", "err", err)
-
-		res.SetDiagnosticMessage(fmt.Sprintf("StartTLS Handshake error : \"%s\"", err.Error()))
-		res.SetResultCode(ldap.ResultCodeOperationsError)
-		w.Write(res)
-		return ctx
-	}
-
-	m.Client.SetConn(tlsConn)
-	return ctx
 }
 
 func (server *Bottin) HandlePasswordModify(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {

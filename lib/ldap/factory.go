@@ -10,7 +10,7 @@ import (
 	"github.com/go-ldap/ldap/v3"
 )
 
-type FactoryConfig struct {
+type LDAPConfig struct {
 	URL        string
 	RootDN     string
 	RootPasswd string
@@ -40,7 +40,7 @@ type Factory struct {
 	accessesDN   string
 }
 
-func NewFactory(options FactoryConfig, logger *slog.Logger) (*Factory, error) {
+func NewFactory(options LDAPConfig, logger *slog.Logger) (*Factory, error) {
 	usersFilter, err := template.New("usersFilter").Parse(options.UsersFilter)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing user filter template: %w", err)
