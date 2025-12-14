@@ -118,7 +118,7 @@ func (c *client) serve(ctx context.Context) {
 			c.rwc.SetWriteDeadline(time.Now().Add(c.srv.WriteTimeout))
 		}
 
-		//Read client input as a ASN1/BER binary message
+		// Read client input as a ASN1/BER binary message
 		messagePacket, err := c.ReadPacket()
 		if err != nil {
 			_, isTimeout := err.(*net.OpError)
@@ -126,9 +126,8 @@ func (c *client) serve(ctx context.Context) {
 			return
 		}
 
-		//Convert ASN1 binaryMessage to a ldap Message
+		// Convert ASN1 binaryMessage to a ldap Message
 		message, err := messagePacket.readMessage()
-
 		if err != nil {
 			c.logger.DebugContext(ctx, "error while reading packet", "err", err)
 			continue
@@ -162,7 +161,6 @@ func (c *client) serve(ctx context.Context) {
 
 		ctx = c.ProcessRequestMessage(ctx, &message)
 	}
-
 }
 
 // close closes client,

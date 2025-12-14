@@ -102,10 +102,18 @@ func (m *LDAPMessage) Write() (bytes *Bytes, err error) {
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
 	// Check
 	if size != totalSize || bytes.offset != 0 {
-		err = LdapError{fmt.Sprintf("Something went wrong while writing the message ! Size is %d instead of %d, final offset is %d instead of 0", size, totalSize, bytes.offset)}
+		err = LdapError{
+			fmt.Sprintf(
+				"Something went wrong while writing the message ! Size is %d instead of %d, final offset is %d instead of 0",
+				size,
+				totalSize,
+				bytes.offset,
+			),
+		}
 	}
 	return
 }
+
 func (m *LDAPMessage) size() (size int) {
 	size += m.messageID.size()
 	size += m.protocolOp.size()
@@ -115,21 +123,27 @@ func (m *LDAPMessage) size() (size int) {
 	size += sizeTagAndLength(tagSequence, size)
 	return
 }
+
 func (l *LDAPMessage) MessageID() MessageID {
 	return l.messageID
 }
+
 func (l *LDAPMessage) SetMessageID(ID int) {
 	l.messageID = MessageID(ID)
 }
+
 func (l *LDAPMessage) Controls() *Controls {
 	return l.controls
 }
+
 func (l *LDAPMessage) ProtocolOp() ProtocolOp {
 	return l.protocolOp
 }
+
 func (l *LDAPMessage) ProtocolOpName() string {
 	return reflect.TypeOf(l.ProtocolOp()).Name()
 }
+
 func (l *LDAPMessage) ProtocolOpType() int {
 	switch l.protocolOp.(type) {
 	case BindRequest:

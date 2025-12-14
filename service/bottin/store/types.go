@@ -13,9 +13,7 @@ const (
 	prefixSeparator = "/"
 )
 
-var (
-	ErrMissingEquals = errors.New("missing = in DN, expected exactly one")
-)
+var ErrMissingEquals = errors.New("missing = in DN, expected exactly one")
 
 func reverse[T any](slice []T) []T {
 	cpy := slices.Clone(slice)
@@ -151,9 +149,11 @@ func ParsePrefix(rawPrefix string) (Prefix, error) {
 	return parseComponentSlice(rawPrefix, prefixSeparator)
 }
 
-type AttributeKey string
-type AttributeValue []string
-type Attributes map[AttributeKey]AttributeValue
+type (
+	AttributeKey   string
+	AttributeValue []string
+	Attributes     map[AttributeKey]AttributeValue
+)
 
 func NewAttributeKey(key string) AttributeKey {
 	return AttributeKey(strings.ToLower(key))

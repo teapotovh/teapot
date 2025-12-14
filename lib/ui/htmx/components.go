@@ -8,12 +8,10 @@ import (
 	"github.com/teapotovh/teapot/lib/ui/dependency"
 )
 
-var (
-	Components = []string{
-		"htmx.org",
-		"htmx-ext-response-targets",
-	}
-)
+var Components = []string{
+	"htmx.org",
+	"htmx-ext-response-targets",
+}
 
 //go:generate go run ./download/
 //go:embed js/*.js

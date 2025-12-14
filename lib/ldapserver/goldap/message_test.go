@@ -1,16 +1,16 @@
 package message
 
 import (
-  "testing"
-  "fmt"
+	"fmt"
+	"testing"
 )
 
 func toHex(b []byte) (r string) {
-  r = "[ "
-  for _, e := range b {
-    r += fmt.Sprintf("0x%x ", e)
-  }
-  return r + "]"
+	r = "[ "
+	for _, e := range b {
+		r += fmt.Sprintf("0x%x ", e)
+	}
+	return r + "]"
 }
 
 func TestMessageID(t *testing.T) {
@@ -37,31 +37,31 @@ func TestMessageID(t *testing.T) {
 
 func TestSearchEntry(t *testing.T) {
 	m := NewLDAPMessageWithProtocolOp(SearchResultEntry{
-		objectName:"cn=êige€nbgtz,ou=users,dc=deuxfleurs,dc=fr", 
+		objectName: "cn=êige€nbgtz,ou=users,dc=deuxfleurs,dc=fr",
 		attributes: PartialAttributeList{
 			PartialAttribute{
-				type_:"displayname",
-				vals:[]AttributeValue{"êiGe€NBgTZ"},
+				type_: "displayname",
+				vals:  []AttributeValue{"êiGe€NBgTZ"},
 			},
 			PartialAttribute{
-				type_:"objectclass",
-				vals:[]AttributeValue{"inetOrgPerson"},
+				type_: "objectclass",
+				vals:  []AttributeValue{"inetOrgPerson"},
 			},
 			PartialAttribute{
-				type_:"objectclass", 
-				vals:[]AttributeValue{"organizationalPerson"},
+				type_: "objectclass",
+				vals:  []AttributeValue{"organizationalPerson"},
 			},
 			PartialAttribute{
-				type_:"objectclass", 
-				vals:[]AttributeValue{"person"},
+				type_: "objectclass",
+				vals:  []AttributeValue{"person"},
 			},
 			PartialAttribute{
-				type_:"objectclass",
-				vals:[]AttributeValue{"top"},
+				type_: "objectclass",
+				vals:  []AttributeValue{"top"},
 			},
 			PartialAttribute{
-				type_:"structuralobjectclass",
-				vals:[]AttributeValue{"inetOrgPerson"},
+				type_: "structuralobjectclass",
+				vals:  []AttributeValue{"inetOrgPerson"},
 			},
 		},
 	})

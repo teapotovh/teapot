@@ -90,7 +90,10 @@ func (srv *Server) HandlePasswdPost(w http.ResponseWriter, r *http.Request) (g.N
 
 	client, err := srv.factory.NewClient(r.Context())
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while constructing LDAP client: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while constructing LDAP client: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorDialog(ErrLDAP), err
 	}
 	defer client.Close()

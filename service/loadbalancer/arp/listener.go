@@ -37,7 +37,6 @@ func NewListener(arp *ARP, config ListenerConfig, logger *slog.Logger) (*Listene
 
 // Run implements run.Runnable
 func (lsnr *Listener) Run(ctx context.Context, notify run.Notify) error {
-
 	notify.Notify()
 L:
 	for {

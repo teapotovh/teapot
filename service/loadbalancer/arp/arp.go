@@ -2,10 +2,11 @@ package arp
 
 import (
 	"fmt"
-	"github.com/google/gopacket/afpacket"
-	"github.com/google/gopacket/layers"
 	"log/slog"
 	"net"
+
+	"github.com/google/gopacket/afpacket"
+	"github.com/google/gopacket/layers"
 
 	"github.com/teapotovh/teapot/service/loadbalancer"
 )

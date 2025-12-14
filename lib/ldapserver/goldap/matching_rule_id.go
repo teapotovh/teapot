@@ -2,8 +2,7 @@ package message
 
 import "fmt"
 
-//
-//        MatchingRuleId ::= LDAPString
+// MatchingRuleId ::= LDAPString
 func readTaggedMatchingRuleId(bytes *Bytes, class int, tag int) (matchingruleid MatchingRuleId, err error) {
 	var ldapstring LDAPString
 	ldapstring, err = readTaggedLDAPString(bytes, class, tag)
@@ -16,14 +15,12 @@ func readTaggedMatchingRuleId(bytes *Bytes, class int, tag int) (matchingruleid 
 }
 func (m MatchingRuleId) Pointer() *MatchingRuleId { return &m }
 
-//
-//        MatchingRuleId ::= LDAPString
+// MatchingRuleId ::= LDAPString
 func (m MatchingRuleId) writeTagged(bytes *Bytes, class int, tag int) int {
 	return LDAPString(m).writeTagged(bytes, class, tag)
 }
 
-//
-//        MatchingRuleId ::= LDAPString
+// MatchingRuleId ::= LDAPString
 func (m MatchingRuleId) sizeTagged(tag int) int {
 	return LDAPString(m).sizeTagged(tag)
 }

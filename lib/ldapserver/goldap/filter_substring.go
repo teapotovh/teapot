@@ -2,7 +2,7 @@ package message
 
 import "fmt"
 
-//             substrings      [4] SubstringFilter,
+// substrings      [4] SubstringFilter,
 func readFilterSubstrings(bytes *Bytes) (filtersubstrings FilterSubstrings, err error) {
 	var substringfilter SubstringFilter
 	substringfilter, err = readTaggedSubstringFilter(bytes, classContextSpecific, TagFilterSubstrings)
@@ -14,14 +14,13 @@ func readFilterSubstrings(bytes *Bytes) (filtersubstrings FilterSubstrings, err 
 	return
 }
 
-//
-//        SubstringFilter ::= SEQUENCE {
-//             type           AttributeDescription,
-//             substrings     SEQUENCE SIZE (1..MAX) OF substring CHOICE {
-//                  initial [0] AssertionValue,  -- can occur at most once
-//                  any     [1] AssertionValue,
-//                  final   [2] AssertionValue } -- can occur at most once
-//             }
+//	SubstringFilter ::= SEQUENCE {
+//	     type           AttributeDescription,
+//	     substrings     SEQUENCE SIZE (1..MAX) OF substring CHOICE {
+//	          initial [0] AssertionValue,  -- can occur at most once
+//	          any     [1] AssertionValue,
+//	          final   [2] AssertionValue } -- can occur at most once
+//	     }
 func readTaggedSubstringFilter(bytes *Bytes, class int, tag int) (substringfilter SubstringFilter, err error) {
 	err = bytes.ReadSubBytes(class, tag, substringfilter.readComponents)
 	if err != nil {
@@ -30,6 +29,7 @@ func readTaggedSubstringFilter(bytes *Bytes, class int, tag int) (substringfilte
 	}
 	return
 }
+
 func (substringfilter *SubstringFilter) readComponents(bytes *Bytes) (err error) {
 	substringfilter.type_, err = readAttributeDescription(bytes)
 	if err != nil {
@@ -43,6 +43,7 @@ func (substringfilter *SubstringFilter) readComponents(bytes *Bytes) (err error)
 	}
 	return
 }
+
 func (substringfilter *SubstringFilter) readSubstrings(bytes *Bytes) (err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, substringfilter.readSubstringsComponents)
 	if err != nil {
@@ -51,9 +52,10 @@ func (substringfilter *SubstringFilter) readSubstrings(bytes *Bytes) (err error)
 	}
 	return
 }
+
 func (substringfilter *SubstringFilter) readSubstringsComponents(bytes *Bytes) (err error) {
-	var foundInitial = 0
-	var foundFinal = 0
+	foundInitial := 0
+	foundFinal := 0
 	var tagAndLength TagAndLength
 	for bytes.HasMoreData() {
 		tagAndLength, err = bytes.PreviewTagAndLength()
@@ -106,10 +108,11 @@ func (substringfilter *SubstringFilter) readSubstringsComponents(bytes *Bytes) (
 	return
 }
 
-//             substrings      [4] SubstringFilter,
+// substrings      [4] SubstringFilter,
 func (f FilterSubstrings) write(bytes *Bytes) int {
 	return SubstringFilter(f).writeTagged(bytes, classContextSpecific, TagFilterSubstrings)
 }
+
 func (s SubstringFilter) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	for i := len(s.substrings) - 1; i >= 0; i-- {
 		substring := s.substrings[i]
@@ -130,37 +133,37 @@ func (s SubstringFilter) writeTagged(bytes *Bytes, class int, tag int) (size int
 	return
 }
 
-//
-//        SubstringFilter ::= SEQUENCE {
-//             type           AttributeDescription,
-//             substrings     SEQUENCE SIZE (1..MAX) OF substring CHOICE {
-//                  initial [0] AssertionValue,  -- can occur at most once
-//                  any     [1] AssertionValue,
-//                  final   [2] AssertionValue } -- can occur at most once
-//             }
+//	SubstringFilter ::= SEQUENCE {
+//	     type           AttributeDescription,
+//	     substrings     SEQUENCE SIZE (1..MAX) OF substring CHOICE {
+//	          initial [0] AssertionValue,  -- can occur at most once
+//	          any     [1] AssertionValue,
+//	          final   [2] AssertionValue } -- can occur at most once
+//	     }
 func (s SubstringFilter) write(bytes *Bytes) (size int) {
 	return s.writeTagged(bytes, classUniversal, tagSequence)
 }
+
 func (filter FilterSubstrings) getFilterTag() int {
 	return TagFilterSubstrings
 }
 
-//             substrings      [4] SubstringFilter,
+// substrings      [4] SubstringFilter,
 func (f FilterSubstrings) size() int {
 	return SubstringFilter(f).sizeTagged(TagFilterSubstrings)
 }
 
-//
-//        SubstringFilter ::= SEQUENCE {
-//             type           AttributeDescription,
-//             substrings     SEQUENCE SIZE (1..MAX) OF substring CHOICE {
-//                  initial [0] AssertionValue,  -- can occur at most once
-//                  any     [1] AssertionValue,
-//                  final   [2] AssertionValue } -- can occur at most once
-//             }
+//	SubstringFilter ::= SEQUENCE {
+//	     type           AttributeDescription,
+//	     substrings     SEQUENCE SIZE (1..MAX) OF substring CHOICE {
+//	          initial [0] AssertionValue,  -- can occur at most once
+//	          any     [1] AssertionValue,
+//	          final   [2] AssertionValue } -- can occur at most once
+//	     }
 func (s SubstringFilter) size() (size int) {
 	return s.sizeTagged(tagSequence)
 }
+
 func (s SubstringFilter) sizeTagged(tag int) (size int) {
 	for _, substring := range s.substrings {
 		switch substring.(type) {
@@ -179,9 +182,11 @@ func (s SubstringFilter) sizeTagged(tag int) (size int) {
 	size += sizeTagAndLength(tag, size)
 	return
 }
+
 func (s *FilterSubstrings) Type_() AttributeDescription {
 	return s.type_
 }
+
 func (s *FilterSubstrings) Substrings() []Substring {
 	return s.substrings
 }

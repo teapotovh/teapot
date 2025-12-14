@@ -22,7 +22,6 @@ func readAttributeValueAssertion(bytes *Bytes) (ret AttributeValueAssertion, err
 		return
 	}
 	return
-
 }
 
 func readTaggedAttributeValueAssertion(bytes *Bytes, class int, tag int) (ret AttributeValueAssertion, err error) {

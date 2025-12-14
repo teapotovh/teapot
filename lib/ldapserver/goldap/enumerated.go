@@ -7,7 +7,7 @@ func (enum ENUMERATED) Int() int {
 }
 
 func readENUMERATED(bytes *Bytes, allowedValues map[ENUMERATED]string) (ret ENUMERATED, err error) {
-	var value interface{}
+	var value any
 	value, err = bytes.ReadPrimitiveSubBytes(classUniversal, tagEnum, tagEnum)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readENUMERATED:\n%s", err.Error())}

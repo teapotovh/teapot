@@ -18,7 +18,8 @@ type ACLEntry struct {
 	RequiredGroups []string
 	// The action requested must match one of these strings
 	Actions []string
-	// The requested Target must match this string. The special word SELF is replaced in the pattern by the user's dn before matching
+	// The requested Target must match this string. The special word SELF is replaced in the pattern by the user's dn
+	// before matching
 	Target string
 	// All Attributes requested must match one of these patterns
 	Attributes []store.AttributeKey

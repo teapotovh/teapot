@@ -177,7 +177,10 @@ func registerScript[T fmt.Stringer](target string, elements []T) (string, error)
 	return fmt.Sprintf("(%s).forEach(e => window.teapot.%s.add(e))", string(bytes), target), nil
 }
 
-func (rer *Renderer) renderWithDependencies(loaded AlreadyLoaded, component Component) ([]g.Node, []g.Node, g.Node, error) {
+func (rer *Renderer) renderWithDependencies(
+	loaded AlreadyLoaded,
+	component Component,
+) ([]g.Node, []g.Node, g.Node, error) {
 	ctx, node := rer.contextRender(component)
 	rer.logger.Debug("rendering with", "styles", ctx.styles, "dependencies", ctx.dependencies)
 

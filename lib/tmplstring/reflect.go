@@ -6,9 +6,7 @@ import (
 	"reflect"
 )
 
-var (
-	ErrNotStruct = errors.New("provided type is not a struct. only structs are supported")
-)
+var ErrNotStruct = errors.New("provided type is not a struct. only structs are supported")
 
 // fieldsInStruct retruns a list of all fields (recursively) exported in the struct.
 func fieldsInStruct[T any]() ([]string, error) {

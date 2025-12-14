@@ -36,7 +36,6 @@ func (filterAnd *FilterAnd) readComponents(bytes *Bytes) (err error) {
 }
 
 func (filterAnd FilterAnd) write(bytes *Bytes) (size int) {
-
 	for i := len(filterAnd) - 1; i >= 0; i-- {
 		size += filterAnd[i].write(bytes)
 	}

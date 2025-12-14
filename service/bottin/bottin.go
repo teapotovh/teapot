@@ -8,6 +8,7 @@ import (
 	"maps"
 
 	"github.com/google/uuid"
+
 	"github.com/teapotovh/teapot/lib/ldapserver"
 	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
@@ -151,10 +152,18 @@ func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) 
 		return baseDN, nil
 	}
 
-	return nil, fmt.Errorf("DN %s is not under baseDN (%s), and should not be extended for this operation", dn.String(), baseDN.String())
+	return nil, fmt.Errorf(
+		"DN %s is not under baseDN (%s), and should not be extended for this operation",
+		dn.String(),
+		baseDN.String(),
+	)
 }
 
-func (server *Bottin) HandlePasswordModify(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandlePasswordModify(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetExtendedRequest()
 	resultCode, err := server.handlePasswordModifyInternal(ctx, &r)
 
@@ -235,7 +244,11 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	return ldap.ResultCodeSuccess, nil
 }
 
-func (server *Bottin) HandleBind(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandleBind(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetBindRequest()
 	ctx, resultCode, err := server.handleBindInternal(ctx, &r)
 

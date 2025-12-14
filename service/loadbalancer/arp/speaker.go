@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -46,7 +47,17 @@ func (spkr *Speaker) handlePacket(packet *layers.ARP) error {
 	if _, registered := spkr.ips[dstIP]; !registered || packet.Operation == layers.ARPRequest {
 		return nil
 	}
-	spkr.logger.Debug("received APR request", "dst.ip", dstIP, "dst.mac", spkr.arp.mac, "src.ip", srcIP, "src.mac", packet.DstHwAddress)
+	spkr.logger.Debug(
+		"received APR request",
+		"dst.ip",
+		dstIP,
+		"dst.mac",
+		spkr.arp.mac,
+		"src.ip",
+		srcIP,
+		"src.mac",
+		packet.DstHwAddress,
+	)
 
 	reply := &layers.ARP{
 		AddrType:          layers.LinkTypeEthernet,

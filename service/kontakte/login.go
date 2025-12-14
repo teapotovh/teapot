@@ -62,7 +62,10 @@ func (srv *Server) HandleLoginPost(w http.ResponseWriter, r *http.Request) (g.No
 
 	client, err := srv.factory.NewClient(r.Context())
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while constructing LDAP client: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while constructing LDAP client: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorDialog(ErrLDAP), err
 	}
 	defer client.Close()
@@ -75,7 +78,10 @@ func (srv *Server) HandleLoginPost(w http.ResponseWriter, r *http.Request) (g.No
 
 	cookie, err := srv.authCookie(username, user.Admin)
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while generating authentication cookie: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while generating authentication cookie: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorDialog(ErrAuthToken), err
 	}
 

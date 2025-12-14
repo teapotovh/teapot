@@ -39,8 +39,12 @@ func NewWebDav(files *files.Files, config WebDavConfig, logger *slog.Logger) (*W
 	wd := WebDav{
 		logger: logger,
 
-		files:     files,
-		basicAuth: httpauth.NewBasicAuth(files.LDAPFactory(), httpauth.DefaultBasicAuthErrorHandler, logger.With("component", "auth")),
+		files: files,
+		basicAuth: httpauth.NewBasicAuth(
+			files.LDAPFactory(),
+			httpauth.DefaultBasicAuthErrorHandler,
+			logger.With("component", "auth"),
+		),
 
 		cors: cors,
 	}

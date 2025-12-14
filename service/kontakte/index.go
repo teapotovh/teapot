@@ -2,10 +2,11 @@ package kontakte
 
 import (
 	"net/http"
-	_ "embed"
 
 	g "maragu.dev/gomponents"
 	hxhttp "maragu.dev/gomponents-htmx/http"
+
+	_ "embed"
 )
 
 //go:embed style.css

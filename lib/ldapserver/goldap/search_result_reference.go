@@ -2,9 +2,9 @@ package message
 
 import "fmt"
 
+// SearchResultReference ::= [APPLICATION 19] SEQUENCE
 //
-//        SearchResultReference ::= [APPLICATION 19] SEQUENCE
-//                                  SIZE (1..MAX) OF uri URI
+//	SIZE (1..MAX) OF uri URI
 func readSearchResultReference(bytes *Bytes) (ret SearchResultReference, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagSearchResultReference, ret.readComponents)
 	if err != nil {
@@ -13,6 +13,7 @@ func readSearchResultReference(bytes *Bytes) (ret SearchResultReference, err err
 	}
 	return
 }
+
 func (s *SearchResultReference) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var uri URI
@@ -30,9 +31,9 @@ func (s *SearchResultReference) readComponents(bytes *Bytes) (err error) {
 	return
 }
 
+// SearchResultReference ::= [APPLICATION 19] SEQUENCE
 //
-//        SearchResultReference ::= [APPLICATION 19] SEQUENCE
-//                                  SIZE (1..MAX) OF uri URI
+//	SIZE (1..MAX) OF uri URI
 func (s SearchResultReference) write(bytes *Bytes) (size int) {
 	for i := len(s) - 1; i >= 0; i-- {
 		size += s[i].write(bytes)
@@ -41,9 +42,9 @@ func (s SearchResultReference) write(bytes *Bytes) (size int) {
 	return
 }
 
+// SearchResultReference ::= [APPLICATION 19] SEQUENCE
 //
-//        SearchResultReference ::= [APPLICATION 19] SEQUENCE
-//                                  SIZE (1..MAX) OF uri URI
+//	SIZE (1..MAX) OF uri URI
 func (s SearchResultReference) size() (size int) {
 	for _, uri := range s {
 		size += uri.size()

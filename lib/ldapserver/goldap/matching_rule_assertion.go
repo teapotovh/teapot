@@ -2,12 +2,11 @@ package message
 
 import "fmt"
 
-//
-//        MatchingRuleAssertion ::= SEQUENCE {
-//             matchingRule    [1] MatchingRuleId OPTIONAL,
-//             type            [2] AttributeDescription OPTIONAL,
-//             matchValue      [3] AssertionValue,
-//             dnAttributes    [4] BOOLEAN DEFAULT FALSE }
+//	MatchingRuleAssertion ::= SEQUENCE {
+//	     matchingRule    [1] MatchingRuleId OPTIONAL,
+//	     type            [2] AttributeDescription OPTIONAL,
+//	     matchValue      [3] AssertionValue,
+//	     dnAttributes    [4] BOOLEAN DEFAULT FALSE }
 func readTaggedMatchingRuleAssertion(bytes *Bytes, class int, tag int) (ret MatchingRuleAssertion, err error) {
 	err = bytes.ReadSubBytes(class, tag, ret.readComponents)
 	if err != nil {
@@ -16,6 +15,7 @@ func readTaggedMatchingRuleAssertion(bytes *Bytes, class int, tag int) (ret Matc
 	}
 	return
 }
+
 func (matchingruleassertion *MatchingRuleAssertion) readComponents(bytes *Bytes) (err error) {
 	err = matchingruleassertion.readMatchingRule(bytes)
 	if err != nil {
@@ -25,16 +25,25 @@ func (matchingruleassertion *MatchingRuleAssertion) readComponents(bytes *Bytes)
 	if err != nil {
 		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
 	}
-	matchingruleassertion.matchValue, err = readTaggedAssertionValue(bytes, classContextSpecific, TagMatchingRuleAssertionMatchValue)
+	matchingruleassertion.matchValue, err = readTaggedAssertionValue(
+		bytes,
+		classContextSpecific,
+		TagMatchingRuleAssertionMatchValue,
+	)
 	if err != nil {
 		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
 	}
-	matchingruleassertion.dnAttributes, err = readTaggedBOOLEAN(bytes, classContextSpecific, TagMatchingRuleAssertionDnAttributes)
+	matchingruleassertion.dnAttributes, err = readTaggedBOOLEAN(
+		bytes,
+		classContextSpecific,
+		TagMatchingRuleAssertionDnAttributes,
+	)
 	if err != nil {
 		return LdapError{fmt.Sprintf("readComponents: %s", err.Error())}
 	}
 	return
 }
+
 func (matchingruleassertion *MatchingRuleAssertion) readMatchingRule(bytes *Bytes) (err error) {
 	var tagAndLength TagAndLength
 	tagAndLength, err = bytes.PreviewTagAndLength()
@@ -51,6 +60,7 @@ func (matchingruleassertion *MatchingRuleAssertion) readMatchingRule(bytes *Byte
 	}
 	return
 }
+
 func (matchingruleassertion *MatchingRuleAssertion) readType(bytes *Bytes) (err error) {
 	var tagAndLength TagAndLength
 	tagAndLength, err = bytes.PreviewTagAndLength()
@@ -59,7 +69,11 @@ func (matchingruleassertion *MatchingRuleAssertion) readType(bytes *Bytes) (err 
 	}
 	if tagAndLength.Tag == TagMatchingRuleAssertionType {
 		var attributedescription AttributeDescription
-		attributedescription, err = readTaggedAttributeDescription(bytes, classContextSpecific, TagMatchingRuleAssertionType)
+		attributedescription, err = readTaggedAttributeDescription(
+			bytes,
+			classContextSpecific,
+			TagMatchingRuleAssertionType,
+		)
 		if err != nil {
 			return LdapError{fmt.Sprintf("readType: %s", err.Error())}
 		}
@@ -67,6 +81,7 @@ func (matchingruleassertion *MatchingRuleAssertion) readType(bytes *Bytes) (err 
 	}
 	return
 }
+
 func (m MatchingRuleAssertion) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	if m.dnAttributes != BOOLEAN(false) {
 		size += m.dnAttributes.writeTagged(bytes, classContextSpecific, TagMatchingRuleAssertionDnAttributes)
@@ -82,25 +97,24 @@ func (m MatchingRuleAssertion) writeTagged(bytes *Bytes, class int, tag int) (si
 	return
 }
 
-//
-//        MatchingRuleAssertion ::= SEQUENCE {
-//             matchingRule    [1] MatchingRuleId OPTIONAL,
-//             type            [2] AttributeDescription OPTIONAL,
-//             matchValue      [3] AssertionValue,
-//             dnAttributes    [4] BOOLEAN DEFAULT FALSE }
+//	MatchingRuleAssertion ::= SEQUENCE {
+//	     matchingRule    [1] MatchingRuleId OPTIONAL,
+//	     type            [2] AttributeDescription OPTIONAL,
+//	     matchValue      [3] AssertionValue,
+//	     dnAttributes    [4] BOOLEAN DEFAULT FALSE }
 func (m MatchingRuleAssertion) write(bytes *Bytes) (size int) {
 	return m.writeTagged(bytes, classUniversal, tagSequence)
 }
 
-//
-//        MatchingRuleAssertion ::= SEQUENCE {
-//             matchingRule    [1] MatchingRuleId OPTIONAL,
-//             type            [2] AttributeDescription OPTIONAL,
-//             matchValue      [3] AssertionValue,
-//             dnAttributes    [4] BOOLEAN DEFAULT FALSE }
+//	MatchingRuleAssertion ::= SEQUENCE {
+//	     matchingRule    [1] MatchingRuleId OPTIONAL,
+//	     type            [2] AttributeDescription OPTIONAL,
+//	     matchValue      [3] AssertionValue,
+//	     dnAttributes    [4] BOOLEAN DEFAULT FALSE }
 func (m MatchingRuleAssertion) size() (size int) {
 	return m.sizeTagged(tagSequence)
 }
+
 func (m MatchingRuleAssertion) sizeTagged(tag int) (size int) {
 	if m.matchingRule != nil {
 		size += m.matchingRule.sizeTagged(TagMatchingRuleAssertionMatchingRule)

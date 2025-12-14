@@ -13,7 +13,7 @@ func CNIFlagSet() (*flag.FlagSet, func() CNIConfig) {
 	return fs, func() CNIConfig {
 		return CNIConfig{
 			Device: *device,
-			Path: *path,
+			Path:   *path,
 		}
 	}
 }

@@ -11,8 +11,10 @@ import (
 	"github.com/teapotovh/teapot/lib/ui/htmx"
 )
 
-const version = "2.0.4"
-const base = "https://unpkg.com/%s@" + version + "/dist"
+const (
+	version = "2.0.4"
+	base    = "https://unpkg.com/%s@" + version + "/dist"
+)
 
 func main() {
 	for _, component := range htmx.Components {
@@ -35,7 +37,7 @@ func main() {
 		}
 
 		name = fmt.Sprintf("js/%s.js", name)
-		if err := os.WriteFile(name, contents, 0660); err != nil {
+		if err := os.WriteFile(name, contents, 0o660); err != nil {
 			panic(fmt.Errorf("error while writing downloaded file for component %q: %w", component, err))
 		}
 	}

@@ -2,8 +2,7 @@ package message
 
 import "fmt"
 
-//
-//        Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
 func readTaggedReferral(bytes *Bytes, class int, tag int) (referral Referral, err error) {
 	err = bytes.ReadSubBytes(class, tag, referral.readComponents)
 	if err != nil {
@@ -12,6 +11,7 @@ func readTaggedReferral(bytes *Bytes, class int, tag int) (referral Referral, er
 	}
 	return
 }
+
 func (referral *Referral) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var uri URI
@@ -29,8 +29,7 @@ func (referral *Referral) readComponents(bytes *Bytes) (err error) {
 }
 func (referral Referral) Pointer() *Referral { return &referral }
 
-//
-//        Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
 func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	for i := len(r) - 1; i >= 0; i-- {
 		size += r[i].write(bytes)
@@ -39,8 +38,7 @@ func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	return
 }
 
-//
-//        Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
+// Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
 func (r Referral) sizeTagged(tag int) (size int) {
 	for _, uri := range r {
 		size += uri.size()

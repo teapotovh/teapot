@@ -7,18 +7,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/teapotovh/teapot/lib/ldap"
-	"github.com/teapotovh/teapot/service/kontakte/components"
-
 	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
+
+	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/service/kontakte/components"
 )
 
-var (
-	ErrFetchUser = errors.New("error while fetching user information")
-)
+var ErrFetchUser = errors.New("error while fetching user information")
 
 const InvalidGroupDN = "<invalid>"
 
@@ -90,14 +88,20 @@ func (srv *Server) HandleUserGet(w http.ResponseWriter, r *http.Request) (g.Node
 	username := muxie.GetParam(w, "username")
 	client, err := srv.factory.NewClient(r.Context())
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while constructing LDAP client: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while constructing LDAP client: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorPage(r, ErrLDAP), err
 	}
 	defer client.Close()
 
 	u, err := client.User(username)
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while fetching user from LDAP: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while fetching user from LDAP: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorPage(r, ErrFetchUser), err
 	}
 

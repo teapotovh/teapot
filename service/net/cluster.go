@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"net/netip"
 
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
 	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/run"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 type ClusterConfig struct {

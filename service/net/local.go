@@ -8,20 +8,19 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
 	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/kubeutil"
 	"github.com/teapotovh/teapot/lib/run"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 const (
 	KeyFilename = "wireguard.key"
-	KeyPerm     = os.FileMode(0660)
+	KeyPerm     = os.FileMode(0o660)
 )
 
-var (
-	DefaultPrivateKey = wgtypes.Key{}
-)
+var DefaultPrivateKey = wgtypes.Key{}
 
 type Local struct {
 	logger *slog.Logger

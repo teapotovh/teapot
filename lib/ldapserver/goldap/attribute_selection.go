@@ -15,6 +15,7 @@ func readAttributeSelection(bytes *Bytes) (attributeSelection AttributeSelection
 	}
 	return
 }
+
 func (selection *AttributeSelection) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var ldapstring LDAPString

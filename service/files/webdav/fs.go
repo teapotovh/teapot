@@ -46,7 +46,12 @@ func (fsw *webDavFSWrapper) Mkdir(ctx context.Context, name string, perm os.File
 }
 
 // OpenFile implements webdav.FileSystem
-func (fsw *webDavFSWrapper) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+func (fsw *webDavFSWrapper) OpenFile(
+	ctx context.Context,
+	name string,
+	flag int,
+	perm os.FileMode,
+) (webdav.File, error) {
 	name = fsw.sanitizeName(name)
 	fsw.logger.DebugContext(ctx, "performing FS.OpenFile", "name", name, "flag", flag, "perm", perm)
 

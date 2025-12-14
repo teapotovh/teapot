@@ -31,13 +31,11 @@ const (
 	CodeRun                 = -8
 )
 
-var (
-	defaultComponents = []string{
-		"wireguard",
-		"router",
-		"cni",
-	}
-)
+var defaultComponents = []string{
+	"wireguard",
+	"router",
+	"cni",
+}
 
 func main() {
 	components := flag.StringSliceP("components", "c", defaultComponents, "list of components to run")

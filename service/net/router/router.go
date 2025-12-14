@@ -17,9 +17,7 @@ import (
 	"github.com/teapotovh/teapot/service/net/wireguard"
 )
 
-var (
-	ErrBirdNotRunning = errors.New("bird process not running")
-)
+var ErrBirdNotRunning = errors.New("bird process not running")
 
 const (
 	CustomProtocol = 200

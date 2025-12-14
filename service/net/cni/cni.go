@@ -21,7 +21,7 @@ import (
 
 const (
 	CNIFilename = "10-teapotnet.conflist"
-	CNIPerm     = os.FileMode(0664)
+	CNIPerm     = os.FileMode(0o664)
 )
 
 type rule struct {

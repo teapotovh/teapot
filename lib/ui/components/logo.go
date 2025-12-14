@@ -1,12 +1,12 @@
 package components
 
 import (
-	_ "embed"
-
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/teapotovh/teapot/lib/ui"
+
+	_ "embed"
 )
 
 //go:embed logo.svg

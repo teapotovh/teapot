@@ -22,7 +22,6 @@ func readMessagePacket(br *bufio.Reader) (*messagePacket, error) {
 		return messagePacket, err
 	}
 	return &messagePacket{}, err
-
 }
 
 func (msg *messagePacket) readMessage() (m ldap.LDAPMessage, err error) {
@@ -65,8 +64,8 @@ func readLdapMessageBytes(br *bufio.Reader) (ret *[]byte, err error) {
 // don't distinguish between ordered and unordered objects in this code.
 func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength, err error) {
 	// offset = initOffset
-	//b := bytes[offset]
-	//offset++
+	// b := bytes[offset]
+	// offset++
 	var b byte
 	b, err = readBytes(conn, bytes, 1)
 	if err != nil {

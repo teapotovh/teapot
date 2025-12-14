@@ -3,9 +3,10 @@ package ui
 import (
 	"strings"
 
-	"github.com/teapotovh/teapot/lib/ui/dependency"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
+
+	"github.com/teapotovh/teapot/lib/ui/dependency"
 )
 
 type Context interface {
@@ -32,7 +33,7 @@ func (c *context) register(style *Style) {
 }
 
 func (c *context) Class(styles ...*Style) g.Node {
-	var ids = make([]string, len(styles))
+	ids := make([]string, len(styles))
 	for _, style := range styles {
 		if _, ok := c.styles[style]; !ok {
 			c.register(style)

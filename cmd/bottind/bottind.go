@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	flag "github.com/spf13/pflag"
+
 	"github.com/teapotovh/teapot/lib/ldapserver"
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/service/bottin"

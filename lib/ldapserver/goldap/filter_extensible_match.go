@@ -2,7 +2,7 @@ package message
 
 import "fmt"
 
-//             extensibleMatch [9] MatchingRuleAssertion,
+// extensibleMatch [9] MatchingRuleAssertion,
 func readFilterExtensibleMatch(bytes *Bytes) (filterextensiblematch FilterExtensibleMatch, err error) {
 	var matchingruleassertion MatchingRuleAssertion
 	matchingruleassertion, err = readTaggedMatchingRuleAssertion(bytes, classContextSpecific, TagFilterExtensibleMatch)
@@ -14,15 +14,16 @@ func readFilterExtensibleMatch(bytes *Bytes) (filterextensiblematch FilterExtens
 	return
 }
 
-//             extensibleMatch [9] MatchingRuleAssertion,
+// extensibleMatch [9] MatchingRuleAssertion,
 func (f FilterExtensibleMatch) write(bytes *Bytes) int {
 	return MatchingRuleAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterExtensibleMatch)
 }
+
 func (filterAnd FilterExtensibleMatch) getFilterTag() int {
 	return TagFilterExtensibleMatch
 }
 
-//             extensibleMatch [9] MatchingRuleAssertion,
+// extensibleMatch [9] MatchingRuleAssertion,
 func (f FilterExtensibleMatch) size() int {
 	return MatchingRuleAssertion(f).sizeTagged(TagFilterExtensibleMatch)
 }

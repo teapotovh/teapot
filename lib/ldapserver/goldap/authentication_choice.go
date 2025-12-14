@@ -26,7 +26,9 @@ func readAuthenticationChoice(bytes *Bytes) (ret AuthenticationChoice, err error
 	case TagAuthenticationChoiceSaslCredentials:
 		ret, err = readSaslCredentials(bytes)
 	default:
-		err = LdapError{fmt.Sprintf("readAuthenticationChoice: invalid tag value %d for AuthenticationChoice", tagAndLength.Tag)}
+		err = LdapError{
+			fmt.Sprintf("readAuthenticationChoice: invalid tag value %d for AuthenticationChoice", tagAndLength.Tag),
+		}
 		return
 	}
 	if err != nil {

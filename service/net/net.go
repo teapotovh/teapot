@@ -15,9 +15,7 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 )
 
-var (
-	ErrMissingNode = errors.New("no node name provided, net cannot tell which node it's running on")
-)
+var ErrMissingNode = errors.New("no node name provided, net cannot tell which node it's running on")
 
 type NetConfig struct {
 	KubeClient kubeclient.KubeClientConfig

@@ -20,9 +20,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-var (
-	ErrNoGVK = errors.New("no group-version-kind found for object")
-)
+var ErrNoGVK = errors.New("no group-version-kind found for object")
 
 // getResourceName returns the resource name from a type (without instance)
 func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
@@ -220,7 +218,15 @@ func (c *Controller[Resource]) handleErr(err error, key string) {
 	c.queue.Forget(key)
 	// Report to an external entity that, even after several retries, we could not successfully process this key
 	utilruntime.HandleError(err)
-	c.logger.Info("stopped retrying for update to resource", "retries", c.numRetries, "resource", c.resource, "err", err)
+	c.logger.Info(
+		"stopped retrying for update to resource",
+		"retries",
+		c.numRetries,
+		"resource",
+		c.resource,
+		"err",
+		err,
+	)
 }
 
 // Run begins watching and syncing.

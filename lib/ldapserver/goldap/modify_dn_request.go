@@ -2,12 +2,11 @@ package message
 
 import "fmt"
 
-//
-//        ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
-//             entry           LDAPDN,
-//             newrdn          RelativeLDAPDN,
-//             deleteoldrdn    BOOLEAN,
-//             newSuperior     [0] LDAPDN OPTIONAL }
+//	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
+//	     entry           LDAPDN,
+//	     newrdn          RelativeLDAPDN,
+//	     deleteoldrdn    BOOLEAN,
+//	     newSuperior     [0] LDAPDN OPTIONAL }
 func readModifyDNRequest(bytes *Bytes) (ret ModifyDNRequest, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagModifyDNRequest, ret.readComponents)
 	if err != nil {
@@ -16,6 +15,7 @@ func readModifyDNRequest(bytes *Bytes) (ret ModifyDNRequest, err error) {
 	}
 	return
 }
+
 func (req *ModifyDNRequest) readComponents(bytes *Bytes) (err error) {
 	req.entry, err = readLDAPDN(bytes)
 	if err != nil {
@@ -52,12 +52,11 @@ func (req *ModifyDNRequest) readComponents(bytes *Bytes) (err error) {
 	return
 }
 
-//
-//        ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
-//             entry           LDAPDN,
-//             newrdn          RelativeLDAPDN,
-//             deleteoldrdn    BOOLEAN,
-//             newSuperior     [0] LDAPDN OPTIONAL }
+//	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
+//	     entry           LDAPDN,
+//	     newrdn          RelativeLDAPDN,
+//	     deleteoldrdn    BOOLEAN,
+//	     newSuperior     [0] LDAPDN OPTIONAL }
 func (m ModifyDNRequest) write(bytes *Bytes) (size int) {
 	if m.newSuperior != nil {
 		size += m.newSuperior.writeTagged(bytes, classContextSpecific, TagModifyDNRequestNewSuperior)
@@ -69,12 +68,11 @@ func (m ModifyDNRequest) write(bytes *Bytes) (size int) {
 	return
 }
 
-//
-//        ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
-//             entry           LDAPDN,
-//             newrdn          RelativeLDAPDN,
-//             deleteoldrdn    BOOLEAN,
-//             newSuperior     [0] LDAPDN OPTIONAL }
+//	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
+//	     entry           LDAPDN,
+//	     newrdn          RelativeLDAPDN,
+//	     deleteoldrdn    BOOLEAN,
+//	     newSuperior     [0] LDAPDN OPTIONAL }
 func (m ModifyDNRequest) size() (size int) {
 	size += m.entry.size()
 	size += m.newrdn.size()

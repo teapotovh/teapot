@@ -13,6 +13,7 @@ func readTaggedControls(bytes *Bytes, class int, tag int) (controls Controls, er
 	}
 	return
 }
+
 func (controls *Controls) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var control Control

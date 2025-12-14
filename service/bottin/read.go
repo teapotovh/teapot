@@ -34,7 +34,11 @@ func (server *Bottin) existsEntry(ctx context.Context, dn store.DN) (bool, error
 	return len(entries) == 1, nil
 }
 
-func (server *Bottin) HandleCompare(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandleCompare(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetCompareRequest()
 
 	code, err := server.handleCompareInternal(ctx, &r)
@@ -79,7 +83,11 @@ func (server *Bottin) handleCompareInternal(ctx context.Context, r *goldap.Compa
 	return goldap.ResultCodeCompareFalse, nil
 }
 
-func (server *Bottin) HandleSearch(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandleSearch(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetSearchRequest()
 	code, err := server.handleSearchInternal(ctx, w, &r)
 
@@ -94,17 +102,34 @@ func (server *Bottin) HandleSearch(ctx context.Context, w ldapserver.ResponseWri
 	return ctx
 }
 
-func (server *Bottin) handleSearchInternal(ctx context.Context, w ldapserver.ResponseWriter, r *goldap.SearchRequest) (int, error) {
+func (server *Bottin) handleSearchInternal(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	r *goldap.SearchRequest,
+) (int, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	baseObject, err := server.parseDN(string(r.BaseObject()), true)
 	if err != nil {
 		return goldap.ResultCodeInvalidDNSyntax, err
 	}
 
-	server.logger.InfoContext(ctx, "searching for entries", "base", baseObject, "filter", r.FilterString(), "attributes", r.Attributes(), "deadline", r.TimeLimit())
+	server.logger.InfoContext(
+		ctx,
+		"searching for entries",
+		"base",
+		baseObject,
+		"filter",
+		r.FilterString(),
+		"attributes",
+		r.Attributes(),
+		"deadline",
+		r.TimeLimit(),
+	)
 
 	if !server.acl.Check(user, "read", baseObject, []store.AttributeKey{}) {
-		return goldap.ResultCodeInsufficientAccessRights, fmt.Errorf("Please specify a base object on which you have read rights")
+		return goldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
+			"Please specify a base object on which you have read rights",
+		)
 	}
 
 	baseObjectLevel := baseObject.Level()

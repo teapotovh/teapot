@@ -5,8 +5,7 @@ import (
 )
 
 func TestSizeLDAPMessage(t *testing.T) {
-
-	var testData = getLDAPMessageTestData()
+	testData := getLDAPMessageTestData()
 	for i, test := range testData {
 		message, err := ReadLDAPMessage(&test.bytes)
 		if err != nil {
@@ -74,6 +73,7 @@ func getSizeTagAndLengthTestData() (ret []tagAndLengthTestData) {
 		},
 	}
 }
+
 func TestSizeTagAndLength(t *testing.T) {
 	for i, test := range getSizeTagAndLengthTestData() {
 		size := sizeTagAndLength(test.tag, test.length)
@@ -81,5 +81,4 @@ func TestSizeTagAndLength(t *testing.T) {
 			t.Errorf("#%d: wrong size, GOT: %d, EXPECTED: %d", i, size, test.expectedSize)
 		}
 	}
-
 }

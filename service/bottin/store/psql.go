@@ -48,6 +48,7 @@ var subListQuery = `
 		FROM entries
 		WHERE dn LIKE $1;
 	`
+
 var exactListQuery = `
 		SELECT dn, attributes
 		FROM entries

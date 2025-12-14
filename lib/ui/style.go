@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/sqids/sqids-go"
+
 	"github.com/teapotovh/teapot/lib/ui/dependency"
 )
 

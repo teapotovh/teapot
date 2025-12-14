@@ -7,9 +7,7 @@ import (
 	"github.com/go-ldap/ldap/v3"
 )
 
-var (
-	ErrUnexpectedGeneratedPassword = errors.New("LDAP server unexpectedly returned a generated password")
-)
+var ErrUnexpectedGeneratedPassword = errors.New("LDAP server unexpectedly returned a generated password")
 
 func (c *Client) Passwd(username, password string) error {
 	entry, err := c.find(username)

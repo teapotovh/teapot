@@ -6,12 +6,17 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+
 	"github.com/teapotovh/teapot/lib/ldapserver"
 	goldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
-func (server *Bottin) HandleAdd(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandleAdd(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetAddRequest()
 
 	code, err := server.handleAddInternal(ctx, &r)
@@ -141,7 +146,12 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 	// If our item has a member list, add it to all of its member's memberOf attribute
 	for _, member := range members {
 		if err := server.membershipAdd(tx, ATTR_MEMBEROF, member, dn); err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf("error while adding %s to group %s: %w", member.String(), dn.String(), err)
+			return goldap.ResultCodeOperationsError, fmt.Errorf(
+				"error while adding %s to group %s: %w",
+				member.String(),
+				dn.String(),
+				err,
+			)
 		}
 	}
 
@@ -154,7 +164,11 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 
 // Delete request ------------------------
 
-func (server *Bottin) HandleDelete(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandleDelete(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetDeleteRequest()
 
 	code, err := server.handleDeleteInternal(ctx, &r)
@@ -222,7 +236,10 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 		for _, group := range memberOf {
 			gdn, err := server.parseDN(group, false)
 			if err != nil {
-				return goldap.ResultCodeOperationsError, fmt.Errorf("error while parsing DN from group members attribute: %w", err)
+				return goldap.ResultCodeOperationsError, fmt.Errorf(
+					"error while parsing DN from group members attribute: %w",
+					err,
+				)
 			}
 
 			err = server.membershipRemove(tx, ATTR_MEMBER, gdn, dn)
@@ -236,7 +253,10 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	for _, member := range memberList {
 		mdn, err := server.parseDN(member, false)
 		if err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf("error while parsing DN from memberOf attribute: %w", err)
+			return goldap.ResultCodeOperationsError, fmt.Errorf(
+				"error while parsing DN from memberOf attribute: %w",
+				err,
+			)
 		}
 
 		if err := server.membershipRemove(tx, ATTR_MEMBEROF, mdn, dn); err != nil {
@@ -253,7 +273,11 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 
 // Modify request ------------------------
 
-func (server *Bottin) HandleModify(ctx context.Context, w ldapserver.ResponseWriter, m *ldapserver.Message) context.Context {
+func (server *Bottin) HandleModify(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
 	r := m.GetModifyRequest()
 
 	code, err := server.handleModifyInternal(ctx, &r)
@@ -321,7 +345,10 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 			return goldap.ResultCodeObjectClassViolation, err
 		}
 		if attr.EqualFold(store.NewAttributeKey(dnFirstComponent.Type)) {
-			return goldap.ResultCodeObjectClassViolation, fmt.Errorf("%s may not be changed as it is part of object path", attr)
+			return goldap.ResultCodeObjectClassViolation, fmt.Errorf(
+				"%s may not be changed as it is part of object path",
+				attr,
+			)
 		}
 
 		// Check for permission to modify this attribute

@@ -2,16 +2,15 @@ package message
 
 import "fmt"
 
-//
-//        ModifyRequest ::= [APPLICATION 6] SEQUENCE {
-//             object          LDAPDN,
-//             changes         SEQUENCE OF change SEQUENCE {
-//                  operation       ENUMERATED {
-//                       add     (0),
-//                       delete  (1),
-//                       replace (2),
-//                       ...  },
-//                  modification    PartialAttribute } }
+//	ModifyRequest ::= [APPLICATION 6] SEQUENCE {
+//	     object          LDAPDN,
+//	     changes         SEQUENCE OF change SEQUENCE {
+//	          operation       ENUMERATED {
+//	               add     (0),
+//	               delete  (1),
+//	               replace (2),
+//	               ...  },
+//	          modification    PartialAttribute } }
 func readModifyRequest(bytes *Bytes) (ret ModifyRequest, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagModifyRequest, ret.readComponents)
 	if err != nil {
@@ -20,6 +19,7 @@ func readModifyRequest(bytes *Bytes) (ret ModifyRequest, err error) {
 	}
 	return
 }
+
 func (m *ModifyRequest) readComponents(bytes *Bytes) (err error) {
 	m.object, err = readLDAPDN(bytes)
 	if err != nil {
@@ -29,6 +29,7 @@ func (m *ModifyRequest) readComponents(bytes *Bytes) (err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, m.readChanges)
 	return
 }
+
 func (m *ModifyRequest) readChanges(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var c ModifyRequestChange
@@ -42,16 +43,15 @@ func (m *ModifyRequest) readChanges(bytes *Bytes) (err error) {
 	return
 }
 
-//
-//        ModifyRequest ::= [APPLICATION 6] SEQUENCE {
-//             object          LDAPDN,
-//             changes         SEQUENCE OF change SEQUENCE {
-//                  operation       ENUMERATED {
-//                       add     (0),
-//                       delete  (1),
-//                       replace (2),
-//                       ...  },
-//                  modification    PartialAttribute } }
+//	ModifyRequest ::= [APPLICATION 6] SEQUENCE {
+//	     object          LDAPDN,
+//	     changes         SEQUENCE OF change SEQUENCE {
+//	          operation       ENUMERATED {
+//	               add     (0),
+//	               delete  (1),
+//	               replace (2),
+//	               ...  },
+//	          modification    PartialAttribute } }
 func (m ModifyRequest) write(bytes *Bytes) (size int) {
 	for i := len(m.changes) - 1; i >= 0; i-- {
 		size += m.changes[i].write(bytes)
@@ -62,16 +62,15 @@ func (m ModifyRequest) write(bytes *Bytes) (size int) {
 	return
 }
 
-//
-//        ModifyRequest ::= [APPLICATION 6] SEQUENCE {
-//             object          LDAPDN,
-//             changes         SEQUENCE OF change SEQUENCE {
-//                  operation       ENUMERATED {
-//                       add     (0),
-//                       delete  (1),
-//                       replace (2),
-//                       ...  },
-//                  modification    PartialAttribute } }
+//	ModifyRequest ::= [APPLICATION 6] SEQUENCE {
+//	     object          LDAPDN,
+//	     changes         SEQUENCE OF change SEQUENCE {
+//	          operation       ENUMERATED {
+//	               add     (0),
+//	               delete  (1),
+//	               replace (2),
+//	               ...  },
+//	          modification    PartialAttribute } }
 func (m ModifyRequest) size() (size int) {
 	for _, change := range m.changes {
 		size += change.size()
@@ -81,9 +80,11 @@ func (m ModifyRequest) size() (size int) {
 	size += sizeTagAndLength(TagModifyRequest, size)
 	return
 }
+
 func (m *ModifyRequest) Object() LDAPDN {
 	return m.object
 }
+
 func (m *ModifyRequest) Changes() []ModifyRequestChange {
 	return m.changes
 }

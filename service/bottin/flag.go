@@ -2,6 +2,7 @@ package bottin
 
 import (
 	flag "github.com/spf13/pflag"
+
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 

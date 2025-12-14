@@ -10,8 +10,10 @@ import (
 	"github.com/teapotovh/teapot/lib/ui/openprops"
 )
 
-const version = "1.7.16"
-const base = "https://unpkg.com/open-props@" + version
+const (
+	version = "1.7.16"
+	base    = "https://unpkg.com/open-props@" + version
+)
 
 func main() {
 	for _, component := range openprops.Components {
@@ -28,7 +30,7 @@ func main() {
 		}
 
 		name := fmt.Sprintf("css/%s.css", component)
-		if err := os.WriteFile(name, contents, 0660); err != nil {
+		if err := os.WriteFile(name, contents, 0o660); err != nil {
 			panic(fmt.Errorf("error while writing downloaded file for component %q: %w", component, err))
 		}
 	}

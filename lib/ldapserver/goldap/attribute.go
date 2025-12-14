@@ -28,7 +28,6 @@ func readAttribute(bytes *Bytes) (ret Attribute, err error) {
 	}
 	ret = Attribute(par)
 	return
-
 }
 
 func (attribute Attribute) size() (size int) {

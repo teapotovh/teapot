@@ -9,9 +9,7 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
-var (
-	ErrNotFound = errors.New("not found")
-)
+var ErrNotFound = errors.New("not found")
 
 type errorStatus struct {
 	error

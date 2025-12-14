@@ -6,8 +6,9 @@ import (
 	"net/netip"
 	"os"
 
-	"github.com/teapotovh/teapot/service/net/wireguard"
 	"github.com/vishvananda/netlink"
+
+	"github.com/teapotovh/teapot/service/net/wireguard"
 )
 
 var (

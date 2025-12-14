@@ -12,9 +12,7 @@ import (
 	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
-var (
-	ErrExpectMountFormat = errors.New("expected mount format to be: <vfs>:<src>:<dest>, missing some parts")
-)
+var ErrExpectMountFormat = errors.New("expected mount format to be: <vfs>:<src>:<dest>, missing some parts")
 
 type mountConfig struct {
 	VFS         VFS

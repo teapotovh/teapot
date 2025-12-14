@@ -45,7 +45,14 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 		return
 	}
 	if !(request.version >= BindRequestVersionMin && request.version <= BindRequestVersionMax) {
-		err = LdapError{fmt.Sprintf("readComponents: invalid version %d, must be between %d and %d", request.version, BindRequestVersionMin, BindRequestVersionMax)}
+		err = LdapError{
+			fmt.Sprintf(
+				"readComponents: invalid version %d, must be between %d and %d",
+				request.version,
+				BindRequestVersionMin,
+				BindRequestVersionMax,
+			),
+		}
 		return
 	}
 	request.name, err = readLDAPDN(bytes)

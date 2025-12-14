@@ -25,11 +25,9 @@ const (
 	CodeRun              = -4
 )
 
-var (
-	defaultComponents = []string{
-		"arp",
-	}
-)
+var defaultComponents = []string{
+	"arp",
+}
 
 func main() {
 	components := flag.StringSliceP("components", "c", defaultComponents, "list of components to run")

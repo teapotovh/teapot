@@ -12,9 +12,7 @@ import (
 	"github.com/teapotovh/teapot/service/ccm"
 )
 
-var (
-	ErrAddressForNode = errors.New("could not generate random node local address")
-)
+var ErrAddressForNode = errors.New("could not generate random node local address")
 
 type InternalIPConfig struct {
 	Network netip.Prefix

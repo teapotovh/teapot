@@ -10,6 +10,7 @@ func readModifyRequestChange(bytes *Bytes) (ret ModifyRequestChange, err error) 
 	}
 	return
 }
+
 func (m *ModifyRequestChange) readComponents(bytes *Bytes) (err error) {
 	m.operation, err = readENUMERATED(bytes, EnumeratedModifyRequestChangeOperation)
 	if err != nil {
@@ -23,21 +24,25 @@ func (m *ModifyRequestChange) readComponents(bytes *Bytes) (err error) {
 	}
 	return
 }
+
 func (m ModifyRequestChange) write(bytes *Bytes) (size int) {
 	size += m.modification.write(bytes)
 	size += m.operation.write(bytes)
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
 	return
 }
+
 func (m ModifyRequestChange) size() (size int) {
 	size += m.operation.size()
 	size += m.modification.size()
 	size += sizeTagAndLength(tagSequence, size)
 	return
 }
+
 func (m *ModifyRequestChange) Operation() ENUMERATED {
 	return m.operation
 }
+
 func (m *ModifyRequestChange) Modification() *PartialAttribute {
 	return &m.modification
 }

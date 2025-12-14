@@ -2,10 +2,9 @@ package message
 
 import "fmt"
 
-//
-//        PartialAttribute ::= SEQUENCE {
-//             type       AttributeDescription,
-//             vals       SET OF value AttributeValue }
+//	PartialAttribute ::= SEQUENCE {
+//	     type       AttributeDescription,
+//	     vals       SET OF value AttributeValue }
 func readPartialAttribute(bytes *Bytes) (ret PartialAttribute, err error) {
 	ret = PartialAttribute{vals: make([]AttributeValue, 0, 10)}
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, ret.readComponents)
@@ -15,6 +14,7 @@ func readPartialAttribute(bytes *Bytes) (ret PartialAttribute, err error) {
 	}
 	return
 }
+
 func (partialattribute *PartialAttribute) readComponents(bytes *Bytes) (err error) {
 	partialattribute.type_, err = readAttributeDescription(bytes)
 	if err != nil {
@@ -28,6 +28,7 @@ func (partialattribute *PartialAttribute) readComponents(bytes *Bytes) (err erro
 	}
 	return
 }
+
 func (partialattribute *PartialAttribute) readValsComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var attributevalue AttributeValue
@@ -41,10 +42,9 @@ func (partialattribute *PartialAttribute) readValsComponents(bytes *Bytes) (err 
 	return
 }
 
-//
-//        PartialAttribute ::= SEQUENCE {
-//             type       AttributeDescription,
-//             vals       SET OF value AttributeValue }
+//	PartialAttribute ::= SEQUENCE {
+//	     type       AttributeDescription,
+//	     vals       SET OF value AttributeValue }
 func (p PartialAttribute) write(bytes *Bytes) (size int) {
 	for i := len(p.vals) - 1; i >= 0; i-- {
 		size += p.vals[i].write(bytes)
@@ -55,10 +55,9 @@ func (p PartialAttribute) write(bytes *Bytes) (size int) {
 	return
 }
 
-//
-//        PartialAttribute ::= SEQUENCE {
-//             type       AttributeDescription,
-//             vals       SET OF value AttributeValue }
+//	PartialAttribute ::= SEQUENCE {
+//	     type       AttributeDescription,
+//	     vals       SET OF value AttributeValue }
 func (p PartialAttribute) size() (size int) {
 	for _, value := range p.vals {
 		size += value.size()
@@ -68,9 +67,11 @@ func (p PartialAttribute) size() (size int) {
 	size += sizeTagAndLength(tagSequence, size)
 	return
 }
+
 func (p *PartialAttribute) Type_() AttributeDescription {
 	return p.type_
 }
+
 func (p *PartialAttribute) Vals() []AttributeValue {
 	return p.vals
 }

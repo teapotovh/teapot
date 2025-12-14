@@ -2,7 +2,7 @@ package message
 
 import "fmt"
 
-//             approxMatch     [8] AttributeValueAssertion,
+// approxMatch     [8] AttributeValueAssertion,
 func readFilterApproxMatch(bytes *Bytes) (ret FilterApproxMatch, err error) {
 	var attributevalueassertion AttributeValueAssertion
 	attributevalueassertion, err = readTaggedAttributeValueAssertion(bytes, classContextSpecific, TagFilterApproxMatch)
@@ -14,21 +14,24 @@ func readFilterApproxMatch(bytes *Bytes) (ret FilterApproxMatch, err error) {
 	return
 }
 
-//             approxMatch     [8] AttributeValueAssertion,
+// approxMatch     [8] AttributeValueAssertion,
 func (f FilterApproxMatch) write(bytes *Bytes) int {
 	return AttributeValueAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterApproxMatch)
 }
+
 func (filterAnd FilterApproxMatch) getFilterTag() int {
 	return TagFilterApproxMatch
 }
 
-//             approxMatch     [8] AttributeValueAssertion,
+// approxMatch     [8] AttributeValueAssertion,
 func (f FilterApproxMatch) size() int {
 	return AttributeValueAssertion(f).sizeTagged(TagFilterApproxMatch)
 }
+
 func (a *FilterApproxMatch) AttributeDesc() AttributeDescription {
 	return a.attributeDesc
 }
+
 func (a *FilterApproxMatch) AssertionValue() AssertionValue {
 	return a.assertionValue
 }

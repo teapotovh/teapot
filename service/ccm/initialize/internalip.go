@@ -38,9 +38,23 @@ func (iip *Initialize) Run(ctx context.Context, notify run.Notify) error {
 			if !event.InternalIP.IsValid() || !event.ExternalIP.IsValid() {
 				continue
 			}
-			iip.logger.Info("node initialization complete", "node", event.Node, "internalIP", event.InternalIP, "externalIP", event.ExternalIP)
+			iip.logger.Info(
+				"node initialization complete",
+				"node",
+				event.Node,
+				"internalIP",
+				event.InternalIP,
+				"externalIP",
+				event.ExternalIP,
+			)
 
-			err := kubeutil.RemoveTaint(ctx, iip.ccm.KubeClient(), event.Node, "node.cloudprovider.kubernetes.io/uninitialized", "true")
+			err := kubeutil.RemoveTaint(
+				ctx,
+				iip.ccm.KubeClient(),
+				event.Node,
+				"node.cloudprovider.kubernetes.io/uninitialized",
+				"true",
+			)
 			if err != nil {
 				return fmt.Errorf("error while removing uninitialized taint from node %q: %w", event.Node, err)
 			}

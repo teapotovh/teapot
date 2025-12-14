@@ -6,9 +6,7 @@ import (
 	hpfs "github.com/hack-pad/hackpadfs"
 )
 
-var (
-	ErrReadOnly = errors.New("filesystem is read-only")
-)
+var ErrReadOnly = errors.New("filesystem is read-only")
 
 type ReadOnlyFS[FS hpfs.FS] struct {
 	fs FS

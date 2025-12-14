@@ -20,8 +20,10 @@ var (
 		"entrycsn",
 	}
 
-	ErrMememberOfDefinition = errors.New("memberOf cannot be defined directly, membership must be specified in the group itself")
-	ErrRestrictedAttribute  = errors.New("Attribute is restricted and may only be set by the system")
+	ErrMememberOfDefinition = errors.New(
+		"memberOf cannot be defined directly, membership must be specified in the group itself",
+	)
+	ErrRestrictedAttribute = errors.New("Attribute is restricted and may only be set by the system")
 )
 
 func isOperationalAttribute(attr store.AttributeKey) bool {

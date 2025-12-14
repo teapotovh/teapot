@@ -9,7 +9,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/muxie"
-
 	g "maragu.dev/gomponents"
 )
 
@@ -18,9 +17,7 @@ const (
 	authDuration   = time.Hour * 48
 )
 
-var (
-	ErrInvalidAuthTokenType = errors.New("")
-)
+var ErrInvalidAuthTokenType = errors.New("")
 
 type Auth struct {
 	jwt.RegisteredClaims

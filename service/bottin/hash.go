@@ -13,9 +13,7 @@ import (
 
 type HashType string
 
-var (
-	ErrNoValidHash = errors.New("no valid hash found")
-)
+var ErrNoValidHash = errors.New("no valid hash found")
 
 const (
 	MD5     HashType = "{MD5}"

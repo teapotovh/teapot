@@ -13,6 +13,7 @@ func readAttributeList(bytes *Bytes) (ret AttributeList, err error) {
 	}
 	return
 }
+
 func (list *AttributeList) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var attr Attribute

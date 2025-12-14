@@ -19,9 +19,7 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 )
 
-var (
-	ErrMissingNode = errors.New("no node name provided, ccm cannot tell which node it's running on")
-)
+var ErrMissingNode = errors.New("no node name provided, ccm cannot tell which node it's running on")
 
 type CCMConfig struct {
 	Node       string

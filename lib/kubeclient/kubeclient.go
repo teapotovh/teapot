@@ -28,7 +28,6 @@ func NewKubeClient(config KubeClientConfig, logger *slog.Logger) (*kubernetes.Cl
 	}
 
 	return client, nil
-
 }
 
 func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {

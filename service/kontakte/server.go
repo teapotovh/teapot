@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/teapotovh/teapot/lib/ldap"
-
 	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	gcohttp "maragu.dev/gomponents/http"
+
+	"github.com/teapotovh/teapot/lib/ldap"
 )
 
 const (
@@ -34,9 +34,7 @@ func PathPasswd(username string) string {
 	return fmt.Sprintf("%s/%s/passwd", PathUsers, username)
 }
 
-var (
-	ErrLDAP = errors.New("error while performing LDAP operation")
-)
+var ErrLDAP = errors.New("error while performing LDAP operation")
 
 // Server is the kontakte HTTP server that renders web pages for users to
 // modify their LDAP information

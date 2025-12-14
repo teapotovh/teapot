@@ -29,13 +29,11 @@ const (
 	CodeRun            = -6
 )
 
-var (
-	defaultComponents = []string{
-		"externalip",
-		"internalip",
-		"initilize",
-	}
-)
+var defaultComponents = []string{
+	"externalip",
+	"internalip",
+	"initilize",
+}
 
 func main() {
 	components := flag.StringSliceP("components", "c", defaultComponents, "list of components to run")

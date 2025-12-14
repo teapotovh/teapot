@@ -12,6 +12,7 @@ type Bytes struct {
 func (bytes *Bytes) getBytes() []byte {
 	return bytes.bytes
 }
+
 func NewBytes(offset int, bytes []byte) (ret *Bytes) {
 	return &Bytes{offset: offset, bytes: bytes}
 }
@@ -66,7 +67,13 @@ func (bytes *Bytes) ReadSubBytes(class int, tag int, callback func(bytes *Bytes)
 
 	// Check we got enough bytes to process
 	if end > len(bytes.bytes) {
-		return LdapError{fmt.Sprintf("ReadSubBytes: data truncated: expecting %d bytes at offset %d", tagAndLength.Length, bytes.offset)}
+		return LdapError{
+			fmt.Sprintf(
+				"ReadSubBytes: data truncated: expecting %d bytes at offset %d",
+				tagAndLength.Length,
+				bytes.offset,
+			),
+		}
 	}
 	// Process sub-bytes
 	subBytes := Bytes{offset: 0, bytes: bytes.bytes[start:end]}
@@ -78,7 +85,13 @@ func (bytes *Bytes) ReadSubBytes(class int, tag int, callback func(bytes *Bytes)
 	}
 	// Check we got no more bytes to process
 	if subBytes.HasMoreData() {
-		return LdapError{fmt.Sprintf("ReadSubBytes: data too long: %d more bytes to read at offset %d", end-bytes.offset, bytes.offset)}
+		return LdapError{
+			fmt.Sprintf(
+				"ReadSubBytes: data too long: %d more bytes to read at offset %d",
+				end-bytes.offset,
+				bytes.offset,
+			),
+		}
 	}
 	// Move offset
 	bytes.offset = end
@@ -91,7 +104,7 @@ func SizeSubBytes(tag int, callback func() int) (size int) {
 	return
 }
 
-func (bytes *Bytes) WritePrimitiveSubBytes(class int, tag int, value interface{}) (size int) {
+func (bytes *Bytes) WritePrimitiveSubBytes(class int, tag int, value any) (size int) {
 	switch value.(type) {
 	case BOOLEAN:
 		size = writeBool(bytes, bool(value.(BOOLEAN)))
@@ -134,7 +147,6 @@ func (bytes *Bytes) writeBytes(b []byte) (size int) {
 	return
 }
 
-//
 // Parse tag, length and read the a primitive value
 // Supported types are:
 // - boolean
@@ -147,8 +159,7 @@ func (bytes *Bytes) writeBytes(b []byte) (size int) {
 // - class: the expected class value(classUniversal, classApplication, classContextSpecific)
 // - tag: the expected tag value
 // - typeTag: the real primitive type to parse (tagBoolean, tagInteger, tagEnym, tagUTF8String, tagOctetString)
-//
-func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (value interface{}, err error) {
+func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (value any, err error) {
 	// Check tag
 	tagAndLength, err := bytes.ParseTagAndLength()
 	if err != nil {
@@ -166,8 +177,17 @@ func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (valu
 
 	// Check we got enough bytes to process
 	if end > len(bytes.bytes) {
-		// err = LdapError{fmt.Sprintf("ReadPrimitiveSubBytes: data truncated: expecting %d bytes at offset %d but only %d bytes are remaining (start: %d, length: %d, end: %d, len(b): %d, bytes: %#+v)", tagAndLength.Length, *b.offset, len(b.bytes)-start, start, tagAndLength.Length, end, len(b.bytes), b.bytes)}
-		err = LdapError{fmt.Sprintf("ReadPrimitiveSubBytes: data truncated: expecting %d bytes at offset %d but only %d bytes are remaining", tagAndLength.Length, bytes.offset, len(bytes.bytes)-start)}
+		// err = LdapError{fmt.Sprintf("ReadPrimitiveSubBytes: data truncated: expecting %d bytes at offset %d but only
+		// %d bytes are remaining (start: %d, length: %d, end: %d, len(b): %d, bytes: %#+v)", tagAndLength.Length,
+		// *b.offset, len(b.bytes)-start, start, tagAndLength.Length, end, len(b.bytes), b.bytes)}
+		err = LdapError{
+			fmt.Sprintf(
+				"ReadPrimitiveSubBytes: data truncated: expecting %d bytes at offset %d but only %d bytes are remaining",
+				tagAndLength.Length,
+				bytes.offset,
+				len(bytes.bytes)-start,
+			),
+		}
 		return
 	}
 	// Process sub-bytes

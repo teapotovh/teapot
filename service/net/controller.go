@@ -93,7 +93,19 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		PublicKey:       publicKey,
 	}
 
-	net.logger.Info("received node update", "name", node.Name, "cidrs", node.CIDRs, "externalAddress", node.ExternalAddress, "internalAddress", node.InternalAddress, "publicKey", node.PublicKey)
+	net.logger.Info(
+		"received node update",
+		"name",
+		node.Name,
+		"cidrs",
+		node.CIDRs,
+		"externalAddress",
+		node.ExternalAddress,
+		"internalAddress",
+		node.InternalAddress,
+		"publicKey",
+		node.PublicKey,
+	)
 	net.broker.Publish(Event{Update: &node})
 
 	return nil

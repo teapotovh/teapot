@@ -2,9 +2,9 @@ package message
 
 import "fmt"
 
+// URI ::= LDAPString     -- limited to characters permitted in
 //
-//        URI ::= LDAPString     -- limited to characters permitted in
-//                               -- URIs
+//	-- URIs
 func readURI(bytes *Bytes) (uri URI, err error) {
 	var ldapstring LDAPString
 	ldapstring, err = readLDAPString(bytes)
@@ -17,16 +17,16 @@ func readURI(bytes *Bytes) (uri URI, err error) {
 	return
 }
 
+// URI ::= LDAPString     -- limited to characters permitted in
 //
-//        URI ::= LDAPString     -- limited to characters permitted in
-//                               -- URIs
+//	-- URIs
 func (u URI) write(bytes *Bytes) int {
 	return LDAPString(u).write(bytes)
 }
 
+// URI ::= LDAPString     -- limited to characters permitted in
 //
-//        URI ::= LDAPString     -- limited to characters permitted in
-//                               -- URIs
+//	-- URIs
 func (u URI) size() int {
 	return LDAPString(u).size()
 }

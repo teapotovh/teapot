@@ -6,8 +6,6 @@ import (
 	//	"errors"
 	"fmt"
 	"math/big"
-	// "strconv"
-	// "time"
 )
 
 //
@@ -40,8 +38,8 @@ var tagNames = map[int]string{
 	tagInteger:     "INTEGER",
 	tagOctetString: "OCTET STRING",
 	tagEnum:        "ENUM",
-	tagSequence: "SEQUENCE",
-	tagSet:      "SET",
+	tagSequence:    "SEQUENCE",
+	tagSet:         "SET",
 }
 
 const (
@@ -91,21 +89,48 @@ func (t *TagAndLength) Expect(class int, tag int, isCompound bool) (err error) {
 	}
 	return
 }
+
 func (t *TagAndLength) ExpectClass(class int) (err error) {
 	if class != t.Class {
-		err = SyntaxError{fmt.Sprintf("ExpectClass: wrong tag class: got %d (%s), expected %d (%s)", t.Class, classNames[t.Class], class, classNames[class])}
+		err = SyntaxError{
+			fmt.Sprintf(
+				"ExpectClass: wrong tag class: got %d (%s), expected %d (%s)",
+				t.Class,
+				classNames[t.Class],
+				class,
+				classNames[class],
+			),
+		}
 	}
 	return
 }
+
 func (t *TagAndLength) ExpectTag(tag int) (err error) {
 	if tag != t.Tag {
-		err = SyntaxError{fmt.Sprintf("ExpectTag: wrong tag value: got %d (%s), expected %d (%s)", t.Tag, tagNames[t.Tag], tag, tagNames[tag])}
+		err = SyntaxError{
+			fmt.Sprintf(
+				"ExpectTag: wrong tag value: got %d (%s), expected %d (%s)",
+				t.Tag,
+				tagNames[t.Tag],
+				tag,
+				tagNames[tag],
+			),
+		}
 	}
 	return
 }
+
 func (t *TagAndLength) ExpectCompound(isCompound bool) (err error) {
 	if isCompound != t.IsCompound {
-		err = SyntaxError{fmt.Sprintf("ExpectCompound: wrong tag compound: got %t (%s), expected %t (%s)", t.IsCompound, compoundNames[t.IsCompound], isCompound, compoundNames[isCompound])}
+		err = SyntaxError{
+			fmt.Sprintf(
+				"ExpectCompound: wrong tag compound: got %t (%s), expected %t (%s)",
+				t.IsCompound,
+				compoundNames[t.IsCompound],
+				isCompound,
+				compoundNames[isCompound],
+			),
+		}
 	}
 	return
 }
@@ -572,9 +597,11 @@ func writeBase128Int(bytes *Bytes, value int) (size int) {
 func parseOctetString(bytes []byte) (ret []byte, err error) {
 	return bytes, nil
 }
+
 func sizeOctetString(s []byte) int {
 	return len(s)
 }
+
 func writeOctetString(bytes *Bytes, s []byte) int {
 	return bytes.writeBytes(s)
 }
@@ -725,7 +752,6 @@ func writeTagAndLength(bytes *Bytes, t TagAndLength) (size int) {
 	// We are writing backward, so write the length bytes first
 	if t.Length < 0 {
 		panic("Can't have a negative length")
-
 	} else if t.Length >= 128 {
 		lengthBytes := 0
 		val := t.Length

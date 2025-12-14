@@ -8,12 +8,10 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-var (
-	// This is the first /16 subnet out of the whole /10 net allocated for
-	// CG-NAT communication. We take /16 so that the remainder of the address can
-	// be filled with two bytes taken from XORing the MD5 of hostnames.
-	InternalPrefix net.IPNet
-)
+// This is the first /16 subnet out of the whole /10 net allocated for
+// CG-NAT communication. We take /16 so that the remainder of the address can
+// be filled with two bytes taken from XORing the MD5 of hostnames.
+var InternalPrefix net.IPNet
 
 func init() {
 	_, net, err := net.ParseCIDR("100.64.0.0/16")

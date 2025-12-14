@@ -11,10 +11,22 @@ func LDAPFlagSet() (*flag.FlagSet, func() LDAPConfig) {
 	rootDN := fs.String("ldap-root-dn", "dc=teapot,dc=ovh", "the root DN to use for priviledged binds")
 	rootPasswd := fs.String("ldap-root-passwd", "", "the passwd to bind to the root DN")
 	usersDN := fs.String("ldap-users-dn", "ou=users,dc=teapot,dc=ovh", "the base DN where all users are stored")
-	usersFilter := fs.String("ldap-users-filter", "(&(objectClass=inetOrgPerson)(cn={{ .Username }}))", "a templated filter to identify a unique user given the username")
+	usersFilter := fs.String(
+		"ldap-users-filter",
+		"(&(objectClass=inetOrgPerson)(cn={{ .Username }}))",
+		"a templated filter to identify a unique user given the username",
+	)
 	groupsDN := fs.String("ldap-groups-dn", "ou=groups,dc=teapot,dc=ovh", "the base DN where all groups are stored")
-	adminGroupDN := fs.String("ldap-admin-group-dn", "cn=admin,ou=groups,dc=teapot,dc=ovh", "the DN of the group for admin users")
-	accessesDN := fs.String("ldap-accesses-dn", "ou=accesses,dc=teapot,dc=ovh", "the base DN where access groups are stored")
+	adminGroupDN := fs.String(
+		"ldap-admin-group-dn",
+		"cn=admin,ou=groups,dc=teapot,dc=ovh",
+		"the DN of the group for admin users",
+	)
+	accessesDN := fs.String(
+		"ldap-accesses-dn",
+		"ou=accesses,dc=teapot,dc=ovh",
+		"the base DN where access groups are stored",
+	)
 
 	return fs, func() LDAPConfig {
 		return LDAPConfig{

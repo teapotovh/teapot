@@ -2,20 +2,23 @@ package message
 
 import "fmt"
 
-//
-//        SaslCredentials ::= SEQUENCE {
-//             mechanism               LDAPString,
-//             credentials             OCTET STRING OPTIONAL }
-//
+//	SaslCredentials ::= SEQUENCE {
+//	     mechanism               LDAPString,
+//	     credentials             OCTET STRING OPTIONAL }
 func readSaslCredentials(bytes *Bytes) (authentication SaslCredentials, err error) {
 	authentication = SaslCredentials{}
-	err = bytes.ReadSubBytes(classContextSpecific, TagAuthenticationChoiceSaslCredentials, authentication.readComponents)
+	err = bytes.ReadSubBytes(
+		classContextSpecific,
+		TagAuthenticationChoiceSaslCredentials,
+		authentication.readComponents,
+	)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readSaslCredentials:\n%s", err.Error())}
 		return
 	}
 	return
 }
+
 func (authentication *SaslCredentials) readComponents(bytes *Bytes) (err error) {
 	authentication.mechanism, err = readLDAPString(bytes)
 	if err != nil {
@@ -34,11 +37,9 @@ func (authentication *SaslCredentials) readComponents(bytes *Bytes) (err error) 
 	return
 }
 
-//
-//        SaslCredentials ::= SEQUENCE {
-//             mechanism               LDAPString,
-//             credentials             OCTET STRING OPTIONAL }
-//
+//	SaslCredentials ::= SEQUENCE {
+//	     mechanism               LDAPString,
+//	     credentials             OCTET STRING OPTIONAL }
 func (s SaslCredentials) writeTagged(bytes *Bytes, class int, tag int) (size int) {
 	if s.credentials != nil {
 		size += s.credentials.write(bytes)
@@ -48,11 +49,9 @@ func (s SaslCredentials) writeTagged(bytes *Bytes, class int, tag int) (size int
 	return
 }
 
-//
-//        SaslCredentials ::= SEQUENCE {
-//             mechanism               LDAPString,
-//             credentials             OCTET STRING OPTIONAL }
-//
+//	SaslCredentials ::= SEQUENCE {
+//	     mechanism               LDAPString,
+//	     credentials             OCTET STRING OPTIONAL }
 func (s SaslCredentials) sizeTagged(tag int) (size int) {
 	if s.credentials != nil {
 		size += s.credentials.size()

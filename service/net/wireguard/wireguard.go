@@ -158,7 +158,8 @@ func (w *Wireguard) configureWireguard(source string) error {
 		return bytes.Compare(a.PublicKey[:], b.PublicKey[:])
 	})
 
-	if slices.EqualFunc(newPeers, w.peers, comparePeerConfig) && w.privateKey == w.local.PrivateKey && w.port == w.local.Port {
+	if slices.EqualFunc(newPeers, w.peers, comparePeerConfig) && w.privateKey == w.local.PrivateKey &&
+		w.port == w.local.Port {
 		w.logger.Debug("update caused no change in wireguard config", "source", source)
 		return nil
 	}

@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-var (
-	ErrOtherService = errors.New("terminating as other service failed")
-)
+var ErrOtherService = errors.New("terminating as other service failed")
 
 type Notify interface {
 	Notify()

@@ -2,7 +2,7 @@ package message
 
 import "fmt"
 
-//             or              [1] SET SIZE (1..MAX) OF filter Filter,
+// or              [1] SET SIZE (1..MAX) OF filter Filter,
 func readFilterOr(bytes *Bytes) (filteror FilterOr, err error) {
 	err = bytes.ReadSubBytes(classContextSpecific, TagFilterOr, filteror.readComponents)
 	if err != nil {
@@ -11,6 +11,7 @@ func readFilterOr(bytes *Bytes) (filteror FilterOr, err error) {
 	}
 	return
 }
+
 func (filteror *FilterOr) readComponents(bytes *Bytes) (err error) {
 	count := 0
 	for bytes.HasMoreData() {
@@ -30,7 +31,7 @@ func (filteror *FilterOr) readComponents(bytes *Bytes) (err error) {
 	return
 }
 
-//             or              [1] SET SIZE (1..MAX) OF filter Filter,
+// or              [1] SET SIZE (1..MAX) OF filter Filter,
 func (f FilterOr) write(bytes *Bytes) (size int) {
 	for i := len(f) - 1; i >= 0; i-- {
 		size += f[i].write(bytes)
@@ -38,11 +39,12 @@ func (f FilterOr) write(bytes *Bytes) (size int) {
 	size += bytes.WriteTagAndLength(classContextSpecific, isCompound, TagFilterOr, size)
 	return
 }
+
 func (filter FilterOr) getFilterTag() int {
 	return TagFilterOr
 }
 
-//             or              [1] SET SIZE (1..MAX) OF filter Filter,
+// or              [1] SET SIZE (1..MAX) OF filter Filter,
 func (f FilterOr) size() (size int) {
 	for _, filter := range f {
 		size += filter.size()

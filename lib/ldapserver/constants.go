@@ -33,9 +33,11 @@ const (
 	ModifyRequestChangeOperationReplace = 2
 )
 
-const SearchRequestScopeBaseObject = 0
-const SearchRequestSingleLevel = 1
-const SearchRequestHomeSubtree = 2
+const (
+	SearchRequestScopeBaseObject = 0
+	SearchRequestSingleLevel     = 1
+	SearchRequestHomeSubtree     = 2
+)
 
 // Extended operation responseName and requestName
 const (

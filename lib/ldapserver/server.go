@@ -12,9 +12,7 @@ import (
 	"time"
 )
 
-var (
-	ErrMissingHandler = errors.New("ldap server has no defined handler function")
-)
+var ErrMissingHandler = errors.New("ldap server has no defined handler function")
 
 // Server is an LDAP server.
 type Server struct {

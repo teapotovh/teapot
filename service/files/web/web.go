@@ -55,8 +55,7 @@ func (web *Web) Handler(prefix string) http.Handler {
 	return mux
 }
 
-type HomePage struct {
-}
+type HomePage struct{}
 
 func (hp HomePage) Render(ctx ui.Context) g.Node {
 	return g.Group{

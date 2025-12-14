@@ -2,10 +2,9 @@ package message
 
 import "fmt"
 
-//
-//        IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
-//             responseName     [0] LDAPOID OPTIONAL,
-//             responseValue    [1] OCTET STRING OPTIONAL }
+//	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
+//	     responseName     [0] LDAPOID OPTIONAL,
+//	     responseValue    [1] OCTET STRING OPTIONAL }
 func readIntermediateResponse(bytes *Bytes) (ret IntermediateResponse, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagIntermediateResponse, ret.readComponents)
 	if err != nil {
@@ -14,12 +13,14 @@ func readIntermediateResponse(bytes *Bytes) (ret IntermediateResponse, err error
 	}
 	return
 }
+
 func (bytes *Bytes) PreviewTagAndLength() (tagAndLength TagAndLength, err error) {
 	previousOffset := bytes.offset // Save offset
 	tagAndLength, err = bytes.ParseTagAndLength()
 	bytes.offset = previousOffset // Restore offset
 	return
 }
+
 func (res *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 	if bytes.HasMoreData() {
 		var tag TagAndLength
@@ -58,10 +59,9 @@ func (res *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 	return
 }
 
-//
-//        IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
-//             responseName     [0] LDAPOID OPTIONAL,
-//             responseValue    [1] OCTET STRING OPTIONAL }
+//	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
+//	     responseName     [0] LDAPOID OPTIONAL,
+//	     responseValue    [1] OCTET STRING OPTIONAL }
 func (i IntermediateResponse) write(bytes *Bytes) (size int) {
 	if i.responseValue != nil {
 		size += i.responseValue.writeTagged(bytes, classContextSpecific, TagIntermediateResponseValue)
@@ -73,10 +73,9 @@ func (i IntermediateResponse) write(bytes *Bytes) (size int) {
 	return
 }
 
-//
-//        IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
-//             responseName     [0] LDAPOID OPTIONAL,
-//             responseValue    [1] OCTET STRING OPTIONAL }
+//	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
+//	     responseName     [0] LDAPOID OPTIONAL,
+//	     responseValue    [1] OCTET STRING OPTIONAL }
 func (i IntermediateResponse) size() (size int) {
 	if i.responseName != nil {
 		size += i.responseName.sizeTagged(TagIntermediateResponseName)

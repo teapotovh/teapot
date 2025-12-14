@@ -7,7 +7,12 @@ import (
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
-func (server *Bottin) membershipAdd(tx store.Transaction, attr store.AttributeKey, member store.DN, group store.DN) error {
+func (server *Bottin) membershipAdd(
+	tx store.Transaction,
+	attr store.AttributeKey,
+	member store.DN,
+	group store.DN,
+) error {
 	entity, err := server.getEntry(tx.Context(), member)
 	if err != nil {
 		return fmt.Errorf("error while fetching membership %s value (adding): %w", attr, err)
@@ -28,7 +33,12 @@ func (server *Bottin) membershipAdd(tx store.Transaction, attr store.AttributeKe
 	return nil
 }
 
-func (server *Bottin) membershipRemove(tx store.Transaction, attr store.AttributeKey, member store.DN, group store.DN) error {
+func (server *Bottin) membershipRemove(
+	tx store.Transaction,
+	attr store.AttributeKey,
+	member store.DN,
+	group store.DN,
+) error {
 	entity, err := server.getEntry(tx.Context(), member)
 	if err != nil {
 		return fmt.Errorf("error while fetching membership %s value (removing): %w", attr, err)

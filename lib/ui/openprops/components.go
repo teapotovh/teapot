@@ -7,27 +7,25 @@ import (
 	"github.com/teapotovh/teapot/lib/ui/dependency"
 )
 
-var (
-	Components = []string{
-		"normalize",
-		"animations",
-		"aspects",
-		"borders",
-		"colors",
-		"durations",
-		"easings",
-		"fonts",
-		"gradients",
-		"masks.edges",
-		"masks.corner-cuts",
-		"media",
-		"shadows",
-		"sizes",
-		"supports",
-		"zindex",
-		"brand-colors",
-	}
-)
+var Components = []string{
+	"normalize",
+	"animations",
+	"aspects",
+	"borders",
+	"colors",
+	"durations",
+	"easings",
+	"fonts",
+	"gradients",
+	"masks.edges",
+	"masks.corner-cuts",
+	"media",
+	"shadows",
+	"sizes",
+	"supports",
+	"zindex",
+	"brand-colors",
+}
 
 var nameMap = map[string]string{
 	"sizes": "size",

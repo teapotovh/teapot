@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/teapotovh/teapot/lib/ldap"
-
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
+
+	"github.com/teapotovh/teapot/lib/ldap"
 )
 
-var (
-	ErrListUsers = errors.New("error while listing users")
-)
+var ErrListUsers = errors.New("error while listing users")
 
 func (srv *Server) users(users []*ldap.User) g.Node {
 	return h.Section(h.Class("users"),
@@ -38,14 +36,20 @@ func (srv *Server) users(users []*ldap.User) g.Node {
 func (srv *Server) HandleUsersGet(w http.ResponseWriter, r *http.Request) (g.Node, error) {
 	client, err := srv.factory.NewClient(r.Context())
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while constructing LDAP client: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while constructing LDAP client: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorPage(r, ErrLDAP), err
 	}
 	defer client.Close()
 
 	users, err := client.Users()
 	if err != nil {
-		err = ErrorWithStatus(fmt.Errorf("error while fetching user from LDAP: %w", err), http.StatusInternalServerError)
+		err = ErrorWithStatus(
+			fmt.Errorf("error while fetching user from LDAP: %w", err),
+			http.StatusInternalServerError,
+		)
 		return ErrorPage(r, ErrListUsers), err
 	}
 

@@ -1,9 +1,11 @@
 package message
 
-type OCTETSTRING string
-type INTEGER int32 // In this RFC the max INTEGER value is 2^31 - 1, so int32 is enough
-type BOOLEAN bool
-type ENUMERATED int32
+type (
+	OCTETSTRING string
+	INTEGER     int32 // In this RFC the max INTEGER value is 2^31 - 1, so int32 is enough
+	BOOLEAN     bool
+	ENUMERATED  int32
+)
 
 // This appendix is normative.
 //
@@ -187,45 +189,47 @@ type LDAPResult struct {
 
 const TagLDAPResultReferral = 3
 
-const ResultCodeSuccess = 0
-const ResultCodeOperationsError = 1
-const ResultCodeProtocolError = 2
-const ResultCodeTimeLimitExceeded = 3
-const ResultCodeSizeLimitExceeded = 4
-const ResultCodeCompareFalse = 5
-const ResultCodeCompareTrue = 6
-const ResultCodeAuthMethodNotSupported = 7
-const ResultCodeStrongerAuthRequired = 8
-const ResultCodeReferral = 10
-const ResultCodeAdminLimitExceeded = 11
-const ResultCodeUnavailableCriticalExtension = 12
-const ResultCodeConfidentialityRequired = 13
-const ResultCodeSaslBindInProgress = 14
-const ResultCodeNoSuchAttribute = 16
-const ResultCodeUndefinedAttributeType = 17
-const ResultCodeInappropriateMatching = 18
-const ResultCodeConstraintViolation = 19
-const ResultCodeAttributeOrValueExists = 20
-const ResultCodeInvalidAttributeSyntax = 21
-const ResultCodeNoSuchObject = 32
-const ResultCodeAliasProblem = 33
-const ResultCodeInvalidDNSyntax = 34
-const ResultCodeAliasDereferencingProblem = 36
-const ResultCodeInappropriateAuthentication = 48
-const ResultCodeInvalidCredentials = 49
-const ResultCodeInsufficientAccessRights = 50
-const ResultCodeBusy = 51
-const ResultCodeUnavailable = 52
-const ResultCodeUnwillingToPerform = 53
-const ResultCodeLoopDetect = 54
-const ResultCodeNamingViolation = 64
-const ResultCodeObjectClassViolation = 65
-const ResultCodeNotAllowedOnNonLeaf = 66
-const ResultCodeNotAllowedOnRDN = 67
-const ResultCodeEntryAlreadyExists = 68
-const ResultCodeObjectClassModsProhibited = 69
-const ResultCodeAffectsMultipleDSAs = 71
-const ResultCodeOther = 80
+const (
+	ResultCodeSuccess                      = 0
+	ResultCodeOperationsError              = 1
+	ResultCodeProtocolError                = 2
+	ResultCodeTimeLimitExceeded            = 3
+	ResultCodeSizeLimitExceeded            = 4
+	ResultCodeCompareFalse                 = 5
+	ResultCodeCompareTrue                  = 6
+	ResultCodeAuthMethodNotSupported       = 7
+	ResultCodeStrongerAuthRequired         = 8
+	ResultCodeReferral                     = 10
+	ResultCodeAdminLimitExceeded           = 11
+	ResultCodeUnavailableCriticalExtension = 12
+	ResultCodeConfidentialityRequired      = 13
+	ResultCodeSaslBindInProgress           = 14
+	ResultCodeNoSuchAttribute              = 16
+	ResultCodeUndefinedAttributeType       = 17
+	ResultCodeInappropriateMatching        = 18
+	ResultCodeConstraintViolation          = 19
+	ResultCodeAttributeOrValueExists       = 20
+	ResultCodeInvalidAttributeSyntax       = 21
+	ResultCodeNoSuchObject                 = 32
+	ResultCodeAliasProblem                 = 33
+	ResultCodeInvalidDNSyntax              = 34
+	ResultCodeAliasDereferencingProblem    = 36
+	ResultCodeInappropriateAuthentication  = 48
+	ResultCodeInvalidCredentials           = 49
+	ResultCodeInsufficientAccessRights     = 50
+	ResultCodeBusy                         = 51
+	ResultCodeUnavailable                  = 52
+	ResultCodeUnwillingToPerform           = 53
+	ResultCodeLoopDetect                   = 54
+	ResultCodeNamingViolation              = 64
+	ResultCodeObjectClassViolation         = 65
+	ResultCodeNotAllowedOnNonLeaf          = 66
+	ResultCodeNotAllowedOnRDN              = 67
+	ResultCodeEntryAlreadyExists           = 68
+	ResultCodeObjectClassModsProhibited    = 69
+	ResultCodeAffectsMultipleDSAs          = 71
+	ResultCodeOther                        = 80
+)
 
 var EnumeratedLDAPResultCode = map[ENUMERATED]string{
 	ResultCodeSuccess:                "success",
@@ -305,9 +309,11 @@ type Control struct {
 //	     version                 INTEGER (1 ..  127),
 //	     name                    LDAPDN,
 //	     authentication          AuthenticationChoice }
-const TagBindRequest = 0
-const BindRequestVersionMin = 1
-const BindRequestVersionMax = 127
+const (
+	TagBindRequest        = 0
+	BindRequestVersionMin = 1
+	BindRequestVersionMax = 127
+)
 
 type BindRequest struct {
 	version        INTEGER
@@ -320,8 +326,10 @@ type BindRequest struct {
 //	                             -- 1 and 2 reserved
 //	     sasl                    [3] SaslCredentials,
 //	     ...  }
-const TagAuthenticationChoiceSimple = 0
-const TagAuthenticationChoiceSaslCredentials = 3
+const (
+	TagAuthenticationChoiceSimple          = 0
+	TagAuthenticationChoiceSaslCredentials = 3
+)
 
 type AuthenticationChoice interface {
 	sizeTagged(int) int
@@ -338,8 +346,10 @@ type SaslCredentials struct {
 //	BindResponse ::= [APPLICATION 1] SEQUENCE {
 //	     COMPONENTS OF LDAPResult,
 //	     serverSaslCreds    [7] OCTET STRING OPTIONAL }
-const TagBindResponse = 1
-const TagBindResponseServerSaslCreds = 7
+const (
+	TagBindResponse                = 1
+	TagBindResponseServerSaslCreds = 7
+)
 
 type BindResponse struct {
 	LDAPResult
@@ -349,8 +359,7 @@ type BindResponse struct {
 // UnbindRequest ::= [APPLICATION 2] NULL
 const TagUnbindRequest = 2
 
-type UnbindRequest struct {
-}
+type UnbindRequest struct{}
 
 //	PasswdModifyRequestValue ::= SEQUENCE {
 //	  userIdentity    [0]  OCTET STRING OPTIONAL
@@ -362,9 +371,11 @@ type PasswordModifyRequest struct {
 	newPassword  *OCTETSTRING
 }
 
-const TagPasswordModifyRequestUserIdentity = 0
-const TagPasswordModifyRequestOldPassword = 1
-const TagPasswordModifyRequestNewPassword = 2
+const (
+	TagPasswordModifyRequestUserIdentity = 0
+	TagPasswordModifyRequestOldPassword  = 1
+	TagPasswordModifyRequestNewPassword  = 2
+)
 
 //	PasswdModifyResponseValue ::= SEQUENCE {
 //	  genPasswd       [0]     OCTET STRING OPTIONAL }
@@ -402,9 +413,11 @@ type SearchRequest struct {
 	attributes   AttributeSelection
 }
 
-const SearchRequestScopeBaseObject = 0
-const SearchRequestSingleLevel = 1
-const SearchRequestHomeSubtree = 2
+const (
+	SearchRequestScopeBaseObject = 0
+	SearchRequestSingleLevel     = 1
+	SearchRequestHomeSubtree     = 2
+)
 
 var EnumeratedSearchRequestScope = map[ENUMERATED]string{
 	SearchRequestScopeBaseObject: "baseObject",
@@ -412,10 +425,12 @@ var EnumeratedSearchRequestScope = map[ENUMERATED]string{
 	SearchRequestHomeSubtree:     "homeSubtree",
 }
 
-const SearchRequetDerefAliasesNeverDerefAliases = 0
-const SearchRequetDerefAliasesDerefInSearching = 1
-const SearchRequetDerefAliasesDerefFindingBaseObj = 2
-const SearchRequetDerefAliasesDerefAlways = 3
+const (
+	SearchRequetDerefAliasesNeverDerefAliases   = 0
+	SearchRequetDerefAliasesDerefInSearching    = 1
+	SearchRequetDerefAliasesDerefFindingBaseObj = 2
+	SearchRequetDerefAliasesDerefAlways         = 3
+)
 
 var EnumeratedSearchRequestDerefAliases = map[ENUMERATED]string{
 	SearchRequetDerefAliasesNeverDerefAliases:   "neverDerefAliases",
@@ -447,34 +462,41 @@ type AttributeSelection []LDAPString
 //	approxMatch     [8] AttributeValueAssertion,
 //	extensibleMatch [9] MatchingRuleAssertion,
 //	...  }
-const TagFilterAnd = 0
-const TagFilterOr = 1
-const TagFilterNot = 2
-const TagFilterEqualityMatch = 3
-const TagFilterSubstrings = 4
-const TagFilterGreaterOrEqual = 5
-const TagFilterLessOrEqual = 6
-const TagFilterPresent = 7
-const TagFilterApproxMatch = 8
-const TagFilterExtensibleMatch = 9
+const (
+	TagFilterAnd             = 0
+	TagFilterOr              = 1
+	TagFilterNot             = 2
+	TagFilterEqualityMatch   = 3
+	TagFilterSubstrings      = 4
+	TagFilterGreaterOrEqual  = 5
+	TagFilterLessOrEqual     = 6
+	TagFilterPresent         = 7
+	TagFilterApproxMatch     = 8
+	TagFilterExtensibleMatch = 9
+)
 
 type Filter interface {
 	size() int
 	write(*Bytes) int
 	getFilterTag() int
 }
-type FilterAnd []Filter
-type FilterOr []Filter
-type FilterNot struct {
-	Filter
-}
-type FilterEqualityMatch AttributeValueAssertion
-type FilterSubstrings SubstringFilter
-type FilterGreaterOrEqual AttributeValueAssertion
-type FilterLessOrEqual AttributeValueAssertion
-type FilterPresent AttributeDescription
-type FilterApproxMatch AttributeValueAssertion
-type FilterExtensibleMatch MatchingRuleAssertion
+type (
+	FilterAnd []Filter
+	FilterOr  []Filter
+	FilterNot struct {
+		Filter
+	}
+)
+
+type (
+	FilterEqualityMatch   AttributeValueAssertion
+	FilterSubstrings      SubstringFilter
+	FilterGreaterOrEqual  AttributeValueAssertion
+	FilterLessOrEqual     AttributeValueAssertion
+	FilterPresent         AttributeDescription
+	FilterApproxMatch     AttributeValueAssertion
+	FilterExtensibleMatch MatchingRuleAssertion
+)
 
 //	SubstringFilter ::= SEQUENCE {
 //	     type           AttributeDescription,
@@ -488,15 +510,19 @@ type SubstringFilter struct {
 	substrings []Substring
 }
 
-type Substring interface{}
+type Substring any
 
-const TagSubstringInitial = 0
-const TagSubstringAny = 1
-const TagSubstringFinal = 2
+const (
+	TagSubstringInitial = 0
+	TagSubstringAny     = 1
+	TagSubstringFinal   = 2
+)
 
-type SubstringInitial AssertionValue
-type SubstringAny AssertionValue
-type SubstringFinal AssertionValue
+type (
+	SubstringInitial AssertionValue
+	SubstringAny     AssertionValue
+	SubstringFinal   AssertionValue
+)
 
 //	MatchingRuleAssertion ::= SEQUENCE {
 //	     matchingRule    [1] MatchingRuleId OPTIONAL,
@@ -510,10 +536,12 @@ type MatchingRuleAssertion struct {
 	dnAttributes BOOLEAN
 }
 
-const TagMatchingRuleAssertionMatchingRule = 1
-const TagMatchingRuleAssertionType = 2
-const TagMatchingRuleAssertionMatchValue = 3
-const TagMatchingRuleAssertionDnAttributes = 4
+const (
+	TagMatchingRuleAssertionMatchingRule = 1
+	TagMatchingRuleAssertionType         = 2
+	TagMatchingRuleAssertionMatchValue   = 3
+	TagMatchingRuleAssertionDnAttributes = 4
+)
 
 //	SearchResultEntry ::= [APPLICATION 4] SEQUENCE {
 //	     objectName      LDAPDN,
@@ -562,9 +590,11 @@ type ModifyRequestChange struct {
 	modification PartialAttribute
 }
 
-const ModifyRequestChangeOperationAdd = 0
-const ModifyRequestChangeOperationDelete = 1
-const ModifyRequestChangeOperationReplace = 2
+const (
+	ModifyRequestChangeOperationAdd     = 0
+	ModifyRequestChangeOperationDelete  = 1
+	ModifyRequestChangeOperationReplace = 2
+)
 
 var EnumeratedModifyRequestChangeOperation = map[ENUMERATED]string{
 	ModifyRequestChangeOperationAdd:     "add",
@@ -660,8 +690,10 @@ type ExtendedRequest struct {
 	requestValue *OCTETSTRING
 }
 
-const TagExtendedRequestName = 0
-const TagExtendedRequestValue = 1
+const (
+	TagExtendedRequestName  = 0
+	TagExtendedRequestValue = 1
+)
 
 //	ExtendedResponse ::= [APPLICATION 24] SEQUENCE {
 //	     COMPONENTS OF LDAPResult,
@@ -675,8 +707,10 @@ type ExtendedResponse struct {
 	responseValue *OCTETSTRING
 }
 
-const TagExtendedResponseName = 10
-const TagExtendedResponseValue = 11
+const (
+	TagExtendedResponseName  = 10
+	TagExtendedResponseValue = 11
+)
 
 //	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
 //	     responseName     [0] LDAPOID OPTIONAL,
@@ -688,8 +722,10 @@ type IntermediateResponse struct {
 	responseValue *OCTETSTRING
 }
 
-const TagIntermediateResponseName = 0
-const TagIntermediateResponseValue = 1
+const (
+	TagIntermediateResponseName  = 0
+	TagIntermediateResponseValue = 1
+)
 
 //
 //        END
