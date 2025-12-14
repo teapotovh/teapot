@@ -16,7 +16,9 @@ func readBindResponse(bytes *Bytes) (bindresponse BindResponse, err error) {
 }
 
 func (response *BindResponse) readComponents(bytes *Bytes) (err error) {
-	response.LDAPResult.readComponents(bytes)
+	if err := response.LDAPResult.readComponents(bytes); err != nil {
+		return fmt.Errorf("error while reading LDAP result: %w", err)
+	}
 	if bytes.HasMoreData() {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()

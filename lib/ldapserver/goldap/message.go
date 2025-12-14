@@ -47,13 +47,13 @@ import (
 
 func NewLDAPMessage() *LDAPMessage { return &LDAPMessage{} }
 
-func (message *LDAPMessage) readComponents(bytes *Bytes) (err error) {
-	message.messageID, err = readMessageID(bytes)
+func (l *LDAPMessage) readComponents(bytes *Bytes) (err error) {
+	l.messageID, err = readMessageID(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	message.protocolOp, err = readProtocolOp(bytes)
+	l.protocolOp, err = readProtocolOp(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -72,20 +72,20 @@ func (message *LDAPMessage) readComponents(bytes *Bytes) (err error) {
 				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 				return
 			}
-			message.controls = controls.Pointer()
+			l.controls = controls.Pointer()
 		}
 	}
 	return
 }
 
-func (m *LDAPMessage) Write() (bytes *Bytes, err error) {
+func (l *LDAPMessage) Write() (bytes *Bytes, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = LdapError{fmt.Sprintf("Error in LDAPMessage.Write: %s", e)}
 		}
 	}()
 	// Compute the needed size
-	totalSize := m.size()
+	totalSize := l.size()
 	// Initialize the structure
 	bytes = &Bytes{
 		bytes:  make([]byte, totalSize),
@@ -94,11 +94,11 @@ func (m *LDAPMessage) Write() (bytes *Bytes, err error) {
 
 	// Go !
 	size := 0
-	if m.controls != nil {
-		size += m.controls.writeTagged(bytes, classContextSpecific, TagLDAPMessageControls)
+	if l.controls != nil {
+		size += l.controls.writeTagged(bytes, classContextSpecific, TagLDAPMessageControls)
 	}
-	size += m.protocolOp.write(bytes)
-	size += m.messageID.write(bytes)
+	size += l.protocolOp.write(bytes)
+	size += l.messageID.write(bytes)
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)
 	// Check
 	if size != totalSize || bytes.offset != 0 {
@@ -114,11 +114,11 @@ func (m *LDAPMessage) Write() (bytes *Bytes, err error) {
 	return
 }
 
-func (m *LDAPMessage) size() (size int) {
-	size += m.messageID.size()
-	size += m.protocolOp.size()
-	if m.controls != nil {
-		size += m.controls.sizeTagged(TagLDAPMessageControls)
+func (l *LDAPMessage) size() (size int) {
+	size += l.messageID.size()
+	size += l.protocolOp.size()
+	if l.controls != nil {
+		size += l.controls.sizeTagged(TagLDAPMessageControls)
 	}
 	size += sizeTagAndLength(tagSequence, size)
 	return

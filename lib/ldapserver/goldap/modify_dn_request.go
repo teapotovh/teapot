@@ -16,18 +16,18 @@ func readModifyDNRequest(bytes *Bytes) (ret ModifyDNRequest, err error) {
 	return
 }
 
-func (req *ModifyDNRequest) readComponents(bytes *Bytes) (err error) {
-	req.entry, err = readLDAPDN(bytes)
+func (m *ModifyDNRequest) readComponents(bytes *Bytes) (err error) {
+	m.entry, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	req.newrdn, err = readRelativeLDAPDN(bytes)
+	m.newrdn, err = readRelativeLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	req.deleteoldrdn, err = readBOOLEAN(bytes)
+	m.deleteoldrdn, err = readBOOLEAN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -46,7 +46,7 @@ func (req *ModifyDNRequest) readComponents(bytes *Bytes) (err error) {
 				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 				return
 			}
-			req.newSuperior = ldapdn.Pointer()
+			m.newSuperior = ldapdn.Pointer()
 		}
 	}
 	return

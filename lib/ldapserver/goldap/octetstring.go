@@ -40,10 +40,10 @@ func (o OCTETSTRING) sizeTagged(tag int) int {
 	return SizePrimitiveSubBytes(tag, o)
 }
 
-func (l OCTETSTRING) String() string {
-	return string(l)
+func (o OCTETSTRING) String() string {
+	return string(o)
 }
 
-func (l OCTETSTRING) Bytes() []byte {
-	return []byte(l)
+func (o OCTETSTRING) Bytes() []byte {
+	return []byte(o)
 }

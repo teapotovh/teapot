@@ -62,6 +62,6 @@ func (i INTEGER) sizeTagged(tag int) int {
 	return SizePrimitiveSubBytes(tag, i)
 }
 
-func (l INTEGER) Int() int {
-	return int(l)
+func (i INTEGER) Int() int {
+	return int(i)
 }

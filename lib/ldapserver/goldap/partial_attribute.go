@@ -15,13 +15,13 @@ func readPartialAttribute(bytes *Bytes) (ret PartialAttribute, err error) {
 	return
 }
 
-func (partialattribute *PartialAttribute) readComponents(bytes *Bytes) (err error) {
-	partialattribute.type_, err = readAttributeDescription(bytes)
+func (p *PartialAttribute) readComponents(bytes *Bytes) (err error) {
+	p.type_, err = readAttributeDescription(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	err = bytes.ReadSubBytes(classUniversal, tagSet, partialattribute.readValsComponents)
+	err = bytes.ReadSubBytes(classUniversal, tagSet, p.readValsComponents)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -29,7 +29,7 @@ func (partialattribute *PartialAttribute) readComponents(bytes *Bytes) (err erro
 	return
 }
 
-func (partialattribute *PartialAttribute) readValsComponents(bytes *Bytes) (err error) {
+func (p *PartialAttribute) readValsComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var attributevalue AttributeValue
 		attributevalue, err = readAttributeValue(bytes)
@@ -37,7 +37,7 @@ func (partialattribute *PartialAttribute) readValsComponents(bytes *Bytes) (err 
 			err = LdapError{fmt.Sprintf("readValsComponents:\n%s", err.Error())}
 			return
 		}
-		partialattribute.vals = append(partialattribute.vals, attributevalue)
+		p.vals = append(p.vals, attributevalue)
 	}
 	return
 }

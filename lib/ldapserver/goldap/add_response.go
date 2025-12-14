@@ -5,8 +5,8 @@ import "fmt"
 //
 //        AddResponse ::= [APPLICATION 9] LDAPResult
 
-func (l *AddResponse) SetResultCode(code int) {
-	l.resultCode = ENUMERATED(code)
+func (a *AddResponse) SetResultCode(code int) {
+	a.resultCode = ENUMERATED(code)
 }
 
 func readAddResponse(bytes *Bytes) (ret AddResponse, err error) {

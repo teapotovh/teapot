@@ -67,18 +67,18 @@ func readTaggedLDAPResult(bytes *Bytes, class int, tag int) (ret LDAPResult, err
 	return
 }
 
-func (ldapresult *LDAPResult) readComponents(bytes *Bytes) (err error) {
-	ldapresult.resultCode, err = readENUMERATED(bytes, EnumeratedLDAPResultCode)
+func (l *LDAPResult) readComponents(bytes *Bytes) (err error) {
+	l.resultCode, err = readENUMERATED(bytes, EnumeratedLDAPResultCode)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	ldapresult.matchedDN, err = readLDAPDN(bytes)
+	l.matchedDN, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	ldapresult.diagnosticMessage, err = readLDAPString(bytes)
+	l.diagnosticMessage, err = readLDAPString(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -97,7 +97,7 @@ func (ldapresult *LDAPResult) readComponents(bytes *Bytes) (err error) {
 				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 				return
 			}
-			ldapresult.referral = referral.Pointer()
+			l.referral = referral.Pointer()
 		}
 	}
 	return

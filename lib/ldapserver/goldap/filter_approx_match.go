@@ -19,7 +19,7 @@ func (f FilterApproxMatch) write(bytes *Bytes) int {
 	return AttributeValueAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterApproxMatch)
 }
 
-func (filterAnd FilterApproxMatch) getFilterTag() int {
+func (f FilterApproxMatch) getFilterTag() int {
 	return TagFilterApproxMatch
 }
 
@@ -28,10 +28,10 @@ func (f FilterApproxMatch) size() int {
 	return AttributeValueAssertion(f).sizeTagged(TagFilterApproxMatch)
 }
 
-func (a *FilterApproxMatch) AttributeDesc() AttributeDescription {
-	return a.attributeDesc
+func (f *FilterApproxMatch) AttributeDesc() AttributeDescription {
+	return f.attributeDesc
 }
 
-func (a *FilterApproxMatch) AssertionValue() AssertionValue {
-	return a.assertionValue
+func (f *FilterApproxMatch) AssertionValue() AssertionValue {
+	return f.assertionValue
 }

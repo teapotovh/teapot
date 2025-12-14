@@ -14,13 +14,13 @@ func readSearchResultEntry(bytes *Bytes) (searchresultentry SearchResultEntry, e
 	return
 }
 
-func (searchresultentry *SearchResultEntry) readComponents(bytes *Bytes) (err error) {
-	searchresultentry.objectName, err = readLDAPDN(bytes)
+func (s *SearchResultEntry) readComponents(bytes *Bytes) (err error) {
+	s.objectName, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchresultentry.attributes, err = readPartialAttributeList(bytes)
+	s.attributes, err = readPartialAttributeList(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return

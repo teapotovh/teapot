@@ -91,8 +91,8 @@ func (dn DN) Level() int {
 	return len(dn)
 }
 
-func (dn1 DN) Equal(dn2 DN) bool {
-	return slices.Equal(dn1, dn2)
+func (dn DN) Equal(dn2 DN) bool {
+	return slices.Equal(dn, dn2)
 }
 
 func (dn DN) Sub(comps ...Component) DN {
@@ -133,8 +133,8 @@ func (prefix Prefix) Level() int {
 	return len(prefix)
 }
 
-func (prefix1 Prefix) Equal(prefix2 Prefix) bool {
-	return slices.Equal(prefix1, prefix2)
+func (prefix Prefix) Equal(prefix2 Prefix) bool {
+	return slices.Equal(prefix, prefix2)
 }
 
 func (prefix Prefix) IsPrefixOf(prf Prefix) bool {

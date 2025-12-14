@@ -67,13 +67,13 @@ func deleteInterface(link netlink.Link) error {
 func comparePeerConfig(a, b wgtypes.PeerConfig) bool {
 	return a.PublicKey == b.PublicKey &&
 		compareUDPAddr(*a.Endpoint, *b.Endpoint) &&
-		slices.EqualFunc(a.AllowedIPs, b.AllowedIPs, compareNetIp)
+		slices.EqualFunc(a.AllowedIPs, b.AllowedIPs, compareNetIP)
 }
 
 func compareUDPAddr(a, b net.UDPAddr) bool {
 	return slices.Equal(a.IP, b.IP) && a.Port == b.Port
 }
 
-func compareNetIp(a, b net.IPNet) bool {
+func compareNetIP(a, b net.IPNet) bool {
 	return slices.Equal(a.IP, b.IP) && a.Network() == b.Network()
 }

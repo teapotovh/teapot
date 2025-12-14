@@ -3,9 +3,7 @@ package message
 // Below code is largely inspired from the standard golang library encoding/asn
 // If put BEGIN / END tags in the comments to give the original library name
 import (
-	//	"errors"
 	"fmt"
-	"math/big"
 )
 
 //
@@ -30,7 +28,7 @@ const (
 	// tagIA5String       = 22
 	// tagUTCTime         = 23
 	// tagGeneralizedTime = 24
-	tagGeneralString = 27
+	// tagGeneralString = 27
 )
 
 var tagNames = map[int]string{
@@ -297,8 +295,6 @@ func sizeInt32(i int32) int {
 func writeInt32(bytes *Bytes, i int32) int {
 	return writeInt64(bytes, int64(i))
 }
-
-var bigOne = big.NewInt(1)
 
 // // parseBigInt treats the given bytes as a big-endian, signed integer and returns
 // // the result.

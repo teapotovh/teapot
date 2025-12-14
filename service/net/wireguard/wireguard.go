@@ -101,6 +101,7 @@ func (w *Wireguard) addWireguardIP() error {
 	return nil
 }
 
+//nolint:gocyclo
 func (w *Wireguard) configureWireguard(source string) error {
 	if w.local.PrivateKey == tnet.DefaultPrivateKey || w.local.Port == 0 {
 		w.logger.Warn("ignoring update, as information for local node hasn't been fetched yet", "source", source)

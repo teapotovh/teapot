@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+var (
+	ErrCriticalityNotSpecified = errors.New("readComponents: criticality default value FALSE should not be specified")
+)
+
 //
 //        Control ::= SEQUENCE {
 //             controlType             LDAPOID,
@@ -51,9 +55,8 @@ func (control *Control) readComponents(bytes *Bytes) (err error) {
 				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 				return
 			}
-			if control.criticality == false {
-				err = errors.New(fmt.Sprintf("readComponents: criticality default value FALSE should not be specified"))
-				return
+			if !control.criticality {
+				return ErrCriticalityNotSpecified
 			}
 		}
 	}

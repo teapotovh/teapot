@@ -19,8 +19,8 @@ func readSaslCredentials(bytes *Bytes) (authentication SaslCredentials, err erro
 	return
 }
 
-func (authentication *SaslCredentials) readComponents(bytes *Bytes) (err error) {
-	authentication.mechanism, err = readLDAPString(bytes)
+func (s *SaslCredentials) readComponents(bytes *Bytes) (err error) {
+	s.mechanism, err = readLDAPString(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -32,7 +32,7 @@ func (authentication *SaslCredentials) readComponents(bytes *Bytes) (err error) 
 			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 			return
 		}
-		authentication.credentials = credentials.Pointer()
+		s.credentials = credentials.Pointer()
 	}
 	return
 }

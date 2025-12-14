@@ -2792,7 +2792,7 @@ func getLDAPMessageTestData() (ret []LDAPMessageTestData) {
 					timeLimit:    INTEGER(0),
 					typesOnly:    BOOLEAN(false),
 					filter: FilterExtensibleMatch{
-						matchingRule: MatchingRuleId("telephoneNumberMatch").Pointer(),
+						matchingRule: MatchingRuleID("telephoneNumberMatch").Pointer(),
 						type_:        AttributeDescription("telephoneNumber").Pointer(),
 						matchValue:   AssertionValue("0123456789"),
 						dnAttributes: BOOLEAN(true),

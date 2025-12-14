@@ -30,13 +30,13 @@ func readTaggedSubstringFilter(bytes *Bytes, class int, tag int) (substringfilte
 	return
 }
 
-func (substringfilter *SubstringFilter) readComponents(bytes *Bytes) (err error) {
-	substringfilter.type_, err = readAttributeDescription(bytes)
+func (s *SubstringFilter) readComponents(bytes *Bytes) (err error) {
+	s.type_, err = readAttributeDescription(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	err = substringfilter.readSubstrings(bytes)
+	err = s.readSubstrings(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -44,8 +44,8 @@ func (substringfilter *SubstringFilter) readComponents(bytes *Bytes) (err error)
 	return
 }
 
-func (substringfilter *SubstringFilter) readSubstrings(bytes *Bytes) (err error) {
-	err = bytes.ReadSubBytes(classUniversal, tagSequence, substringfilter.readSubstringsComponents)
+func (s *SubstringFilter) readSubstrings(bytes *Bytes) (err error) {
+	err = bytes.ReadSubBytes(classUniversal, tagSequence, s.readSubstringsComponents)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readSubstrings:\n%s", err.Error())}
 		return
@@ -53,7 +53,7 @@ func (substringfilter *SubstringFilter) readSubstrings(bytes *Bytes) (err error)
 	return
 }
 
-func (substringfilter *SubstringFilter) readSubstringsComponents(bytes *Bytes) (err error) {
+func (s *SubstringFilter) readSubstringsComponents(bytes *Bytes) (err error) {
 	foundInitial := 0
 	foundFinal := 0
 	var tagAndLength TagAndLength
@@ -76,14 +76,14 @@ func (substringfilter *SubstringFilter) readSubstringsComponents(bytes *Bytes) (
 				err = LdapError{fmt.Sprintf("readSubstringsComponents:\n%s", err.Error())}
 				return
 			}
-			substringfilter.substrings = append(substringfilter.substrings, SubstringInitial(assertionvalue))
+			s.substrings = append(s.substrings, SubstringInitial(assertionvalue))
 		case TagSubstringAny:
 			assertionvalue, err = readTaggedAssertionValue(bytes, classContextSpecific, TagSubstringAny)
 			if err != nil {
 				err = LdapError{fmt.Sprintf("readSubstringsComponents:\n%s", err.Error())}
 				return
 			}
-			substringfilter.substrings = append(substringfilter.substrings, SubstringAny(assertionvalue))
+			s.substrings = append(s.substrings, SubstringAny(assertionvalue))
 		case TagSubstringFinal:
 			foundFinal++
 			if foundFinal > 1 {
@@ -95,13 +95,13 @@ func (substringfilter *SubstringFilter) readSubstringsComponents(bytes *Bytes) (
 				err = LdapError{fmt.Sprintf("readSubstringsComponents:\n%s", err.Error())}
 				return
 			}
-			substringfilter.substrings = append(substringfilter.substrings, SubstringFinal(assertionvalue))
+			s.substrings = append(s.substrings, SubstringFinal(assertionvalue))
 		default:
 			err = LdapError{fmt.Sprintf("readSubstringsComponents: invalid tag %d", tagAndLength.Tag)}
 			return
 		}
 	}
-	if len(substringfilter.substrings) == 0 {
+	if len(s.substrings) == 0 {
 		err = LdapError{"readSubstringsComponents: expecting at least one substring"}
 		return
 	}
@@ -144,7 +144,7 @@ func (s SubstringFilter) write(bytes *Bytes) (size int) {
 	return s.writeTagged(bytes, classUniversal, tagSequence)
 }
 
-func (filter FilterSubstrings) getFilterTag() int {
+func (f FilterSubstrings) getFilterTag() int {
 	return TagFilterSubstrings
 }
 
@@ -183,10 +183,10 @@ func (s SubstringFilter) sizeTagged(tag int) (size int) {
 	return
 }
 
-func (s *FilterSubstrings) Type_() AttributeDescription {
-	return s.type_
+func (f *FilterSubstrings) Type_() AttributeDescription {
+	return f.type_
 }
 
-func (s *FilterSubstrings) Substrings() []Substring {
-	return s.substrings
+func (f *FilterSubstrings) Substrings() []Substring {
+	return f.substrings
 }

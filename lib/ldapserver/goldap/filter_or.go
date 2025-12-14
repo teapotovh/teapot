@@ -12,7 +12,7 @@ func readFilterOr(bytes *Bytes) (filteror FilterOr, err error) {
 	return
 }
 
-func (filteror *FilterOr) readComponents(bytes *Bytes) (err error) {
+func (f *FilterOr) readComponents(bytes *Bytes) (err error) {
 	count := 0
 	for bytes.HasMoreData() {
 		count++
@@ -22,9 +22,9 @@ func (filteror *FilterOr) readComponents(bytes *Bytes) (err error) {
 			err = LdapError{fmt.Sprintf("readComponents (filter %d): %s", count, err.Error())}
 			return
 		}
-		*filteror = append(*filteror, filter)
+		*f = append(*f, filter)
 	}
-	if len(*filteror) == 0 {
+	if len(*f) == 0 {
 		err = LdapError{"readComponents: expecting at least one Filter"}
 		return
 	}
@@ -40,7 +40,7 @@ func (f FilterOr) write(bytes *Bytes) (size int) {
 	return
 }
 
-func (filter FilterOr) getFilterTag() int {
+func (f FilterOr) getFilterTag() int {
 	return TagFilterOr
 }
 

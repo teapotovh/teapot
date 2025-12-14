@@ -15,7 +15,7 @@ func readPartialAttributeList(bytes *Bytes) (ret PartialAttributeList, err error
 	return
 }
 
-func (partialattributelist *PartialAttributeList) readComponents(bytes *Bytes) (err error) {
+func (p *PartialAttributeList) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var partialattribute PartialAttribute
 		partialattribute, err = readPartialAttribute(bytes)
@@ -23,7 +23,7 @@ func (partialattributelist *PartialAttributeList) readComponents(bytes *Bytes) (
 			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 			return
 		}
-		*partialattributelist = append(*partialattributelist, partialattribute)
+		*p = append(*p, partialattribute)
 	}
 	return
 }

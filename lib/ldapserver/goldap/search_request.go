@@ -31,43 +31,43 @@ func readSearchRequest(bytes *Bytes) (searchrequest SearchRequest, err error) {
 	return
 }
 
-func (searchrequest *SearchRequest) readComponents(bytes *Bytes) (err error) {
-	searchrequest.baseObject, err = readLDAPDN(bytes)
+func (s *SearchRequest) readComponents(bytes *Bytes) (err error) {
+	s.baseObject, err = readLDAPDN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.scope, err = readENUMERATED(bytes, EnumeratedSearchRequestScope)
+	s.scope, err = readENUMERATED(bytes, EnumeratedSearchRequestScope)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.derefAliases, err = readENUMERATED(bytes, EnumeratedSearchRequestDerefAliases)
+	s.derefAliases, err = readENUMERATED(bytes, EnumeratedSearchRequestDerefAliases)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.sizeLimit, err = readPositiveINTEGER(bytes)
+	s.sizeLimit, err = readPositiveINTEGER(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.timeLimit, err = readPositiveINTEGER(bytes)
+	s.timeLimit, err = readPositiveINTEGER(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.typesOnly, err = readBOOLEAN(bytes)
+	s.typesOnly, err = readBOOLEAN(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.filter, err = readFilter(bytes)
+	s.filter, err = readFilter(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
 	}
-	searchrequest.attributes, err = readAttributeSelection(bytes)
+	s.attributes, err = readAttributeSelection(bytes)
 	if err != nil {
 		err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 		return
@@ -172,6 +172,7 @@ func (s *SearchRequest) FilterString() string {
 	return str
 }
 
+//nolint:gocyclo
 func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 	defer func() {
 		if r := recover(); r != nil {

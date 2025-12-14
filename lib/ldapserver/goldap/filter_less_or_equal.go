@@ -19,7 +19,7 @@ func (f FilterLessOrEqual) write(bytes *Bytes) int {
 	return AttributeValueAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterLessOrEqual)
 }
 
-func (filterAnd FilterLessOrEqual) getFilterTag() int {
+func (f FilterLessOrEqual) getFilterTag() int {
 	return TagFilterLessOrEqual
 }
 
@@ -28,10 +28,10 @@ func (f FilterLessOrEqual) size() int {
 	return AttributeValueAssertion(f).sizeTagged(TagFilterLessOrEqual)
 }
 
-func (a *FilterLessOrEqual) AttributeDesc() AttributeDescription {
-	return a.attributeDesc
+func (f *FilterLessOrEqual) AttributeDesc() AttributeDescription {
+	return f.attributeDesc
 }
 
-func (a *FilterLessOrEqual) AssertionValue() AssertionValue {
-	return a.assertionValue
+func (f *FilterLessOrEqual) AssertionValue() AssertionValue {
+	return f.assertionValue
 }

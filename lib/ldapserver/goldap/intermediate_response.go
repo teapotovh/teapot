@@ -21,7 +21,7 @@ func (bytes *Bytes) PreviewTagAndLength() (tagAndLength TagAndLength, err error)
 	return
 }
 
-func (res *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
+func (i *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 	if bytes.HasMoreData() {
 		var tag TagAndLength
 		tag, err = bytes.PreviewTagAndLength()
@@ -36,7 +36,7 @@ func (res *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 				return
 			}
-			res.responseName = oid.Pointer()
+			i.responseName = oid.Pointer()
 		}
 	}
 	if bytes.HasMoreData() {
@@ -53,7 +53,7 @@ func (res *IntermediateResponse) readComponents(bytes *Bytes) (err error) {
 				err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 				return
 			}
-			res.responseValue = str.Pointer()
+			i.responseValue = str.Pointer()
 		}
 	}
 	return

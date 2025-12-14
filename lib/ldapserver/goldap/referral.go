@@ -12,7 +12,7 @@ func readTaggedReferral(bytes *Bytes, class int, tag int) (referral Referral, er
 	return
 }
 
-func (referral *Referral) readComponents(bytes *Bytes) (err error) {
+func (r *Referral) readComponents(bytes *Bytes) (err error) {
 	for bytes.HasMoreData() {
 		var uri URI
 		uri, err = readURI(bytes)
@@ -20,14 +20,14 @@ func (referral *Referral) readComponents(bytes *Bytes) (err error) {
 			err = LdapError{fmt.Sprintf("readComponents:\n%s", err.Error())}
 			return
 		}
-		*referral = append(*referral, uri)
+		*r = append(*r, uri)
 	}
-	if len(*referral) == 0 {
+	if len(*r) == 0 {
 		return LdapError{"readComponents: expecting at least one URI"}
 	}
 	return
 }
-func (referral Referral) Pointer() *Referral { return &referral }
+func (r Referral) Pointer() *Referral { return &r }
 
 // Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI
 func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {

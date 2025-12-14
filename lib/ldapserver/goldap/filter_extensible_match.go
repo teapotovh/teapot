@@ -19,7 +19,7 @@ func (f FilterExtensibleMatch) write(bytes *Bytes) int {
 	return MatchingRuleAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterExtensibleMatch)
 }
 
-func (filterAnd FilterExtensibleMatch) getFilterTag() int {
+func (f FilterExtensibleMatch) getFilterTag() int {
 	return TagFilterExtensibleMatch
 }
 

@@ -2,6 +2,7 @@ package message
 
 import "fmt"
 
+//nolint:gocyclo
 func readProtocolOp(bytes *Bytes) (ret ProtocolOp, err error) {
 	tagAndLength, err := bytes.PreviewTagAndLength()
 	if err != nil {

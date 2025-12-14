@@ -21,7 +21,7 @@ func (bytes Bytes) Debug() {
 	fmt.Printf("Offset: %d, Bytes: %+v\n", bytes.offset, bytes.bytes)
 }
 
-// Return a string with the hex dump of the bytes around the current offset
+// DumpCurrentBytes returns a string with the hex dump of the bytes around the current offset
 // The current offset byte is put in brackets
 // Example: 0x01, [0x02], 0x03
 func (bytes *Bytes) DumpCurrentBytes() (ret string) {
@@ -125,17 +125,6 @@ func (bytes *Bytes) WriteTagAndLength(class int, compound bool, tag int, length 
 	return writeTagAndLength(bytes, TagAndLength{Class: class, IsCompound: compound, Tag: tag, Length: length})
 }
 
-func (bytes *Bytes) writeString(s string) (size int) {
-	size = len(s)
-	start := bytes.offset - size
-	if start < 0 {
-		panic("Not enough space for string")
-	}
-	copy(bytes.bytes[start:], s)
-	bytes.offset = start
-	return
-}
-
 func (bytes *Bytes) writeBytes(b []byte) (size int) {
 	size = len(b)
 	start := bytes.offset - size
@@ -147,7 +136,7 @@ func (bytes *Bytes) writeBytes(b []byte) (size int) {
 	return
 }
 
-// Parse tag, length and read the a primitive value
+// ReadPrimitiveSubBytes parses tag, length and read the a primitive value
 // Supported types are:
 // - boolean
 // - integer (parsed as int32)

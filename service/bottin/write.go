@@ -187,6 +187,7 @@ func (server *Bottin) HandleDelete(
 	return ctx
 }
 
+//nolint:gocyclo
 func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelRequest) (int, error) {
 	user := ldapserver.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(*r), false)

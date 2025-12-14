@@ -1,3 +1,7 @@
+// this file contains a lot of generated code for LDAP structures, inherited
+// from the go-ldap library.
+//
+//nolint:staticcheck,unused
 package message
 
 type (
@@ -120,8 +124,8 @@ type PartialAttribute struct {
 //	     vals (SIZE(1..MAX))})
 type Attribute PartialAttribute
 
-// MatchingRuleId ::= LDAPString
-type MatchingRuleId LDAPString
+// MatchingRuleID ::= LDAPString
+type MatchingRuleID LDAPString
 
 //	LDAPResult ::= SEQUENCE {
 //	     resultCode         ENUMERATED {
@@ -530,7 +534,7 @@ type (
 //	     matchValue      [3] AssertionValue,
 //	     dnAttributes    [4] BOOLEAN DEFAULT FALSE }
 type MatchingRuleAssertion struct {
-	matchingRule *MatchingRuleId
+	matchingRule *MatchingRuleID
 	type_        *AttributeDescription
 	matchValue   AssertionValue
 	dnAttributes BOOLEAN

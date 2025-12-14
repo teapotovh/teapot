@@ -127,6 +127,16 @@ func (r *Router) delRoute(route route) error {
 	return nil
 }
 
+func orderRoute(r1, r2 route) int {
+	if r1.isDirect() && !r2.isDirect() {
+		return -1
+	} else if r2.isDirect() && !r1.isDirect() {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 func (r *Router) configureRoutes() error {
 	routes := make(map[route]unit)
 
@@ -158,15 +168,7 @@ func (r *Router) configureRoutes() error {
 	// Sort the `toadd` routes. When adding routes, we must be careful. The routes
 	// for the point-to-point communication, which will later serve as gateways
 	// must be added before the CIDR routes.
-	slices.SortFunc(toadd, func(r1, r2 route) int {
-		if r1.isDirect() && !r2.isDirect() {
-			return -1
-		} else if r2.isDirect() && !r1.isDirect() {
-			return 1
-		} else {
-			return 0
-		}
-	})
+	slices.SortFunc(toadd, orderRoute)
 
 	for _, route := range toadd {
 		// Desired route is missing, let's add it

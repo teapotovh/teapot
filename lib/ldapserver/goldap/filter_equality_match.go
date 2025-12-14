@@ -23,7 +23,7 @@ func (f FilterEqualityMatch) write(bytes *Bytes) int {
 	return AttributeValueAssertion(f).writeTagged(bytes, classContextSpecific, TagFilterEqualityMatch)
 }
 
-func (filter FilterEqualityMatch) getFilterTag() int {
+func (f FilterEqualityMatch) getFilterTag() int {
 	return TagFilterEqualityMatch
 }
 
@@ -32,10 +32,10 @@ func (f FilterEqualityMatch) size() int {
 	return AttributeValueAssertion(f).sizeTagged(TagFilterEqualityMatch)
 }
 
-func (a *FilterEqualityMatch) AttributeDesc() AttributeDescription {
-	return a.attributeDesc
+func (f *FilterEqualityMatch) AttributeDesc() AttributeDescription {
+	return f.attributeDesc
 }
 
-func (a *FilterEqualityMatch) AssertionValue() AssertionValue {
-	return a.assertionValue
+func (f *FilterEqualityMatch) AssertionValue() AssertionValue {
+	return f.assertionValue
 }

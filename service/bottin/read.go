@@ -206,6 +206,7 @@ func (server *Bottin) handleSearchInternal(
 	return goldap.ResultCodeSuccess, nil
 }
 
+//nolint:gocyclo
 func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 	if fAnd, ok := filter.(goldap.FilterAnd); ok {
 		for _, cond := range fAnd {
