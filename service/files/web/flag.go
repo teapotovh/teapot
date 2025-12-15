@@ -3,6 +3,7 @@ package web
 import (
 	flag "github.com/spf13/pflag"
 
+	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/ui"
 )
 
@@ -12,9 +13,13 @@ func WebFlagSet() (*flag.FlagSet, func() WebConfig) {
 	uiFS, getUIConfig := ui.UIFlagSet()
 	fs.AddFlagSet(uiFS)
 
+	jwtAuthFS, getJWTAuthConfig := httpauth.JWTAuthFlagSet("files/web")
+	fs.AddFlagSet(jwtAuthFS)
+
 	return fs, func() WebConfig {
 		return WebConfig{
-			UI: getUIConfig(),
+			UI:      getUIConfig(),
+			JWTAuth: getJWTAuthConfig(),
 		}
 	}
 }

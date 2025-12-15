@@ -14,6 +14,7 @@ import (
 	flag "github.com/spf13/pflag"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
+	c "maragu.dev/gomponents/components"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/teapotovh/teapot/lib/ui/dependency"
@@ -46,7 +47,6 @@ func RendererFlagSet() (*flag.FlagSet, func() RendererConfig) {
 }
 
 type Renderer struct {
-	page             Page
 	logger           *slog.Logger
 	dependencies     map[dependency.Dependency][]byte
 	dependencyPaths  map[dependency.Dependency]string
@@ -54,12 +54,11 @@ type Renderer struct {
 	assetPath        string
 }
 
-func NewRenderer(config RendererConfig, page Page, logger *slog.Logger) (*Renderer, error) {
+func NewRenderer(config RendererConfig, logger *slog.Logger) (*Renderer, error) {
 	renderer := Renderer{
 		logger: logger,
 
 		assetPath: config.AssetPath,
-		page:      page,
 
 		dependencies:     map[dependency.Dependency][]byte{},
 		dependencyPaths:  map[dependency.Dependency]string{},
@@ -177,23 +176,19 @@ func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Compone
 }
 
 // RenderPage renders a full page to the response. It adds styles as necessary.
-func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) error {
+func (rer *Renderer) RenderPage(w io.Writer, opts c.HTML5Props, body Component) error {
 	loaded := emptyAlreadyLoaded()
 
-	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
+	styles, scripts, node, err := rer.renderWithDependencies(loaded, body)
 	if err != nil {
 		return err
 	}
 
-	props := PageOptions{
-		Title:   title,
-		Styles:  styles,
-		Scripts: scripts,
-		Body:    []g.Node{node},
-	}
-	page := rer.page.Render(props)
+	opts.Head = append(opts.Head, styles...)
+	opts.Head = append(opts.Head, scripts...)
+	opts.Body = append(opts.Body, node)
 
-	if err := page.Render(w); err != nil {
+	if err := c.HTML5(opts).Render(w); err != nil {
 		return fmt.Errorf("error while rendering page: %w", err)
 	}
 

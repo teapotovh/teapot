@@ -13,16 +13,6 @@ const (
 	basicAuthErrContextKey contextKey = "basic-auth-err"
 )
 
-type BasicAuthData struct {
-	Username string `json:"username"`
-}
-
-type BasicAuth struct {
-	logger       *slog.Logger
-	errorHandler http.Handler
-	factory      *ldap.Factory
-}
-
 func GetBasicAuthErr(r *http.Request) error {
 	val := r.Context().Value(basicAuthErrContextKey)
 	if val == nil {
@@ -41,6 +31,16 @@ var DefaultBasicAuthErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, 
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 })
+
+type BasicAuthData struct {
+	Username string `json:"username"`
+}
+
+type BasicAuth struct {
+	logger       *slog.Logger
+	errorHandler http.Handler
+	factory      *ldap.Factory
+}
 
 func NewBasicAuth(factory *ldap.Factory, errorHandler http.Handler, logger *slog.Logger) *BasicAuth {
 	return &BasicAuth{
