@@ -49,7 +49,7 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 		renderer:            renderer,
 		dependenciesHandler: httpui.ServeDependencies(renderer, logger.With("component", "dependencies")),
 
-		auth: httpauth.NewJWTAuth(files.LDAPFactory(), config.JWTAuth, slog.With("component", "auth")),
+		auth: httpauth.NewJWTAuth(files.LDAPFactory(), config.JWTAuth, logger.With("component", "auth")),
 	}
 
 	return &web, nil

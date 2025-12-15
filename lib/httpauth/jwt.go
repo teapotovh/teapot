@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	authCookieName = "kontakte-auth"
+	cookieName = "teapot-auth"
 )
 
 type JWTAuth struct {
@@ -47,6 +47,7 @@ func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger
 		secret:   config.Secret,
 		issuer:   config.Issuser,
 		duration: config.Duration,
+		prefix:   config.Prefix,
 
 		factory: factory,
 	}
@@ -80,7 +81,7 @@ func (ja *JWTAuth) authCookie(username string, admin bool) (*http.Cookie, error)
 	}
 
 	return &http.Cookie{
-		Name:    authCookieName,
+		Name:    cookieName,
 		Value:   ss,
 		Path:    ja.prefix,
 		Expires: expiry,
@@ -88,10 +89,10 @@ func (ja *JWTAuth) authCookie(username string, admin bool) (*http.Cookie, error)
 }
 
 func (ja *JWTAuth) checkAuthCookie(r *http.Request) *jwtAuth {
-	cookie, err := r.Cookie(authCookieName)
+	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		if !errors.Is(err, http.ErrNoCookie) {
-			slog.ErrorContext(r.Context(), "unexpected error while fetching authentication cookie", "err", err)
+			ja.logger.ErrorContext(r.Context(), "unexpected error while fetching authentication cookie", "err", err)
 		}
 
 		return nil
@@ -105,12 +106,12 @@ func (ja *JWTAuth) checkAuthCookie(r *http.Request) *jwtAuth {
 		return ja.secret, nil
 	})
 	if err != nil {
-		slog.ErrorContext(r.Context(), "error while validating authentication cookie", "err", err)
+		ja.logger.ErrorContext(r.Context(), "error while validating authentication cookie", "err", err)
 		return nil
 	} else if claims, ok := token.Claims.(*jwtAuth); ok {
 		return claims
 	} else {
-		slog.ErrorContext(r.Context(), "validation token is of unexpected type", "err", err)
+		ja.logger.ErrorContext(r.Context(), "validation token is of unexpected type", "err", err)
 		return nil
 	}
 }
@@ -120,5 +121,25 @@ func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 		auth := ja.checkAuthCookie(r)
 		r = r.WithContext(context.WithValue(r.Context(), authContextKey, auth))
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (ja *JWTAuth) Authenticate(w http.ResponseWriter, username string, admin bool) error {
+	cookie, err := ja.authCookie(username, admin)
+	if err != nil {
+		return fmt.Errorf("error while generating JWT cookie: %w", err)
+	}
+
+	http.SetCookie(w, cookie)
+
+	return nil
+}
+
+func (ja *JWTAuth) DeAuthenticate(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:    cookieName,
+		Value:   "",
+		Path:    ja.prefix,
+		Expires: time.Now(),
 	})
 }
