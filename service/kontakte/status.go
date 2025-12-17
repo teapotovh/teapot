@@ -9,7 +9,10 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound     = errors.New("not found")
+	ErrUnauthorized = errors.New("unauthorized")
+)
 
 type statusError struct {
 	error
@@ -52,14 +55,14 @@ func ErrorPage(r *http.Request, err error) g.Node {
 }
 
 func NotFound(r *http.Request) (g.Node, error) {
-	err := fmt.Errorf("could not %s %s", r.Method, r.URL)
+	err := fmt.Errorf("could not %s %s: %w", r.Method, r.URL, ErrNotFound)
 	err = ErrorWithStatus(err, http.StatusNotFound)
 
 	return ErrorPage(r, err), ErrorWithStatus(errors.Join(err, ErrNotFound), http.StatusNotFound)
 }
 
 func Unauthorized(r *http.Request) (g.Node, error) {
-	err := fmt.Errorf("could not %s %s", r.Method, r.URL)
+	err := fmt.Errorf("could not %s %s: %w", r.Method, r.URL, ErrUnauthorized)
 	err = ErrorWithStatus(err, http.StatusUnauthorized)
 
 	return ErrorPage(r, err), err

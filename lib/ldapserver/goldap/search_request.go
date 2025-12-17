@@ -2,6 +2,12 @@ package message
 
 import (
 	"errors"
+	"fmt"
+	"runtime/debug"
+)
+
+var (
+	ErrDecompilingFilter = errors.New("error decompiling filter")
 )
 
 //	SearchRequest ::= [APPLICATION 3] SEQUENCE {
@@ -186,7 +192,13 @@ func (s *SearchRequest) FilterString() string {
 func (s *SearchRequest) decompileFilter(packet Filter) (ret string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New("error decompiling filter")
+			trace := string(debug.Stack())
+			err = fmt.Errorf(
+				"panic caught while decompiling filter %#v: %w. Trace: %s",
+				packet,
+				ErrDecompilingFilter,
+				trace,
+			)
 		}
 	}()
 

@@ -20,7 +20,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-var ErrNoGVK = errors.New("no group-version-kind found for object")
+var (
+	ErrNoGVK   = errors.New("no group-version-kind found for object")
+	ErrTimeout = errors.New("timed out")
+)
 
 // getResourceName returns the resource name from a type (without instance).
 func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
@@ -248,7 +251,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 
 	// Wait for all involved caches to be synced, before processing items from the queue is started
 	if !cache.WaitForNamedCacheSyncWithContext(ctx, c.informer.HasSynced) {
-		return errors.New("timed out waiting for caches to sync")
+		return fmt.Errorf("error waiting for caches to sync: %w", ErrTimeout)
 	}
 
 	for range workers {

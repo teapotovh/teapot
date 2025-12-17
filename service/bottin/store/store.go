@@ -2,7 +2,12 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
+)
+
+var (
+	ErrInvalidBackend = errors.New("invalid backend")
 )
 
 // Store provides an interface implemented by all types of stores for LDAP entries.
@@ -42,6 +47,6 @@ func NewStore(config StoreConfig) (Store, error) {
 	case "psql":
 		return NewPSQL(config.URL)
 	default:
-		return nil, fmt.Errorf("invalid store backend: %s", config.Type)
+		return nil, fmt.Errorf("error instantiating store of type %q: %w", config.Type, ErrInvalidBackend)
 	}
 }

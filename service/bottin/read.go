@@ -2,12 +2,17 @@ package bottin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/teapotovh/teapot/lib/ldapserver"
 	goldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
+)
+
+var (
+	ErrUnsupportedFilter = errors.New("unsupported filter")
 )
 
 // TODO: return ResultCodeNoSuchObject if len(entries) < 1
@@ -19,7 +24,7 @@ func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, 
 	}
 
 	if len(entries) != 1 {
-		return nil, fmt.Errorf("entry with given DN not found: %q", dn.String())
+		return nil, fmt.Errorf("error while fetching entry %q: %w", dn.String(), ErrNotFound)
 	}
 
 	return &entries[0], nil
@@ -274,6 +279,6 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 
 		return false, nil
 	} else {
-		return false, fmt.Errorf("unsupported filter: %#v %T", filter, filter)
+		return false, fmt.Errorf("error while applying filter %#v (of type %T): %w", filter, filter, ErrUnsupportedFilter)
 	}
 }

@@ -9,7 +9,11 @@ import (
 	"time"
 )
 
-var ErrOtherService = errors.New("terminating as other service failed")
+var (
+	ErrOtherService = errors.New("terminating as other service failed")
+	ErrPanic        = errors.New("caught panic")
+	ErrTimeout      = errors.New("timed out")
+)
 
 type Notify interface {
 	Notify()
@@ -58,7 +62,7 @@ func (r runnable) startup(ctx context.Context) error {
 	tick := time.Tick(r.timeout)
 	select {
 	case <-tick:
-		return fmt.Errorf("service %q startup timed out after %s", r.name, r.timeout)
+		return fmt.Errorf("service %q failed to start after %s: %w", r.name, r.timeout, ErrTimeout)
 	case err := <-notify.ch:
 		if err != nil {
 			return err
@@ -89,7 +93,7 @@ func (r runnable) wrap(ctx context.Context, ntfy *notify) (err error) {
 	defer func() {
 		if recover() != nil {
 			trace := string(debug.Stack())
-			err = fmt.Errorf("component %q panicked: %s", r.name, trace)
+			err = fmt.Errorf("error in component %q: %w. Trace: %s", r.name, ErrPanic, trace)
 		}
 	}()
 

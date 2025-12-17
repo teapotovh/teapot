@@ -2,6 +2,7 @@ package bottin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -10,6 +11,11 @@ import (
 	"github.com/teapotovh/teapot/lib/ldapserver"
 	goldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
+)
+
+var (
+	ErrHasChildren = errors.New("has children")
+	ErrNotFound    = errors.New("not found")
 )
 
 func (server *Bottin) HandleAdd(
@@ -216,13 +222,13 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	}
 
 	if len(entries) == 0 {
-		return goldap.ResultCodeNoSuchObject, fmt.Errorf("not found: %q", dn)
+		return goldap.ResultCodeNoSuchObject, fmt.Errorf("error fetching entry %q: %w", dn, ErrNotFound)
 	}
 
 	for _, entry := range entries {
 		if !entry.DN.Equal(dn) {
 			return goldap.ResultCodeNotAllowedOnNonLeaf, fmt.Errorf(
-				"cannot delete %q as it has children", dn)
+				"cannot delete %q: %w", dn, ErrHasChildren)
 		}
 	}
 

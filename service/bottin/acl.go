@@ -1,11 +1,16 @@
 package bottin
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strings"
 
 	"github.com/teapotovh/teapot/service/bottin/store"
+)
+
+var (
+	ErrInvalidACLParts = errors.New("invalid number of ACL parts")
 )
 
 type ACL []ACLEntry
@@ -45,7 +50,7 @@ func parseACL(def []string) (ACL, error) {
 	for _, item := range def {
 		parts := strings.Split(item, ":")
 		if len(parts) != 5 {
-			return nil, fmt.Errorf("invalid ACL entry: %s", item)
+			return nil, fmt.Errorf("could not parse ACL %q: %w", item, ErrInvalidACLParts)
 		}
 
 		var (

@@ -23,7 +23,7 @@ linters:
     - dogsled
     - durationcheck
     - embeddedstructfieldcheck
-    # - err113 # nice to have, requires some work
+    - err113
     - errchkjson
     - errname
     - errorlint

@@ -13,7 +13,9 @@ import (
 
 type HashType string
 
-var ErrNoValidHash = errors.New("no valid hash found")
+var (
+	ErrNoValidHash = errors.New("no valid hash found")
+)
 
 const (
 	MD5     HashType = "{MD5}"
@@ -50,7 +52,7 @@ func matchPassword(schemaHash string, passwd string) (bool, error) {
 		return ssha512.Validate(passwd, string(SSHA512)+hash)
 	}
 
-	return false, errors.New("no matching hash type found")
+	return false, nil // unreachable
 }
 
 func parseHash(hash string) (HashType, string, error) {

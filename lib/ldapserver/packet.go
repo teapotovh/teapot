@@ -2,9 +2,18 @@ package ldapserver
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"runtime/debug"
 
 	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+)
+
+var (
+	ErrInvalidPacket    = errors.New("invalid packet")
+	ErrInvalidMessage   = errors.New("invalid message")
+	ErrInvalidFirstByte = errors.New("expected 0x30 as first byte")
+	ErrEOF              = errors.New("end of file")
 )
 
 type messagePacket struct {
@@ -28,7 +37,8 @@ func readMessagePacket(br *bufio.Reader) (*messagePacket, error) {
 func (msg *messagePacket) readMessage() (m ldap.LDAPMessage, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("invalid packet received hex=%x, %#v", msg.bytes, r)
+			trace := string(debug.Stack())
+			err = fmt.Errorf("panic caught while reading message %x: %w. Trace: %s", msg.bytes, ErrInvalidPacket, trace)
 		}
 	}()
 
@@ -38,7 +48,8 @@ func (msg *messagePacket) readMessage() (m ldap.LDAPMessage, err error) {
 func decodeMessage(bytes []byte) (ret ldap.LDAPMessage, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("%s", e)
+			trace := string(debug.Stack())
+			err = fmt.Errorf("panic caught while decoding message %x: %w. Trace: %s", bytes, ErrInvalidMessage, trace)
 		}
 	}()
 
@@ -98,7 +109,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 	//	}
 	// We are expecting the LDAP sequence tag 0x30 as first byte
 	if b != 0x30 {
-		err = fmt.Errorf("expecting 0x30 as first byte, but got %#x instead", b)
+		err = fmt.Errorf("unexpected first byte %#x:%w", b, ErrInvalidFirstByte)
 		return ret, err
 	}
 
@@ -156,7 +167,7 @@ func readBytes(conn *bufio.Reader, bytes *[]byte, length int) (b byte, err error
 
 	n, err := conn.Read(newbytes)
 	if n != length {
-		return 0, fmt.Errorf("%d bytes read instead of %d", n, length)
+		return 0, fmt.Errorf("read %d bytes instead of %d: %w", n, length, ErrEOF)
 	} else if err != nil {
 		return
 	}

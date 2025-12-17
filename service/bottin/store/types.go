@@ -13,7 +13,10 @@ const (
 	prefixSeparator = "/"
 )
 
-var ErrMissingEquals = errors.New("missing = in DN, expected exactly one")
+var (
+	ErrMissingEquals    = errors.New("missing = in DN, expected exactly one")
+	ErrInvalidComponent = errors.New("invalid component")
+)
 
 func reverse[T any](slice []T) []T {
 	cpy := slices.Clone(slice)
@@ -38,7 +41,7 @@ func (seg Component) String() string {
 func ParseComponent(rawComp string) (Component, error) {
 	splits := strings.Split(rawComp, "=")
 	if len(splits) != 2 {
-		err := fmt.Errorf("invalid DN component: %s", rawComp)
+		err := fmt.Errorf("error parsing component %q: %w", rawComp, ErrInvalidComponent)
 		return Component{}, errors.Join(err, ErrMissingEquals)
 	}
 
