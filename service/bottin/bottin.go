@@ -133,6 +133,56 @@ func (server *Bottin) Init(ctx context.Context) error {
 	return nil
 }
 
+func (server *Bottin) HandlePasswordModify(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
+	r := m.GetExtendedRequest()
+	resultCode, err := server.handlePasswordModifyInternal(ctx, &r)
+
+	res := ldapserver.NewExtendedResponse(resultCode)
+	res.SetResponseName(ldapserver.NoticeOfPasswordModify)
+
+	if err != nil {
+		res.SetDiagnosticMessage(err.Error())
+	}
+
+	if resultCode == ldap.ResultCodeSuccess {
+		server.logger.InfoContext(ctx, "passwd successful")
+	} else {
+		server.logger.InfoContext(ctx, "passwd failed", "err", err)
+	}
+
+	w.Write(res)
+
+	return ctx
+}
+
+func (server *Bottin) HandleBind(
+	ctx context.Context,
+	w ldapserver.ResponseWriter,
+	m *ldapserver.Message,
+) context.Context {
+	r := m.GetBindRequest()
+	ctx, resultCode, err := server.handleBindInternal(ctx, &r)
+
+	res := ldapserver.NewBindResponse(resultCode)
+	if err != nil {
+		res.SetDiagnosticMessage(err.Error())
+	}
+
+	if resultCode == ldap.ResultCodeSuccess {
+		server.logger.InfoContext(ctx, "bind successful", "user", r.Name())
+	} else {
+		server.logger.InfoContext(ctx, "bind failed", "user", r.Name(), "err", err)
+	}
+
+	w.Write(res)
+
+	return ctx
+}
+
 func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) {
 	dn, err := store.ParseDN(rawDN)
 	if err != nil {
@@ -158,32 +208,6 @@ func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) 
 		dn.String(),
 		baseDN.String(),
 	)
-}
-
-func (server *Bottin) HandlePasswordModify(
-	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
-) context.Context {
-	r := m.GetExtendedRequest()
-	resultCode, err := server.handlePasswordModifyInternal(ctx, &r)
-
-	res := ldapserver.NewExtendedResponse(resultCode)
-	res.SetResponseName(ldapserver.NoticeOfPasswordModify)
-
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	if resultCode == ldap.ResultCodeSuccess {
-		server.logger.InfoContext(ctx, "passwd successful")
-	} else {
-		server.logger.InfoContext(ctx, "passwd failed", "err", err)
-	}
-
-	w.Write(res)
-
-	return ctx
 }
 
 func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.ExtendedRequest) (int32, error) {
@@ -253,30 +277,6 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	}
 
 	return ldap.ResultCodeSuccess, nil
-}
-
-func (server *Bottin) HandleBind(
-	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
-) context.Context {
-	r := m.GetBindRequest()
-	ctx, resultCode, err := server.handleBindInternal(ctx, &r)
-
-	res := ldapserver.NewBindResponse(resultCode)
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	if resultCode == ldap.ResultCodeSuccess {
-		server.logger.InfoContext(ctx, "bind successful", "user", r.Name())
-	} else {
-		server.logger.InfoContext(ctx, "bind failed", "user", r.Name(), "err", err)
-	}
-
-	w.Write(res)
-
-	return ctx
 }
 
 func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindRequest) (context.Context, int32, error) {

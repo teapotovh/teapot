@@ -7,10 +7,6 @@ type Bytes struct {
 	offset int
 }
 
-func (bytes *Bytes) getBytes() []byte {
-	return bytes.bytes
-}
-
 func NewBytes(offset int, bytes []byte) (ret *Bytes) {
 	return &Bytes{offset: offset, bytes: bytes}
 }
@@ -135,20 +131,6 @@ func (bytes *Bytes) WriteTagAndLength(class int, compound bool, tag int, length 
 	return writeTagAndLength(bytes, TagAndLength{Class: class, IsCompound: compound, Tag: tag, Length: length})
 }
 
-func (bytes *Bytes) writeBytes(b []byte) (size int) {
-	size = len(b)
-
-	start := bytes.offset - size
-	if start < 0 {
-		panic("Not enough space for bytes")
-	}
-
-	copy(bytes.bytes[start:], b)
-	bytes.offset = start
-
-	return
-}
-
 // ReadPrimitiveSubBytes parses tag, length and read the a primitive value
 // Supported types are:
 // - boolean
@@ -223,4 +205,22 @@ func (bytes *Bytes) ReadPrimitiveSubBytes(class int, tag int, typeTag int) (valu
 
 func (bytes *Bytes) Bytes() []byte {
 	return bytes.bytes
+}
+
+func (bytes *Bytes) getBytes() []byte {
+	return bytes.bytes
+}
+
+func (bytes *Bytes) writeBytes(b []byte) (size int) {
+	size = len(b)
+
+	start := bytes.offset - size
+	if start < 0 {
+		panic("Not enough space for bytes")
+	}
+
+	copy(bytes.bytes[start:], b)
+	bytes.offset = start
+
+	return
 }

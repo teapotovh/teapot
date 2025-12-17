@@ -62,6 +62,48 @@ func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*
 	return wg, nil
 }
 
+// Run implements run.Runnable.
+func (w *Wireguard) Run(ctx context.Context, notify run.Notify) (err error) {
+	csub := w.net.Cluster().Broker().Subscribe()
+	defer csub.Unsubscribe()
+
+	lsub := w.net.Local().Broker().Subscribe()
+	defer lsub.Unsubscribe()
+
+	defer func() {
+		if cliErr := w.client.Close(); cliErr != nil && err == nil {
+			err = fmt.Errorf("error while closing wireguard client: %w", cliErr)
+		}
+	}()
+	defer func() {
+		if delErr := deleteInterface(w.link); delErr != nil && err == nil {
+			err = fmt.Errorf("error while deleting wireguard interface %q: %w", w.link.Attrs().Name, delErr)
+		}
+	}()
+
+	notify.Notify()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case cluster := <-csub.Chan():
+			w.cluster = cluster
+
+			if err := w.configureWireguard("cluster"); err != nil {
+				return fmt.Errorf("error while configuring wireguard interface: %w", err)
+			}
+
+		case local := <-lsub.Chan():
+			w.local = local
+
+			if err := w.configureWireguard("local"); err != nil {
+				return fmt.Errorf("error while configuring wireguard interface: %w", err)
+			}
+		}
+	}
+}
+
 func (w *Wireguard) addWireguardIP() error {
 	// We need to fetch the local node from the cluster to get its internal IP
 	var node *tnet.ClusterNode
@@ -188,46 +230,4 @@ func (w *Wireguard) configureWireguard(source string) error {
 	w.logger.Info("updated wireguard with new information", "source", source)
 
 	return nil
-}
-
-// Run implements run.Runnable.
-func (w *Wireguard) Run(ctx context.Context, notify run.Notify) (err error) {
-	csub := w.net.Cluster().Broker().Subscribe()
-	defer csub.Unsubscribe()
-
-	lsub := w.net.Local().Broker().Subscribe()
-	defer lsub.Unsubscribe()
-
-	defer func() {
-		if cliErr := w.client.Close(); cliErr != nil && err == nil {
-			err = fmt.Errorf("error while closing wireguard client: %w", cliErr)
-		}
-	}()
-	defer func() {
-		if delErr := deleteInterface(w.link); delErr != nil && err == nil {
-			err = fmt.Errorf("error while deleting wireguard interface %q: %w", w.link.Attrs().Name, delErr)
-		}
-	}()
-
-	notify.Notify()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case cluster := <-csub.Chan():
-			w.cluster = cluster
-
-			if err := w.configureWireguard("cluster"); err != nil {
-				return fmt.Errorf("error while configuring wireguard interface: %w", err)
-			}
-
-		case local := <-lsub.Chan():
-			w.local = local
-
-			if err := w.configureWireguard("local"); err != nil {
-				return fmt.Errorf("error while configuring wireguard interface: %w", err)
-			}
-		}
-	}
 }

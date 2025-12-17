@@ -57,26 +57,6 @@ func (c *Cluster) Broker() *broker.Broker[ClusterEvent] {
 	return c.broker
 }
 
-func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
-	// This CNI is ipv4-only, so filter only ipv4 addresses
-	var cidrs []netip.Prefix
-
-	for _, cidr := range node.CIDRs {
-		if cidr.Addr().Is4() {
-			cidrs = append(cidrs, cidr)
-		}
-	}
-
-	return ClusterNode{
-		InternalAddress: node.InternalAddress,
-		ExternalAddress: node.ExternalAddress,
-		PublicKey:       node.PublicKey,
-
-		IsLocal: node.Name == c.node,
-		CIDRs:   cidrs,
-	}, nil
-}
-
 // Run implements run.Runnable.
 func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
 	defer c.brokerCancel()
@@ -105,4 +85,24 @@ func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
 	}
 
 	return nil
+}
+
+func (c *Cluster) toClusterNode(node Node) (ClusterNode, error) {
+	// This CNI is ipv4-only, so filter only ipv4 addresses
+	var cidrs []netip.Prefix
+
+	for _, cidr := range node.CIDRs {
+		if cidr.Addr().Is4() {
+			cidrs = append(cidrs, cidr)
+		}
+	}
+
+	return ClusterNode{
+		InternalAddress: node.InternalAddress,
+		ExternalAddress: node.ExternalAddress,
+		PublicKey:       node.PublicKey,
+
+		IsLocal: node.Name == c.node,
+		CIDRs:   cidrs,
+	}, nil
 }

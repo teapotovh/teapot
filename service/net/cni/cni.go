@@ -84,6 +84,53 @@ func NewCNI(net *tnet.Net, config CNIConfig, logger *slog.Logger) (*CNI, error) 
 	}, nil
 }
 
+// Run implements run.Runnable.
+func (c *CNI) Run(ctx context.Context, notify run.Notify) (err error) {
+	csub := c.net.Cluster().Broker().Subscribe()
+	defer csub.Unsubscribe()
+
+	lsub := c.net.Local().Broker().Subscribe()
+	defer lsub.Unsubscribe()
+
+	defer func() {
+		if cleanErr := c.cleanupIptables(); cleanErr != nil && err == nil {
+			err = fmt.Errorf("error while cleaning up iptables: %w", cleanErr)
+		}
+	}()
+	defer func() {
+		if delErr := deleteInterface(c.link); delErr != nil && err == nil {
+			err = fmt.Errorf("error while deleting interface %q: %w", c.link.Attrs().Name, delErr)
+		}
+	}()
+	defer func() {
+		if cleanErr := c.cleanupCNIFile(); cleanErr != nil && err == nil {
+			err = fmt.Errorf("error while cleaning up CNI file: %w", cleanErr)
+		}
+	}()
+
+	notify.Notify()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case cluster := <-csub.Chan():
+			c.cluster = cluster
+
+			if err := c.configureCNI("cluster"); err != nil {
+				return fmt.Errorf("error while configuring wireguard interface: %w", err)
+			}
+
+		case local := <-lsub.Chan():
+			c.local = local
+
+			if err := c.configureCNI("local"); err != nil {
+				return fmt.Errorf("error while configuring wireguard interface: %w", err)
+			}
+		}
+	}
+}
+
 func (c *CNI) addCNIIP(source string) error {
 	addrs, err := netlink.AddrList(c.link, netlink.FAMILY_V4)
 	if err != nil {
@@ -232,51 +279,4 @@ func (c *CNI) cleanupIptables() error {
 	}
 
 	return nil
-}
-
-// Run implements run.Runnable.
-func (c *CNI) Run(ctx context.Context, notify run.Notify) (err error) {
-	csub := c.net.Cluster().Broker().Subscribe()
-	defer csub.Unsubscribe()
-
-	lsub := c.net.Local().Broker().Subscribe()
-	defer lsub.Unsubscribe()
-
-	defer func() {
-		if cleanErr := c.cleanupIptables(); cleanErr != nil && err == nil {
-			err = fmt.Errorf("error while cleaning up iptables: %w", cleanErr)
-		}
-	}()
-	defer func() {
-		if delErr := deleteInterface(c.link); delErr != nil && err == nil {
-			err = fmt.Errorf("error while deleting interface %q: %w", c.link.Attrs().Name, delErr)
-		}
-	}()
-	defer func() {
-		if cleanErr := c.cleanupCNIFile(); cleanErr != nil && err == nil {
-			err = fmt.Errorf("error while cleaning up CNI file: %w", cleanErr)
-		}
-	}()
-
-	notify.Notify()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case cluster := <-csub.Chan():
-			c.cluster = cluster
-
-			if err := c.configureCNI("cluster"); err != nil {
-				return fmt.Errorf("error while configuring wireguard interface: %w", err)
-			}
-
-		case local := <-lsub.Chan():
-			c.local = local
-
-			if err := c.configureCNI("local"); err != nil {
-				return fmt.Errorf("error while configuring wireguard interface: %w", err)
-			}
-		}
-	}
 }

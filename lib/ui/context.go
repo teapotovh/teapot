@@ -25,13 +25,6 @@ type context struct {
 // Ensure *context implements Context.
 var _ Context = (*context)(nil)
 
-func (c *context) register(style *Style) {
-	c.styles[style] = unit{}
-	for _, dep := range style.dependencies {
-		c.dependencies[dep] = unit{}
-	}
-}
-
 func (c *context) Class(styles ...*Style) g.Node {
 	var ids []string
 
@@ -44,4 +37,11 @@ func (c *context) Class(styles ...*Style) g.Node {
 	}
 
 	return h.Class(strings.Join(ids, " "))
+}
+
+func (c *context) register(style *Style) {
+	c.styles[style] = unit{}
+	for _, dep := range style.dependencies {
+		c.dependencies[dep] = unit{}
+	}
 }

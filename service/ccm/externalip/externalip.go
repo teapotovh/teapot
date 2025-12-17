@@ -45,6 +45,50 @@ func NewExternalIP(ccm *ccm.CCM, config ExternalIPConfig, logger *slog.Logger) (
 	}, nil
 }
 
+// Run implements run.Runnable.
+func (eip *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
+	sub := eip.ccm.Broker().Subscribe()
+	defer sub.Unsubscribe()
+
+	notify.Notify()
+
+	ticker := time.NewTicker(eip.interval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			publicIP, err := eip.fetchPublicIP(ctx)
+			if err != nil {
+				return fmt.Errorf("error while fetching public IP: %w", err)
+			}
+
+			if eip.externalIP == publicIP {
+				eip.logger.Debug("public IP has not changed, skipping ExternalIP update", "ip", publicIP)
+				continue
+			}
+
+			if err := eip.setExternalIP(ctx, publicIP, "ddns"); err != nil {
+				return err
+			}
+		case event := <-sub.Chan():
+			eip.logger.Debug("received CCM event", "event", event)
+
+			if eip.externalIP.IsValid() {
+				// Ensure noone else tampers with ExternalIP
+				if event.ExternalIP != eip.externalIP {
+					if err := eip.setExternalIP(ctx, eip.externalIP, "event"); err != nil {
+						return err
+					}
+				}
+			} else {
+				eip.externalIP = event.ExternalIP
+			}
+		}
+	}
+}
+
 func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	f := func() (addr netip.Addr, err error) {
 		defer func() {
@@ -101,49 +145,5 @@ func (eip *ExternalIP) setExternalIP(ctx context.Context, ip netip.Addr, source 
 		eip.externalIP = ip
 
 		return nil
-	}
-}
-
-// Run implements run.Runnable.
-func (eip *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
-	sub := eip.ccm.Broker().Subscribe()
-	defer sub.Unsubscribe()
-
-	notify.Notify()
-
-	ticker := time.NewTicker(eip.interval)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			publicIP, err := eip.fetchPublicIP(ctx)
-			if err != nil {
-				return fmt.Errorf("error while fetching public IP: %w", err)
-			}
-
-			if eip.externalIP == publicIP {
-				eip.logger.Debug("public IP has not changed, skipping ExternalIP update", "ip", publicIP)
-				continue
-			}
-
-			if err := eip.setExternalIP(ctx, publicIP, "ddns"); err != nil {
-				return err
-			}
-		case event := <-sub.Chan():
-			eip.logger.Debug("received CCM event", "event", event)
-
-			if eip.externalIP.IsValid() {
-				// Ensure noone else tampers with ExternalIP
-				if event.ExternalIP != eip.externalIP {
-					if err := eip.setExternalIP(ctx, eip.externalIP, "event"); err != nil {
-						return err
-					}
-				}
-			} else {
-				eip.externalIP = event.ExternalIP
-			}
-		}
 	}
 }

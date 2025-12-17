@@ -181,13 +181,6 @@ func (h *RouteMux) ServeLDAP(ctx context.Context, w ResponseWriter, r *Message) 
 	}
 }
 
-// Adds a new Route to the Handler.
-func (h *RouteMux) addRoute(r *route) {
-	// and finally append to the list of Routes
-	// create the Route
-	h.routes = append(h.routes, r)
-}
-
 func (h *RouteMux) NotFound(handler HandlerFunc) *route {
 	route := &route{}
 	route.handler = handler
@@ -266,4 +259,11 @@ func (h *RouteMux) Abandon(handler HandlerFunc) *route {
 	h.addRoute(route)
 
 	return route
+}
+
+// Adds a new Route to the Handler.
+func (h *RouteMux) addRoute(r *route) {
+	// and finally append to the list of Routes
+	// create the Route
+	h.routes = append(h.routes, r)
 }

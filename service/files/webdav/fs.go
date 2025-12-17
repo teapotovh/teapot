@@ -26,18 +26,6 @@ func newWebDavFSWrapper(fs hpfs.FS, logger *slog.Logger) *webDavFSWrapper {
 	}
 }
 
-func (fsw *webDavFSWrapper) sanitizeName(name string) string {
-	name = path.Clean(name)
-
-	name = strings.TrimPrefix(name, "/")
-	if name == "" {
-		// Use relative indexing as required by hpfs
-		name = "."
-	}
-
-	return name
-}
-
 // Mkdir implements webdav.FileSystem.
 func (fsw *webDavFSWrapper) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	name = fsw.sanitizeName(name)
@@ -155,4 +143,16 @@ func (fw *webDavFileWrapper) Readdir(count int) ([]fs.FileInfo, error) {
 func (fw *webDavFileWrapper) Stat() (fs.FileInfo, error) {
 	fw.logger.DebugContext(fw.ctx, "performing File.Stat")
 	return fw.file.Stat()
+}
+
+func (fsw *webDavFSWrapper) sanitizeName(name string) string {
+	name = path.Clean(name)
+
+	name = strings.TrimPrefix(name, "/")
+	if name == "" {
+		// Use relative indexing as required by hpfs
+		name = "."
+	}
+
+	return name
 }
