@@ -235,19 +235,28 @@ func (c *CNI) cleanupIptables() error {
 }
 
 // Run implements run.Runnable.
-func (c *CNI) Run(ctx context.Context, notify run.Notify) error {
+func (c *CNI) Run(ctx context.Context, notify run.Notify) (err error) {
 	csub := c.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
 
 	lsub := c.net.Local().Broker().Subscribe()
 	defer lsub.Unsubscribe()
 
-	// TODO: handle error
-	defer deleteInterface(c.link)
-	// TODO: handle error
-	defer c.cleanupCNIFile()
-	// TODO: handle error
-	defer c.cleanupIptables()
+	defer func() {
+		if cleanErr := c.cleanupIptables(); cleanErr != nil && err == nil {
+			err = fmt.Errorf("error while cleaning up iptables: %w", cleanErr)
+		}
+	}()
+	defer func() {
+		if delErr := deleteInterface(c.link); delErr != nil && err == nil {
+			err = fmt.Errorf("error while deleting interface %q: %w", c.link.Attrs().Name, delErr)
+		}
+	}()
+	defer func() {
+		if cleanErr := c.cleanupCNIFile(); cleanErr != nil && err == nil {
+			err = fmt.Errorf("error while cleaning up CNI file: %w", cleanErr)
+		}
+	}()
 
 	notify.Notify()
 

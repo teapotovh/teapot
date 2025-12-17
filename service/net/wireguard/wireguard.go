@@ -191,17 +191,23 @@ func (w *Wireguard) configureWireguard(source string) error {
 }
 
 // Run implements run.Runnable.
-func (w *Wireguard) Run(ctx context.Context, notify run.Notify) error {
+func (w *Wireguard) Run(ctx context.Context, notify run.Notify) (err error) {
 	csub := w.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
 
 	lsub := w.net.Local().Broker().Subscribe()
 	defer lsub.Unsubscribe()
 
-	// TODO: nicer, shared way to handle these errors
-	defer w.client.Close()
-	// TODO: handle error
-	defer deleteInterface(w.link)
+	defer func() {
+		if cliErr := w.client.Close(); cliErr != nil && err == nil {
+			err = fmt.Errorf("error while closing wireguard client: %w", cliErr)
+		}
+	}()
+	defer func() {
+		if delErr := deleteInterface(w.link); delErr != nil && err == nil {
+			err = fmt.Errorf("error while deleting wireguard interface %q: %w", w.link.Attrs().Name, delErr)
+		}
+	}()
 
 	notify.Notify()
 

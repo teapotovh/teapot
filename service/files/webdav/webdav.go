@@ -54,7 +54,7 @@ func NewWebDav(files *files.Files, config WebDavConfig, logger *slog.Logger) (*W
 
 // Handler implements httpsrv.HTTPService.
 func (wd *WebDav) Handler(prefix string) http.Handler {
-	logger := wd.logger.With("component", "webdav")
+	handlerLogger := wd.logger.With("component", "handler")
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := httpauth.MustGetAuth(r)
@@ -65,8 +65,7 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 			return
 		}
 
-		// TODO: perhaps specialize the logger here
-		fs := newWebDavFSWrapper(session.FS(), logger)
+		fs := newWebDavFSWrapper(session.FS(), wd.logger.With("component", "fs"))
 
 		handler := &webdav.Handler{
 			Prefix:     prefix,
@@ -74,7 +73,15 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 			// TODO: implement a custom locking system
 			LockSystem: webdav.NewMemLS(),
 			Logger: func(r *http.Request, err error) {
-				logger.Error("error while handling WebDav request", "method", r.Method, "path", r.URL.Path, "err", err)
+				handlerLogger.Error(
+					"error while handling WebDav request",
+					"method",
+					r.Method,
+					"path",
+					r.URL.Path,
+					"err",
+					err,
+				)
 			},
 		}
 

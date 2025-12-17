@@ -72,7 +72,7 @@ func WithTLS(config *tls.Config) Option {
 // Handle requests messages on the ln listener.
 func (s *Server) serve(ctx context.Context) (err error) {
 	defer func() {
-		if e := s.Listener.Close(); e != nil {
+		if lisErr := s.Listener.Close(); lisErr != nil && err == nil {
 			err = fmt.Errorf("error while closing ldap listener: %w", err)
 		}
 	}()

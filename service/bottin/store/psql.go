@@ -73,8 +73,8 @@ func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []E
 	}
 
 	defer func() {
-		if e := rows.Close(); e != nil {
-			err = fmt.Errorf("error while closing psql rows iterator: %w", e)
+		if rowsErr := rows.Close(); rowsErr != nil && er == nil {
+			er = fmt.Errorf("error while closing psql rows iterator: %w", rowsErr)
 		}
 	}()
 
