@@ -35,7 +35,7 @@ linters:
     - goconst
     # - gocritic # very verbose and minor improvements
     - godot
-    - godox
+    # - godox
     - iface
     - importas
     - inamedparam
