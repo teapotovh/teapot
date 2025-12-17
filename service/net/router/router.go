@@ -202,12 +202,15 @@ func (r *Router) cleanupRoutes() error {
 	return nil
 }
 
-func (r *Router) Run(ctx context.Context, notify run.Notify) error {
+func (r *Router) Run(ctx context.Context, notify run.Notify) (err error) {
 	csub := r.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
 
-	// TODO: handle error
-	defer r.cleanupRoutes()
+	defer func() {
+		if cleanErr := r.cleanupRoutes(); cleanErr != nil && err == nil {
+			err = fmt.Errorf("error while cleaning up routes: %w", cleanErr)
+		}
+	}()
 
 	notify.Notify()
 
