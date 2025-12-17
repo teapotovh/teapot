@@ -7,6 +7,10 @@ import (
 	"text/template"
 )
 
+var (
+	ErrMissingField = errors.New("expression references missing field")
+)
+
 // TMPL holds a reference to the underlying templating engine struct.
 // It can be redered with the appropriate parameter `T`.
 type TMPL[T any] struct {
@@ -34,7 +38,7 @@ func NewTMPL[T any](str string) (*TMPL[T], error) {
 	if len(expressions) > 0 {
 		var es []error
 		for expr := range expressions {
-			es = append(es, fmt.Errorf("expression %q references missing field in parameter struct", expr))
+			es = append(es, fmt.Errorf("invalid expression %q: %w", expr, ErrMissingField))
 		}
 
 		return nil, fmt.Errorf("error while validating string template: %w", errors.Join(es...))

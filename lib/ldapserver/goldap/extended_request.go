@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+var (
+	ErrMissingRequestValue = errors.New("missing RequestValue")
+)
+
 //
 //        ExtendedRequest ::= [APPLICATION 23] SEQUENCE {
 //             requestName      [0] LDAPOID,
@@ -20,7 +24,7 @@ func (extended *ExtendedRequest) RequestValue() *OCTETSTRING {
 
 func (extended *ExtendedRequest) PasswordModifyRequest() (*PasswordModifyRequest, error) {
 	if extended.requestValue == nil {
-		return nil, errors.New("missing RequestValue")
+		return nil, ErrMissingRequestValue
 	}
 
 	pw, err := readPasswordModifyRequest(NewBytes(0, extended.requestValue.Bytes()))

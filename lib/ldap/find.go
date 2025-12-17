@@ -1,9 +1,14 @@
 package ldap
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/go-ldap/ldap/v3"
+)
+
+var (
+	ErrNotMatchingUsername = errors.New("username doesn't match")
 )
 
 func (c *Client) list() ([]*ldap.Entry, error) {
@@ -76,7 +81,7 @@ func (c *Client) find(username string) (*ldap.Entry, error) {
 
 	cn := entry.GetAttributeValue("cn")
 	if username != cn {
-		return nil, fmt.Errorf("usernames don't match, expected %s, got %s", username, cn)
+		return nil, fmt.Errorf("expected %q for username, but got %q: %w", username, cn, ErrNotMatchingUsername)
 	}
 
 	log := c.logger.With("username", username)

@@ -23,8 +23,10 @@ import (
 )
 
 var (
-	ErrInvalidDependencyPath = errors.New("invalid dependency path")
-	ErrMissingDependency     = errors.New("missing dependency")
+	ErrInvalidDependencyPath   = errors.New("invalid dependency path")
+	ErrMissingDependency       = errors.New("missing dependency")
+	ErrDependencyRegistered    = errors.New("dependency already registered")
+	ErrDependencyNotRegistered = errors.New("dependency not registered")
 )
 
 type RendererConfig struct {
@@ -89,7 +91,7 @@ func (rer *Renderer) RegisterDependencies(fns ...DependenciesFunc) error {
 
 		for dep, bytes := range deps {
 			if _, ok := rer.dependencies[dep]; ok {
-				return fmt.Errorf("dependency %q registered multiple times", dep)
+				return fmt.Errorf("error while registering dependency %q: %w", dep, ErrDependencyRegistered)
 			}
 
 			hash := sha256.Sum256(bytes)
@@ -203,7 +205,7 @@ func (rer *Renderer) dependencyPath(dep dependency.Dependency) (string, error) {
 		return path, nil
 	}
 
-	return "", fmt.Errorf("dependency %q not registered", dep)
+	return "", fmt.Errorf("could not find path for dependency %q: %w", dep, ErrDependencyNotRegistered)
 }
 
 func (rer *Renderer) contextRender(component Component) (context, g.Node) {
@@ -251,7 +253,7 @@ func (rer *Renderer) renderWithDependencies(
 		case dependency.DependencyTypeScript:
 			scripts = append(scripts, h.Script(h.Src(url)))
 		default:
-			return nil, nil, nil, fmt.Errorf("unexpected dependency type: %s", dep.Type)
+			return nil, nil, nil, nil
 		}
 
 		dependencies = append(dependencies, dep)

@@ -37,6 +37,7 @@ var (
 	ErrSetRootPasswd      = errors.New("root entry password cannot be set")
 	ErrNotAuthenticated   = errors.New("not authenticated")
 	ErrMissingNewPassword = errors.New("new password is missing")
+	ErrDNNotPrefix        = errors.New("DN is not a prefix of base DN")
 )
 
 type BottinConfig struct {
@@ -211,11 +212,7 @@ func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) 
 		return baseDN, nil
 	}
 
-	return nil, fmt.Errorf(
-		"DN %s is not under baseDN (%s), and should not be extended for this operation",
-		dn.String(),
-		baseDN.String(),
-	)
+	return nil, fmt.Errorf("could not parse DN %q (base %q): %w", dn.String(), baseDN.String(), ErrDNNotPrefix)
 }
 
 func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.ExtendedRequest) (int32, error) {
