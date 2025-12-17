@@ -60,13 +60,6 @@ func (c *Command) Start(name string, args ...string) error {
 	return nil
 }
 
-func (c *Command) logOutput(r io.Reader, level slog.Level) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		c.logger.Log(context.Background(), level, scanner.Text()) //nolint:sloglint
-	}
-}
-
 func (c *Command) Signal(signal os.Signal) error {
 	if c.cmd == nil || c.cmd.Process == nil {
 		return ErrNotStarted
@@ -93,4 +86,11 @@ func (c *Command) Wait() error {
 	}
 
 	return c.cmd.Wait()
+}
+
+func (c *Command) logOutput(r io.Reader, level slog.Level) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		c.logger.Log(context.Background(), level, scanner.Text()) //nolint:sloglint
+	}
 }

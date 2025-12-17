@@ -31,6 +31,35 @@ func NewSpeaker(arp *ARP, logger *slog.Logger) *Speaker {
 	}
 }
 
+// Run implements run.Runnable.
+func (spkr *Speaker) Run(ctx context.Context, notify run.Notify) error {
+	sub := spkr.arp.lb.Broker().Subscribe()
+	defer sub.Unsubscribe()
+
+	notify.Notify()
+
+L:
+	for {
+		select {
+		case <-ctx.Done():
+			break L
+		case update := <-sub.Chan():
+			filtered := filterIPv4s(update)
+			spkr.logger.Info("updated handled IPs", "ips", filtered)
+
+			for _, ip := range filtered {
+				spkr.ips[ip] = unit{}
+			}
+		case packet := <-spkr.arp.packets:
+			if err := spkr.handlePacket(packet); err != nil {
+				return fmt.Errorf("error while handling incoming packet %q: %w", packet, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func filterIPv4s(ips []netip.Addr) []netip.Addr {
 	var result []netip.Addr
 
@@ -91,35 +120,6 @@ func (spkr *Speaker) handlePacket(packet *layers.ARP) error {
 	}
 
 	spkr.logger.Debug("repleid to ARP request", "packet", reply)
-
-	return nil
-}
-
-// Run implements run.Runnable.
-func (spkr *Speaker) Run(ctx context.Context, notify run.Notify) error {
-	sub := spkr.arp.lb.Broker().Subscribe()
-	defer sub.Unsubscribe()
-
-	notify.Notify()
-
-L:
-	for {
-		select {
-		case <-ctx.Done():
-			break L
-		case update := <-sub.Chan():
-			filtered := filterIPv4s(update)
-			spkr.logger.Info("updated handled IPs", "ips", filtered)
-
-			for _, ip := range filtered {
-				spkr.ips[ip] = unit{}
-			}
-		case packet := <-spkr.arp.packets:
-			if err := spkr.handlePacket(packet); err != nil {
-				return fmt.Errorf("error while handling incoming packet %q: %w", packet, err)
-			}
-		}
-	}
 
 	return nil
 }

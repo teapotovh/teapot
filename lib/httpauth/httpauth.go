@@ -22,18 +22,18 @@ func GetAuth(r *http.Request) *Auth {
 	return val.(*Auth)
 }
 
+type Auth struct {
+	ExpiresAt *time.Time
+	Username  string
+	Admin     bool
+}
+
 // MustGetAuth is unsafe and may panic.
 // Calls GetAuth and dereferences the pointer (which may be nil).
 // Assumes authentication is required.
 // Only use behind endpoints secured with (Basic|JWT)Auth.Required() middleware.
 func MustGetAuth(r *http.Request) Auth {
 	return *GetAuth(r)
-}
-
-type Auth struct {
-	ExpiresAt *time.Time
-	Username  string
-	Admin     bool
 }
 
 func authFromUser(user *ldap.User, expiresAt *time.Time) Auth {

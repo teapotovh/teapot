@@ -112,15 +112,6 @@ func storeKey(path string, key wgtypes.Key) error {
 	return nil
 }
 
-func (l *Local) event() LocalEvent {
-	return LocalEvent{
-		Node:       l.node,
-		PrivateKey: l.key,
-		Port:       l.port,
-		Address:    l.address,
-	}
-}
-
 // Run implements run.Runnable.
 func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	defer l.brokerCancel()
@@ -165,4 +156,13 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 
 func (l *Local) Broker() *broker.Broker[LocalEvent] {
 	return l.broker
+}
+
+func (l *Local) event() LocalEvent {
+	return LocalEvent{
+		Node:       l.node,
+		PrivateKey: l.key,
+		Port:       l.port,
+		Address:    l.address,
+	}
 }

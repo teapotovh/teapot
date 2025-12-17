@@ -28,20 +28,20 @@ type route struct {
 	target netip.Prefix
 }
 
-func directRoute(target netip.Prefix) route {
-	return route{target: target, via: netip.IPv4Unspecified()}
-}
-
-func (r route) isDirect() bool {
-	return r.via == netip.IPv4Unspecified()
-}
-
 func (r route) String() string {
 	if r.isDirect() {
 		return fmt.Sprintf("dst=%s", r.target)
 	}
 
 	return fmt.Sprintf("dst=%s, via=%s", r.target, r.via)
+}
+
+func directRoute(target netip.Prefix) route {
+	return route{target: target, via: netip.IPv4Unspecified()}
+}
+
+func (r route) isDirect() bool {
+	return r.via == netip.IPv4Unspecified()
 }
 
 type unit struct{}
@@ -73,6 +73,29 @@ func NewRouter(net *tnet.Net, config RouterConfig, logger *slog.Logger) (*Router
 		routes: make(map[route]unit),
 		link:   link,
 	}, nil
+}
+
+func (r *Router) Run(ctx context.Context, notify run.Notify) (err error) {
+	csub := r.net.Cluster().Broker().Subscribe()
+	defer csub.Unsubscribe()
+
+	defer func() {
+		if cleanErr := r.cleanupRoutes(); cleanErr != nil && err == nil {
+			err = fmt.Errorf("error while cleaning up routes: %w", cleanErr)
+		}
+	}()
+
+	notify.Notify()
+
+	for cluster := range csub.Iter(ctx) {
+		r.cluster = cluster
+
+		if err := r.configureRoutes(); err != nil {
+			return fmt.Errorf("error while configuring routes: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (r *Router) netlinkRoute(route route) (*netlink.Route, error) {
@@ -196,29 +219,6 @@ func (r *Router) cleanupRoutes() error {
 	for eroute := range r.routes {
 		if err := r.delRoute(eroute); err != nil {
 			return fmt.Errorf("error while removing stale route %q: %w", eroute, err)
-		}
-	}
-
-	return nil
-}
-
-func (r *Router) Run(ctx context.Context, notify run.Notify) (err error) {
-	csub := r.net.Cluster().Broker().Subscribe()
-	defer csub.Unsubscribe()
-
-	defer func() {
-		if cleanErr := r.cleanupRoutes(); cleanErr != nil && err == nil {
-			err = fmt.Errorf("error while cleaning up routes: %w", cleanErr)
-		}
-	}()
-
-	notify.Notify()
-
-	for cluster := range csub.Iter(ctx) {
-		r.cluster = cluster
-
-		if err := r.configureRoutes(); err != nil {
-			return fmt.Errorf("error while configuring routes: %w", err)
 		}
 	}
 

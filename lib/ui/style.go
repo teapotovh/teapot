@@ -19,6 +19,15 @@ type Style struct {
 	dependencies []dependency.Dependency
 }
 
+func MustParseStyle(css string) *Style {
+	style, err := ParseStyle(css)
+	if err != nil {
+		panic(fmt.Errorf("error while parsing style: %w", err))
+	}
+
+	return style
+}
+
 func (s *Style) String() string {
 	return s.id
 }
@@ -65,13 +74,4 @@ func ParseStyle(css string) (*Style, error) {
 	}
 
 	return &style, nil
-}
-
-func MustParseStyle(css string) *Style {
-	style, err := ParseStyle(css)
-	if err != nil {
-		panic(fmt.Errorf("error while parsing style: %w", err))
-	}
-
-	return style
 }

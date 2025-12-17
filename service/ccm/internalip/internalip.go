@@ -53,17 +53,6 @@ func NewInternalIP(ccm *ccm.CCM, config InternalIPConfig, logger *slog.Logger) (
 	}, nil
 }
 
-func (iip *InternalIP) setInternalIP(ctx context.Context, ip netip.Addr, source string) error {
-	if err := iip.ccm.SetInternalIP(ctx, ip); err != nil {
-		return fmt.Errorf("error while updating node InternalIP (source: %s): %w", source, err)
-	} else {
-		iip.logger.Info("updated internal IP", "ip", ip, "old", iip.internalIP, "source", source)
-		iip.internalIP = ip
-
-		return nil
-	}
-}
-
 // Run implements run.Runnable.
 func (iip *InternalIP) Run(ctx context.Context, notify run.Notify) error {
 	sub := iip.ccm.Broker().Subscribe()
@@ -96,5 +85,16 @@ func (iip *InternalIP) Run(ctx context.Context, notify run.Notify) error {
 				}
 			}
 		}
+	}
+}
+
+func (iip *InternalIP) setInternalIP(ctx context.Context, ip netip.Addr, source string) error {
+	if err := iip.ccm.SetInternalIP(ctx, ip); err != nil {
+		return fmt.Errorf("error while updating node InternalIP (source: %s): %w", source, err)
+	} else {
+		iip.logger.Info("updated internal IP", "ip", ip, "old", iip.internalIP, "source", source)
+		iip.internalIP = ip
+
+		return nil
 	}
 }

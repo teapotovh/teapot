@@ -182,72 +182,6 @@ func (c *client) serve(ctx context.Context) {
 	}
 }
 
-// close closes client,
-// * stop reading from client
-// * signals to all currently running request processor to stop
-// * wait for all request processor to end
-// * close client connection
-// * signal to server that client shutdown is ok.
-func (c *client) close(ctx context.Context) error {
-	c.logger.DebugContext(ctx, "closing connection")
-	close(c.closing)
-
-	// stop reading from client
-	if err := c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond)); err != nil {
-		return fmt.Errorf("error while setting read deadline when closing connection: %w", err)
-	}
-
-	// signals to all currently running request processor to stop
-	c.mutex.Lock()
-
-	for messageID, request := range c.requestList {
-		c.logger.DebugContext(ctx, "abandoning message", "mid", messageID)
-
-		go request.Abandon()
-	}
-
-	c.mutex.Unlock()
-
-	c.wg.Wait()      // wait for all current running request processor to end
-	close(c.chanOut) // No more message will be sent to client, close chanOUT
-
-	<-c.writeDone // Wait for the last message sent to be written
-	// close client connection
-	if err := c.rwc.Close(); err != nil {
-		return fmt.Errorf("error while closing network connection: %w", err)
-	}
-
-	c.logger.DebugContext(ctx, "connection closed successfully")
-
-	c.srv.wg.Done() // signal to server that client shutdown is ok
-
-	return nil
-}
-
-func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error {
-	data, err := msg.Write()
-	if err != nil {
-		return fmt.Errorf("error while encoding message: %w", err)
-	}
-
-	c.logger.DebugContext(ctx, "sending message", "msg", msg)
-
-	l, err := c.bw.Write(data.Bytes())
-	if err != nil {
-		return fmt.Errorf("error while writing message: %w", err)
-	}
-
-	if l != len(data.Bytes()) {
-		return ErrMessageNotFullyWritten
-	}
-
-	if err := c.bw.Flush(); err != nil {
-		return fmt.Errorf("error while flushing message: %w", err)
-	}
-
-	return nil
-}
-
 // ResponseWriter interface is used by an LDAP handler to
 // construct an LDAP response.
 type ResponseWriter interface {
@@ -312,4 +246,70 @@ func (c *client) unregisterRequest(m *Message) {
 	c.mutex.Lock()
 	delete(c.requestList, m.MessageID().Int())
 	c.mutex.Unlock()
+}
+
+func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error {
+	data, err := msg.Write()
+	if err != nil {
+		return fmt.Errorf("error while encoding message: %w", err)
+	}
+
+	c.logger.DebugContext(ctx, "sending message", "msg", msg)
+
+	l, err := c.bw.Write(data.Bytes())
+	if err != nil {
+		return fmt.Errorf("error while writing message: %w", err)
+	}
+
+	if l != len(data.Bytes()) {
+		return ErrMessageNotFullyWritten
+	}
+
+	if err := c.bw.Flush(); err != nil {
+		return fmt.Errorf("error while flushing message: %w", err)
+	}
+
+	return nil
+}
+
+// close closes client,
+// * stop reading from client
+// * signals to all currently running request processor to stop
+// * wait for all request processor to end
+// * close client connection
+// * signal to server that client shutdown is ok.
+func (c *client) close(ctx context.Context) error {
+	c.logger.DebugContext(ctx, "closing connection")
+	close(c.closing)
+
+	// stop reading from client
+	if err := c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond)); err != nil {
+		return fmt.Errorf("error while setting read deadline when closing connection: %w", err)
+	}
+
+	// signals to all currently running request processor to stop
+	c.mutex.Lock()
+
+	for messageID, request := range c.requestList {
+		c.logger.DebugContext(ctx, "abandoning message", "mid", messageID)
+
+		go request.Abandon()
+	}
+
+	c.mutex.Unlock()
+
+	c.wg.Wait()      // wait for all current running request processor to end
+	close(c.chanOut) // No more message will be sent to client, close chanOUT
+
+	<-c.writeDone // Wait for the last message sent to be written
+	// close client connection
+	if err := c.rwc.Close(); err != nil {
+		return fmt.Errorf("error while closing network connection: %w", err)
+	}
+
+	c.logger.DebugContext(ctx, "connection closed successfully")
+
+	c.srv.wg.Done() // signal to server that client shutdown is ok
+
+	return nil
 }

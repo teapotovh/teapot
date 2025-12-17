@@ -79,6 +79,74 @@ type Event struct {
 	Hostname   string
 }
 
+func (ccm *CCM) Broker() *broker.Broker[Event] {
+	return ccm.broker
+}
+
+func (ccm *CCM) SetInternalIP(ctx context.Context, addr netip.Addr) error {
+	ccm.internalIP = addr
+	return ccm.update(ctx)
+}
+
+func (ccm *CCM) SetExternalIP(ctx context.Context, addr netip.Addr) error {
+	ccm.externalIP = addr
+	return ccm.update(ctx)
+}
+
+func (ccm *CCM) KubeClient() *kubernetes.Clientset {
+	return ccm.client
+}
+
+// Run implements run.Runnable.
+func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
+	defer ccm.brokerCancel()
+
+	notify.Notify()
+
+	return ccm.controller.Run(ctx, 1)
+}
+
+func (ccm *CCM) update(ctx context.Context) error {
+	ccm.lock.Lock()
+	defer ccm.lock.Unlock()
+
+	addresses := []v1.NodeAddress{
+		{
+			Type:    v1.NodeHostName,
+			Address: ccm.node,
+		},
+	}
+
+	if ccm.internalIP.IsValid() {
+		addresses = append(addresses, v1.NodeAddress{
+			Type:    v1.NodeInternalIP,
+			Address: ccm.internalIP.String(),
+		})
+	}
+
+	if ccm.externalIP.IsValid() {
+		addresses = append(addresses, v1.NodeAddress{
+			Type:    v1.NodeExternalIP,
+			Address: ccm.externalIP.String(),
+		})
+	}
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := ccm.client.CoreV1().Nodes().Get(ctx, ccm.node, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get kubernetes node %q: %w", ccm.node, err)
+		}
+
+		node.Status.Addresses = addresses
+
+		if _, err := ccm.client.CoreV1().Nodes().UpdateStatus(ctx, node, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("failed to update kubernetes node %q: %w", node.Name, err)
+		}
+
+		return nil
+	})
+}
+
 func (ccm *CCM) handle(name string, node *v1.Node, exists bool) error {
 	if name != ccm.node {
 		return nil
@@ -123,72 +191,4 @@ func (ccm *CCM) handle(name string, node *v1.Node, exists bool) error {
 	})
 
 	return nil
-}
-
-func (ccm *CCM) Broker() *broker.Broker[Event] {
-	return ccm.broker
-}
-
-func (ccm *CCM) SetInternalIP(ctx context.Context, addr netip.Addr) error {
-	ccm.internalIP = addr
-	return ccm.update(ctx)
-}
-
-func (ccm *CCM) SetExternalIP(ctx context.Context, addr netip.Addr) error {
-	ccm.externalIP = addr
-	return ccm.update(ctx)
-}
-
-func (ccm *CCM) update(ctx context.Context) error {
-	ccm.lock.Lock()
-	defer ccm.lock.Unlock()
-
-	addresses := []v1.NodeAddress{
-		{
-			Type:    v1.NodeHostName,
-			Address: ccm.node,
-		},
-	}
-
-	if ccm.internalIP.IsValid() {
-		addresses = append(addresses, v1.NodeAddress{
-			Type:    v1.NodeInternalIP,
-			Address: ccm.internalIP.String(),
-		})
-	}
-
-	if ccm.externalIP.IsValid() {
-		addresses = append(addresses, v1.NodeAddress{
-			Type:    v1.NodeExternalIP,
-			Address: ccm.externalIP.String(),
-		})
-	}
-
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := ccm.client.CoreV1().Nodes().Get(ctx, ccm.node, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to get kubernetes node %q: %w", ccm.node, err)
-		}
-
-		node.Status.Addresses = addresses
-
-		if _, err := ccm.client.CoreV1().Nodes().UpdateStatus(ctx, node, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("failed to update kubernetes node %q: %w", node.Name, err)
-		}
-
-		return nil
-	})
-}
-
-func (ccm *CCM) KubeClient() *kubernetes.Clientset {
-	return ccm.client
-}
-
-// Run implements run.Runnable.
-func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
-	defer ccm.brokerCancel()
-
-	notify.Notify()
-
-	return ccm.controller.Run(ctx, 1)
 }

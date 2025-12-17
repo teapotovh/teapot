@@ -29,13 +29,13 @@ linters:
     - errorlint
     - exhaustive
     - exptostd
-    # - funcorder # nice to have, requires some work
+    - funcorder
     - gochecknoinits
     - gochecksumtype
     - goconst
     # - gocritic # very verbose and minor improvements
     - godot
-    - godox
+    # - godox
     - iface
     - importas
     - inamedparam

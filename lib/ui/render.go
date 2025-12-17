@@ -132,25 +132,6 @@ var defaultDependencies = map[dependency.Dependency]unit{
 	{Type: dependency.DependencyTypeStyle, Name: "font"}:      {}, // open-props/font
 }
 
-func (rer *Renderer) contextRender(component Component) (context, g.Node) {
-	ctx := context{
-		renderer:     rer,
-		styles:       map[*Style]unit{},
-		dependencies: defaultDependencies,
-	}
-	node := component.Render(&ctx)
-
-	return ctx, node
-}
-
-func (rer *Renderer) dependencyPath(dep dependency.Dependency) (string, error) {
-	if path, ok := rer.dependencyPaths[dep]; ok {
-		return path, nil
-	}
-
-	return "", fmt.Errorf("dependency %q not registered", dep)
-}
-
 type AlreadyLoaded struct {
 	Styles       map[string]unit
 	Dependencies map[dependency.Dependency]unit
@@ -172,6 +153,68 @@ func registerScript[T fmt.Stringer](target string, elements []T) (string, error)
 	}
 
 	return fmt.Sprintf("(%s).forEach(e => window.teapot.%s.add(e))", string(bytes), target), nil
+}
+
+// Render renders a component to the response. It adds styles as necessary.
+func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Component) error {
+	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
+	if err != nil {
+		return err
+	}
+
+	all := g.Group(append(
+		styles,
+		append(scripts, node)...,
+	))
+
+	if err := all.Render(w); err != nil {
+		return fmt.Errorf("error while rendering component: %w", err)
+	}
+
+	return nil
+}
+
+// RenderPage renders a full page to the response. It adds styles as necessary.
+func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) error {
+	loaded := emptyAlreadyLoaded()
+
+	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
+	if err != nil {
+		return err
+	}
+
+	props := PageOptions{
+		Title:   title,
+		Styles:  styles,
+		Scripts: scripts,
+		Body:    []g.Node{node},
+	}
+	page := rer.page.Render(props)
+
+	if err := page.Render(w); err != nil {
+		return fmt.Errorf("error while rendering page: %w", err)
+	}
+
+	return nil
+}
+
+func (rer *Renderer) dependencyPath(dep dependency.Dependency) (string, error) {
+	if path, ok := rer.dependencyPaths[dep]; ok {
+		return path, nil
+	}
+
+	return "", fmt.Errorf("dependency %q not registered", dep)
+}
+
+func (rer *Renderer) contextRender(component Component) (context, g.Node) {
+	ctx := context{
+		renderer:     rer,
+		styles:       map[*Style]unit{},
+		dependencies: defaultDependencies,
+	}
+	node := component.Render(&ctx)
+
+	return ctx, node
 }
 
 func (rer *Renderer) renderWithDependencies(
@@ -250,47 +293,4 @@ func (rer *Renderer) renderWithDependencies(
 	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(drc)))
 
 	return links, scripts, node, nil
-}
-
-// Render renders a component to the response. It adds styles as necessary.
-func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Component) error {
-	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
-	if err != nil {
-		return err
-	}
-
-	all := g.Group(append(
-		styles,
-		append(scripts, node)...,
-	))
-
-	if err := all.Render(w); err != nil {
-		return fmt.Errorf("error while rendering component: %w", err)
-	}
-
-	return nil
-}
-
-// RenderPage renders a full page to the response. It adds styles as necessary.
-func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) error {
-	loaded := emptyAlreadyLoaded()
-
-	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
-	if err != nil {
-		return err
-	}
-
-	props := PageOptions{
-		Title:   title,
-		Styles:  styles,
-		Scripts: scripts,
-		Body:    []g.Node{node},
-	}
-	page := rer.page.Render(props)
-
-	if err := page.Render(w); err != nil {
-		return fmt.Errorf("error while rendering page: %w", err)
-	}
-
-	return nil
 }

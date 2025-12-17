@@ -69,6 +69,23 @@ func WithTLS(config *tls.Config) Option {
 	}
 }
 
+// Wait waits for the termination of all LDAP client connections.
+//
+// Termination of the LDAP session is initiated by the server sending a
+// Notice of Disconnection.  In this case, each
+// protocol peer gracefully terminates the LDAP session by ceasing
+// exchanges at the LDAP message layer, tearing down any SASL layer,
+// tearing down any TLS layer, and closing the transport connection.
+// A protocol peer may determine that the continuation of any
+// communication would be pernicious, and in this case, it may abruptly
+// terminate the session by ceasing communication and closing the
+// transport connection.
+// In either case, the LDAP session is terminated.
+func (s *Server) Wait() {
+	s.logger.Debug("gracefully closing client connections")
+	s.wg.Wait()
+}
+
 // Handle requests messages on the ln listener.
 func (s *Server) serve(ctx context.Context) (err error) {
 	defer func() {
@@ -145,21 +162,4 @@ func (s *Server) newClient(rwc net.Conn, id int) (c *client, err error) {
 	}
 
 	return c, nil
-}
-
-// Wait waits for the termination of all LDAP client connections.
-//
-// Termination of the LDAP session is initiated by the server sending a
-// Notice of Disconnection.  In this case, each
-// protocol peer gracefully terminates the LDAP session by ceasing
-// exchanges at the LDAP message layer, tearing down any SASL layer,
-// tearing down any TLS layer, and closing the transport connection.
-// A protocol peer may determine that the continuation of any
-// communication would be pernicious, and in this case, it may abruptly
-// terminate the session by ceasing communication and closing the
-// transport connection.
-// In either case, the LDAP session is terminated.
-func (s *Server) Wait() {
-	s.logger.Debug("gracefully closing client connections")
-	s.wg.Wait()
 }
