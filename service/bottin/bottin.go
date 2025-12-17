@@ -31,6 +31,14 @@ const (
 	AttrUserPassword store.AttributeKey = "userpassword"
 )
 
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrInsufficientRights = errors.New("insufficient access rights")
+	ErrSetRootPasswd      = errors.New("root entry password cannot be set")
+	ErrNotAuthenticated   = errors.New("not authenticated")
+	ErrMissingNewPassword = errors.New("new password is missing")
+)
+
 type BottinConfig struct {
 	Store         store.StoreConfig
 	BaseDN        string
@@ -217,14 +225,14 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 	}
 
 	if passwordModifyRequest.NewPassword() == nil {
-		return ldap.ResultCodeAuthMethodNotSupported, errors.New("new password is missing")
+		return ldap.ResultCodeAuthMethodNotSupported, ErrMissingNewPassword
 	}
 
 	passwd := passwordModifyRequest.NewPassword()
 
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapserver.GetUser(ctx, EmptyUser)
 	if user.user == AnonymousUser {
-		return ldap.ResultCodeInsufficientAccessRights, errors.New("not logged in")
+		return ldap.ResultCodeInsufficientAccessRights, ErrNotAuthenticated
 	}
 	// By default we assume a user is trying to change his own password.
 	// If a different subject is specified in the request, then we pivot to changing
@@ -241,11 +249,15 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 
 	// Check permissions
 	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{AttrUserPassword}) {
-		return ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("insufficient access rights for %#v", user)
+		return ldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
+			"could not modify password for %q: %w",
+			dn,
+			ErrInsufficientRights,
+		)
 	}
 
 	if dn.Equal(server.baseDN) {
-		return ldap.ResultCodeInvalidDNSyntax, errors.New("root entry password cannot be set")
+		return ldap.ResultCodeInvalidDNSyntax, ErrSetRootPasswd
 	}
 
 	entry, err := server.getEntry(ctx, dn)
@@ -280,7 +292,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 }
 
 func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindRequest) (context.Context, int32, error) {
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapserver.GetUser(ctx, EmptyUser)
 
 	dn, err := server.parseDN(string(r.Name()), false)
 	if err != nil {
@@ -291,7 +303,11 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 
 	// Check permissions
 	if !server.acl.Check(user, "bind", dn, []store.AttributeKey{}) {
-		return ctx, ldap.ResultCodeInsufficientAccessRights, fmt.Errorf("insufficient access rights for %#v", user)
+		return ctx, ldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
+			"could not authentiate as %q: %w",
+			dn,
+			ErrInsufficientRights,
+		)
 	}
 
 	entry, err := server.getEntry(ctx, dn)
@@ -327,5 +343,5 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 		}
 	}
 
-	return ctx, ldap.ResultCodeInvalidCredentials, errors.New("no password match")
+	return ctx, ldap.ResultCodeInvalidCredentials, ErrInvalidCredentials
 }

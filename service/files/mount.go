@@ -12,7 +12,10 @@ import (
 	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
-var ErrExpectMountFormat = errors.New("expected mount format to be: <vfs>:<src>:<dest>, missing some parts")
+var (
+	ErrExpectMountFormat = errors.New("expected mount format to be: <vfs>:<src>:<dest>, missing some parts")
+	ErrInvalidVFSType    = errors.New("invalid VFS type")
+)
 
 type mountConfig struct {
 	Source      string
@@ -36,7 +39,7 @@ func parseRawMount(mount string) (cfg mountConfig, err error) {
 	case VFSOS.String():
 		cfg.VFS = VFSOS
 	default:
-		return cfg, fmt.Errorf("unexpected VFS type: %s", parts[0])
+		return cfg, fmt.Errorf("could not parse VFS mount type %q: %w", parts[0], ErrInvalidVFSType)
 	}
 
 	cfg.Source = path.Clean(parts[1])
@@ -65,9 +68,9 @@ func (m *mount) src(username string) (hpfs.FS, error) {
 		}
 
 		return fs, nil
-	default:
-		return nil, fmt.Errorf("cannot mount VFS: %s", m.vfs)
 	}
+
+	return nil, nil //nolint:nilnil // unreachable
 }
 
 type mountSourceParameters struct {

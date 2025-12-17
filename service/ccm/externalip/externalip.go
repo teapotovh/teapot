@@ -2,6 +2,7 @@ package externalip
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +14,10 @@ import (
 
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/ccm"
+)
+
+var (
+	ErrInvalidResponseCode = errors.New("invalid response code")
 )
 
 type ExternalIPConfig struct {
@@ -119,7 +124,12 @@ func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return addr, fmt.Errorf("unexpected response status: %d, body: %s", resp.StatusCode, string(body))
+			return addr, fmt.Errorf(
+				"error in response (code: %d, body: %s): %w",
+				resp.StatusCode,
+				string(body),
+				ErrInvalidResponseCode,
+			)
 		}
 
 		addr, err = netip.ParseAddr(string(body))
