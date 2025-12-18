@@ -120,7 +120,7 @@ func (ja *JWTAuth) authCookie(username string, admin bool) (*http.Cookie, error)
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	ss, err := token.SignedString(ja.secret)
+	ss, err := token.SignedString([]byte(ja.secret))
 	if err != nil {
 		return nil, fmt.Errorf("error while signing JWT for %q: %w", username, err)
 	}
@@ -148,7 +148,7 @@ func (ja *JWTAuth) checkAuthCookie(r *http.Request) *jwtAuth {
 	}
 
 	token, err := jwt.ParseWithClaims(cookie.Value, &jwtAuth{}, func(token *jwt.Token) (any, error) {
-		return ja.secret, nil
+		return []byte(ja.secret), nil
 	})
 	if err != nil {
 		ja.logger.ErrorContext(r.Context(), "error while validating authentication cookie", "err", err)

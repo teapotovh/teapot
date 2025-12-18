@@ -48,10 +48,11 @@ func NewWebHandler(
 	}
 
 	httpHandler := httphandler.NewHTTPHandler(config.HTTPHandler, httphandler.ErrorHandlers{
-		InternalHandler: wrapErrorHandler(renderer, skeleton, handlers.InternalHandler),
-		RedirectHandler: wrapErrorHandler(renderer, skeleton, handlers.RedirectHandler),
-		NotFoundHandler: wrapErrorHandler(renderer, skeleton, handlers.NotFoundHandler),
-		GenericHandler:  wrapErrorHandler(renderer, skeleton, handlers.GenericHandler),
+		InternalHandler:   wrapErrorHandler(renderer, skeleton, handlers.InternalHandler),
+		RedirectHandler:   wrapErrorHandler(renderer, skeleton, handlers.RedirectHandler),
+		NotFoundHandler:   wrapErrorHandler(renderer, skeleton, handlers.NotFoundHandler),
+		BadRequestHandler: wrapErrorHandler(renderer, skeleton, handlers.BadRequestHandler),
+		GenericHandler:    wrapErrorHandler(renderer, skeleton, handlers.GenericHandler),
 	}, logger.With("component", "webhandler"))
 
 	dependencyHandler := uihttp.ServeDependencies(renderer, logger.With("component", "assets"))
@@ -84,30 +85,32 @@ func wrapErrorHandler[T error](
 			return err
 		}
 
-		if hxhttp.IsRequest(r.Header) {
-			// Don't render the skeleton in an HTMX request
-			al, err := uihttp.AlreadyLoadedFromRequest(r)
-			if err != nil {
-				return fmt.Errorf("error while loading already loaded for error handler: %w", err)
-			}
+		if component != nil {
+			if hxhttp.IsRequest(r.Header) {
+				// Don't render the skeleton in an HTMX request
+				al, err := uihttp.AlreadyLoadedFromRequest(r)
+				if err != nil {
+					return fmt.Errorf("error while loading already loaded for error handler: %w", err)
+				}
 
-			err = renderer.Render(w, al, component)
-			if err != nil {
-				return fmt.Errorf("error while rendering error handler: %w", err)
-			}
-		} else {
-			component, err = skeleton(r, component)
-			if err != nil {
-				return fmt.Errorf("error while rendering skeleton for error handler: %w", err)
-			}
+				err = renderer.Render(w, al, component)
+				if err != nil {
+					return fmt.Errorf("error while rendering error handler: %w", err)
+				}
+			} else {
+				component, err = skeleton(r, component)
+				if err != nil {
+					return fmt.Errorf("error while rendering skeleton for error handler: %w", err)
+				}
 
-			err := renderer.RenderPage(w, c.HTML5Props{
-				Title:       ErrPageTitle,
-				Language:    Lang,
-				Description: ErrPageDescription,
-			}, component)
-			if err != nil {
-				return fmt.Errorf("error while rendering error handler: %w", err)
+				err := renderer.RenderPage(w, c.HTML5Props{
+					Title:       ErrPageTitle,
+					Language:    Lang,
+					Description: ErrPageDescription,
+				}, component)
+				if err != nil {
+					return fmt.Errorf("error while rendering error handler: %w", err)
+				}
 			}
 		}
 

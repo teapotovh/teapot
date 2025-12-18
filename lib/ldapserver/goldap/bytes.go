@@ -11,10 +11,6 @@ func NewBytes(offset int, bytes []byte) (ret *Bytes) {
 	return &Bytes{offset: offset, bytes: bytes}
 }
 
-func (bytes Bytes) Debug() {
-	fmt.Printf("Offset: %d, Bytes: %+v\n", bytes.offset, bytes.bytes)
-}
-
 // DumpCurrentBytes returns a string with the hex dump of the bytes around the current offset
 // The current offset byte is put in brackets
 // Example: 0x01, [0x02], 0x03.

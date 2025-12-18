@@ -46,8 +46,8 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 	case "GET":
 		component := login{path: wa.loginPath}
 		return webhandler.NewPage("login", "login into files", component), nil
-
 	}
+
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
 }
 

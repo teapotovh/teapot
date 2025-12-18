@@ -18,10 +18,11 @@ import (
 type ErrorHandler[T error] func(w http.ResponseWriter, r *http.Request, err T, contact string) (ui.Component, error)
 
 type ErrorHandlers struct {
-	InternalHandler ErrorHandler[InternalError]
-	RedirectHandler ErrorHandler[RedirectError]
-	NotFoundHandler ErrorHandler[error]
-	GenericHandler  ErrorHandler[error]
+	InternalHandler   ErrorHandler[InternalError]
+	RedirectHandler   ErrorHandler[RedirectError]
+	NotFoundHandler   ErrorHandler[error]
+	BadRequestHandler ErrorHandler[error]
+	GenericHandler    ErrorHandler[error]
 }
 
 func DefaultInternalHandler(
@@ -73,6 +74,22 @@ func DefaultNotFoundHandler(
 
 // Ensure DefaultNotFundHandler implements ErrorHandler[error].
 var _ ErrorHandler[error] = DefaultNotFoundHandler
+
+func DefaultBadRequestHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+	err error,
+	contact string,
+) (ui.Component, error) {
+	w.WriteHeader(http.StatusBadRequest)
+
+	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
+		return components.ErrorDialog(ctx, fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)))
+	}), nil
+}
+
+// Ensure DefaultBadRequestHandler implements ErrorHandler[error].
+var _ ErrorHandler[error] = DefaultBadRequestHandler
 
 func DefaultGenericHandler(
 	w http.ResponseWriter,
