@@ -28,8 +28,9 @@ var Components = []string{
 }
 
 var nameMap = map[string]string{
-	"sizes": "size",
-	"fonts": "font",
+	"sizes":   "size",
+	"fonts":   "font",
+	"easings": "ease",
 }
 
 //go:generate go run ./download/

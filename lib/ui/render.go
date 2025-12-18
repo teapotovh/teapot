@@ -190,7 +190,7 @@ func (rer *Renderer) contextRender(component Component) (context, g.Node) {
 	ctx := context{
 		renderer:     rer,
 		styles:       map[*Style]Unit{},
-		dependencies: defaultDependencies,
+		dependencies: maps.Clone(defaultDependencies),
 	}
 	node := component.Render(&ctx)
 

@@ -63,7 +63,7 @@ func Write(w http.ResponseWriter, status int, data []byte) error {
 		return fmt.Errorf("error while writing response data: %w", err)
 	}
 
-	if l == len(data) {
+	if l != len(data) {
 		return fmt.Errorf("expected to write %d bytes, instead wrote %d: %w", len(data), l, ErrLengthMisatch)
 	}
 

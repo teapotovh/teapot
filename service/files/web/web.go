@@ -6,20 +6,18 @@ import (
 	"net/http"
 
 	"github.com/kataras/muxie"
-	g "maragu.dev/gomponents"
-	c "maragu.dev/gomponents/components"
-	h "maragu.dev/gomponents/html"
 
-	"github.com/teapotovh/teapot/lib/httpauth"
+	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ui"
-	"github.com/teapotovh/teapot/lib/ui/components"
-	httpui "github.com/teapotovh/teapot/lib/ui/http"
+	"github.com/teapotovh/teapot/lib/webauth"
+	"github.com/teapotovh/teapot/lib/webhandler"
 	"github.com/teapotovh/teapot/service/files"
 )
 
 type WebConfig struct {
-	UI      ui.UIConfig
-	JWTAuth httpauth.JWTAuthConfig
+	HTTPLog    httplog.HTTPLogConfig
+	WebHandler webhandler.WebHandlerConfig
+	WebAuth    webauth.WebAuthConfig
 }
 
 type Web struct {
@@ -27,17 +25,36 @@ type Web struct {
 
 	files *files.Files
 
-	dependenciesHandler http.Handler
-	renderer            *ui.Renderer
-	assetPath           string
-
-	auth *httpauth.JWTAuth
+	httpLog    *httplog.HTTPLog
+	webHandler *webhandler.WebHandler
+	webAuth    *webauth.WebAuth
 }
 
 func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, error) {
-	renderer, err := ui.NewRenderer(config.UI.Renderer, logger.With("component", "renderer"))
+	// Provide request information in all log operations
+	logger = httplog.WithHandler(logger)
+
+	httpLog, err := httplog.NewHTTPLog(config.HTTPLog, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error while constructing renderer: %w", err)
+		return nil, fmt.Errorf("error while constructing httplog: %w", err)
+	}
+
+	webHandler, err := webhandler.NewWebHandler(
+		config.WebHandler,
+		Skeleton,
+		webhandler.DefaultErrorHandlers,
+		logger.With("component", "webhandler"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error while constructing webhandler: %w", err)
+	}
+
+	webAuth, err := webauth.NewWebAuth(files.LDAPFactory(), config.WebAuth, webauth.WebAuthPaths{
+		Login:  PathLogin,
+		Logout: PathLogout,
+	}, logger.With("component", "auth"))
+	if err != nil {
+		return nil, fmt.Errorf("error while constructing webauth: %w", err)
 	}
 
 	web := Web{
@@ -45,11 +62,9 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 
 		files: files,
 
-		assetPath:           config.UI.Renderer.AssetPath,
-		renderer:            renderer,
-		dependenciesHandler: httpui.ServeDependencies(renderer, logger.With("component", "dependencies")),
-
-		auth: httpauth.NewJWTAuth(files.LDAPFactory(), config.JWTAuth, logger.With("component", "auth")),
+		httpLog:    httpLog,
+		webHandler: webHandler,
+		webAuth:    webAuth,
 	}
 
 	return &web, nil
@@ -58,37 +73,20 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 // Handler implements httpsrv.HTTPService.
 func (web *Web) Handler(prefix string) http.Handler {
 	mux := muxie.NewMux()
-	mux.Use(web.auth.Middleware)
+	mux.Use(web.httpLog.ExtractMiddleware)
+	mux.Use(web.httpLog.LogMiddleware)
+	mux.Use(web.webAuth.Middleware)
 
-	mux.Handle(web.assetPath+"*", web.dependenciesHandler)
-	mux.HandleFunc("/", web.Handle)
+	mux.Handle(web.webHandler.AssetPath, web.webHandler.AssetHandler)
+
+	mux.Handle(PathLogin, web.webHandler.Adapt(web.webAuth.Login))
+	mux.Handle(PathIndex, web.webHandler.Adapt(web.Index))
+
+	mux.Handle("/*", web.webHandler.Adapt(web.NotFound))
 
 	return mux
 }
 
-type HomePage struct{}
-
-func (hp HomePage) Render(ctx ui.Context) g.Node {
-	return g.Group{
-		components.Header(ctx, g.Group{
-			components.HeaderTitle(ctx, h.Href("/"), g.Text("Files")),
-		}, g.Group{
-			components.HeaderLink(ctx, h.Href("/login"), g.Text("login")),
-			components.HeaderLink(ctx, h.Href("/register"), g.Text("register")),
-		}),
-		components.Body(ctx,
-			g.Text("this is a test webpage, with a button"),
-		),
-	}
-}
-
-func (web *Web) Handle(w http.ResponseWriter, r *http.Request) {
-	err := web.renderer.RenderPage(w, c.HTML5Props{
-		Title:       "index",
-		Language:    "en",
-		Description: "index page for files",
-	}, HomePage{})
-	if err != nil {
-		web.logger.Error("error when rendering", "err", err)
-	}
+func (web *Web) NotFound(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	return nil, webhandler.ErrNotFound
 }

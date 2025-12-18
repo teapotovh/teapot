@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kataras/muxie"
+	"github.com/kataras/requestid"
 
 	"github.com/teapotovh/teapot/lib/run"
 )
@@ -29,6 +30,8 @@ type HTTPSrv struct {
 
 func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 	mux := muxie.NewMux()
+	mux.Use(func(h http.Handler) http.Handler { return requestid.Handler(h) })
+
 	inner := http.Server{
 		Handler:           mux,
 		ReadHeaderTimeout: time.Minute,

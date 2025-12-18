@@ -1,4 +1,4 @@
-package httphandler
+package webhandler
 
 import (
 	"errors"
@@ -31,6 +31,9 @@ type WebHandler struct {
 	httpHandler *httphandler.HTTPHandler
 	renderer    *ui.Renderer
 	skeleton    Skeleton
+
+	AssetPath    string
+	AssetHandler http.Handler
 }
 
 func NewWebHandler(
@@ -51,10 +54,15 @@ func NewWebHandler(
 		GenericHandler:  wrapErrorHandler(renderer, skeleton, handlers.GenericHandler),
 	}, logger.With("component", "webhandler"))
 
+	dependencyHandler := uihttp.ServeDependencies(renderer, logger.With("component", "assets"))
+
 	wh := WebHandler{
 		httpHandler: httpHandler,
 		skeleton:    skeleton,
 		renderer:    renderer,
+
+		AssetPath:    config.Renderer.AssetPath + "*",
+		AssetHandler: httpHandler.Adapt(dependencyHandler),
 	}
 
 	return &wh, nil

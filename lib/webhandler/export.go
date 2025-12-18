@@ -1,4 +1,4 @@
-package httphandler
+package webhandler
 
 import "github.com/teapotovh/teapot/lib/httphandler"
 

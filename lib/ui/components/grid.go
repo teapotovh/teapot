@@ -9,7 +9,7 @@ import (
 
 var GridStyle = ui.MustParseStyle(`
 	display: grid;
-	grid-template-columns: 1fr 3fr 2fr 6fr 2fr 3fr 1fr;
+	grid-template-columns: 1fr 3fr 10fr 3fr 1fr;
 `)
 
 type GridComponent = func(opts ...g.Node) g.Node
@@ -20,18 +20,18 @@ func Grid(ctx ui.Context, component GridComponent, opts ...g.Node) g.Node {
 
 var ClampStyle = ui.MustParseStyle(`
 	grid-column-start: 1;
-	grid-column-end: 8;
+	grid-column-end: 6;
 
 	@media (min-width: 1024px) {
 		& {
 			grid-column-start: 2;
-			grid-column-end: 7;
+			grid-column-end: 5;
 		}
 	}
 	@media (min-width: 1440px) {
 		& {
 			grid-column-start: 3;
-			grid-column-end: 6;
+			grid-column-end: 4;
 		}
 	}
 `)

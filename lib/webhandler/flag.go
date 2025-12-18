@@ -1,4 +1,4 @@
-package httphandler
+package webhandler
 
 import (
 	flag "github.com/spf13/pflag"

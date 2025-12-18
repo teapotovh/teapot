@@ -55,6 +55,3 @@ func NewWebAuth(
 func (wa *WebAuth) Middleware(next http.Handler) http.Handler {
 	return wa.auth.Middleware(next)
 }
-
-func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) {
-}

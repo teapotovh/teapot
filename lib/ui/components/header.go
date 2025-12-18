@@ -11,7 +11,7 @@ import (
 
 var HeaderStyle = ui.MustParseStyle(`
 	height: var(--size-8);
-	border-bottom: 1px solid var(--theme-wireframe1);
+	border-bottom: calc(var(--size-1) / 2) solid var(--theme-wireframe-1);
 	width: 100vw;
 
 	.logo {

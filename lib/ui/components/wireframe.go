@@ -14,7 +14,7 @@ var WireframeStyle = ui.MustParseStyle(`
 	@media (min-width: 1440px) {
 	  padding-left: var(--size-4);
 	  padding-right: var(--size-4);
-		border-left: 1px dashed var(--theme-wireframe0);
-		border-right: 1px dashed var(--theme-wireframe0);
+		border-left: 1px dashed var(--theme-wireframe-0);
+		border-right: 1px dashed var(--theme-wireframe-0);
 	}
 `)

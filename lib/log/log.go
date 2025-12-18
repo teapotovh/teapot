@@ -19,10 +19,19 @@ type LogConfig struct {
 	Format string
 }
 
-func NewLogger(config LogConfig) (*slog.Logger, error) {
+func ParaseLogLevel(raw string) (slog.Level, error) {
 	var level slog.Level
-	if err := level.UnmarshalText([]byte(config.Level)); err != nil {
-		return nil, fmt.Errorf("could not parse log level %q: %w", config.Level, ErrInvalidLevel)
+	if err := level.UnmarshalText([]byte(raw)); err != nil {
+		return level, fmt.Errorf("could not parse log level %q: %w", raw, ErrInvalidLevel)
+	}
+
+	return level, nil
+}
+
+func NewLogger(config LogConfig) (*slog.Logger, error) {
+	level, err := ParaseLogLevel(config.Level)
+	if err != nil {
+		return nil, err
 	}
 
 	var handler slog.Handler
