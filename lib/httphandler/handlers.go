@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-)
 
-// TODO: request id
+	"github.com/kataras/requestid"
+)
 
 var (
 	ErrLengthMisatch = errors.New("length mismatch")
@@ -22,7 +22,7 @@ type ErrorHandlers struct {
 }
 
 func DefaultInternalHandler(w http.ResponseWriter, r *http.Request, err InternalError, contact string) error {
-	msg := fmt.Sprintf("%s. please report this to: %s", err.External().Error(), contact)
+	msg := fmt.Sprintf("%s. please report this to: %s. request id: %s", err.External().Error(), contact, requestid.Get(r))
 	return Write(w, http.StatusInternalServerError, []byte(msg))
 }
 
@@ -45,7 +45,7 @@ func DefaultNotFoundHandler(w http.ResponseWriter, r *http.Request, err error, c
 var _ ErrorHandler[error] = DefaultNotFoundHandler
 
 func DefaultGenericHandler(w http.ResponseWriter, r *http.Request, err error, contact string) error {
-	msg := "unhandled error. please report this to: " + contact
+	msg := "unhandled error. please report this to: " + contact + ". request id: " + requestid.Get(r)
 	return Write(w, http.StatusBadRequest, []byte(msg))
 }
 

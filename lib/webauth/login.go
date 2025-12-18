@@ -25,6 +25,7 @@ var LoginBoxStyle = ui.MustParseStyle(`
 	justify-content: center;
 	height: 100%;
 	padding: 0 var(--size-5);
+	font-size: var(--font-size-2);
 
 	h2 {
 		font-size: var(--font-size-5);

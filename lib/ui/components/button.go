@@ -14,7 +14,6 @@ var ButtonStyle = ui.MustParseStyle(`
 	padding: var(--size-1) var(--size-2);
 	transition: outline 0.1s var(--ease-in-out-1), background 0.1s var(--ease-in-out-1);
 	cursor: pointer;
-	font-size: var(--font-size-3);
 
 	&.secondary {
 		color: var(--theme-brand-1);

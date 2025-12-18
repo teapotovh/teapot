@@ -15,6 +15,7 @@ var InputStyle = ui.MustParseStyle(`
 
 	& label {
 		margin-bottom: var(--size-1);
+		cursor: auto;
 	}
 
 	& input {
@@ -26,6 +27,7 @@ var InputStyle = ui.MustParseStyle(`
 	}
 
   & input:focus {
+		outline-offset: 0;
 		outline: var(--size-1) solid var(--theme-brand-1);
 	}
 `)
