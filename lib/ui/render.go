@@ -11,7 +11,6 @@ import (
 	"path"
 	"strings"
 
-	flag "github.com/spf13/pflag"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	c "maragu.dev/gomponents/components"
@@ -32,18 +31,6 @@ var (
 
 type RendererConfig struct {
 	AssetPath string
-}
-
-func RendererFlagSet() (*flag.FlagSet, func() RendererConfig) {
-	fs := flag.NewFlagSet("ui/renderer", flag.ExitOnError)
-
-	assetPath := fs.String("ui-renderer-asset-path", "/static/", "the URI path where assets will be served")
-
-	return fs, func() RendererConfig {
-		return RendererConfig{
-			AssetPath: *assetPath,
-		}
-	}
 }
 
 type Renderer struct {
@@ -119,11 +106,7 @@ func (rer *Renderer) Dependency(path string) (dependency.Dependency, []byte, err
 	return dependency.Dependency{}, nil, ErrMissingDependency
 }
 
-type Component interface {
-	Render(ctx Context) g.Node
-}
-
-var defaultDependencies = map[dependency.Dependency]unit{
+var defaultDependencies = map[dependency.Dependency]Unit{
 	{Type: dependency.DependencyTypeScript, Name: "htmx"}:             {}, // htmx/htmx
 	{Type: dependency.DependencyTypeScript, Name: "response-targets"}: {}, // htmx/response-targets
 	{Type: dependency.DependencyTypeScript, Name: "render"}:           {}, // teapot/render
@@ -134,12 +117,12 @@ var defaultDependencies = map[dependency.Dependency]unit{
 }
 
 type AlreadyLoaded struct {
-	Styles       map[string]unit
-	Dependencies map[dependency.Dependency]unit
+	Styles       map[string]Unit
+	Dependencies map[dependency.Dependency]Unit
 }
 
 func emptyAlreadyLoaded() AlreadyLoaded {
-	return AlreadyLoaded{Styles: nil, Dependencies: map[dependency.Dependency]unit{}}
+	return AlreadyLoaded{Styles: nil, Dependencies: map[dependency.Dependency]Unit{}}
 }
 
 func registerScript[T fmt.Stringer](target string, elements []T) (string, error) {
@@ -206,7 +189,7 @@ func (rer *Renderer) dependencyPath(dep dependency.Dependency) (string, error) {
 func (rer *Renderer) contextRender(component Component) (context, g.Node) {
 	ctx := context{
 		renderer:     rer,
-		styles:       map[*Style]unit{},
+		styles:       map[*Style]Unit{},
 		dependencies: defaultDependencies,
 	}
 	node := component.Render(&ctx)
@@ -247,8 +230,9 @@ func (rer *Renderer) renderWithDependencies(
 			links = append(links, h.Link(h.Rel("stylesheet"), h.Href(url)))
 		case dependency.DependencyTypeScript:
 			scripts = append(scripts, h.Script(h.Src(url)))
+		case dependency.DependencyTypeInvalid:
 		default:
-			return nil, nil, nil, nil
+			return nil, nil, nil, dependency.ErrInvalidDependency
 		}
 
 		dependencies = append(dependencies, dep)

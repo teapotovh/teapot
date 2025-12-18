@@ -53,6 +53,34 @@ func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger
 	}
 }
 
+func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := ja.checkAuthCookie(r)
+		r = r.WithContext(context.WithValue(r.Context(), authContextKey, auth))
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (ja *JWTAuth) Authenticate(w http.ResponseWriter, username string, admin bool) error {
+	cookie, err := ja.authCookie(username, admin)
+	if err != nil {
+		return fmt.Errorf("error while generating JWT cookie: %w", err)
+	}
+
+	http.SetCookie(w, cookie)
+
+	return nil
+}
+
+func (ja *JWTAuth) DeAuthenticate(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:    cookieName,
+		Value:   "",
+		Path:    ja.prefix,
+		Expires: time.Now(),
+	})
+}
+
 type jwtAuth struct {
 	jwt.RegisteredClaims
 
@@ -114,32 +142,4 @@ func (ja *JWTAuth) checkAuthCookie(r *http.Request) *jwtAuth {
 		ja.logger.ErrorContext(r.Context(), "validation token is of unexpected type", "err", err)
 		return nil
 	}
-}
-
-func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := ja.checkAuthCookie(r)
-		r = r.WithContext(context.WithValue(r.Context(), authContextKey, auth))
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (ja *JWTAuth) Authenticate(w http.ResponseWriter, username string, admin bool) error {
-	cookie, err := ja.authCookie(username, admin)
-	if err != nil {
-		return fmt.Errorf("error while generating JWT cookie: %w", err)
-	}
-
-	http.SetCookie(w, cookie)
-
-	return nil
-}
-
-func (ja *JWTAuth) DeAuthenticate(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:    cookieName,
-		Value:   "",
-		Path:    ja.prefix,
-		Expires: time.Now(),
-	})
 }

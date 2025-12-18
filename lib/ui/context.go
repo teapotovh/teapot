@@ -13,13 +13,13 @@ type Context interface {
 	Class(styles ...*Style) g.Node
 }
 
-type unit struct{}
+type Unit struct{}
 
 type context struct {
 	renderer *Renderer
 
-	styles       map[*Style]unit
-	dependencies map[dependency.Dependency]unit
+	styles       map[*Style]Unit
+	dependencies map[dependency.Dependency]Unit
 }
 
 // Ensure *context implements Context.
@@ -40,8 +40,8 @@ func (c *context) Class(styles ...*Style) g.Node {
 }
 
 func (c *context) register(style *Style) {
-	c.styles[style] = unit{}
+	c.styles[style] = Unit{}
 	for _, dep := range style.dependencies {
-		c.dependencies[dep] = unit{}
+		c.dependencies[dep] = Unit{}
 	}
 }

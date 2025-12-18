@@ -4,19 +4,14 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-type UIConfig struct {
-	Renderer RendererConfig
-}
+func RendererFlagSet() (*flag.FlagSet, func() RendererConfig) {
+	fs := flag.NewFlagSet("ui/renderer", flag.ExitOnError)
 
-func UIFlagSet() (*flag.FlagSet, func() UIConfig) {
-	fs := flag.NewFlagSet("ui", flag.ExitOnError)
+	assetPath := fs.String("ui-renderer-asset-path", "/static/", "the URI path where assets will be served")
 
-	rendererFS, getRendererConfig := RendererFlagSet()
-	fs.AddFlagSet(rendererFS)
-
-	return fs, func() UIConfig {
-		return UIConfig{
-			Renderer: getRendererConfig(),
+	return fs, func() RendererConfig {
+		return RendererConfig{
+			AssetPath: *assetPath,
 		}
 	}
 }

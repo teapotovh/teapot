@@ -24,6 +24,12 @@ func ServeDependencies(renderer *ui.Renderer, logger *slog.Logger) http.Handler 
 			ct = "text/css"
 		case dependency.DependencyTypeScript:
 			ct = "application/javascript"
+		case dependency.DependencyTypeInvalid:
+		default:
+			logger.Error("could not serve invali dependency", "type", dep.Type)
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
 		}
 
 		w.Header().Add("Content-Type", ct)
