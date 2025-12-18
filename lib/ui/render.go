@@ -11,9 +11,9 @@ import (
 	"path"
 	"strings"
 
-	flag "github.com/spf13/pflag"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
+	c "maragu.dev/gomponents/components"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/teapotovh/teapot/lib/ui/dependency"
@@ -33,20 +33,7 @@ type RendererConfig struct {
 	AssetPath string
 }
 
-func RendererFlagSet() (*flag.FlagSet, func() RendererConfig) {
-	fs := flag.NewFlagSet("ui/renderer", flag.ExitOnError)
-
-	assetPath := fs.String("ui-renderer-asset-path", "/static/", "the URI path where assets will be served")
-
-	return fs, func() RendererConfig {
-		return RendererConfig{
-			AssetPath: *assetPath,
-		}
-	}
-}
-
 type Renderer struct {
-	page             Page
 	logger           *slog.Logger
 	dependencies     map[dependency.Dependency][]byte
 	dependencyPaths  map[dependency.Dependency]string
@@ -54,12 +41,11 @@ type Renderer struct {
 	assetPath        string
 }
 
-func NewRenderer(config RendererConfig, page Page, logger *slog.Logger) (*Renderer, error) {
+func NewRenderer(config RendererConfig, logger *slog.Logger) (*Renderer, error) {
 	renderer := Renderer{
 		logger: logger,
 
 		assetPath: config.AssetPath,
-		page:      page,
 
 		dependencies:     map[dependency.Dependency][]byte{},
 		dependencyPaths:  map[dependency.Dependency]string{},
@@ -120,11 +106,7 @@ func (rer *Renderer) Dependency(path string) (dependency.Dependency, []byte, err
 	return dependency.Dependency{}, nil, ErrMissingDependency
 }
 
-type Component interface {
-	Render(ctx Context) g.Node
-}
-
-var defaultDependencies = map[dependency.Dependency]unit{
+var defaultDependencies = map[dependency.Dependency]Unit{
 	{Type: dependency.DependencyTypeScript, Name: "htmx"}:             {}, // htmx/htmx
 	{Type: dependency.DependencyTypeScript, Name: "response-targets"}: {}, // htmx/response-targets
 	{Type: dependency.DependencyTypeScript, Name: "render"}:           {}, // teapot/render
@@ -135,12 +117,12 @@ var defaultDependencies = map[dependency.Dependency]unit{
 }
 
 type AlreadyLoaded struct {
-	Styles       map[string]unit
-	Dependencies map[dependency.Dependency]unit
+	Styles       map[string]Unit
+	Dependencies map[dependency.Dependency]Unit
 }
 
 func emptyAlreadyLoaded() AlreadyLoaded {
-	return AlreadyLoaded{Styles: nil, Dependencies: map[dependency.Dependency]unit{}}
+	return AlreadyLoaded{Styles: nil, Dependencies: map[dependency.Dependency]Unit{}}
 }
 
 func registerScript[T fmt.Stringer](target string, elements []T) (string, error) {
@@ -177,23 +159,19 @@ func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Compone
 }
 
 // RenderPage renders a full page to the response. It adds styles as necessary.
-func (rer *Renderer) RenderPage(w io.Writer, title string, component Component) error {
+func (rer *Renderer) RenderPage(w io.Writer, opts c.HTML5Props, body Component) error {
 	loaded := emptyAlreadyLoaded()
 
-	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
+	styles, scripts, node, err := rer.renderWithDependencies(loaded, body)
 	if err != nil {
 		return err
 	}
 
-	props := PageOptions{
-		Title:   title,
-		Styles:  styles,
-		Scripts: scripts,
-		Body:    []g.Node{node},
-	}
-	page := rer.page.Render(props)
+	opts.Head = append(opts.Head, styles...)
+	opts.Head = append(opts.Head, scripts...)
+	opts.Body = append(opts.Body, node)
 
-	if err := page.Render(w); err != nil {
+	if err := c.HTML5(opts).Render(w); err != nil {
 		return fmt.Errorf("error while rendering page: %w", err)
 	}
 
@@ -211,8 +189,8 @@ func (rer *Renderer) dependencyPath(dep dependency.Dependency) (string, error) {
 func (rer *Renderer) contextRender(component Component) (context, g.Node) {
 	ctx := context{
 		renderer:     rer,
-		styles:       map[*Style]unit{},
-		dependencies: defaultDependencies,
+		styles:       map[*Style]Unit{},
+		dependencies: maps.Clone(defaultDependencies),
 	}
 	node := component.Render(&ctx)
 
@@ -252,8 +230,9 @@ func (rer *Renderer) renderWithDependencies(
 			links = append(links, h.Link(h.Rel("stylesheet"), h.Href(url)))
 		case dependency.DependencyTypeScript:
 			scripts = append(scripts, h.Script(h.Src(url)))
+		case dependency.DependencyTypeInvalid:
 		default:
-			return nil, nil, nil, nil
+			return nil, nil, nil, dependency.ErrInvalidDependency
 		}
 
 		dependencies = append(dependencies, dep)
@@ -277,7 +256,9 @@ func (rer *Renderer) renderWithDependencies(
 		styles = append(styles, style)
 	}
 
-	links = append(links, h.StyleEl(g.Raw(stylesheet.String())))
+	if stylesheet.Len() > 0 {
+		links = append(links, h.StyleEl(hx.SwapOOB("beforeend"), h.ID("style"), g.Raw(stylesheet.String())))
+	}
 
 	// Add script tags to update the list of styles and dependencies registered
 	src, err := registerScript("styles", styles)
@@ -285,14 +266,18 @@ func (rer *Renderer) renderWithDependencies(
 		return nil, nil, nil, fmt.Errorf("error while generating styles register code: %w", err)
 	}
 
-	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(src)))
+	if len(styles) > 0 {
+		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(src))))
+	}
 
 	drc, err := registerScript("dependencies", dependencies)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating dependencies register code: %w", err)
 	}
 
-	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(drc)))
+	if len(dependencies) > 0 {
+		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(drc))))
+	}
 
 	return links, scripts, node, nil
 }

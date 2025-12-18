@@ -9,15 +9,16 @@ import (
 )
 
 var ButtonStyle = ui.MustParseStyle(`
-	color: var(--theme-background0);
-	background: var(--theme-brand0);
-	padding: .25em .5em;
-	transition: outline 0.1s ease-in-out, background 0.1s ease-in-out;
+	color: var(--theme-background-0);
+	background: var(--theme-brand-1);
+	padding: var(--size-1) var(--size-2);
+	transition: outline 0.1s var(--ease-in-out-1), background 0.1s var(--ease-in-out-1);
 	cursor: pointer;
+		transition: outline 0.1s var(--ease-in-out-1);
 
-	&.secondary {
-		color: var(--theme-brand1);
-		background: var(--theme-foreground0);
+	&:focus {
+		outline-offset: 0;
+		outline: var(--size-1) solid var(--theme-brand-0);
 	}
 `)
 

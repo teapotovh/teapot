@@ -1,18 +1,20 @@
 package http
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/dependency"
 )
 
-func ServeDependencies(renderer *ui.Renderer, logger *slog.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func ServeDependencies(renderer *ui.Renderer, logger *slog.Logger) httphandler.HTTPHandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
 		dep, bytes, err := renderer.Dependency(r.URL.Path)
 		if err != nil {
-			logger.Debug("invalid dependency request", "err", err)
+			return fmt.Errorf("invalid dependency request: %w", err)
 		}
 
 		logger.Debug("serving dependency", "dependency", dep, "bytes", len(bytes))
@@ -24,16 +26,14 @@ func ServeDependencies(renderer *ui.Renderer, logger *slog.Logger) http.Handler 
 			ct = "text/css"
 		case dependency.DependencyTypeScript:
 			ct = "application/javascript"
+		case dependency.DependencyTypeInvalid:
+		default:
+			err = fmt.Errorf("could not serve: %w", dependency.ErrInvalidDependencyType)
+			return httphandler.NewInternalError(err, nil)
 		}
 
 		w.Header().Add("Content-Type", ct)
-		w.WriteHeader(http.StatusOK)
 
-		l, err := w.Write(bytes)
-		if err != nil {
-			logger.Error("error while serving dependency", "dependency", dep, "err", err)
-		} else if l != len(bytes) {
-			logger.Warn("not all bytes have been sent while serving dependency", "dependency", dep)
-		}
-	})
+		return httphandler.Write(w, http.StatusOK, bytes)
+	}
 }

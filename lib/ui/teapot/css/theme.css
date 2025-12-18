@@ -1,143 +1,156 @@
 html {
-  --theme-brand-light0: var(--orange-6);
-  --theme-brand-light1: var(--green-6);
+  --theme-brand-light-0: var(--green-4);
+  --theme-brand-light-1: var(--green-6);
 
-  --theme-background-light0: var(--gray-0);
-  --theme-background-light1: var(--gray-1);
-  --theme-background-light2: var(--gray-2);
-  --theme-background-light3: var(--gray-3);
-  --theme-background-light4: var(--gray-4);
-  --theme-background-light5: var(--gray-5);
-  --theme-background-light6: var(--gray-6);
-  --theme-background-light7: var(--gray-7);
-  --theme-background-light8: var(--gray-8);
-  --theme-background-light9: var(--gray-9);
-  --theme-background-light10: var(--gray-10);
-  --theme-background-light11: var(--gray-11);
-  --theme-background-light12: var(--gray-12);
+  --theme-error-light-0: var(--red-10);
+  --theme-error-light-1: var(--red-9);
 
-  --theme-foreground-light0: var(--gray-12);
-  --theme-foreground-light1: var(--gray-11);
-  --theme-foreground-light2: var(--gray-10);
-  --theme-foreground-light3: var(--gray-9);
-  --theme-foreground-light4: var(--gray-8);
-  --theme-foreground-light5: var(--gray-7);
-  --theme-foreground-light6: var(--gray-6);
-  --theme-foreground-light7: var(--gray-5);
-  --theme-foreground-light8: var(--gray-4);
-  --theme-foreground-light9: var(--gray-3);
-  --theme-foreground-light10: var(--gray-2);
-  --theme-foreground-light11: var(--gray-1);
-  --theme-foreground-light12: var(--gray0);
+  --theme-background-light-0: var(--gray-0);
+  --theme-background-light-1: var(--gray-1);
+  --theme-background-light-2: var(--gray-2);
+  --theme-background-light-3: var(--gray-3);
+  --theme-background-light-4: var(--gray-4);
+  --theme-background-light-5: var(--gray-5);
+  --theme-background-light-6: var(--gray-6);
+  --theme-background-light-7: var(--gray-7);
+  --theme-background-light-8: var(--gray-8);
+  --theme-background-light-9: var(--gray-9);
+  --theme-background-light-10: var(--gray-10);
+  --theme-background-light-11: var(--gray-11);
+  --theme-background-light-12: var(--gray-12);
+
+  --theme-foreground-light-0: var(--gray-12);
+  --theme-foreground-light-1: var(--gray-11);
+  --theme-foreground-light-2: var(--gray-10);
+  --theme-foreground-light-3: var(--gray-9);
+  --theme-foreground-light-4: var(--gray-8);
+  --theme-foreground-light-5: var(--gray-7);
+  --theme-foreground-light-6: var(--gray-6);
+  --theme-foreground-light-7: var(--gray-5);
+  --theme-foreground-light-8: var(--gray-4);
+  --theme-foreground-light-9: var(--gray-3);
+  --theme-foreground-light-10: var(--gray-2);
+  --theme-foreground-light-11: var(--gray-1);
+  --theme-foreground-light-12: var(--gray0);
 }
 
 html {
-  --theme-brand-dark0: var(--orange-3);
-  --theme-brand-dark1: var(--green-3);
+  --theme-brand-dark-0: var(--green-2);
+  --theme-brand-dark-1: var(--green-3);
 
-  --theme-background-dark0: var(--gray-12);
-  --theme-background-dark1: var(--gray-11);
-  --theme-background-dark2: var(--gray-10);
-  --theme-background-dark3: var(--gray-9);
-  --theme-background-dark4: var(--gray-8);
-  --theme-background-dark5: var(--gray-7);
-  --theme-background-dark6: var(--gray-6);
-  --theme-background-dark7: var(--gray-5);
-  --theme-background-dark8: var(--gray-4);
-  --theme-background-dark9: var(--gray-3);
-  --theme-background-dark10: var(--gray-2);
-  --theme-background-dark11: var(--gray-1);
-  --theme-background-dark12: var(--gray0);
+  --theme-error-dark-0: var(--red-10);
+  --theme-error-dark-1: var(--red-11);
 
-  --theme-foreground-dark0: var(--gray-0);
-  --theme-foreground-dark1: var(--gray-1);
-  --theme-foreground-dark2: var(--gray-2);
-  --theme-foreground-dark3: var(--gray-3);
-  --theme-foreground-dark4: var(--gray-4);
-  --theme-foreground-dark5: var(--gray-5);
-  --theme-foreground-dark6: var(--gray-6);
-  --theme-foreground-dark7: var(--gray-7);
-  --theme-foreground-dark8: var(--gray-8);
-  --theme-foreground-dark9: var(--gray-9);
-  --theme-foreground-dark10: var(--gray-10);
-  --theme-foreground-dark11: var(--gray-11);
-  --theme-foreground-dark12: var(--gray-12);
+  --theme-background-dark-0: var(--gray-12);
+  --theme-background-dark-1: var(--gray-11);
+  --theme-background-dark-2: var(--gray-10);
+  --theme-background-dark-3: var(--gray-9);
+  --theme-background-dark-4: var(--gray-8);
+  --theme-background-dark-5: var(--gray-7);
+  --theme-background-dark-6: var(--gray-6);
+  --theme-background-dark-7: var(--gray-5);
+  --theme-background-dark-8: var(--gray-4);
+  --theme-background-dark-9: var(--gray-3);
+  --theme-background-dark-10: var(--gray-2);
+  --theme-background-dark-11: var(--gray-1);
+  --theme-background-dark-12: var(--gray0);
+
+  --theme-foreground-dark-0: var(--gray-0);
+  --theme-foreground-dark-1: var(--gray-1);
+  --theme-foreground-dark-2: var(--gray-2);
+  --theme-foreground-dark-3: var(--gray-3);
+  --theme-foreground-dark-4: var(--gray-4);
+  --theme-foreground-dark-5: var(--gray-5);
+  --theme-foreground-dark-6: var(--gray-6);
+  --theme-foreground-dark-7: var(--gray-7);
+  --theme-foreground-dark-8: var(--gray-8);
+  --theme-foreground-dark-9: var(--gray-9);
+  --theme-foreground-dark-10: var(--gray-10);
+  --theme-foreground-dark-11: var(--gray-11);
+  --theme-foreground-dark-12: var(--gray-12);
 }
 
 :root {
-  --theme-brand0: var(--theme-brand-light0);
-  --theme-brand1: var(--theme-brand-light1);
+  --theme-brand-0: var(--theme-brand-light-0);
+  --theme-brand-1: var(--theme-brand-light-1);
 
-  --theme-background0: var(--theme-background-light0);
-  --theme-background1: var(--theme-background-light1);
-  --theme-background2: var(--theme-background-light2);
-  --theme-background3: var(--theme-background-light3);
-  --theme-background4: var(--theme-background-light4);
-  --theme-background5: var(--theme-background-light5);
-  --theme-background6: var(--theme-background-light6);
-  --theme-background7: var(--theme-background-light7);
-  --theme-background8: var(--theme-background-light8);
-  --theme-background9: var(--theme-background-light9);
-  --theme-background10: var(--theme-background-light10);
-  --theme-background11: var(--theme-background-light11);
-  --theme-background12: var(--theme-background-light12);
+  --theme-error-0: var(--theme-error-light-0);
+  --theme-error-1: var(--theme-error-light-1);
 
-  --theme-foreground0: var(--theme-foreground-light0);
-  --theme-foreground1: var(--theme-foreground-light1);
-  --theme-foreground2: var(--theme-foreground-light2);
-  --theme-foreground3: var(--theme-foreground-light3);
-  --theme-foreground4: var(--theme-foreground-light4);
-  --theme-foreground5: var(--theme-foreground-light5);
-  --theme-foreground6: var(--theme-foreground-light6);
-  --theme-foreground7: var(--theme-foreground-light7);
-  --theme-foreground8: var(--theme-foreground-light8);
-  --theme-foreground9: var(--theme-foreground-light9);
-  --theme-foreground10: var(--theme-foreground-light10);
-  --theme-foreground11: var(--theme-foreground-light11);
-  --theme-foreground12: var(--theme-foreground-light12);
+  --theme-background-0: var(--theme-background-light-0);
+  --theme-background-1: var(--theme-background-light-1);
+  --theme-background-2: var(--theme-background-light-2);
+  --theme-background-3: var(--theme-background-light-3);
+  --theme-background-4: var(--theme-background-light-4);
+  --theme-background-5: var(--theme-background-light-5);
+  --theme-background-6: var(--theme-background-light-6);
+  --theme-background-7: var(--theme-background-light-7);
+  --theme-background-8: var(--theme-background-light-8);
+  --theme-background-9: var(--theme-background-light-9);
+  --theme-background-10: var(--theme-background-light-10);
+  --theme-background-11: var(--theme-background-light-11);
+  --theme-background-12: var(--theme-background-light-12);
 
-  --theme-wireframe0: var(--theme-background-light4);
-  --theme-wireframe1: var(--theme-background-light6);
+  --theme-foreground-0: var(--theme-foreground-light-0);
+  --theme-foreground-1: var(--theme-foreground-light-1);
+  --theme-foreground-2: var(--theme-foreground-light-2);
+  --theme-foreground-3: var(--theme-foreground-light-3);
+  --theme-foreground-4: var(--theme-foreground-light-4);
+  --theme-foreground-5: var(--theme-foreground-light-5);
+  --theme-foreground-6: var(--theme-foreground-light-6);
+  --theme-foreground-7: var(--theme-foreground-light-7);
+  --theme-foreground-8: var(--theme-foreground-light-8);
+  --theme-foreground-9: var(--theme-foreground-light-9);
+  --theme-foreground-10: var(--theme-foreground-light-10);
+  --theme-foreground-11: var(--theme-foreground-light-11);
+  --theme-foreground-12: var(--theme-foreground-light-12);
+
+  --theme-wireframe-0: var(--theme-background-light-4);
+  --theme-wireframe-1: var(--theme-background-light-6);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --theme-brand0: var(--theme-brand-dark0);
-    --theme-brand1: var(--theme-brand-dark1);
+    --theme-brand-0: var(--theme-brand-dark-0);
+    --theme-brand-1: var(--theme-brand-dark-1);
 
-    --theme-background0: var(--theme-background-dark0);
-    --theme-background1: var(--theme-background-dark1);
-    --theme-background2: var(--theme-background-dark2);
-    --theme-background3: var(--theme-background-dark3);
-    --theme-background4: var(--theme-background-dark4);
-    --theme-background5: var(--theme-background-dark5);
-    --theme-background6: var(--theme-background-dark6);
-    --theme-background7: var(--theme-background-dark7);
-    --theme-background8: var(--theme-background-dark8);
-    --theme-background9: var(--theme-background-dark9);
-    --theme-background10: var(--theme-background-dark10);
-    --theme-background11: var(--theme-background-dark11);
-    --theme-background12: var(--theme-background-dark12);
+    --theme-error-0: var(--theme-error-dark-0);
+    --theme-error-1: var(--theme-error-dark-1);
 
-    --theme-foreground0: var(--theme-foreground-dark0);
-    --theme-foreground1: var(--theme-foreground-dark1);
-    --theme-foreground2: var(--theme-foreground-dark2);
-    --theme-foreground3: var(--theme-foreground-dark3);
-    --theme-foreground4: var(--theme-foreground-dark4);
-    --theme-foreground5: var(--theme-foreground-dark5);
-    --theme-foreground6: var(--theme-foreground-dark6);
-    --theme-foreground7: var(--theme-foreground-dark7);
-    --theme-foreground8: var(--theme-foreground-dark8);
-    --theme-foreground9: var(--theme-foreground-dark9);
-    --theme-foreground10: var(--theme-foreground-dark10);
-    --theme-foreground11: var(--theme-foreground-dark11);
-    --theme-foreground12: var(--theme-foreground-dark12);
+    --theme-background-0: var(--theme-background-dark-0);
+    --theme-background-1: var(--theme-background-dark-1);
+    --theme-background-2: var(--theme-background-dark-2);
+    --theme-background-3: var(--theme-background-dark-3);
+    --theme-background-4: var(--theme-background-dark-4);
+    --theme-background-5: var(--theme-background-dark-5);
+    --theme-background-6: var(--theme-background-dark-6);
+    --theme-background-7: var(--theme-background-dark-7);
+    --theme-background-8: var(--theme-background-dark-8);
+    --theme-background-9: var(--theme-background-dark-9);
+    --theme-background-10: var(--theme-background-dark-10);
+    --theme-background-11: var(--theme-background-dark-11);
+    --theme-background-12: var(--theme-background-dark-12);
 
-    --theme-wireframe0: var(--theme-background-dark4);
-    --theme-wireframe1: var(--theme-background-dark6);
+    --theme-foreground-0: var(--theme-foreground-dark-0);
+    --theme-foreground-1: var(--theme-foreground-dark-1);
+    --theme-foreground-2: var(--theme-foreground-dark-2);
+    --theme-foreground-3: var(--theme-foreground-dark-3);
+    --theme-foreground-4: var(--theme-foreground-dark-4);
+    --theme-foreground-5: var(--theme-foreground-dark-5);
+    --theme-foreground-6: var(--theme-foreground-dark-6);
+    --theme-foreground-7: var(--theme-foreground-dark-7);
+    --theme-foreground-8: var(--theme-foreground-dark-8);
+    --theme-foreground-9: var(--theme-foreground-dark-9);
+    --theme-foreground-10: var(--theme-foreground-dark-10);
+    --theme-foreground-11: var(--theme-foreground-dark-11);
+    --theme-foreground-12: var(--theme-foreground-dark-12);
+
+    --theme-wireframe-0: var(--theme-background-dark-4);
+    --theme-wireframe-1: var(--theme-background-dark-5);
   }
 }
 
 html {
+  background: var(--theme-background-1);
   font-family: var(--font-mono);
 }
