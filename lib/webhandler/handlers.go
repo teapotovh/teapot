@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/kataras/requestid"
 	g "maragu.dev/gomponents"
 	hxhttp "maragu.dev/gomponents-htmx/http"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/kataras/requestid"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
 )
@@ -34,7 +34,10 @@ func DefaultInternalHandler(
 	w.WriteHeader(http.StatusInternalServerError)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return components.ErrorDialog(ctx, fmt.Errorf("%w. please report this to: %s. request id: %s", err.External(), contact, requestid.Get(r)))
+		return components.ErrorDialog(
+			ctx,
+			fmt.Errorf("%w. please report this to: %s. request id: %s", err.External(), contact, requestid.Get(r)),
+		)
 	}), nil
 }
 
@@ -84,7 +87,10 @@ func DefaultBadRequestHandler(
 	w.WriteHeader(http.StatusBadRequest)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return components.ErrorDialog(ctx, fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)))
+		return components.ErrorDialog(
+			ctx,
+			fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)),
+		)
 	}), nil
 }
 
@@ -100,7 +106,10 @@ func DefaultGenericHandler(
 	w.WriteHeader(http.StatusBadRequest)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return components.ErrorDialog(ctx, fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)))
+		return components.ErrorDialog(
+			ctx,
+			fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)),
+		)
 	}), nil
 }
 

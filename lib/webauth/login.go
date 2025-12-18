@@ -21,8 +21,9 @@ var (
 
 func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	switch r.Method {
-	case "POST":
+	case http.MethodPost:
 		username := r.FormValue("username")
+
 		password := r.FormValue("password")
 		if username == "" || password == "" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -41,14 +42,16 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 		}
 
 		http.SetCookie(w, cookie)
+
 		return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
 
-	case "GET":
+	case http.MethodGet:
 		if GetAuth(r) != nil {
 			return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
 		}
 
 		component := login{path: wa.loginPath}
+
 		return webhandler.NewPage("login", "login into files", component), nil
 	}
 

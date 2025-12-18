@@ -265,6 +265,7 @@ func (rer *Renderer) renderWithDependencies(
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating styles register code: %w", err)
 	}
+
 	if len(styles) > 0 {
 		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(src))))
 	}
@@ -273,6 +274,7 @@ func (rer *Renderer) renderWithDependencies(
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating dependencies register code: %w", err)
 	}
+
 	if len(dependencies) > 0 {
 		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(drc))))
 	}

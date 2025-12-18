@@ -23,7 +23,13 @@ type ErrorHandlers struct {
 }
 
 func DefaultInternalHandler(w http.ResponseWriter, r *http.Request, err InternalError, contact string) error {
-	msg := fmt.Sprintf("%s. please report this to: %s. request id: %s", err.External().Error(), contact, requestid.Get(r))
+	msg := fmt.Sprintf(
+		"%s. please report this to: %s. request id: %s",
+		err.External().Error(),
+		contact,
+		requestid.Get(r),
+	)
+
 	return Write(w, http.StatusInternalServerError, []byte(msg))
 }
 

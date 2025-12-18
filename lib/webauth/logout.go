@@ -10,7 +10,7 @@ import (
 
 func (wa *WebAuth) Logout(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	switch r.Method {
-	case "GET":
+	case http.MethodGet:
 		if GetAuth(r) != nil {
 			cookie := wa.auth.DeAuthenticate()
 			http.SetCookie(w, &cookie)
@@ -18,5 +18,6 @@ func (wa *WebAuth) Logout(w http.ResponseWriter, r *http.Request) (ui.Component,
 
 		return nil, webhandler.NewRedirectError(wa.loginPath, http.StatusFound)
 	}
+
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
 }

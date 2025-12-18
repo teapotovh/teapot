@@ -68,6 +68,7 @@ func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 			}
 			r = r.WithContext(context.WithValue(r.Context(), authContextKey, &auth))
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }

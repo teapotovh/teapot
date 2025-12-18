@@ -18,6 +18,7 @@ type skeleton struct {
 
 func Skeleton(r *http.Request, component ui.Component) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
+
 	return skeleton{
 		body: component,
 		auth: auth,
