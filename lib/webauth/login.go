@@ -9,6 +9,7 @@ import (
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
+	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
 	"github.com/teapotovh/teapot/lib/webhandler"
@@ -52,7 +53,11 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 
 		component := login{path: wa.loginPath}
 
-		return webhandler.NewPage("login", "login into files", component), nil
+		return webhandler.NewPage(
+			pagetitle.Title("Login", wa.app),
+			fmt.Sprintf("Authenticate with your account to access %s", wa.app),
+			component,
+		), nil
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
@@ -111,6 +116,7 @@ type login struct {
 }
 
 func (l login) Render(ctx ui.Context) g.Node {
+	// TODO: add password recovery URL
 	return h.Div(ctx.Class(LoginBoxStyle),
 		h.H2(g.Text("Login")),
 		h.Form(

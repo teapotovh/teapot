@@ -40,7 +40,7 @@ func (skeleton skeleton) Render(ctx ui.Context) g.Node {
 
 	return g.Group{
 		components.Header(ctx,
-			g.Group{components.HeaderTitle(ctx, h.Href(PathIndex), g.Text("Files"))},
+			g.Group{components.HeaderTitle(ctx, h.Href(PathIndex), g.Text(AppShort))},
 			g.Group{login},
 		),
 		components.Body(ctx, body),

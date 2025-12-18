@@ -1,7 +1,12 @@
 package web
 
 const (
-	PathIndex  = "/"
+	App      = "Teapot Files"
+	AppShort = "Files"
+
 	PathLogin  = "/login"
 	PathLogout = "/logout"
+
+	PathIndex  = "/"
+	PathBrowse = "/browse/"
 )
