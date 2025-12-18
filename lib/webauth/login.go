@@ -9,6 +9,7 @@ import (
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
+	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
 	"github.com/teapotovh/teapot/lib/webhandler"
@@ -44,6 +45,10 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 		return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
 
 	case "GET":
+		if httpauth.GetAuth(r) != nil {
+			return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
+		}
+
 		component := login{path: wa.loginPath}
 		return webhandler.NewPage("login", "login into files", component), nil
 	}

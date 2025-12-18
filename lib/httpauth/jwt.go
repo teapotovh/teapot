@@ -59,8 +59,15 @@ func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger
 
 func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := ja.checkAuthCookie(r)
-		r = r.WithContext(context.WithValue(r.Context(), authContextKey, auth))
+		jwtAuth := ja.checkAuthCookie(r)
+		if jwtAuth.Issuer == ja.issuer {
+			auth := Auth{
+				ExpiresAt: &jwtAuth.ExpiresAt.Time,
+				Username:  jwtAuth.Subject,
+				Admin:     jwtAuth.Admin,
+			}
+			r = r.WithContext(context.WithValue(r.Context(), authContextKey, &auth))
+		}
 		next.ServeHTTP(w, r)
 	})
 }

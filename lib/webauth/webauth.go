@@ -62,3 +62,5 @@ func NewWebAuth(
 func (wa *WebAuth) Middleware(next http.Handler) http.Handler {
 	return wa.auth.Middleware(next)
 }
+
+var GetAuth = httpauth.GetAuth
