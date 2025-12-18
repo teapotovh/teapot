@@ -60,7 +60,7 @@ func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger
 func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jwtAuth := ja.checkAuthCookie(r)
-		if jwtAuth.Issuer == ja.issuer {
+		if jwtAuth != nil && jwtAuth.Issuer == ja.issuer {
 			auth := Auth{
 				ExpiresAt: &jwtAuth.ExpiresAt.Time,
 				Username:  jwtAuth.Subject,
@@ -96,13 +96,12 @@ func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) 
 	return cookie, nil
 }
 
-func (ja *JWTAuth) DeAuthenticate(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:    cookieName,
-		Value:   "",
-		Path:    ja.prefix,
-		Expires: time.Now(),
-	})
+func (ja *JWTAuth) DeAuthenticate() http.Cookie {
+	return http.Cookie{
+		Name:  cookieName,
+		Value: "",
+		Path:  ja.prefix,
+	}
 }
 
 type jwtAuth struct {
@@ -150,7 +149,7 @@ func (ja *JWTAuth) checkAuthCookie(r *http.Request) *jwtAuth {
 		return nil
 	}
 
-	if cookie == nil {
+	if cookie == nil || len(cookie.Value) <= 0 {
 		return nil
 	}
 
@@ -158,12 +157,12 @@ func (ja *JWTAuth) checkAuthCookie(r *http.Request) *jwtAuth {
 		return []byte(ja.secret), nil
 	})
 	if err != nil {
-		ja.logger.ErrorContext(r.Context(), "error while validating authentication cookie", "err", err)
+		ja.logger.WarnContext(r.Context(), "error while validating authentication cookie", "err", err)
 		return nil
 	} else if claims, ok := token.Claims.(*jwtAuth); ok {
 		return claims
 	} else {
-		ja.logger.ErrorContext(r.Context(), "validation token is of unexpected type", "err", err)
+		ja.logger.WarnContext(r.Context(), "validation token is of unexpected type", "err", err)
 		return nil
 	}
 }

@@ -64,3 +64,5 @@ func (wa *WebAuth) Middleware(next http.Handler) http.Handler {
 }
 
 var GetAuth = httpauth.GetAuth
+
+type Auth = httpauth.Auth

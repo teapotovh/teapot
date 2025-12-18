@@ -46,7 +46,7 @@ func (he *HTTPHandler) Adapt(fn HTTPHandlerFunc) http.Handler {
 			)
 
 			if errors.As(err, &ierr) {
-				he.logger.WarnContext(r.Context(), "error while handling request", "err", err)
+				he.logger.ErrorContext(r.Context(), "error while handling request", "err", err)
 				err = he.internalHandler(w, r, ierr, he.contact)
 			} else if errors.As(err, &rerr) {
 				err = he.redirectHandler(w, r, rerr, he.contact)

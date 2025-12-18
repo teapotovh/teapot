@@ -81,6 +81,8 @@ func (web *Web) Handler(prefix string) http.Handler {
 	mux.Handle(web.webHandler.AssetPath, web.webHandler.AssetHandler)
 
 	mux.Handle(PathLogin, web.webHandler.Adapt(web.webAuth.Login))
+	mux.Handle(PathLogout, web.webHandler.Adapt(web.webAuth.Logout))
+
 	mux.Handle(PathIndex, web.webHandler.Adapt(web.Index))
 
 	mux.Handle("/*", web.webHandler.Adapt(web.NotFound))
