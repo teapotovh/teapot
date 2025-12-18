@@ -60,6 +60,7 @@ func (hl *HTTPLog) ExtractMiddleware(next http.Handler) http.Handler {
 func (hl *HTTPLog) LogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ignore := hl.ignore.Match([]byte(r.URL.Path))
+
 		var start time.Time
 		if !ignore {
 			start = time.Now()
