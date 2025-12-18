@@ -15,17 +15,37 @@ import (
 )
 
 var (
+	ErrMissingCredentials = errors.New("missing credentials")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
 func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	switch r.Method {
 	case "POST":
-		w.WriteHeader(http.StatusUnauthorized)
-		return loginError{err: ErrInvalidCredentials}, nil
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		if username == "" || password == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return loginError{err: ErrMissingCredentials}, nil
+		}
+
+		cookie, err := wa.auth.Authenticate(r.Context(), username, password)
+		if err != nil {
+			if errors.Is(err, ErrInvalidCredentials) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return loginError{err: ErrInvalidCredentials}, nil
+			}
+			// TODO: figure out how to render this properly in webhandler
+			// ideally it should be a box
+			return nil, webhandler.NewInternalError(err, nil)
+		}
+
+		http.SetCookie(w, cookie)
+		return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
 
 	case "GET":
-		return webhandler.NewPage("login", "login into files", login{}), nil
+		component := login{path: wa.loginPath}
+		return webhandler.NewPage("login", "login into files", component), nil
 
 	}
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
@@ -79,14 +99,16 @@ var LoginBoxStyle = ui.MustParseStyle(`
 
 const errorContainerID = "error-container"
 
-type login struct{}
+type login struct {
+	path string
+}
 
 func (l login) Render(ctx ui.Context) g.Node {
 	return h.Div(ctx.Class(LoginBoxStyle),
 		h.H2(g.Text("Login")),
 		h.Form(
 			hx.Ext("response-targets"),
-			hx.Post("/login"),
+			hx.Post(l.path),
 			hx.Swap("innerHTML"),
 			g.Attr("hx-target-error", "#"+errorContainerID),
 

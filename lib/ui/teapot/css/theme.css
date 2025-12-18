@@ -145,8 +145,8 @@ html {
     --theme-foreground-11: var(--theme-foreground-dark-11);
     --theme-foreground-12: var(--theme-foreground-dark-12);
 
-    --theme-wireframe-0: var(--theme-background-dark-2);
-    --theme-wireframe-1: var(--theme-background-dark-4);
+    --theme-wireframe-0: var(--theme-background-dark-4);
+    --theme-wireframe-1: var(--theme-background-dark-5);
   }
 }
 

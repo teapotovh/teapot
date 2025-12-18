@@ -1,13 +1,16 @@
 package webhandler
 
 import (
+	"fmt"
 	"net/http"
 
 	g "maragu.dev/gomponents"
 	hxhttp "maragu.dev/gomponents-htmx/http"
 	h "maragu.dev/gomponents/html"
 
+	"github.com/kataras/requestid"
 	"github.com/teapotovh/teapot/lib/ui"
+	"github.com/teapotovh/teapot/lib/ui/components"
 )
 
 // TODO: request id
@@ -30,7 +33,7 @@ func DefaultInternalHandler(
 	w.WriteHeader(http.StatusInternalServerError)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return h.Main(h.H2(g.Textf("%s. please report this to: %s", err.External().Error(), contact)))
+		return components.ErrorDialog(ctx, fmt.Errorf("%w. please report this to: %s. request id: %s", err.External(), contact, requestid.Get(r)))
 	}), nil
 }
 
@@ -80,7 +83,7 @@ func DefaultGenericHandler(
 	w.WriteHeader(http.StatusBadRequest)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return h.Main(h.H2(g.Text("unhandled error. please report this to: " + contact)))
+		return components.ErrorDialog(ctx, fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)))
 	}), nil
 }
 

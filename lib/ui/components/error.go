@@ -19,9 +19,9 @@ func Dialog(ctx ui.Context, children ...g.Node) g.Node {
 var ErrorDialogStyle = ui.MustParseStyle(`
   background: var(--theme-error-0);
   border: var(--size-1) solid var(--theme-error-1);
-  color: var(--theme-background-3);
+  color: var(--theme-background-9);
 `)
 
 func ErrorDialog(ctx ui.Context, err error) g.Node {
-	return Dialog(ctx, c.JoinAttrs("class", g.Group{g.Textf("Error: %s", err)}, ctx.Class(ErrorDialogStyle)))
+	return Dialog(ctx, ctx.Class(ErrorDialogStyle), g.Group{g.Textf("Error: %s", err)})
 }

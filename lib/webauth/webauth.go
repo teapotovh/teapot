@@ -18,6 +18,7 @@ type WebAuthConfig struct {
 type WebAuthPaths struct {
 	Login  string
 	Logout string
+	Return string
 }
 
 type WebAuth struct {
@@ -25,7 +26,10 @@ type WebAuth struct {
 
 	auth     *httpauth.JWTAuth
 	resetURL *url.URL
-	paths    WebAuthPaths
+
+	loginPath  string
+	logoutPath string
+	returnPath string
 }
 
 func NewWebAuth(
@@ -46,7 +50,10 @@ func NewWebAuth(
 
 		auth:     auth,
 		resetURL: resetURL,
-		paths:    paths,
+
+		loginPath:  paths.Login,
+		logoutPath: paths.Logout,
+		returnPath: paths.Return,
 	}
 
 	return &wa, nil

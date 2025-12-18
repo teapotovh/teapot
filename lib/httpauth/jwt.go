@@ -17,6 +17,10 @@ const (
 	cookieName = "teapot-auth"
 )
 
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+)
+
 type JWTAuth struct {
 	logger *slog.Logger
 
@@ -61,15 +65,28 @@ func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func (ja *JWTAuth) Authenticate(w http.ResponseWriter, username string, admin bool) error {
-	cookie, err := ja.authCookie(username, admin)
+func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) (*http.Cookie, error) {
+	client, err := ja.factory.NewClient(ctx)
 	if err != nil {
-		return fmt.Errorf("error while generating JWT cookie: %w", err)
+		return nil, fmt.Errorf("error while creating LDAP client: %w", err)
+	}
+	defer client.Close()
+
+	user, err := client.Authenticate(username, password)
+	if err != nil {
+		if !errors.Is(err, ldap.ErrInvalidCredentials) {
+			return nil, ErrInvalidCredentials
+		}
+
+		return nil, fmt.Errorf("unexpected error while authneticating: %w", err)
 	}
 
-	http.SetCookie(w, cookie)
+	cookie, err := ja.authCookie(user.Username, user.Admin)
+	if err != nil {
+		return nil, fmt.Errorf("error while generating JWT cookie: %w", err)
+	}
 
-	return nil
+	return cookie, nil
 }
 
 func (ja *JWTAuth) DeAuthenticate(w http.ResponseWriter) {
