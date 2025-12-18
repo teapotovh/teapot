@@ -1,5 +1,5 @@
 html {
-  --theme-brand-light-0: var(--orange-6);
+  --theme-brand-light-0: var(--green-4);
   --theme-brand-light-1: var(--green-6);
 
   --theme-error-light-0: var(--red-10);
@@ -35,7 +35,7 @@ html {
 }
 
 html {
-  --theme-brand-dark-0: var(--orange-3);
+  --theme-brand-dark-0: var(--green-2);
   --theme-brand-dark-1: var(--green-3);
 
   --theme-error-dark-0: var(--red-10);
