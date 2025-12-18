@@ -15,10 +15,11 @@ var (
 type ErrorHandler[T error] func(w http.ResponseWriter, r *http.Request, err T, contact string) error
 
 type ErrorHandlers struct {
-	InternalHandler ErrorHandler[InternalError]
-	RedirectHandler ErrorHandler[RedirectError]
-	NotFoundHandler ErrorHandler[error]
-	GenericHandler  ErrorHandler[error]
+	InternalHandler   ErrorHandler[InternalError]
+	RedirectHandler   ErrorHandler[RedirectError]
+	NotFoundHandler   ErrorHandler[error]
+	BadRequestHandler ErrorHandler[error]
+	GenericHandler    ErrorHandler[error]
 }
 
 func DefaultInternalHandler(w http.ResponseWriter, r *http.Request, err InternalError, contact string) error {
@@ -43,6 +44,13 @@ func DefaultNotFoundHandler(w http.ResponseWriter, r *http.Request, err error, c
 
 // Ensure DefaultNotFoundHandler implements ErrorHandler[error].
 var _ ErrorHandler[error] = DefaultNotFoundHandler
+
+func DefaultBadRequestHandler(w http.ResponseWriter, r *http.Request, err error, contact string) error {
+	return Write(w, http.StatusBadRequest, []byte(err.Error()))
+}
+
+// Ensure DefaultBadRequestHandler implements ErrorHandler[error].
+var _ ErrorHandler[error] = DefaultBadRequestHandler
 
 func DefaultGenericHandler(w http.ResponseWriter, r *http.Request, err error, contact string) error {
 	msg := "unhandled error. please report this to: " + contact + ". request id: " + requestid.Get(r)

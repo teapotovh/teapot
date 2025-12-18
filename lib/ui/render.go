@@ -256,22 +256,26 @@ func (rer *Renderer) renderWithDependencies(
 		styles = append(styles, style)
 	}
 
-	links = append(links, h.StyleEl(g.Raw(stylesheet.String())))
+	if stylesheet.Len() > 0 {
+		links = append(links, h.StyleEl(hx.SwapOOB("beforeend"), h.ID("style"), g.Raw(stylesheet.String())))
+	}
 
 	// Add script tags to update the list of styles and dependencies registered
 	src, err := registerScript("styles", styles)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating styles register code: %w", err)
 	}
-
-	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(src)))
+	if len(styles) > 0 {
+		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(src))))
+	}
 
 	drc, err := registerScript("dependencies", dependencies)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error while generating dependencies register code: %w", err)
 	}
-
-	scripts = append(scripts, h.Script(hx.SwapOOB("beforeend:head"), g.Raw(drc)))
+	if len(dependencies) > 0 {
+		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(drc))))
+	}
 
 	return links, scripts, node, nil
 }

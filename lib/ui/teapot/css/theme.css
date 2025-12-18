@@ -2,6 +2,9 @@ html {
   --theme-brand-light-0: var(--orange-6);
   --theme-brand-light-1: var(--green-6);
 
+  --theme-error-light-0: var(--red-10);
+  --theme-error-light-1: var(--red-9);
+
   --theme-background-light-0: var(--gray-0);
   --theme-background-light-1: var(--gray-1);
   --theme-background-light-2: var(--gray-2);
@@ -35,6 +38,9 @@ html {
   --theme-brand-dark-0: var(--orange-3);
   --theme-brand-dark-1: var(--green-3);
 
+  --theme-error-dark-0: var(--red-10);
+  --theme-error-dark-1: var(--red-11);
+
   --theme-background-dark-0: var(--gray-12);
   --theme-background-dark-1: var(--gray-11);
   --theme-background-dark-2: var(--gray-10);
@@ -67,6 +73,9 @@ html {
 :root {
   --theme-brand-0: var(--theme-brand-light-0);
   --theme-brand-1: var(--theme-brand-light-1);
+
+  --theme-error-0: var(--theme-error-light-0);
+  --theme-error-1: var(--theme-error-light-1);
 
   --theme-background-0: var(--theme-background-light-0);
   --theme-background-1: var(--theme-background-light-1);
@@ -104,6 +113,9 @@ html {
   :root {
     --theme-brand-0: var(--theme-brand-dark-0);
     --theme-brand-1: var(--theme-brand-dark-1);
+
+    --theme-error-0: var(--theme-error-dark-0);
+    --theme-error-1: var(--theme-error-dark-1);
 
     --theme-background-0: var(--theme-background-dark-0);
     --theme-background-1: var(--theme-background-dark-1);

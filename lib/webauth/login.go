@@ -1,6 +1,8 @@
 package webauth
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
 	g "maragu.dev/gomponents"
@@ -12,8 +14,29 @@ import (
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+)
+
 func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
-	return webhandler.NewPage("login", "login into files", login{}), nil
+	switch r.Method {
+	case "POST":
+		w.WriteHeader(http.StatusUnauthorized)
+		return loginError{err: ErrInvalidCredentials}, nil
+
+	case "GET":
+		return webhandler.NewPage("login", "login into files", login{}), nil
+
+	}
+	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
+}
+
+type loginError struct {
+	err error
+}
+
+func (le loginError) Render(ctx ui.Context) g.Node {
+	return components.ErrorDialog(ctx, le.err)
 }
 
 // Ensure Login implements webhandler.WebHandlerFunc.
@@ -52,9 +75,6 @@ var LoginBoxStyle = ui.MustParseStyle(`
 	& .error {
 		margin: var(--size-3) 0;
 	}
-`)
-
-var ErrorContainerStyle = ui.MustParseStyle(`
 `)
 
 const errorContainerID = "error-container"

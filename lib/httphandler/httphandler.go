@@ -15,22 +15,24 @@ type HTTPHandlerConfig struct {
 type HTTPHandler struct {
 	logger *slog.Logger
 
-	contact         string
-	internalHandler ErrorHandler[InternalError]
-	redirectHandler ErrorHandler[RedirectError]
-	notFoundHandler ErrorHandler[error]
-	genericHandler  ErrorHandler[error]
+	contact           string
+	internalHandler   ErrorHandler[InternalError]
+	redirectHandler   ErrorHandler[RedirectError]
+	notFoundHandler   ErrorHandler[error]
+	badRequestHandler ErrorHandler[error]
+	genericHandler    ErrorHandler[error]
 }
 
 func NewHTTPHandler(config HTTPHandlerConfig, handlers ErrorHandlers, logger *slog.Logger) *HTTPHandler {
 	return &HTTPHandler{
 		logger: logger,
 
-		contact:         config.Contact,
-		internalHandler: handlers.InternalHandler,
-		redirectHandler: handlers.RedirectHandler,
-		notFoundHandler: handlers.NotFoundHandler,
-		genericHandler:  handlers.GenericHandler,
+		contact:           config.Contact,
+		internalHandler:   handlers.InternalHandler,
+		redirectHandler:   handlers.RedirectHandler,
+		notFoundHandler:   handlers.NotFoundHandler,
+		badRequestHandler: handlers.BadRequestHandler,
+		genericHandler:    handlers.GenericHandler,
 	}
 }
 
@@ -50,6 +52,8 @@ func (he *HTTPHandler) Adapt(fn HTTPHandlerFunc) http.Handler {
 				err = he.redirectHandler(w, r, rerr, he.contact)
 			} else if errors.Is(err, ErrNotFound) {
 				err = he.notFoundHandler(w, r, err, he.contact)
+			} else if errors.Is(err, ErrBadRequest) {
+				err = he.badRequestHandler(w, r, err, he.contact)
 			} else {
 				he.logger.ErrorContext(r.Context(), "unhandled error while handling request", "err", err)
 				err = he.genericHandler(w, r, err, he.contact)

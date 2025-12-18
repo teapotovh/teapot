@@ -6,6 +6,10 @@ type InternalError = httphandler.InternalError
 type RedirectError = httphandler.RedirectError
 
 var (
-	ErrNotFound = httphandler.ErrNotFound
-	ErrInternal = httphandler.ErrInternal
+	ErrNotFound   = httphandler.ErrNotFound
+	ErrInternal   = httphandler.ErrInternal
+	ErrBadRequest = httphandler.ErrBadRequest
+
+	NewInternalError = httphandler.NewInternalError
+	NewRedirectError = httphandler.NewRedirectError
 )

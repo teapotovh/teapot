@@ -44,7 +44,7 @@ func AlreadyLoadedFromRequest(r *http.Request) (ui.AlreadyLoaded, error) {
 		)
 	}
 
-	deps, err := parseSet(r.Header.Get(HeaderTeapotStyles), dependency.ParseDependency)
+	deps, err := parseSet(r.Header.Get(HeaderTeapotDependencies), dependency.ParseDependency)
 	if err != nil {
 		return ui.AlreadyLoaded{}, fmt.Errorf(
 			"error while parsing already loaded dependencies from header %q: %w",

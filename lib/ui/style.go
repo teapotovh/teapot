@@ -68,7 +68,7 @@ func ParseStyle(css string) (*Style, error) {
 	}
 
 	style := Style{
-		id:           id,
+		id:           "s" + id,
 		css:          css,
 		dependencies: dependencies,
 	}
