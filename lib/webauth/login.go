@@ -55,7 +55,7 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 
 		return webhandler.NewPage(
 			pagetitle.Title("Login", wa.app),
-			fmt.Sprintf("Authenticate with your account to access %s", wa.app),
+			"Authenticate with your account to access "+wa.app,
 			component,
 		), nil
 	}

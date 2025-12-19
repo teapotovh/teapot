@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 
+	"github.com/dustin/go-humanize"
+	"github.com/hack-pad/hackpadfs"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/hack-pad/hackpadfs"
 	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
@@ -20,20 +20,28 @@ import (
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
+type entry struct {
+	name string
+	path string
+	typ  os.FileMode
+	size uint64
+}
+
 type browse struct {
 	path    string
-	entries []hackpadfs.DirEntry
+	entries []entry
 }
 
 func (b browse) Render(ctx ui.Context) g.Node {
-	path := path.Join("/", b.path)
+	path := filepath.Join("/", b.path)
+
 	return h.H1(
 		g.Textf("browsing at %s", path),
 		h.Ul(
-			g.Map(b.entries, func(entry hackpadfs.DirEntry) g.Node {
-				text := g.Textf("%s - %s", entry.Type().String(), entry.Name())
+			g.Map(b.entries, func(entry entry) g.Node {
+				text := g.Textf("%s - %s - %s", entry.typ, entry.name, humanize.IBytes(entry.size))
 
-				return h.Li(h.A(hx.Boost("true"), h.Href(PathBrowseAt(entry.Name())), text))
+				return h.Li(h.A(hx.Boost("true"), h.Href(PathBrowseAt(entry.path)), text))
 			}),
 		),
 	)
@@ -58,22 +66,45 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		return nil, httphandler.NewInternalError(err, nil)
 	}
 
-	entries, err := hackpadfs.ReadDir(session.FS(), path)
+	dirEntries, err := hackpadfs.ReadDir(session.FS(), path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, httphandler.ErrNotFound
 		}
 
-		return nil, fmt.Errorf("could not open file at %q: %w", path, err)
+		err = fmt.Errorf("could not read directory at %q: %w", path, err)
+
+		return nil, httphandler.NewInternalError(err, nil)
+	}
+
+	var entries []entry
+
+	for _, e := range dirEntries {
+		entryPath := filepath.Join(path, e.Name())
+
+		stat, err := hackpadfs.Stat(session.FS(), entryPath)
+		if err != nil {
+			err = fmt.Errorf("could not stat file at %q: %w", path, err)
+			return nil, httphandler.NewInternalError(err, nil)
+		}
+
+		size := stat.Size()
+		entries = append(entries, entry{
+			name: e.Name(),
+			path: entryPath,
+			typ:  e.Type(),
+			size: uint64(size), //nolint:gosec
+		})
 	}
 
 	component := browse{
 		path:    path,
 		entries: entries,
 	}
+
 	return webhandler.NewPage(
-		pagetitle.Title(fmt.Sprintf("Browse at %s", path), App),
-		fmt.Sprintf("Browse your files at %s", path),
+		pagetitle.Title("Browse at "+path, App),
+		"Browse your files at "+path,
 		component,
 	), nil
 }

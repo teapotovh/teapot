@@ -1,6 +1,8 @@
 package web
 
-import "path"
+import (
+	"path/filepath"
+)
 
 const (
 	App      = "Teapot Files"
@@ -13,6 +15,6 @@ const (
 	PathBrowse = "/browse/"
 )
 
-func PathBrowseAt(subpath string) string {
-	return path.Join(PathBrowse, subpath)
+func PathBrowseAt(paths ...string) string {
+	return filepath.Join(append([]string{PathBrowse}, paths...)...)
 }

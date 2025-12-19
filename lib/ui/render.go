@@ -8,7 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"maps"
-	"path"
+	"path/filepath"
 	"strings"
 
 	g "maragu.dev/gomponents"
@@ -81,7 +81,7 @@ func (rer *Renderer) RegisterDependencies(fns ...DependenciesFunc) error {
 			}
 
 			hash := sha256.Sum256(bytes)
-			path := path.Join(rer.assetPath, fmt.Sprintf("%s-%x", dep, hash))
+			path := filepath.Join(rer.assetPath, fmt.Sprintf("%s-%x", dep, hash))
 
 			rer.dependencies[dep] = bytes
 			rer.dependencyPaths[dep] = path

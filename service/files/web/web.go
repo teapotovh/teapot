@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path"
+	"path/filepath"
 
 	"github.com/kataras/muxie"
 
@@ -86,7 +86,7 @@ func (web *Web) Handler(prefix string) http.Handler {
 	mux.Handle(PathLogout, web.webHandler.Adapt(web.webAuth.Logout))
 
 	mux.Handle(PathIndex, web.webHandler.Adapt(web.Index))
-	mux.Handle(path.Join(PathBrowse, "*"), web.webHandler.Adapt(web.Browse))
+	mux.Handle(filepath.Join(PathBrowse, "*"), web.webHandler.Adapt(web.Browse))
 
 	mux.Handle("/*", web.webHandler.Adapt(web.NotFound))
 
