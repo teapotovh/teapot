@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
 	"github.com/teapotovh/teapot/lib/ui"
@@ -35,7 +36,7 @@ func (skeleton skeleton) Render(ctx ui.Context) g.Node {
 			components.HeaderLink(ctx, h.Href(PathLogout), g.Text("Logout")),
 		}
 	} else {
-		login = components.HeaderLink(ctx, h.Href(PathLogin), g.Text("Login"))
+		login = components.HeaderLink(ctx, hx.Boost("true"), h.Href(PathLogin), g.Text("Login"))
 	}
 
 	return g.Group{

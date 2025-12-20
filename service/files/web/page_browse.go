@@ -20,36 +20,6 @@ import (
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
-type entry struct {
-	name string
-	path string
-	typ  os.FileMode
-	size uint64
-}
-
-type browse struct {
-	path    string
-	entries []entry
-}
-
-func (b browse) Render(ctx ui.Context) g.Node {
-	path := filepath.Join("/", b.path)
-
-	return h.H1(
-		g.Textf("browsing at %s", path),
-		h.Ul(
-			g.Map(b.entries, func(entry entry) g.Node {
-				text := g.Textf("%s - %s - %s", entry.typ, entry.name, humanize.IBytes(entry.size))
-
-				return h.Li(h.A(hx.Boost("true"), h.Href(PathBrowseAt(entry.path)), text))
-			}),
-		),
-	)
-}
-
-// Ensure browse implements ui.Component.
-var _ ui.Component = browse{}
-
 func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
@@ -92,7 +62,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		entries = append(entries, entry{
 			name: e.Name(),
 			path: entryPath,
-			typ:  e.Type(),
+			mode: e.Type(),
 			size: uint64(size), //nolint:gosec
 		})
 	}
@@ -108,3 +78,76 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		component,
 	), nil
 }
+
+type entry struct {
+	name string
+	path string
+	mode os.FileMode
+	size uint64
+}
+
+type browse struct {
+	path    string
+	entries []entry
+}
+
+var BrowseStyle = ui.MustParseStyle(`
+	display: grid;
+	padding: 0 var(--size-2);
+	width: 100%;
+  grid-template-columns: 20fr 5fr;
+	gap: var(--size-2);
+
+	& .size {
+	  text-align: right;
+	}
+
+	& .mode {
+	  display: none;
+	}
+	@media (min-width: 768px) {
+		grid-template-columns: 2fr 20fr 5fr;
+		& .mode {
+	    display: block;
+		}
+	}
+`)
+
+func (b browse) Render(ctx ui.Context) g.Node {
+	path := filepath.Join("/", b.path)
+
+	entries := b.entries
+	if path != "/" {
+		entries = append([]entry{
+			{
+				name: "..",
+				path: filepath.Join(path, ".."),
+				mode: os.ModeDir,
+				size: 0,
+			},
+		}, entries...)
+	}
+
+	return g.Group{
+		h.H2(g.Text(path)),
+		h.Section(ctx.Class(BrowseStyle),
+			g.Map(entries, func(entry entry) g.Node {
+				var href string
+				if entry.mode == os.ModeDir {
+					href = PathBrowseAt(entry.path) + "/"
+				} else {
+					href = PathFileAt(entry.path)
+				}
+
+				return g.Group{
+					h.Div(h.Class("mode"), g.Text(entry.mode.String())),
+					h.Div(h.A(hx.Boost("true"), h.Href(href), g.Text(entry.name))),
+					h.Div(h.Class("size"), g.Text(humanize.IBytes(entry.size))),
+				}
+			}),
+		),
+	}
+}
+
+// Ensure browse implements ui.Component.
+var _ ui.Component = browse{}

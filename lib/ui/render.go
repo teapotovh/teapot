@@ -121,7 +121,7 @@ type AlreadyLoaded struct {
 	Dependencies map[dependency.Dependency]Unit
 }
 
-func emptyAlreadyLoaded() AlreadyLoaded {
+func EmptyAlreadyLoaded() AlreadyLoaded {
 	return AlreadyLoaded{Styles: nil, Dependencies: map[dependency.Dependency]Unit{}}
 }
 
@@ -160,7 +160,7 @@ func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Compone
 
 // RenderPage renders a full page to the response. It adds styles as necessary.
 func (rer *Renderer) RenderPage(w io.Writer, opts c.HTML5Props, body Component) error {
-	loaded := emptyAlreadyLoaded()
+	loaded := EmptyAlreadyLoaded()
 
 	styles, scripts, node, err := rer.renderWithDependencies(loaded, body)
 	if err != nil {
