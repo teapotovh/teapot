@@ -1,10 +1,11 @@
 from concurrent import futures
 from logging import INFO as LEVEL_INFO
 from logging import getLogger
+from typing import override
 
 from embed import Embed
 from embed import Embedding as LibEmbedding
-from grpc import Server, StatusCode
+from grpc import Server, ServicerContext, StatusCode
 from grpc import server as grpc_server
 
 from proto.embed import (
@@ -28,7 +29,7 @@ class Servicer(EmbedderServicer):
         super().__init__()
         self.service = service
 
-    def _is_valid(self, text: str, context) -> bool:
+    def _is_valid(self, text: str, context: ServicerContext) -> bool:
         if len(text) <= 0:
             context.set_code(StatusCode.INVALID_ARGUMENT)
             context.set_details("Cannot generate embedding for an empty text")
@@ -39,7 +40,8 @@ class Servicer(EmbedderServicer):
     def _to_embedding(self, embedding: LibEmbedding) -> Embedding:
         return Embedding(vector=embedding.vector, text=embedding.text)
 
-    def Embed(self, request: EmbedRequest, context) -> EmbedReply:
+    @override
+    def Embed(self, request: EmbedRequest, context: ServicerContext) -> EmbedReply:
         if not self._is_valid(request.text, context):
             return EmbedReply()
 
@@ -48,9 +50,8 @@ class Servicer(EmbedderServicer):
         embeddings = (self._to_embedding(embedding) for embedding in embeddings)
         return EmbedReply(embeddings=embeddings)
 
-    def EmbedSingle(
-        self, request: EmbedSingleRequest, context
-    ) -> EmbedSingleReply:
+    @override
+    def EmbedSingle(self, request: EmbedSingleRequest, context: ServicerContext) -> EmbedSingleReply:
         if not self._is_valid(request.text, context):
             return EmbedSingleReply()
 

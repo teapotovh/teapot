@@ -55,9 +55,7 @@ class Embed:
         )
 
     def _mean_pooling(self, input: Input, output: np.ndarray) -> np.ndarray:
-        input_mask_expanded = np.expand_dims(input.attention_mask, -1).astype(
-            float
-        )
+        input_mask_expanded = np.expand_dims(input.attention_mask, -1).astype(float)
         embeddings = np.sum(output * input_mask_expanded, 1) / np.clip(
             input_mask_expanded.sum(1), a_min=1e-9, a_max=None
         )
@@ -80,8 +78,6 @@ class Embed:
         # apply mean pooling
         embeddings = self._mean_pooling(input, outputs[0])
         # normalize the result
-        embeddings = embeddings / np.linalg.norm(
-            embeddings, axis=1, keepdims=True
-        )
+        embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
         return Embedding(vector=embeddings[0], text=text)

@@ -12,16 +12,14 @@ _logger.setLevel(LEVEL_INFO)
 
 
 # This is the main entrypoint for the program
-def embedd():
+def embedd() -> None:
     loggingBasicConfig(level=LEVEL_INFO)
     parser = ArgumentParser(
         prog="embedd",
         description="A gRPC service to generate vector embeddings for text inputs",
     )
 
-    _ = parser.add_argument(
-        "-a", "--addr", nargs="?", default="[::]:8150", type=str
-    )
+    _ = parser.add_argument("-a", "--addr", nargs="?", default="[::]:8150", type=str)
     _ = parser.add_argument("-t", "--tokenizer-path", type=str)
     _ = parser.add_argument("-m", "--model-path", type=str)
     _ = parser.add_argument("-c", "--chunk_size", type=int, default=196)
@@ -33,11 +31,7 @@ def embedd():
         model_path=args.model_path,
         chunk_size=args.chunk_size,
         # support both overlap=10 for 10 tokens overlap, or overlap=0.1 for 10% token overlap
-        overlap=int(
-            args.overlap
-            if args.overlap >= 1
-            else args.overlap * args.chunk_size
-        ),
+        overlap=int(args.overlap if args.overlap >= 1 else args.overlap * args.chunk_size),
     )
     _logger.info("running with configuration: %s", svc_config)
 
