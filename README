@@ -1,4 +1,37 @@
-Conventions:
+Welcome to the Teapot monorepo. This repository contains all software written
+for teapot.ovh, listed below:
 
-1. all logs/errors are lowercase. try to keep also the text inside lowercase (avoid acronyms where possible, for example for GVK, group-version-kind)
-2. comments are started with uppercase
+- `ccmd`: a Kubernetes Cloud Controller Manager (CCM) to properly set the
+  InternalIP and ExternalIP fields on our cluster nodes. The InternalIP is
+  computed deterministically from the node's hostname, while the ExternalIP
+  is resolved via DDNS. Our clusters are IPv4-only and support IPv6 services
+  via taiga (TBD).
+
+- `netd`: a minimal Kubernetes CNI that sets up a Wireguard mesh across all
+  nodes (depends on ccmd for the ExternalIP) and configures the host's CNI
+  to properly assign IPs to pods with the expected routes.
+
+- `loadbalancerd`: a minimal Kubernetes load balancer that sends ARP packets
+  for all ExternalIPs on any service of type LoadBalancer. Yes, it's actually
+  not doing any load balancing at all between nodes. That's because we expect
+  DNS to do the heavy lifting for our setup. Each node is in a different NAT
+  LAN and will expose all services. The clients will pick a random DNS WAN IP
+  to connect to.
+
+- `bottind`: A LDAP server with storage backed by PostgreSQL. This is used as
+  the authentication backend. It's a stripped down, mostly rewritten fork of
+  Deuxfleurs's bottin which you can find at:
+    https://git.deuxfleurs.fr/Deuxfleurs/bottin
+  We removed support many features we don't need, including: TLS, insecure
+  password hashes, Consul backend (swapped with psql). A lot of the business
+  logic has been rewritten/improved. Configuration has been adapted to our style.
+
+- `kontakted` (WIP, needs adapatation to the monorepo): a self-service/admin
+  panel to manage user's credentials/details stored in LDAP.
+
+- `filesd` (WIP): file storage service that supports multiple backends (S3,
+  custom gRPC planned) to access and store a variety of files. Accessible via
+  WebDAV, Web (WIP), rsync (TBD), SFTP (TBD).
+
+- `docsearchd` (TBD): indexing and search service built on top of filesd to
+  quickly search through pdf documents.

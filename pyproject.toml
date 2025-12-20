@@ -30,7 +30,8 @@ members = [
 
 [tool.uv]
 dev-dependencies = [
-    "pre-commit>=3.8.0",
+    "ruff>=0.14",
+    "mypy>=1.18",
     "grpcio-tools",
 
     # These are added as dev dependencies becuase they should be available
@@ -42,7 +43,7 @@ dev-dependencies = [
 package = false
 
 [tool.ruff]
-line-length = 80
+line-length = 120
 indent-width = 4
 
 [tool.ruff.format]
@@ -63,6 +64,9 @@ fixable = ["ALL"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"proto/proto/*" = ["ANN", "E", "F"]
 
 [tool.mypy]
 python_version = "3.13"
