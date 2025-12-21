@@ -35,6 +35,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
 	}
+
 	path = filepath.Clean(path)
 
 	session, err := web.files.Sesssions().Get(auth.Username)
@@ -72,7 +73,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 	}
 
 	var (
-		segments []entry = []entry{
+		segments = []entry{
 			{
 				name: auth.Username,
 				path: sep,
@@ -171,6 +172,7 @@ func (b browse) Render(ctx ui.Context) g.Node {
 		} else {
 			href = PathFileAt(entry.path)
 		}
+
 		return href
 	}
 
@@ -178,6 +180,7 @@ func (b browse) Render(ctx ui.Context) g.Node {
 		h.Div(ctx.Class(BrowseTitleStyle),
 			g.Map(b.segments, func(segment entry) g.Node {
 				href := href(segment)
+
 				return g.Group{
 					h.A(hx.Boost("true"), h.Href(href), g.Text(segment.name)),
 					h.Span(g.Text(sep)),

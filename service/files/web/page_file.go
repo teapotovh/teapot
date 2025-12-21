@@ -24,6 +24,7 @@ func (web *Web) File(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errors.Join(fmt.Errorf("could not get relative path: %w", err), httphandler.ErrBadRequest)
 	}
+
 	path = filepath.Clean(path)
 
 	session, err := web.files.Sesssions().Get(auth.Username)
