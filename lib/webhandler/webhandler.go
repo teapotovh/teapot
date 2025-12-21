@@ -157,3 +157,7 @@ func (wh *WebHandler) Adapt(fn WebHandlerFunc) http.Handler {
 
 	return wh.httpHandler.Adapt(f)
 }
+
+func (wh *WebHandler) AdaptHTTP(fn httphandler.HTTPHandlerFunc) http.Handler {
+	return wh.httpHandler.Adapt(fn)
+}

@@ -14,7 +14,6 @@ import (
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/webauth"
@@ -29,7 +28,7 @@ var (
 func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
-		return nil, httphandler.NewRedirectError(PathIndex, http.StatusFound)
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
 	}
 
 	path, err := filepath.Rel(PathBrowse, r.URL.Path)
@@ -40,18 +39,16 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 
 	session, err := web.files.Sesssions().Get(auth.Username)
 	if err != nil {
-		return nil, httphandler.NewInternalError(err, nil)
+		return nil, webhandler.NewInternalError(err, nil)
 	}
 
 	dirEntries, err := hackpadfs.ReadDir(session.FS(), path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, httphandler.ErrNotFound
+			return nil, webhandler.ErrNotFound
 		}
 
-		err = fmt.Errorf("could not read directory at %q: %w", path, err)
-
-		return nil, httphandler.NewInternalError(err, nil)
+		return nil, webhandler.NewInternalError(fmt.Errorf("could not read directory at %q: %w", path, err), nil)
 	}
 
 	var entries []entry
@@ -62,7 +59,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		stat, err := hackpadfs.Stat(session.FS(), entryPath)
 		if err != nil {
 			err = fmt.Errorf("could not stat file at %q: %w", path, err)
-			return nil, httphandler.NewInternalError(err, nil)
+			return nil, webhandler.NewInternalError(err, nil)
 		}
 
 		size := stat.Size()
