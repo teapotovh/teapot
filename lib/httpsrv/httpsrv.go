@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/kataras/muxie"
@@ -55,7 +55,7 @@ type HTTPService interface {
 func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler := service.Handler(prefix)
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
-	h.mux.Handle(path.Join(prefix, "*"), handler)
+	h.mux.Handle(filepath.Join(prefix, "*"), handler)
 }
 
 // Run implements run.Runnable.

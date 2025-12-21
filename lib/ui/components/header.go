@@ -75,5 +75,5 @@ var HeaderLinkStyle = ui.MustParseStyle(`
 `)
 
 func HeaderLink(ctx ui.Context, opts ...g.Node) g.Node {
-	return h.A(hx.Boost("true"), c.JoinAttrs("class", g.Group(opts), ctx.Class(HeaderLinkStyle)))
+	return h.A(c.JoinAttrs("class", g.Group(opts), ctx.Class(HeaderLinkStyle)))
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 
 	"github.com/kataras/muxie"
 
@@ -49,10 +50,11 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 		return nil, fmt.Errorf("error while constructing webhandler: %w", err)
 	}
 
-	webAuth, err := webauth.NewWebAuth(files.LDAPFactory(), config.WebAuth, webauth.WebAuthPaths{
-		Login:  PathLogin,
-		Logout: PathLogout,
-		Return: PathIndex,
+	webAuth, err := webauth.NewWebAuth(files.LDAPFactory(), config.WebAuth, webauth.WebAuthOptions{
+		LoginPath:  PathLogin,
+		LogoutPath: PathLogout,
+		ReturnPath: PathBrowse,
+		App:        App,
 	}, logger.With("component", "auth"))
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing webauth: %w", err)
@@ -84,6 +86,8 @@ func (web *Web) Handler(prefix string) http.Handler {
 	mux.Handle(PathLogout, web.webHandler.Adapt(web.webAuth.Logout))
 
 	mux.Handle(PathIndex, web.webHandler.Adapt(web.Index))
+	mux.Handle(filepath.Join(PathBrowse, "*"), web.webHandler.Adapt(web.Browse))
+	mux.Handle(filepath.Join(PathFile, "*"), web.webHandler.AdaptHTTP(web.File))
 
 	mux.Handle("/*", web.webHandler.Adapt(web.NotFound))
 

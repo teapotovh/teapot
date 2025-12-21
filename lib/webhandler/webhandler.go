@@ -86,7 +86,7 @@ func wrapErrorHandler[T error](
 		}
 
 		if component != nil {
-			if hxhttp.IsRequest(r.Header) {
+			if hxhttp.IsRequest(r.Header) && !hxhttp.IsBoosted(r.Header) {
 				// Don't render the skeleton in an HTMX request
 				al, err := uihttp.AlreadyLoadedFromRequest(r)
 				if err != nil {
@@ -156,4 +156,8 @@ func (wh *WebHandler) Adapt(fn WebHandlerFunc) http.Handler {
 	}
 
 	return wh.httpHandler.Adapt(f)
+}
+
+func (wh *WebHandler) AdaptHTTP(fn httphandler.HTTPHandlerFunc) http.Handler {
+	return wh.httpHandler.Adapt(fn)
 }

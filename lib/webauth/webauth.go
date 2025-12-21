@@ -15,10 +15,11 @@ type WebAuthConfig struct {
 	ResetPasswordURL string
 }
 
-type WebAuthPaths struct {
-	Login  string
-	Logout string
-	Return string
+type WebAuthOptions struct {
+	LoginPath  string
+	LogoutPath string
+	ReturnPath string
+	App        string
 }
 
 type WebAuth struct {
@@ -30,12 +31,13 @@ type WebAuth struct {
 	loginPath  string
 	logoutPath string
 	returnPath string
+	app        string
 }
 
 func NewWebAuth(
 	factory *ldap.Factory,
 	config WebAuthConfig,
-	paths WebAuthPaths,
+	options WebAuthOptions,
 	logger *slog.Logger,
 ) (*WebAuth, error) {
 	auth := httpauth.NewJWTAuth(factory, config.JWTAuth, logger)
@@ -51,9 +53,10 @@ func NewWebAuth(
 		auth:     auth,
 		resetURL: resetURL,
 
-		loginPath:  paths.Login,
-		logoutPath: paths.Logout,
-		returnPath: paths.Return,
+		loginPath:  options.LoginPath,
+		logoutPath: options.LogoutPath,
+		returnPath: options.ReturnPath,
+		app:        options.App,
 	}
 
 	return &wa, nil
