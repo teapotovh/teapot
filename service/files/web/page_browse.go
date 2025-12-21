@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/hack-pad/hackpadfs"
@@ -20,6 +21,11 @@ import (
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
+var (
+	sep  = "/"
+	here = "."
+)
+
 func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
@@ -30,6 +36,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
 	}
+	path = filepath.Clean(path)
 
 	session, err := web.files.Sesssions().Get(auth.Username)
 	if err != nil {
@@ -50,7 +57,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 	var entries []entry
 
 	for _, e := range dirEntries {
-		entryPath := filepath.Join(path, e.Name())
+		entryPath := filepath.Clean(filepath.Join(path, e.Name()))
 
 		stat, err := hackpadfs.Stat(session.FS(), entryPath)
 		if err != nil {
@@ -67,9 +74,34 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		})
 	}
 
+	var (
+		segments []entry = []entry{
+			{
+				name: auth.Username,
+				path: sep,
+				mode: os.ModeDir,
+			},
+		}
+		segmentPath string
+	)
+	for segment := range strings.SplitSeq(path, string(filepath.Separator)) {
+		if segment == here {
+			continue
+		}
+
+		segmentPath = filepath.Join(segmentPath, segment)
+		segments = append(segments, entry{
+			name: segment,
+			path: segmentPath,
+			mode: os.ModeDir,
+		})
+	}
+
 	component := browse{
-		path:    path,
-		entries: entries,
+		path:     path,
+		user:     auth.Username,
+		segments: segments,
+		entries:  entries,
 	}
 
 	return webhandler.NewPage(
@@ -87,9 +119,16 @@ type entry struct {
 }
 
 type browse struct {
-	path    string
-	entries []entry
+	path     string
+	user     string
+	segments []entry
+	entries  []entry
 }
+
+var BrowseTitleStyle = ui.MustParseStyle(`
+	font-size: var(--font-size-2);
+	padding: var(--size-3) var(--size-2);
+`)
 
 var BrowseStyle = ui.MustParseStyle(`
 	display: grid;
@@ -114,10 +153,10 @@ var BrowseStyle = ui.MustParseStyle(`
 `)
 
 func (b browse) Render(ctx ui.Context) g.Node {
-	path := filepath.Join("/", b.path)
+	path := filepath.Join(sep, b.path)
 
 	entries := b.entries
-	if path != "/" {
+	if path != sep {
 		entries = append([]entry{
 			{
 				name: "..",
@@ -128,20 +167,38 @@ func (b browse) Render(ctx ui.Context) g.Node {
 		}, entries...)
 	}
 
+	href := func(entry entry) string {
+		var href string
+		if entry.mode == os.ModeDir {
+			href = PathBrowseAt(entry.path) + sep
+		} else {
+			href = PathFileAt(entry.path)
+		}
+		return href
+	}
+
 	return g.Group{
-		h.H2(g.Text(path)),
+		h.Div(ctx.Class(BrowseTitleStyle),
+			g.Map(b.segments, func(segment entry) g.Node {
+				href := href(segment)
+				return g.Group{
+					h.A(hx.Boost("true"), h.Href(href), g.Text(segment.name)),
+					h.Span(g.Text(sep)),
+				}
+			}),
+		),
 		h.Section(ctx.Class(BrowseStyle),
 			g.Map(entries, func(entry entry) g.Node {
-				var href string
-				if entry.mode == os.ModeDir {
-					href = PathBrowseAt(entry.path) + "/"
-				} else {
-					href = PathFileAt(entry.path)
+				href := href(entry)
+
+				target := hx.Boost("true")
+				if entry.mode != os.ModeDir {
+					target = h.Target("_blank")
 				}
 
 				return g.Group{
 					h.Div(h.Class("mode"), g.Text(entry.mode.String())),
-					h.Div(h.A(hx.Boost("true"), h.Href(href), g.Text(entry.name))),
+					h.Div(h.A(target, h.Href(href), g.Text(entry.name))),
 					h.Div(h.Class("size"), g.Text(humanize.IBytes(entry.size))),
 				}
 			}),
