@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/kataras/muxie"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
 	"github.com/teapotovh/teapot/lib/webhandler"
