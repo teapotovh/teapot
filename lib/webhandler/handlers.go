@@ -34,7 +34,7 @@ func DefaultInternalHandler(
 	w.WriteHeader(http.StatusInternalServerError)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return components.ErrorDialog(
+		return components.ErrorNotification(
 			ctx,
 			fmt.Errorf("%w. please report this to: %s. request id: %s", err.External(), contact, requestid.Get(r)),
 		)
@@ -87,7 +87,7 @@ func DefaultBadRequestHandler(
 	w.WriteHeader(http.StatusBadRequest)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return components.ErrorDialog(
+		return components.ErrorNotification(
 			ctx,
 			fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)),
 		)
@@ -106,7 +106,7 @@ func DefaultGenericHandler(
 	w.WriteHeader(http.StatusBadRequest)
 
 	return ui.ComponentFunc(func(ctx ui.Context) g.Node {
-		return components.ErrorDialog(
+		return components.ErrorNotification(
 			ctx,
 			fmt.Errorf("%w. please report this to: %s. request id: %s", err, contact, requestid.Get(r)),
 		)

@@ -45,5 +45,6 @@ func (skeleton skeleton) Render(ctx ui.Context) g.Node {
 			g.Group{login},
 		),
 		components.Body(ctx, body),
+		components.Dialog(ctx),
 	}
 }

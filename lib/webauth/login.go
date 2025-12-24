@@ -68,7 +68,7 @@ type loginError struct {
 }
 
 func (le loginError) Render(ctx ui.Context) g.Node {
-	return components.ErrorDialog(ctx, le.err)
+	return components.ErrorNotification(ctx, le.err)
 }
 
 // Ensure Login implements webhandler.WebHandlerFunc.

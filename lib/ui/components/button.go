@@ -2,6 +2,7 @@ package components
 
 import (
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	c "maragu.dev/gomponents/components"
 	h "maragu.dev/gomponents/html"
 
@@ -24,4 +25,13 @@ var ButtonStyle = ui.MustParseStyle(`
 
 func Button(ctx ui.Context, children ...g.Node) g.Node {
 	return h.Button(c.JoinAttrs("class", g.Group(children), ctx.Class(ButtonStyle)))
+}
+
+func DialogButton(ctx ui.Context, dialogURL string, children ...g.Node) g.Node {
+	return h.Button(
+		hx.Get(dialogURL),
+		hx.Target("#"+DialogID+" #"+DialogContentID),
+		hx.Swap("inner"),
+		c.JoinAttrs("class", g.Group(children), ctx.Class(ButtonStyle)),
+	)
 }
