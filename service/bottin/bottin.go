@@ -59,7 +59,7 @@ type Bottin struct {
 }
 
 func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
-	acl, err := parseACL(config.ACL)
+	acl, err := parseACL(config.ACL, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing ACL: %w", err)
 	}
@@ -296,7 +296,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 		return nil, ldap.ResultCodeInvalidDNSyntax, err
 	}
 
-	server.logger.InfoContext(ctx, "bind attempt", "dn", dn)
+	server.logger.InfoContext(ctx, "bind attempt", "dn", dn, "user", user)
 
 	// Check permissions
 	if !server.acl.Check(user, "bind", dn, []store.AttributeKey{}) {

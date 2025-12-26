@@ -3,6 +3,7 @@ package bottin
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"strings"
 
@@ -44,7 +45,7 @@ func splitNoEmpty(s string) []string {
 	return ret
 }
 
-func parseACL(def []string) (ACL, error) {
+func parseACL(def []string, logger *slog.Logger) (ACL, error) {
 	acl := []ACLEntry{}
 
 	for _, item := range def {
@@ -75,6 +76,7 @@ func parseACL(def []string) (ACL, error) {
 			ExcludedAttributes: exclAttr,
 		}
 		acl = append(acl, entry)
+		logger.Info("parsed ACL", "raw", item, "acl", entry)
 	}
 
 	return acl, nil
