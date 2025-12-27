@@ -20,7 +20,7 @@ var InputStyle = ui.MustParseStyle(`
 
 	& input {
 	  font-size: var(--font-size-4);
-		border: calc(var(--size-1) / 2) solid var(--theme-background-4);
+		border: calc(var(--size-1) / 2) solid var(--theme-wireframe-1);
 		background: var(--theme-background-2);
 		padding: calc(var(--size-1) / 2) var(--size-2);
 		transition: outline 0.1s var(--ease-in-out-1);

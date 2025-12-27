@@ -2,14 +2,18 @@ package files
 
 import (
 	"fmt"
-	"io/fs"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/ammario/tlru"
 	hpfs "github.com/hack-pad/hackpadfs"
 	hpfsmem "github.com/hack-pad/hackpadfs/mem"
 	hpfsmount "github.com/hack-pad/hackpadfs/mount"
+)
+
+const (
+	DirPerm = os.FileMode(0o0750)
 )
 
 type SessionsCache = *tlru.Cache[string, *Session]
@@ -85,7 +89,7 @@ func (s *Sessions) newSessionFn(username string) func() (*Session, error) {
 				return nil, fmt.Errorf("error while getting filesystem for mountpoint %q: %w", mount.dst, err)
 			}
 
-			if err = memFS.MkdirAll(mount.dst, fs.ModeDir); err != nil {
+			if err = memFS.MkdirAll(mount.dst, DirPerm); err != nil {
 				return nil, fmt.Errorf("error while creating mounting directory at %q: %w", mount.dst, err)
 			}
 
