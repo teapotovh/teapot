@@ -25,7 +25,6 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 	switch r.Method {
 	case http.MethodPost:
 		username := r.FormValue("username")
-
 		password := r.FormValue("password")
 		if username == "" || password == "" {
 			w.WriteHeader(http.StatusUnauthorized)
