@@ -82,7 +82,7 @@ func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) 
 
 	user, err := client.Authenticate(username, password)
 	if err != nil {
-		if !errors.Is(err, ldap.ErrInvalidCredentials) {
+		if errors.Is(err, ldap.ErrInvalidCredentials) {
 			return nil, ErrInvalidCredentials
 		}
 

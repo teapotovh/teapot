@@ -9,6 +9,7 @@ import (
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
+	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
@@ -33,12 +34,11 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 
 		cookie, err := wa.auth.Authenticate(r.Context(), username, password)
 		if err != nil {
-			if errors.Is(err, ErrInvalidCredentials) {
+			if errors.Is(err, httpauth.ErrInvalidCredentials) {
 				w.WriteHeader(http.StatusUnauthorized)
 				return loginError{err: ErrInvalidCredentials}, nil
 			}
-			// TODO: figure out how to render this properly in webhandler
-			// ideally it should be a box
+
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 

@@ -43,7 +43,7 @@ func (c *Client) Authenticate(username string, password string) (*User, error) {
 	}
 
 	if err := c.conn.Bind(entry.DN, password); err != nil {
-		return nil, fmt.Errorf("error while binding as %s: %w, likely %w", entry.DN, err, ErrInvalidCredentials)
+		return nil, fmt.Errorf("error while binding as %q: %w, likely %w", entry.DN, err, ErrInvalidCredentials)
 	}
 
 	return c.mapUser(entry)
