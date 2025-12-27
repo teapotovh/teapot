@@ -117,8 +117,9 @@ func DefaultGenericHandler(
 var _ ErrorHandler[error] = DefaultGenericHandler
 
 var DefaultErrorHandlers = ErrorHandlers{
-	InternalHandler: DefaultInternalHandler,
-	RedirectHandler: DefaultRedirectHandler,
-	NotFoundHandler: DefaultNotFoundHandler,
-	GenericHandler:  DefaultGenericHandler,
+	InternalHandler:   DefaultInternalHandler,
+	RedirectHandler:   DefaultRedirectHandler,
+	NotFoundHandler:   DefaultNotFoundHandler,
+	BadRequestHandler: DefaultBadRequestHandler,
+	GenericHandler:    DefaultGenericHandler,
 }

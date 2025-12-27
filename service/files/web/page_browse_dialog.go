@@ -64,6 +64,9 @@ type newFolderDialog struct {
 	path string
 }
 
+var newFolderStyle = ui.MustParseStyle(`
+	max-width: var(--size-content-3);
+`)
 var newFolderFormStyle = ui.MustParseStyle(`
 	display: flex;
 	flex-direction: column;
@@ -82,7 +85,7 @@ var newFolderFormStyle = ui.MustParseStyle(`
 `)
 
 func (nfd newFolderDialog) Render(ctx ui.Context) g.Node {
-	return h.Div(
+	return h.Div(ctx.Class(newFolderStyle),
 		h.H3(g.Text("New Folder")),
 		h.P(g.Text("Create a new folder in the currect directory.")),
 		h.Br(),
