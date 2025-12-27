@@ -51,15 +51,20 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 	switch r.Method {
 	case http.MethodGet:
 		curr := hxhttp.GetCurrentURL(r.Header)
+
 		url, err := url.Parse(curr)
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("could not parse current URL %q : %w", curr, err), webhandler.ErrBadRequest)
+			return nil, errors.Join(
+				fmt.Errorf("could not parse current URL %q : %w", curr, err),
+				webhandler.ErrBadRequest,
+			)
 		}
 
 		path, err := filepath.Rel(PathBrowse, url.Path)
 		if err != nil {
 			return nil, errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
 		}
+
 		path = filepath.Clean(path)
 
 		return newFolderDialog{
@@ -69,11 +74,13 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 
 	case http.MethodPost:
 		base := r.FormValue(newFolderDialogBaseID)
+
 		path := r.FormValue(newFolderDialogPathID)
 		if base == "" || path == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return dialogError{err: fmt.Errorf("invalid empty path: %w", webhandler.ErrBadRequest)}, nil
 		}
+
 		path = filepath.Clean(filepath.Join(base, path))
 
 		session, err := web.files.Sesssions().Get(auth.Username)

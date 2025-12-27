@@ -38,6 +38,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		if err != nil {
 			return nil, errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
 		}
+
 		path = filepath.Clean(path)
 
 		session, err := web.files.Sesssions().Get(auth.Username)
