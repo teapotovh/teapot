@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 
 	"github.com/hack-pad/hackpadfs"
@@ -19,6 +18,7 @@ import (
 	"github.com/teapotovh/teapot/lib/ui/components"
 	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
+	"github.com/teapotovh/teapot/service/files"
 )
 
 const (
@@ -81,12 +81,12 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		if err := hackpadfs.MkdirAll(session.FS(), path, os.ModeDir); err != nil {
+		if err := hackpadfs.MkdirAll(session.FS(), path, files.DirPerm); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return dialogError{err: fmt.Errorf("error while creating folder %q: %w", path, err)}, nil
 		}
 
-		return nil, webhandler.NewRedirectError(PathBrowseAt(path), http.StatusFound)
+		return nil, webhandler.NewRedirectError(PathBrowseAt(path)+sep, http.StatusFound)
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
