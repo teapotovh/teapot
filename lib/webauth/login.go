@@ -109,6 +109,10 @@ var LoginBoxStyle = ui.MustParseStyle(`
 	}
 `)
 
+var LoginInputStyle = ui.MustParseStyle(`
+  margin: var(--size-7) 0;
+`)
+
 const errorContainerID = "error-container"
 
 type login struct {
@@ -125,8 +129,8 @@ func (l login) Render(ctx ui.Context) g.Node {
 			hx.Swap("innerHTML"),
 			g.Attr("hx-target-error", "#"+errorContainerID),
 
-			components.Input(ctx, "username", "text", "Username"),
-			components.Input(ctx, "password", "password", "Password"),
+			components.Input(ctx, "username", "text", "Username", ctx.Class(LoginInputStyle)),
+			components.Input(ctx, "password", "password", "Password", ctx.Class(LoginInputStyle)),
 			h.Div(h.Class("buttons"),
 				components.Button(ctx, h.Type("submit"), g.Text("Login")),
 			),

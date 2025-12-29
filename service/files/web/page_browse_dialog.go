@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -42,6 +43,26 @@ func (web *Web) BrowseDialog(w http.ResponseWriter, r *http.Request) (ui.Compone
 	}
 }
 
+// Extracts the base path for a dialog from the HX-Current-URL header
+// and trims it down by removing the prefix
+func getDialogBasePath(r *http.Request, prefix string) (string, error) {
+	curr := hxhttp.GetCurrentURL(r.Header)
+	url, err := url.Parse(curr)
+	if err != nil {
+		return "", errors.Join(
+			fmt.Errorf("could not parse current URL %q : %w", curr, err),
+			webhandler.ErrBadRequest,
+		)
+	}
+
+	path, err := filepath.Rel(prefix, url.Path)
+	if err != nil {
+		return "", errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
+	}
+
+	return filepath.Clean(path), nil
+}
+
 func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
@@ -50,22 +71,10 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 
 	switch r.Method {
 	case http.MethodGet:
-		curr := hxhttp.GetCurrentURL(r.Header)
-
-		url, err := url.Parse(curr)
+		path, err := getDialogBasePath(r, PathBrowse)
 		if err != nil {
-			return nil, errors.Join(
-				fmt.Errorf("could not parse current URL %q : %w", curr, err),
-				webhandler.ErrBadRequest,
-			)
+			return nil, err
 		}
-
-		path, err := filepath.Rel(PathBrowse, url.Path)
-		if err != nil {
-			return nil, errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
-		}
-
-		path = filepath.Clean(path)
 
 		return newFolderDialog{
 			url:  r.URL.Path,
@@ -73,8 +82,7 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 		}, nil
 
 	case http.MethodPost:
-		base := r.FormValue(newFolderDialogBaseID)
-
+		base := r.FormValue(dialogBaseID)
 		path := r.FormValue(newFolderDialogPathID)
 		if base == "" || path == "" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -100,9 +108,55 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 }
 
 func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	auth := webauth.GetAuth(r)
+	if auth == nil {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		return uploadDialog{}, nil
+		path, err := getDialogBasePath(r, PathBrowse)
+		if err != nil {
+			return nil, err
+		}
+
+		return uploadDialog{
+			url:  r.URL.Path,
+			path: path,
+		}, nil
+
+	case http.MethodPost:
+		if err := r.ParseMultipartForm(files.MaxSize); err != nil {
+			return nil, webhandler.NewInternalError(err, nil)
+		}
+
+		base := r.FormValue(dialogBaseID)
+		file, header, _ := r.FormFile(uploadDialogFileID)
+		if base == "" || file == nil || header == nil || header.Filename == "" || header.Size <= 0 {
+			web.logger.Info("got file", "f", file)
+			w.WriteHeader(http.StatusUnauthorized)
+			return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
+		}
+
+		path := filepath.Clean(filepath.Join(base, header.Filename))
+
+		session, err := web.files.Sesssions().Get(auth.Username)
+		if err != nil {
+			return nil, webhandler.NewInternalError(err, nil)
+		}
+
+		bytes, err := io.ReadAll(file)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return dialogError{err: fmt.Errorf("could not read file from request: %w", err)}, nil
+		}
+
+		if err := hackpadfs.WriteFullFile(session.FS(), path, bytes, files.DirPerm); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return dialogError{err: fmt.Errorf("error while writing file %q: %w", path, err)}, nil
+		}
+
+		return nil, webhandler.NewRedirectError(PathBrowseAt(base)+sep, http.StatusFound)
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
@@ -110,18 +164,20 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 
 const (
 	newFolderDialogErrorContainerID = "newfolder-error"
+	dialogBaseID                    = "base"
 	newFolderDialogPathID           = "path"
-	newFolderDialogBaseID           = "base"
+	uploadDialogFileID              = "file"
 )
+
+var dialogStyle = ui.MustParseStyle(`
+	max-width: var(--size-content-3);
+`)
 
 type newFolderDialog struct {
 	url  string
 	path string
 }
 
-var newFolderStyle = ui.MustParseStyle(`
-	max-width: var(--size-content-3);
-`)
 var newFolderFormStyle = ui.MustParseStyle(`
 	display: flex;
 	flex-direction: column;
@@ -138,13 +194,17 @@ var newFolderFormStyle = ui.MustParseStyle(`
 	  justify-content: center;
 	}
 
+	& .input {
+    margin: var(--size-6) 0;
+	}
+
 	& .error {
 		margin: var(--size-3) 0;
 	}
 `)
 
 func (nfd newFolderDialog) Render(ctx ui.Context) g.Node {
-	return h.Div(ctx.Class(newFolderStyle),
+	return h.Div(ctx.Class(dialogStyle),
 		h.H3(g.Text("New Folder")),
 		h.P(g.Text("Create a new folder in the currect directory.")),
 		h.Br(),
@@ -166,11 +226,11 @@ func (nfd newFolderDialog) Render(ctx ui.Context) g.Node {
 
 			h.Input(h.Class("hidden"),
 				h.Type("text"),
-				h.Name(newFolderDialogBaseID),
-				h.ID(newFolderDialogBaseID),
+				h.Name(dialogBaseID),
+				h.ID(dialogBaseID),
 				h.Value(nfd.path),
 			),
-			components.Input(ctx, newFolderDialogPathID, "text", "Path"),
+			components.Input(ctx, newFolderDialogPathID, "text", "Path", h.Class("input")),
 
 			h.Div(h.Class("buttons"),
 				components.Button(ctx, h.Type("submit"), g.Text("Create")),
@@ -182,10 +242,68 @@ func (nfd newFolderDialog) Render(ctx ui.Context) g.Node {
 }
 
 type uploadDialog struct {
+	url  string
+	path string
 }
 
+var uploadFormStyle = ui.MustParseStyle(`
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+
+	& .hidden {
+	  display: none;
+	}
+
+	& .input {
+	  width: 100%;
+		margin: var(--size-7) 0;
+
+	  display: flex;
+		flex-direction: row;
+	  justify-content: center;
+	}
+
+	& .error {
+		margin: var(--size-3) 0;
+	}
+`)
+
 func (ud uploadDialog) Render(ctx ui.Context) g.Node {
-	return nil
+	return h.Div(ctx.Class(dialogStyle),
+		h.H3(g.Text("Upload")),
+		h.P(g.Text("Upload a file in the current directory.")),
+		h.Br(),
+		h.P(
+			g.Text("TODO"),
+		),
+		h.Br(),
+		g.Text("TODO"),
+		// h.P(g.Text("Think of this as "), h.Code(g.Text("mkdir -p")), g.Text(".")),
+
+		h.Form(
+			ctx.Class(uploadFormStyle),
+			hx.Ext("response-targets"),
+			hx.Encoding("multipart/form-data"),
+			hx.Post(ud.url),
+			hx.Swap("innerHTML"),
+			g.Attr("hx-target-error", "#"+newFolderDialogErrorContainerID),
+
+			h.Input(h.Class("hidden"),
+				h.Type("text"),
+				h.Name(dialogBaseID),
+				h.ID(dialogBaseID),
+				h.Value(ud.path),
+			),
+
+			h.Div(h.Class("input"),
+				components.FileInput(ctx, uploadDialogFileID, "Select a file..."),
+				components.Button(ctx, h.Type("submit"), g.Text("Upload")),
+			),
+
+			h.Div(h.ID(newFolderDialogErrorContainerID), h.Class("error")),
+		),
+	)
 }
 
 type dialogError struct {

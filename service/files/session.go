@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	DirPerm = os.FileMode(0o0750)
+	DirPerm  = os.FileMode(0o0750)
+	FilePerm = os.FileMode(0o0640)
+	MaxSize  = 64 << 20 // 64MiB
 )
 
 type SessionsCache = *tlru.Cache[string, *Session]
