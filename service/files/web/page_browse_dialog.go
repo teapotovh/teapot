@@ -270,16 +270,21 @@ var uploadFormStyle = ui.MustParseStyle(`
 `)
 
 func (ud uploadDialog) Render(ctx ui.Context) g.Node {
+	cd := filepath.Base(ud.path)
+	exampleFile := "main.cpp"
 	return h.Div(ctx.Class(dialogStyle),
 		h.H3(g.Text("Upload")),
 		h.P(g.Text("Upload a file in the current directory.")),
 		h.Br(),
 		h.P(
-			g.Text("TODO"),
+			g.Text("The file will maintain the same name it has when you upload it."),
+			g.Text("For example, if you upload a faile called"),
+			h.Code(g.Text(exampleFile)),
+			g.Text(" it will be placed in the current folder ("), h.Code(g.Text(cd)),
+			g.Text(") as "), h.Code(g.Text(exampleFile)), g.Text("."),
 		),
 		h.Br(),
-		g.Text("TODO"),
-		// h.P(g.Text("Think of this as "), h.Code(g.Text("mkdir -p")), g.Text(".")),
+		g.Text("Placing files under subfolders is not supported, although you could get it to work with some trickery ;)."),
 
 		h.Form(
 			ctx.Class(uploadFormStyle),
@@ -297,7 +302,9 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 			),
 
 			h.Div(h.Class("input"),
-				components.FileInput(ctx, uploadDialogFileID, "Select a file..."),
+				components.FileInput(ctx, uploadDialogFileID, "Select a file",
+					g.Attr("onchange", "document.querySelector('label[for="+uploadDialogFileID+"]').textContent = this.files[0]?.name || 'Select a file'"),
+				),
 				components.Button(ctx, h.Type("submit"), g.Text("Upload")),
 			),
 
