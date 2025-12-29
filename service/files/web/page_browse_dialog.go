@@ -44,9 +44,10 @@ func (web *Web) BrowseDialog(w http.ResponseWriter, r *http.Request) (ui.Compone
 }
 
 // Extracts the base path for a dialog from the HX-Current-URL header
-// and trims it down by removing the prefix
+// and trims it down by removing the prefix.
 func getDialogBasePath(r *http.Request, prefix string) (string, error) {
 	curr := hxhttp.GetCurrentURL(r.Header)
+
 	url, err := url.Parse(curr)
 	if err != nil {
 		return "", errors.Join(
@@ -83,6 +84,7 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 
 	case http.MethodPost:
 		base := r.FormValue(dialogBaseID)
+
 		path := r.FormValue(newFolderDialogPathID)
 		if base == "" || path == "" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -131,10 +133,12 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 		}
 
 		base := r.FormValue(dialogBaseID)
+
 		file, header, _ := r.FormFile(uploadDialogFileID)
 		if base == "" || file == nil || header == nil || header.Filename == "" || header.Size <= 0 {
 			web.logger.Info("got file", "f", file)
 			w.WriteHeader(http.StatusUnauthorized)
+
 			return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
 		}
 
@@ -272,7 +276,9 @@ var uploadFormStyle = ui.MustParseStyle(`
 func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 	cd := filepath.Base(ud.path)
 	exampleFile := "main.cpp"
-	return h.Div(ctx.Class(dialogStyle),
+
+	return h.Div(
+		ctx.Class(dialogStyle),
 		h.H3(g.Text("Upload")),
 		h.P(g.Text("Upload a file in the current directory.")),
 		h.Br(),
@@ -284,7 +290,9 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 			g.Text(") as "), h.Code(g.Text(exampleFile)), g.Text("."),
 		),
 		h.Br(),
-		g.Text("Placing files under subfolders is not supported, although you could get it to work with some trickery ;)."),
+		g.Text(
+			"Placing files under subfolders is not supported, although you could get it to work with some trickery ;).",
+		),
 
 		h.Form(
 			ctx.Class(uploadFormStyle),
@@ -302,8 +310,14 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 			),
 
 			h.Div(h.Class("input"),
-				components.FileInput(ctx, uploadDialogFileID, "Select a file",
-					g.Attr("onchange", "document.querySelector('label[for="+uploadDialogFileID+"]').textContent = this.files[0]?.name || 'Select a file'"),
+				components.FileInput(
+					ctx,
+					uploadDialogFileID,
+					"Select a file",
+					g.Attr(
+						"onchange",
+						"document.querySelector('label[for="+uploadDialogFileID+"]').textContent = this.files[0]?.name || 'Select a file'",
+					),
 				),
 				components.Button(ctx, h.Type("submit"), g.Text("Upload")),
 			),
