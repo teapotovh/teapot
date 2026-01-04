@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/kataras/muxie"
@@ -22,9 +23,13 @@ type HTTPSrvConfig struct {
 }
 
 type HTTPSrv struct {
-	logger        *slog.Logger
-	inner         *http.Server
-	mux           *muxie.Mux
+	logger *slog.Logger
+
+	inner   *http.Server
+	running atomic.Bool
+	mux     *muxie.Mux
+	metrics metrics
+
 	shutdownDelay time.Duration
 }
 
@@ -38,13 +43,17 @@ func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 		Addr:              config.Address,
 	}
 
-	return &HTTPSrv{
+	srv := HTTPSrv{
 		logger: logger,
 
 		shutdownDelay: config.ShutdownDelay,
 		inner:         &inner,
 		mux:           mux,
-	}, nil
+	}
+
+	srv.initMetrics()
+
+	return &srv, nil
 }
 
 type HTTPService interface {
@@ -54,6 +63,8 @@ type HTTPService interface {
 
 func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler := service.Handler(prefix)
+	handler = h.metricsMiddleware(handler)
+
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
 	h.mux.Handle(prefix, handler)
 	h.mux.Handle(filepath.Join(prefix, "*"), handler)
@@ -68,6 +79,7 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 
 	go func() {
 		h.logger.Info("opening HTTP server", "address", h.inner.Addr)
+		h.running.Store(true)
 		notify.Notify()
 
 		if err := h.inner.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -75,6 +87,8 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 		} else {
 			ch <- nil
 		}
+
+		h.running.Store(false)
 	}()
 
 	for {
@@ -82,6 +96,8 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 		case <-ctx.Done():
 			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(h.shutdownDelay))
 			defer cancel()
+
+			h.running.Store(false)
 
 			if err := h.inner.Shutdown(ctx); err != nil {
 				return fmt.Errorf("error while shutting down the HTTP server: %w", err)

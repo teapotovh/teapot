@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-const sep = "/"
-
 type httpServiceZ struct {
 	logger *slog.Logger
 
@@ -18,31 +16,32 @@ type httpServiceZ struct {
 }
 
 // Handler implements httpsrv.Handler.
-func (r *httpServiceZ) Handler(prefix string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+func (z *httpServiceZ) Handler(prefix string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Individual check
-		if name := strings.TrimPrefix(req.URL.Path, prefix); name != "" && name != sep {
-			check, ok := r.checks[strings.TrimSuffix(name, sep)]
+		name := r.PathValue("name")
+		if name != "" {
+			check, ok := z.checks[name]
 			if !ok {
-				http.NotFound(w, req)
+				http.NotFound(w, r)
 				return
 			}
 
-			if err := check.Check(req.Context()); err != nil {
-				r.logger.Error("check failed", "name", name, "err", err)
+			if err := check.Check(r.Context()); err != nil {
+				z.logger.Error("check failed", "name", name, "err", err)
 				http.Error(w, fmt.Sprintf("[-]%s failed: %v", name, err), http.StatusInternalServerError)
 
 				return
 			} else {
-				r.fprintf(w, "[+]%s ok\n", name)
+				z.fprintf(w, "[+]%s ok\n", name)
 			}
 
 			return
 		}
 
 		// All checks
-		exclude := req.URL.Query()["exclude"]
-		verbose := req.URL.Query().Has("verbose")
+		exclude := r.URL.Query()["exclude"]
+		verbose := r.URL.Query().Has("verbose")
 
 		excludeSet := make(map[string]bool)
 		for _, e := range exclude {
@@ -54,43 +53,42 @@ func (r *httpServiceZ) Handler(prefix string) http.Handler {
 			output strings.Builder
 		)
 
-		for name, check := range r.checks {
+		for name, check := range z.checks {
 			if excludeSet[name] {
 				if verbose {
-					r.fprintf(&output, "[excluded] %s\n", name)
+					z.fprintf(&output, "[excluded] %s\n", name)
 				}
 
 				continue
 			}
 
-			if err := check.Check(req.Context()); err != nil {
-				r.logger.Error("check failed", "name", name, "err", err)
+			if err := check.Check(r.Context()); err != nil {
+				z.logger.Error("check failed", "name", name, "err", err)
 
 				failed = append(failed, name)
 				if verbose {
-					r.fprintf(&output, "[-]%s failed: %v\n", name, err)
+					z.fprintf(&output, "[-]%s failed: %v\n", name, err)
 				}
 			} else if verbose {
-				r.fprintf(&output, "[+]%s ok\n", name)
+				z.fprintf(&output, "[+]%s ok\n", name)
 			}
 		}
 
 		if len(failed) > 0 {
 			w.WriteHeader(http.StatusInternalServerError)
-			r.fprintf(w, "[-]%s failed\n", strings.Join(failed, ","))
 		} else if verbose {
-			r.fprintf(w, "%s checks passed\n", r.name)
+			z.fprintf(w, "%s checks passed\n", z.name)
 		}
 
 		if verbose {
-			r.fprintf(w, "%s", output.String())
+			z.fprintf(w, "%s", output.String())
 		}
 	})
 }
 
-func (r *httpServiceZ) fprintf(w io.Writer, format string, a ...any) {
+func (z *httpServiceZ) fprintf(w io.Writer, format string, a ...any) {
 	_, err := fmt.Fprintf(w, format, a...)
 	if err != nil {
-		r.logger.Error("error while writing output for check", "name", r.name, "err", err)
+		z.logger.Error("error while writing output for check", "name", z.name, "err", err)
 	}
 }

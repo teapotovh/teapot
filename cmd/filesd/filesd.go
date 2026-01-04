@@ -22,9 +22,9 @@ import (
 
 const (
 	CodeLog           = -1
-	CodeFiles         = -2
-	CodeHTTP          = -3
-	CodeObservability = -4
+	CodeObservability = -2
+	CodeFiles         = -3
+	CodeHTTP          = -4
 	CodeWebDav        = -5
 	CodeWeb           = -6
 	CodeRun           = -7
@@ -60,6 +60,12 @@ func main() {
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
+	observability, err := observability.NewObservability(getObservabilityConfig(), logger.With("sub", "observability"))
+	if err != nil {
+		logger.Error("error while initiating the observability subsystem", "err", err)
+		os.Exit(CodeObservability)
+	}
+
 	files, err := files.NewFiles(getFilesConfig(), logger.With("sub", "files"))
 	if err != nil {
 		logger.Error("error while initiating the files subsystem", "err", err)
@@ -72,11 +78,9 @@ func main() {
 		os.Exit(CodeHTTP)
 	}
 
-	observability, err := observability.NewObservability(getObservabilityConfig(), logger.With("sub", "observability"))
-	if err != nil {
-		logger.Error("error while initiating the observability subsystem", "err", err)
-		os.Exit(CodeObservability)
-	}
+	observability.RegisterMetrics(httpsrv)
+	observability.RegisterReadyz(httpsrv)
+	observability.RegisterLivez(httpsrv)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
