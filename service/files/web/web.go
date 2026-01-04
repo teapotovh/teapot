@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/kataras/muxie"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ui"
@@ -97,13 +96,4 @@ func (web *Web) Handler(prefix string) http.Handler {
 
 func (web *Web) NotFound(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	return nil, webhandler.ErrNotFound
-}
-
-// Metrics implements observability.Metrics.
-func (web *Web) Metrics() []prometheus.Collector {
-	// TODO: define/re-export metrics for this module
-	collectors := []prometheus.Collector{}
-
-	collectors = append(collectors, web.webAuth.Metrics()...)
-	return collectors
 }

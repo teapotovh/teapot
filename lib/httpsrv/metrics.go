@@ -99,7 +99,9 @@ type responseWriter struct {
 
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
+	if rw.bytesWritten <= 0 {
+		rw.ResponseWriter.WriteHeader(code)
+	}
 }
 
 func (rw *responseWriter) Write(b []byte) (int, error) {

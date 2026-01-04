@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 // Files is the service instance for teapot's file storage service.
@@ -62,4 +64,25 @@ func (f *Files) Sesssions() *Sessions {
 
 func (f *Files) LDAPFactory() *ldap.Factory {
 	return f.ldapFactory
+}
+
+// Metrics implements observability.Metrics.
+func (f *Files) Metrics() []prometheus.Collector {
+	// TODO: define metrics for this module
+	collectors := []prometheus.Collector{}
+
+	collectors = append(collectors, f.ldapFactory.Metrics()...)
+	return collectors
+}
+
+// ReadinessChecks implements observability.ReadinessChecks.
+func (f *Files) ReadinessChecks() map[string]observability.Check {
+	// TODO: define metrics for this module
+	return f.ldapFactory.ReadinessChecks()
+}
+
+// LivenessChecks implements observability.LivenessChecks.
+func (f *Files) LivenessChecks() map[string]observability.Check {
+	// TODO: define metrics for this module
+	return f.ldapFactory.LivenessChecks()
 }

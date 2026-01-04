@@ -72,6 +72,10 @@ func main() {
 		os.Exit(CodeFiles)
 	}
 
+	observability.RegisterMetrics(files)
+	observability.RegisterReadyz(files)
+	observability.RegisterLivez(files)
+
 	httpsrv, err := httpsrv.NewHTTPSrv(getHTTPSrvConfig(), logger.With("sub", "httpsrv"))
 	if err != nil {
 		logger.Error("error while initiating the httpsrv subsystem", "err", err)
@@ -104,7 +108,6 @@ func main() {
 		}
 
 		httpsrv.Register("web", web, HTTPWebPrefix)
-		observability.RegisterMetrics(web)
 	}
 
 	run.Add("httpsrv", httpsrv, nil)
