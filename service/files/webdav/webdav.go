@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
 	"golang.org/x/net/webdav"
 
@@ -93,4 +94,11 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 	handler = wd.cors.Handler(handler)
 
 	return handler
+}
+
+// Metrics implements observability.Metrics.
+func (wd *WebDav) Metrics() []prometheus.Collector {
+	return []prometheus.Collector{
+		// TODO: define/re-export metrics for this module
+	}
 }
