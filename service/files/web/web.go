@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/kataras/muxie"
-
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/webauth"
@@ -74,26 +72,32 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 
 // Handler implements httpsrv.HTTPService.
 func (web *Web) Handler(prefix string) http.Handler {
-	mux := muxie.NewMux()
-	mux.Use(web.httpLog.ExtractMiddleware)
-	mux.Use(web.httpLog.LogMiddleware)
-	mux.Use(web.webAuth.Middleware)
+	mux := http.NewServeMux()
 
 	mux.Handle(web.webHandler.AssetPath, web.webHandler.AssetHandler)
 
 	mux.Handle(PathLogin, web.webHandler.Adapt(web.webAuth.Login))
 	mux.Handle(PathLogout, web.webHandler.Adapt(web.webAuth.Logout))
 
-	mux.Handle(PathIndex, web.webHandler.Adapt(web.Index))
-	mux.Handle(PathBrowseAt("*"), web.webHandler.Adapt(web.Browse))
-	mux.Handle(PathBrowseDialogOf(":dialog"), web.webHandler.Adapt(web.BrowseDialog))
-	mux.Handle(PathFileAt("*"), web.webHandler.AdaptHTTP(web.File))
+	mux.Handle(PathBrowseAt("{path...}"), web.webHandler.Adapt(web.Browse))
+	mux.Handle(PathBrowseDialogOf("{dialog}"), web.webHandler.Adapt(web.BrowseDialog))
+	mux.Handle(PathFileAt("{path...}"), web.webHandler.AdaptHTTP(web.File))
 
-	mux.Handle("/*", web.webHandler.Adapt(web.NotFound))
+	mux.Handle("/{path...}", web.webHandler.Adapt(web.NotFound))
 
-	return mux
+	var handler http.Handler = mux
+
+	handler = web.webAuth.Middleware(handler)
+	handler = web.httpLog.LogMiddleware(handler)
+	handler = web.httpLog.ExtractMiddleware(handler)
+
+	return handler
 }
 
 func (web *Web) NotFound(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	if r.URL.Path == PathIndex {
+		return web.Index(w, r)
+	}
+
 	return nil, webhandler.ErrNotFound
 }

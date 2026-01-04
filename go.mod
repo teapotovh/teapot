@@ -14,7 +14,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150
-	github.com/kataras/muxie v1.1.2
 	github.com/kataras/requestid v0.0.2
 	github.com/lib/pq v1.10.9
 	github.com/lmittmann/tint v1.1.2

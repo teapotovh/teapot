@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	gcohttp "maragu.dev/gomponents/http"
 
@@ -42,7 +41,7 @@ var ErrLDAP = errors.New("error while performing LDAP operation")
 type Server struct {
 	logger  *slog.Logger
 	factory *ldap.Factory
-	mux     *muxie.Mux
+	mux     *http.ServeMux
 	http    *http.Server
 	// groupsDN     string
 	// adminGroup   string
@@ -86,11 +85,10 @@ func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 		return nil, fmt.Errorf("error while building LDAP factory: %w", err)
 	}
 
-	mux := muxie.NewMux()
-	httpsrv := http.Server{
+	mux := http.NewServeMux()
+	httpsrv := &http.Server{
 		Addr:              options.Addr,
 		ReadHeaderTimeout: time.Minute,
-		Handler:           mux,
 	}
 
 	srv := &Server{
@@ -100,32 +98,32 @@ func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 		jwtSecret: []byte(options.JWTSecret),
 
 		mux:  mux,
-		http: &httpsrv,
+		http: httpsrv,
 	}
 
-	mux.PathCorrection = true
-	mux.Use(
-		srv.AuthMiddleware,
-		LogMiddleware,
-	)
 	mux.HandleFunc(PathIndex, srv.HandleIndex)
 	mux.HandleFunc(PathStyle, srv.HandleStyle)
 	mux.Handle("/*path", Adapt(srv.HandleNotFound))
 
-	mux.Handle(PathLogin, muxie.Methods().
-		Handle(http.MethodGet, Adapt(srv.HandleLoginGet)).
-		Handle(http.MethodPost, Adapt(srv.HandleLoginPost)),
-	)
-	mux.HandleFunc(PathLogout, srv.HandleLogout)
+	// TODO: redo
+	// mux.Handle(PathLogin, muxie.Methods().
+	// 	Handle(http.MethodGet, Adapt(srv.HandleLoginGet)).
+	// 	Handle(http.MethodPost, Adapt(srv.HandleLoginPost)),
+	// )
+	// mux.HandleFunc(PathLogout, srv.HandleLogout)
+	//
+	// mux.Handle(PathUsers, Adapt(srv.HandleUsersGet))
+	// mux.Handle(PathUserTemplate, muxie.Methods().
+	// 	Handle(http.MethodGet, Adapt(srv.HandleUserGet)),
+	// )
+	// mux.Handle(PathPasswdTemplate, muxie.Methods().
+	// 	Handle(http.MethodGet, Adapt(srv.HandlePasswdGet)).
+	// 	Handle(http.MethodPost, Adapt(srv.HandlePasswdPost)),
+	// )
 
-	mux.Handle(PathUsers, Adapt(srv.HandleUsersGet))
-	mux.Handle(PathUserTemplate, muxie.Methods().
-		Handle(http.MethodGet, Adapt(srv.HandleUserGet)),
-	)
-	mux.Handle(PathPasswdTemplate, muxie.Methods().
-		Handle(http.MethodGet, Adapt(srv.HandlePasswdGet)).
-		Handle(http.MethodPost, Adapt(srv.HandlePasswdPost)),
-	)
+	httpsrv.Handler = mux
+	httpsrv.Handler = srv.AuthMiddleware(httpsrv.Handler)
+	httpsrv.Handler = LogMiddleware(httpsrv.Handler)
 
 	return srv, nil
 }

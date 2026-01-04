@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 )
 
@@ -101,7 +100,7 @@ func AdminOrSelfMiddleware(next http.Handler) http.Handler {
 		}
 
 		// get username, check with Subject or admin
-		username := muxie.GetParam(w, "username")
+		username := r.PathValue("username")
 		if auth.Admin || auth.Subject == username {
 			next.ServeHTTP(w, r)
 		} else {

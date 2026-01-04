@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kataras/muxie"
 	"github.com/kataras/requestid"
 
 	"github.com/teapotovh/teapot/lib/run"
@@ -27,18 +26,18 @@ type HTTPSrv struct {
 
 	inner   *http.Server
 	running atomic.Bool
-	mux     *muxie.Mux
+	mux     *http.ServeMux
 	metrics metrics
 
 	shutdownDelay time.Duration
 }
 
 func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
-	mux := muxie.NewMux()
-	mux.Use(func(h http.Handler) http.Handler { return requestid.Handler(h) })
+	mux := http.NewServeMux()
+	handler := requestid.Handler(mux)
 
 	inner := http.Server{
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: time.Minute,
 		Addr:              config.Address,
 	}
@@ -66,8 +65,7 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler = h.metricsMiddleware(handler)
 
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
-	h.mux.Handle(prefix, handler)
-	h.mux.Handle(filepath.Join(prefix, "*"), handler)
+	h.mux.Handle(filepath.Join(prefix, "{path...}"), handler)
 }
 
 // Run implements run.Runnable.
