@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/teapotovh/teapot/lib/ldap"
 	"github.com/teapotovh/teapot/lib/observability"
 )
@@ -72,6 +73,7 @@ func (f *Files) Metrics() []prometheus.Collector {
 	collectors := []prometheus.Collector{}
 
 	collectors = append(collectors, f.ldapFactory.Metrics()...)
+
 	return collectors
 }
 

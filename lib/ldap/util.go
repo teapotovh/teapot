@@ -10,6 +10,7 @@ func bind(metrics *metrics, conn *ldap.Conn, username, password string) error {
 	start := time.Now()
 
 	err := conn.Bind(username, password)
+
 	status := metricsStatusSuccess
 	if err != nil {
 		status = metricsStatusError
@@ -25,6 +26,7 @@ func search(metrics *metrics, conn *ldap.Conn, searchRequest *ldap.SearchRequest
 	start := time.Now()
 
 	res, err := conn.Search(searchRequest)
+
 	status := metricsStatusSuccess
 	if err != nil {
 		status = metricsStatusError
@@ -36,10 +38,15 @@ func search(metrics *metrics, conn *ldap.Conn, searchRequest *ldap.SearchRequest
 	return res, err
 }
 
-func passwd(metrics *metrics, conn *ldap.Conn, passwordModifyRequest *ldap.PasswordModifyRequest) (*ldap.PasswordModifyResult, error) {
+func passwd(
+	metrics *metrics,
+	conn *ldap.Conn,
+	passwordModifyRequest *ldap.PasswordModifyRequest,
+) (*ldap.PasswordModifyResult, error) {
 	start := time.Now()
 
 	res, err := conn.PasswordModify(passwordModifyRequest)
+
 	status := metricsStatusSuccess
 	if err != nil {
 		status = metricsStatusError

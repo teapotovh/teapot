@@ -55,10 +55,12 @@ func (c *Client) Authenticate(username string, password string) (user *User, err
 
 func (c *Client) Close() {
 	c.metrics.active.Dec()
+
 	status := metricsStatusSuccess
 	if c.errored {
 		status = metricsStatusError
 	}
+
 	c.metrics.total.WithLabelValues(status).Add(1)
 
 	if err := c.conn.Close(); err != nil {

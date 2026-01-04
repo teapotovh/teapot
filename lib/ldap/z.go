@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-ldap/ldap/v3"
+
 	"github.com/teapotovh/teapot/lib/observability"
 )
 
@@ -13,6 +14,7 @@ func (f *Factory) canDialServer(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
 	}
+
 	defer func() {
 		if e := conn.Close(); e != nil {
 			err = fmt.Errorf("error while closing the ping LDAP connection: %w", err)
@@ -34,6 +36,7 @@ func (f *Factory) canBindAsRoot(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
 	}
+
 	defer func() {
 		if e := conn.Close(); e != nil {
 			err = fmt.Errorf("error while closing the ping LDAP connection: %w", err)
