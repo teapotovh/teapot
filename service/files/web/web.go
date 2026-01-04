@@ -86,9 +86,11 @@ func (web *Web) Handler(prefix string) http.Handler {
 	mux.Handle("/{path...}", web.webHandler.Adapt(web.NotFound))
 
 	var handler http.Handler = mux
+
 	handler = web.webAuth.Middleware(handler)
 	handler = web.httpLog.LogMiddleware(handler)
 	handler = web.httpLog.ExtractMiddleware(handler)
+
 	return handler
 }
 

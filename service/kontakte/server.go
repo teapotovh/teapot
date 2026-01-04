@@ -124,6 +124,7 @@ func NewServer(options ServerConfig, logger *slog.Logger) (*Server, error) {
 	httpsrv.Handler = mux
 	httpsrv.Handler = srv.AuthMiddleware(httpsrv.Handler)
 	httpsrv.Handler = LogMiddleware(httpsrv.Handler)
+
 	return srv, nil
 }
 
