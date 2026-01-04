@@ -13,6 +13,7 @@ import (
 
 	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/log"
+	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/files"
 	"github.com/teapotovh/teapot/service/files/web"
@@ -20,12 +21,13 @@ import (
 )
 
 const (
-	CodeLog    = -1
-	CodeFiles  = -1
-	CodeWebDav = -2
-	CodeWeb    = -3
-	CodeHTTP   = -4
-	CodeRun    = -5
+	CodeLog           = -1
+	CodeFiles         = -2
+	CodeHTTP          = -3
+	CodeObservability = -4
+	CodeWebDav        = -5
+	CodeWeb           = -6
+	CodeRun           = -7
 )
 
 const (
@@ -39,6 +41,8 @@ func main() {
 	fs, getFilesConfig := files.FilesFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getObservabilityConfig := observability.ObservabilityFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getWebConfig := web.WebFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -65,7 +69,13 @@ func main() {
 	httpsrv, err := httpsrv.NewHTTPSrv(getHTTPSrvConfig(), logger.With("sub", "httpsrv"))
 	if err != nil {
 		logger.Error("error while initiating the httpsrv subsystem", "err", err)
-		os.Exit(CodeWeb)
+		os.Exit(CodeHTTP)
+	}
+
+	observability, err := observability.NewObservability(getObservabilityConfig(), logger.With("sub", "observability"))
+	if err != nil {
+		logger.Error("error while initiating the observability subsystem", "err", err)
+		os.Exit(CodeObservability)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -79,6 +89,7 @@ func main() {
 		}
 
 		httpsrv.Register("webdav", webdav, HTTPWebDavPrefix)
+		observability.RegisterMetrics(webdav)
 	}
 
 	if slices.Contains(*components, "web") {
@@ -89,9 +100,11 @@ func main() {
 		}
 
 		httpsrv.Register("web", web, HTTPWebPrefix)
+		observability.RegisterMetrics(web)
 	}
 
 	run.Add("httpsrv", httpsrv, nil)
+	run.Add("observability", observability, nil)
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running net components", "err", err)
