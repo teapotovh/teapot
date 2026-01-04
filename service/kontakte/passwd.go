@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
@@ -54,7 +53,7 @@ func passwd(r *http.Request, username string) g.Node {
 
 func (srv *Server) HandlePasswdGet(w http.ResponseWriter, r *http.Request) (g.Node, error) {
 	auth := getAuth(r.Context())
-	username := muxie.GetParam(w, "username")
+	username := r.PathValue("username")
 
 	if auth.Subject != username && !auth.Admin {
 		err := ErrorWithStatus(fmt.Errorf("invalid passwd request: %w", ErrNoPasswdPermission), http.StatusUnauthorized)
@@ -82,7 +81,7 @@ func (srv *Server) HandlePasswdPost(w http.ResponseWriter, r *http.Request) (g.N
 
 	// NOTE: this code could be de-duplicated from above with a middleware
 	auth := getAuth(r.Context())
-	username := muxie.GetParam(w, "username")
+	username := r.PathValue("username")
 
 	if auth.Subject != username && !auth.Admin {
 		err := ErrorWithStatus(fmt.Errorf("invalid passwd request: %w", ErrNoPasswdPermission), http.StatusUnauthorized)

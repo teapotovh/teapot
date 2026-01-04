@@ -87,8 +87,6 @@ github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150 h1:ta6N7DaOQEA
 github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150/go.mod h1:SiNTKDgjKQORnazFVHXhpny7UtU0iJOqtxd7R7sCfDI=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
-github.com/kataras/muxie v1.1.2 h1:adKtuNVFwT7TlGG2eIfhNYyRMK5CyjXw0F31HAv6POE=
-github.com/kataras/muxie v1.1.2/go.mod h1:xvAGGV93oksm/i9OBHyHqbiwUk1OenPd5CllnuO5lNU=
 github.com/kataras/requestid v0.0.2 h1:gyvTqg0oNM5+r4za//JKGb/QlxkYUWqSXM3mj3Kks1w=
 github.com/kataras/requestid v0.0.2/go.mod h1:bKcsHCh6ePjRuIkaFMpaIlMvKCUs+h9ltAFkQWajSXg=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=

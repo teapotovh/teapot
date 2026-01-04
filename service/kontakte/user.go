@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
@@ -87,7 +86,7 @@ func (srv *Server) user(user *ldap.User) g.Node {
 }
 
 func (srv *Server) HandleUserGet(w http.ResponseWriter, r *http.Request) (g.Node, error) {
-	username := muxie.GetParam(w, "username")
+	username := r.PathValue("username")
 
 	client, err := srv.factory.NewClient(r.Context())
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/hack-pad/hackpadfs"
-	"github.com/kataras/muxie"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	hxhttp "maragu.dev/gomponents-htmx/http"
@@ -30,7 +29,7 @@ const (
 var ErrInvalidBrowseDialog = errors.New("invalid browse dialog")
 
 func (web *Web) BrowseDialog(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
-	dialog := muxie.GetParam(w, "dialog")
+	dialog := r.PathValue("dialog")
 	switch dialog {
 	case BrowseDialogNewFolder:
 		return web.BrowseDialogNewFolder(w, r)
@@ -136,8 +135,7 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 
 		file, header, _ := r.FormFile(uploadDialogFileID)
 		if base == "" || file == nil || header == nil || header.Filename == "" || header.Size <= 0 {
-			web.logger.Info("got file", "f", file)
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusBadRequest)
 
 			return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
 		}
