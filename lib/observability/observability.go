@@ -63,10 +63,12 @@ func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observa
 	}
 	obs.readyz = &httpServiceZ{
 		logger: logger.With("component", nameReadyz),
+		name:   nameReadyz,
 		checks: map[string]Check{},
 	}
 	obs.livez = &httpServiceZ{
 		logger: logger.With("component", nameLivez),
+		name:   nameLivez,
 		checks: map[string]Check{},
 	}
 
@@ -92,6 +94,9 @@ func (obs *Observability) RegisterMetrics(metrics Metrics) {
 }
 
 type Check interface {
+	// Runs a check within the given timeframe provided by the context.
+	// If the check is successful, return nil, otherwise return an error
+	// describing what failed.
 	Check(ctx context.Context) error
 }
 
