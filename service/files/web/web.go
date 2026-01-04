@@ -99,7 +99,7 @@ func (web *Web) NotFound(w http.ResponseWriter, r *http.Request) (ui.Component, 
 	return nil, webhandler.ErrNotFound
 }
 
-// Metrics implements observability.Metrics
+// Metrics implements observability.Metrics.
 func (web *Web) Metrics() []prometheus.Collector {
 	return []prometheus.Collector{
 		// TODO: define/re-export metrics for this module

@@ -96,7 +96,7 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 	return handler
 }
 
-// Metrics implements observability.Metrics
+// Metrics implements observability.Metrics.
 func (wd *WebDav) Metrics() []prometheus.Collector {
 	return []prometheus.Collector{
 		// TODO: define/re-export metrics for this module

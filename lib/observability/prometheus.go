@@ -14,7 +14,7 @@ type httpServicePrometheus struct {
 	registry *prometheus.Registry
 }
 
-// promLogger is an adapter for the error handling logger in promhttp
+// promLogger is an adapter for the error handling logger in promhttp.
 type promLogger struct {
 	logger *slog.Logger
 }
@@ -23,7 +23,7 @@ func (l promLogger) Println(v ...any) {
 	l.logger.Error("error while performing a metrics export", "args", v)
 }
 
-// Handler implements httpsrv.Handler
+// Handler implements httpsrv.Handler.
 func (p *httpServicePrometheus) Handler(prefix string) http.Handler {
 	pl := promLogger{
 		logger: p.logger.With("component", "prometheus"),

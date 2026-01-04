@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/run"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -87,8 +87,9 @@ type Metrics interface {
 	Metrics() []prometheus.Collector
 }
 
-// Registers a metrics exporter for a subsystem that will generate metrics to be
-// registered when the observability layer is started.
+// RegisterMetrics gets all the collectors from the Metrics method on the
+// provided subsystem. These collectors will then be registered to be exported
+// via the metrics endpoint.
 func (obs *Observability) RegisterMetrics(metrics Metrics) {
 	obs.collectors = append(obs.collectors, metrics.Metrics()...)
 }
@@ -105,12 +106,13 @@ type ReadinessChecks interface {
 	ReadinessChecks() map[string]Check
 }
 
-// Registers a named check for readiness
+// RegisterReadyz registers a named check for readiness.
 func (obs *Observability) RegisterReadyz(readiness ReadinessChecks) {
 	for name, check := range readiness.ReadinessChecks() {
 		if old, ok := obs.readyz.checks[name]; ok {
 			obs.logger.Warn("redefined readiness check", "name", name, "old", old, "new", check)
 		}
+
 		obs.readyz.checks[name] = check
 	}
 }
@@ -120,23 +122,24 @@ type LivelinessChecks interface {
 	LivelinessChecks() map[string]Check
 }
 
-// Registers a named check for liveliness
+// RegisterLivez registers a named check for liveliness.
 func (obs *Observability) RegisterLivez(liveliness LivelinessChecks) {
 	for name, check := range liveliness.LivelinessChecks() {
 		if old, ok := obs.livez.checks[name]; ok {
 			obs.logger.Warn("redefined liveliness check", "name", name, "old", old, "new", check)
 		}
+
 		obs.livez.checks[name] = check
 	}
 }
 
 // Run implements run.Runnable.
-func (h *Observability) Run(ctx context.Context, notify run.Notify) error {
-	if err := h.registerMetrics(); err != nil {
+func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
+	if err := obs.registerMetrics(); err != nil {
 		return fmt.Errorf("error while registering all metrics: %w", err)
 	}
 
-	return h.inner.Run(ctx, notify)
+	return obs.inner.Run(ctx, notify)
 }
 
 func (obs *Observability) registerMetrics() error {
