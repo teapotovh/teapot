@@ -21,7 +21,7 @@ func (c *Client) Passwd(username, password string) error {
 		password,
 	)
 
-	res, err := c.conn.PasswordModify(passwordModifyRequest)
+	res, err := passwd(c.metrics, c.conn, passwordModifyRequest)
 	if err != nil {
 		return fmt.Errorf("error while modifying user password: %w", err)
 	}

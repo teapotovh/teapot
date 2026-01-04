@@ -26,8 +26,10 @@ type filterTemplateValues struct {
 type Client struct {
 	logger *slog.Logger
 
-	ctx  context.Context
-	conn *ldap.Conn
+	ctx     context.Context
+	conn    *ldap.Conn
+	errored bool
+	metrics *metrics
 
 	usersDN      string
 	usersFilter  *tmplstring.TMPL[filterTemplateValues]
@@ -36,13 +38,15 @@ type Client struct {
 	accessesDN   string
 }
 
-func (c *Client) Authenticate(username string, password string) (*User, error) {
+func (c *Client) Authenticate(username string, password string) (user *User, err error) {
 	entry, err := c.find(username)
 	if err != nil {
+		c.errored = true
 		return nil, fmt.Errorf("error while looking up user for bind: %w", err)
 	}
 
-	if err := c.conn.Bind(entry.DN, password); err != nil {
+	if err := bind(c.metrics, c.conn, entry.DN, password); err != nil {
+		// NOTE: we don't consider a bind error an error on the connection, so we don't set errored here.
 		return nil, fmt.Errorf("error while binding as %q: %w, likely %w", entry.DN, err, ErrInvalidCredentials)
 	}
 
@@ -50,6 +54,13 @@ func (c *Client) Authenticate(username string, password string) (*User, error) {
 }
 
 func (c *Client) Close() {
+	c.metrics.active.Dec()
+	status := metricsStatusSuccess
+	if c.errored {
+		status = metricsStatusError
+	}
+	c.metrics.total.WithLabelValues(status).Add(1)
+
 	if err := c.conn.Close(); err != nil {
 		c.logger.ErrorContext(c.ctx, "error while closing LDAP client", "err", err)
 	}

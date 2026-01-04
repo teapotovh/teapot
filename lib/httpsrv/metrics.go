@@ -17,7 +17,7 @@ type metrics struct {
 	duration     *prometheus.HistogramVec
 	requestSize  *prometheus.HistogramVec
 	responseSize *prometheus.HistogramVec
-	inFlight     prometheus.Gauge
+	active       prometheus.Gauge
 }
 
 var httpSizeBucket = prometheus.ExponentialBuckets(100, 10, 5)
@@ -59,9 +59,9 @@ func (h *HTTPSrv) initMetrics() {
 		[]string{"method"},
 	)
 
-	h.metrics.inFlight = prometheus.NewGauge(
+	h.metrics.active = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "httpsrv_requests_in_flight",
+			Name: "httpsrv_requests_active",
 			Help: "Current number of HTTP requests being served",
 		},
 	)
@@ -71,8 +71,8 @@ func (h *HTTPSrv) metricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		h.metrics.inFlight.Inc()
-		defer h.metrics.inFlight.Dec()
+		h.metrics.active.Inc()
+		defer h.metrics.active.Dec()
 
 		// Capture response status
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
@@ -116,6 +116,6 @@ func (h *HTTPSrv) Metrics() []prometheus.Collector {
 		h.metrics.duration,
 		h.metrics.requestSize,
 		h.metrics.responseSize,
-		h.metrics.inFlight,
+		h.metrics.active,
 	}
 }

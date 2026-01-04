@@ -101,7 +101,9 @@ func (web *Web) NotFound(w http.ResponseWriter, r *http.Request) (ui.Component, 
 
 // Metrics implements observability.Metrics.
 func (web *Web) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{
-		// TODO: define/re-export metrics for this module
-	}
+	// TODO: define/re-export metrics for this module
+	collectors := []prometheus.Collector{}
+
+	collectors = append(collectors, web.webAuth.Metrics()...)
+	return collectors
 }

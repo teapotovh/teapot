@@ -29,7 +29,7 @@ func (c *Client) list() ([]*ldap.Entry, error) {
 		nil,
 	)
 
-	search, err := c.conn.Search(searchRequest)
+	search, err := search(c.metrics, c.conn, searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error while performing search for user: %w", err)
 	}
@@ -44,7 +44,7 @@ func (c *Client) list() ([]*ldap.Entry, error) {
 	return search.Entries, nil
 }
 
-func (c *Client) find(username string) (*ldap.Entry, error) {
+func (c *Client) find(username string) (entry *ldap.Entry, err error) {
 	filter, err := c.usersFilter.Render(filterTemplateValues{
 		Username: username,
 	})
@@ -64,7 +64,7 @@ func (c *Client) find(username string) (*ldap.Entry, error) {
 		nil,
 	)
 
-	search, err := c.conn.Search(searchRequest)
+	search, err := search(c.metrics, c.conn, searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error while performing search for user: %w", err)
 	}
@@ -77,7 +77,7 @@ func (c *Client) find(username string) (*ldap.Entry, error) {
 		return nil, ErrTooManyMatches
 	}
 
-	entry := search.Entries[0]
+	entry = search.Entries[0]
 
 	cn := entry.GetAttributeValue("cn")
 	if username != cn {

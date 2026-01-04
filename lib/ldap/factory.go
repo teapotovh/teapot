@@ -27,16 +27,20 @@ type LDAPConfig struct {
 // operations to manage users, as needed by kontakte.
 // One client should be constructed per request.
 type Factory struct {
-	logger       *slog.Logger
+	logger *slog.Logger
+
+	url        string
+	rootDN     string
+	rootPasswd string
+
 	usersFilter  *tmplstring.TMPL[filterTemplateValues]
-	url          string
-	rootDN       string
-	rootPasswd   string
 	usersDN      string
 	groupsDN     string
 	adminGroupDN string
 	accessesDN   string
-	clients      atomic.Int32
+
+	clients atomic.Int32
+	metrics metrics
 }
 
 func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
@@ -45,7 +49,7 @@ func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
 		return nil, fmt.Errorf("error while parsing user filter template: %w", err)
 	}
 
-	return &Factory{
+	fact := Factory{
 		logger: logger,
 
 		url:        config.URL,
@@ -57,10 +61,24 @@ func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
 		groupsDN:     config.GroupsDN,
 		adminGroupDN: config.AdminGroupDN,
 		accessesDN:   config.AccessesDN,
-	}, nil
+	}
+
+	fact.initMetrics()
+
+	return &fact, nil
 }
 
-func (f *Factory) NewClient(ctx context.Context) (*Client, error) {
+func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
+	defer func() {
+		f.clients.Add(1)
+
+		if err != nil {
+			f.metrics.total.WithLabelValues(metricsStatusError).Add(1)
+		} else {
+			f.metrics.active.Inc()
+		}
+	}()
+
 	conn, err := ldap.DialURL(f.url)
 	if err != nil {
 		return nil, fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
@@ -68,17 +86,16 @@ func (f *Factory) NewClient(ctx context.Context) (*Client, error) {
 
 	// We always bind as root user, so we can perofrm all operations,
 	// including, possibly, a second bind as a lower-privilege user to test auth.
-	if err := conn.Bind(f.rootDN, f.rootPasswd); err != nil {
+	if err := bind(&f.metrics, conn, f.rootDN, f.rootPasswd); err != nil {
 		return nil, fmt.Errorf("error while binding as root: %w", err)
 	}
-
-	defer func() { f.clients.Add(1) }()
 
 	return &Client{
 		logger: f.logger.With("client", f.clients.Load()),
 
-		ctx:  ctx,
-		conn: conn,
+		ctx:     ctx,
+		conn:    conn,
+		metrics: &f.metrics,
 
 		usersDN:      f.usersDN,
 		usersFilter:  f.usersFilter,

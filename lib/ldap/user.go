@@ -77,13 +77,17 @@ func (c *Client) mapUser(entry *ldap.Entry) (*User, error) {
 	}, nil
 }
 
-func (c *Client) Users() ([]*User, error) {
+func (c *Client) Users() (users []*User, err error) {
+	defer func() {
+		if err != nil {
+			c.errored = true
+		}
+	}()
+
 	entries, err := c.list()
 	if err != nil {
 		return nil, fmt.Errorf("error while listing all users: %w", err)
 	}
-
-	var users []*User
 
 	for _, entry := range entries {
 		user, err := c.mapUser(entry)
@@ -98,7 +102,13 @@ func (c *Client) Users() ([]*User, error) {
 	return users, nil
 }
 
-func (c *Client) User(username string) (*User, error) {
+func (c *Client) User(username string) (user *User, err error) {
+	defer func() {
+		if err != nil {
+			c.errored = true
+		}
+	}()
+
 	entry, err := c.find(username)
 	if err != nil {
 		return nil, fmt.Errorf("error while looking up user: %w", err)
