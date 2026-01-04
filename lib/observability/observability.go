@@ -5,25 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/run"
 )
 
-const (
-	namePrometheus = "prometheus"
-	nameReadyz     = "readyz"
-	nameLivez      = "livez"
-
-	prefixPrometheus = "/metrics"
-	prefixReadyz     = "/readyz"
-	prefixLivez      = "/livez"
-
-	shutdownDelay = time.Second * 5
-)
+const shutdownDelay = time.Second * 5
 
 type ObservabilityConfig struct {
 	Address string
@@ -32,7 +23,8 @@ type ObservabilityConfig struct {
 type Observability struct {
 	logger *slog.Logger
 
-	inner    *httpsrv.HTTPSrv
+	inner    *http.Server
+	mux      *http.ServeMux
 	registry *prometheus.Registry
 
 	collectors []prometheus.Collector
@@ -43,38 +35,41 @@ type Observability struct {
 }
 
 func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observability, error) {
-	inner, err := httpsrv.NewHTTPSrv(httpsrv.HTTPSrvConfig{
-		Address:       config.Address,
-		ShutdownDelay: shutdownDelay,
-	}, logger)
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize inner httpsrv for observability: %w", err)
+	mux := http.NewServeMux()
+	inner := http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: time.Minute,
+		Addr:              config.Address,
 	}
 
 	obs := Observability{
 		logger: logger,
 
-		inner:    inner,
+		inner:    &inner,
+		mux:      mux,
 		registry: prometheus.NewRegistry(),
 	}
+
 	obs.prometheus = &httpServicePrometheus{
-		logger:   logger.With("component", namePrometheus),
+		logger:   logger.With("component", "prometheus"),
 		registry: obs.registry,
 	}
 	obs.readyz = &httpServiceZ{
-		logger: logger.With("component", nameReadyz),
-		name:   nameReadyz,
+		logger: logger.With("component", "readyz"),
+		name:   "readyz",
 		checks: map[string]Check{},
 	}
 	obs.livez = &httpServiceZ{
-		logger: logger.With("component", nameLivez),
-		name:   nameLivez,
+		logger: logger.With("component", "livez"),
+		name:   "livez",
 		checks: map[string]Check{},
 	}
 
-	inner.Register(namePrometheus, obs.prometheus, prefixPrometheus)
-	inner.Register(nameReadyz, obs.readyz, prefixReadyz)
-	inner.Register(nameLivez, obs.livez, prefixLivez)
+	mux.Handle("/metrics", obs.prometheus.Handler("/metrics"))
+	mux.Handle("/readyz", obs.readyz.Handler("/readyz"))
+	mux.Handle("/ready/{name}", obs.readyz.Handler("/readyz"))
+	mux.Handle("/livez", obs.livez.Handler("/livez"))
+	mux.Handle("/live/{name}", obs.livez.Handler("/livez"))
 
 	return &obs, nil
 }
@@ -101,6 +96,12 @@ type Check interface {
 	Check(ctx context.Context) error
 }
 
+type CheckFunc func(ctx context.Context) error
+
+func (cf CheckFunc) Check(ctx context.Context) error {
+	return cf(ctx)
+}
+
 type ReadinessChecks interface {
 	// ReadinessChecks returns all the checks for readiness supported by this object.
 	ReadinessChecks() map[string]Check
@@ -117,16 +118,16 @@ func (obs *Observability) RegisterReadyz(readiness ReadinessChecks) {
 	}
 }
 
-type LivelinessChecks interface {
-	// LivelinessChecks returns all the checks for liveliness supported by this object.
-	LivelinessChecks() map[string]Check
+type LivenessChecks interface {
+	// LivenessChecks returns all the checks for liveness supported by this object.
+	LivenessChecks() map[string]Check
 }
 
-// RegisterLivez registers a named check for liveliness.
-func (obs *Observability) RegisterLivez(liveliness LivelinessChecks) {
-	for name, check := range liveliness.LivelinessChecks() {
+// RegisterLivez registers a named check for liveness.
+func (obs *Observability) RegisterLivez(liveness LivenessChecks) {
+	for name, check := range liveness.LivenessChecks() {
 		if old, ok := obs.livez.checks[name]; ok {
-			obs.logger.Warn("redefined liveliness check", "name", name, "old", old, "new", check)
+			obs.logger.Warn("redefined liveness check", "name", name, "old", old, "new", check)
 		}
 
 		obs.livez.checks[name] = check
@@ -139,14 +140,49 @@ func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
 		return fmt.Errorf("error while registering all metrics: %w", err)
 	}
 
-	return obs.inner.Run(ctx, notify)
+	var ch chan error
+	defer close(ch)
+
+	obs.inner.BaseContext = func(l net.Listener) context.Context { return ctx }
+
+	go func() {
+		obs.logger.Info("opening observability server", "address", obs.inner.Addr)
+		notify.Notify()
+
+		if err := obs.inner.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			ch <- err
+		} else {
+			ch <- nil
+		}
+
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(shutdownDelay))
+			defer cancel()
+
+			if err := obs.inner.Shutdown(ctx); err != nil {
+				return fmt.Errorf("error while shutting down the observability server: %w", err)
+			}
+
+			return <-ch
+		case err := <-ch:
+			if err != nil {
+				return fmt.Errorf("error while running the observability server: %w", err)
+			}
+
+			return nil
+		}
+	}
 }
 
 func (obs *Observability) registerMetrics() error {
 	var errs []error
 
 	for _, collector := range obs.collectors {
-		if err := prometheus.Register(collector); err != nil {
+		if err := obs.registry.Register(collector); err != nil {
 			errs = append(errs, err)
 		}
 	}
