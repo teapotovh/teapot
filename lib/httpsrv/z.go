@@ -26,18 +26,26 @@ func (h *HTTPSrv) ReadinessChecks() map[string]observability.Check {
 	}
 }
 
-func (h *HTTPSrv) isServerAnswering(ctx context.Context) error {
+func (h *HTTPSrv) isServerAnswering(ctx context.Context) (err error) {
 	url := fmt.Sprintf("http://%s/", h.inner.Addr)
-	req, err := http.NewRequest("GET", url, nil)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("error while building liveness HTTP request: %w", err)
 	}
+
 	req = req.WithContext(ctx)
 
-	_, err = http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("error while checking liveness with a GET %s: %w", url, err)
 	}
+
+	defer func() {
+		if e := res.Body.Close(); e != nil {
+			err = fmt.Errorf("error while closing the body of the liveness check request: %w", err)
+		}
+	}()
 
 	// TODO: does it make sense to verify that the code is not 5xx?
 	return nil

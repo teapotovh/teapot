@@ -92,6 +92,7 @@ func (h *HTTPSrv) metricsMiddleware(next http.Handler) http.Handler {
 
 type responseWriter struct {
 	http.ResponseWriter
+
 	statusCode   int
 	bytesWritten int
 }
@@ -104,6 +105,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 func (rw *responseWriter) Write(b []byte) (int, error) {
 	n, err := rw.ResponseWriter.Write(b)
 	rw.bytesWritten += n
+
 	return n, err
 }
 

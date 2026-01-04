@@ -98,6 +98,7 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 			defer cancel()
 
 			h.running.Store(false)
+
 			if err := h.inner.Shutdown(ctx); err != nil {
 				return fmt.Errorf("error while shutting down the HTTP server: %w", err)
 			}

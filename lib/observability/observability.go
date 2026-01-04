@@ -154,7 +154,6 @@ func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
 		} else {
 			ch <- nil
 		}
-
 	}()
 
 	for {

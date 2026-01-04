@@ -59,6 +59,7 @@ func main() {
 	}
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
+
 	observability, err := observability.NewObservability(getObservabilityConfig(), logger.With("sub", "observability"))
 	if err != nil {
 		logger.Error("error while initiating the observability subsystem", "err", err)
@@ -76,6 +77,7 @@ func main() {
 		logger.Error("error while initiating the httpsrv subsystem", "err", err)
 		os.Exit(CodeHTTP)
 	}
+
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
 	observability.RegisterLivez(httpsrv)
