@@ -100,20 +100,34 @@ type Check interface {
 	Check(ctx context.Context) error
 }
 
-// Registers a named check for readyness
-func (obs *Observability) RegisterReadyz(name string, check Check) {
-	if old, ok := obs.readyz.checks[name]; ok {
-		obs.logger.Warn("redefined readiness check", "name", name, "old", old, "new", check)
+type ReadinessChecks interface {
+	// ReadinessChecks returns all the checks for readiness supported by this object.
+	ReadinessChecks() map[string]Check
+}
+
+// Registers a named check for readiness
+func (obs *Observability) RegisterReadyz(readiness ReadinessChecks) {
+	for name, check := range readiness.ReadinessChecks() {
+		if old, ok := obs.readyz.checks[name]; ok {
+			obs.logger.Warn("redefined readiness check", "name", name, "old", old, "new", check)
+		}
+		obs.readyz.checks[name] = check
 	}
-	obs.readyz.checks[name] = check
+}
+
+type LivelinessChecks interface {
+	// LivelinessChecks returns all the checks for liveliness supported by this object.
+	LivelinessChecks() map[string]Check
 }
 
 // Registers a named check for liveliness
-func (obs *Observability) RegisterLivez(name string, check Check) {
-	if old, ok := obs.livez.checks[name]; ok {
-		obs.logger.Warn("redefined liveliness check", "name", name, "old", old, "new", check)
+func (obs *Observability) RegisterLivez(liveliness LivelinessChecks) {
+	for name, check := range liveliness.LivelinessChecks() {
+		if old, ok := obs.livez.checks[name]; ok {
+			obs.logger.Warn("redefined liveliness check", "name", name, "old", old, "new", check)
+		}
+		obs.livez.checks[name] = check
 	}
-	obs.livez.checks[name] = check
 }
 
 // Run implements run.Runnable.
