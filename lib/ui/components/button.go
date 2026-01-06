@@ -15,7 +15,7 @@ var ButtonStyle = ui.MustParseStyle(`
 	padding: var(--size-1) var(--size-2);
 	transition: outline 0.1s var(--ease-in-out-1), background 0.1s var(--ease-in-out-1);
 	cursor: pointer;
-		transition: outline 0.1s var(--ease-in-out-1);
+	transition: outline 0.1s var(--ease-in-out-1);
 
 	&:focus {
 		outline-offset: 0;
