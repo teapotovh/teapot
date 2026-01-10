@@ -15,28 +15,25 @@ import (
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
-	"github.com/teapotovh/teapot/service/files"
-	"github.com/teapotovh/teapot/service/files/web"
-	"github.com/teapotovh/teapot/service/files/webdav"
+	"github.com/teapotovh/teapot/service/alert"
+	"github.com/teapotovh/teapot/service/alert/alertmanager"
 )
 
 const (
 	CodeLog           = -1
 	CodeObservability = -2
-	CodeFiles         = -3
+	CodeAlert         = -3
 	CodeHTTP          = -4
-	CodeWebDav        = -5
-	CodeWeb           = -6
-	CodeRun           = -7
+	CodeAlertManager  = -5
+	CodeRun           = -6
 )
 
 const (
-	HTTPWebDavPrefix = "/dav"
-	HTTPWebPrefix    = "/"
+	HTTPAlertManagerPrefix = "/alertmanager"
 )
 
 func main() {
-	components := flag.StringSliceP("components", "c", []string{"webdav", "web"}, "list of components to run")
+	components := flag.StringSliceP("components", "c", []string{"alertmanager"}, "list of components to run")
 
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -44,9 +41,9 @@ func main() {
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getFilesConfig := files.FilesFlagSet()
+	fs, getAlertConfig := alert.AlertFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getWebConfig := web.WebFlagSet()
+	fs, getAlertManagerConfig := alertmanager.AlertManagerFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -66,51 +63,42 @@ func main() {
 		os.Exit(CodeObservability)
 	}
 
+	alert, err := alert.NewAlert(getAlertConfig(), logger.With("sub", "alert"))
+	if err != nil {
+		logger.Error("error while initiating the alert subsystem", "err", err)
+		os.Exit(CodeAlert)
+	}
+
+	observability.RegisterMetrics(alert)
+	observability.RegisterReadyz(alert)
+
 	httpsrv, err := httpsrv.NewHTTPSrv(getHTTPSrvConfig(), logger.With("sub", "httpsrv"))
 	if err != nil {
 		logger.Error("error while initiating the httpsrv subsystem", "err", err)
 		os.Exit(CodeHTTP)
 	}
 
-	files, err := files.NewFiles(getFilesConfig(), logger.With("sub", "files"))
-	if err != nil {
-		logger.Error("error while initiating the files subsystem", "err", err)
-		os.Exit(CodeFiles)
-	}
-
-	observability.RegisterMetrics(files)
-	observability.RegisterReadyz(files)
-
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
 	observability.RegisterLivez(httpsrv)
 
+	if slices.Contains(*components, "alertmanager") {
+		alertmanager, err := alertmanager.NewAlertManager(alert, getAlertManagerConfig(), logger.With("sub", "alertmanager"))
+		if err != nil {
+			logger.Error("error while initiating the httpsrv subsystem", "err", err)
+			os.Exit(CodeAlertManager)
+		}
+
+		httpsrv.Register("alertmanager", alertmanager, HTTPAlertManagerPrefix)
+		observability.RegisterMetrics(alertmanager)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if slices.Contains(*components, "webdav") {
-		webdav, err := webdav.NewWebDav(files, webdav.WebDavConfig{}, logger.With("sub", "webdav"))
-		if err != nil {
-			logger.Error("error while initiating the webdav subsystem", "err", err)
-			os.Exit(CodeWeb)
-		}
-
-		httpsrv.Register("webdav", webdav, HTTPWebDavPrefix)
-		observability.RegisterMetrics(webdav)
-	}
-
-	if slices.Contains(*components, "web") {
-		web, err := web.NewWeb(files, getWebConfig(), logger.With("sub", "web"))
-		if err != nil {
-			logger.Error("error while initiating the web subsystem", "err", err)
-			os.Exit(CodeWeb)
-		}
-
-		httpsrv.Register("web", web, HTTPWebPrefix)
-	}
-
 	run.Add("httpsrv", httpsrv, nil)
 	run.Add("observability", observability, nil)
+	run.Add("alert", alert, nil)
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running net components", "err", err)
