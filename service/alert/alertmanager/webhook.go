@@ -13,7 +13,16 @@ import (
 
 const StatusFiring = "firing"
 
-func (am *AlertManager) Webhook(w http.ResponseWriter, r *http.Request) error {
+func (am *AlertManager) Webhook(w http.ResponseWriter, r *http.Request) (err error) {
+	defer func() {
+		status := metricsStatusSuccess
+		if err != nil {
+			status = metricsStatusFailed
+		}
+
+		am.metrics.total.WithLabelValues(status).Add(1)
+	}()
+
 	var data template.Data
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		return fmt.Errorf("could not parse webhook data: %w", errors.Join(err, httphandler.ErrBadRequest))

@@ -8,13 +8,18 @@ type metrics struct {
 	total *prometheus.CounterVec
 }
 
+const (
+	metricsStatusSuccess = "success"
+	metricsStatusFailed  = "failed"
+)
+
 func (am *AlertManager) initMetrics() {
 	am.metrics.total = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "alert_alertmanager_webhook_total",
 			Help: "Total number of AlertManager webhook invocations",
 		},
-		[]string{"code"},
+		[]string{"status"},
 	)
 }
 
