@@ -1,11 +1,13 @@
 package observability
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type httpServiceZ struct {
@@ -15,9 +17,14 @@ type httpServiceZ struct {
 	checks map[string]Check
 }
 
+var Timeout = time.Second * 5
+
 // Handler implements httpsrv.Handler.
 func (z *httpServiceZ) Handler(prefix string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), Timeout)
+		defer cancel()
+
 		// Individual check
 		name := r.PathValue("name")
 		if name != "" {
@@ -27,7 +34,7 @@ func (z *httpServiceZ) Handler(prefix string) http.Handler {
 				return
 			}
 
-			if err := check.Check(r.Context()); err != nil {
+			if err := check.Check(ctx); err != nil {
 				z.logger.Error("check failed", "name", name, "err", err)
 				http.Error(w, fmt.Sprintf("[-]%s failed: %v", name, err), http.StatusInternalServerError)
 
@@ -62,7 +69,7 @@ func (z *httpServiceZ) Handler(prefix string) http.Handler {
 				continue
 			}
 
-			if err := check.Check(r.Context()); err != nil {
+			if err := check.Check(ctx); err != nil {
 				z.logger.Error("check failed", "name", name, "err", err)
 
 				failed = append(failed, name)

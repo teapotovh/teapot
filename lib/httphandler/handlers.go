@@ -85,8 +85,9 @@ func Write(w http.ResponseWriter, status int, data []byte) error {
 }
 
 var DefaultErrorHandlers = ErrorHandlers{
-	InternalHandler: DefaultInternalHandler,
-	RedirectHandler: DefaultRedirectHandler,
-	NotFoundHandler: DefaultNotFoundHandler,
-	GenericHandler:  DefaultGenericHandler,
+	InternalHandler:   DefaultInternalHandler,
+	RedirectHandler:   DefaultRedirectHandler,
+	NotFoundHandler:   DefaultNotFoundHandler,
+	BadRequestHandler: DefaultBadRequestHandler,
+	GenericHandler:    DefaultGenericHandler,
 }
