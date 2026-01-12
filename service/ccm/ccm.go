@@ -162,7 +162,7 @@ func (ccm *CCM) handle(name string, node *v1.Node, exists bool) error {
 		// NOTE: we don't want to return an error here if address parsing fails.
 		// That's because, we want this controller to overwrite malicious updates,
 		// which may also set these fields to invalid addresses.
-		switch addr.Type { //nolint:exhaustive
+		switch addr.Type {
 		case v1.NodeExternalIP:
 			externalIP, err = netip.ParseAddr(addr.Address)
 			if err != nil {
@@ -180,6 +180,9 @@ func (ccm *CCM) handle(name string, node *v1.Node, exists bool) error {
 			// to something that can be resolved by nodes. Possibly, we also want to
 			// have an internal DNS name.
 			hostname = addr.Address
+
+		case v1.NodeInternalDNS, v1.NodeExternalDNS:
+			continue
 		}
 	}
 

@@ -53,7 +53,7 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 	)
 
 	for _, addr := range n.Status.Addresses {
-		switch addr.Type { //nolint:exhaustive
+		switch addr.Type {
 		case v1.NodeInternalIP:
 			internalIP, err = netip.ParseAddr(addr.Address)
 			if err != nil {
@@ -64,6 +64,8 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 			if err != nil {
 				return fmt.Errorf("error while parsing the external ip %q for node %s: %w", addr.Address, n.Name, err)
 			}
+		case v1.NodeHostName, v1.NodeInternalDNS, v1.NodeExternalDNS:
+			continue
 		}
 	}
 
