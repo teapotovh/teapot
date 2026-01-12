@@ -5,7 +5,8 @@ import (
 )
 
 type metrics struct {
-	total *prometheus.CounterVec
+	total  *prometheus.CounterVec
+	alerts *prometheus.CounterVec
 }
 
 const (
@@ -21,11 +22,20 @@ func (am *AlertManager) initMetrics() {
 		},
 		[]string{"status"},
 	)
+
+	am.metrics.alerts = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "alert_alertmanager_webhook_alerts",
+			Help: "Number of alerts received from AlertManager grouped by status",
+		},
+		[]string{"status"},
+	)
 }
 
 // Metrics implements observability.Metrics.
 func (am *AlertManager) Metrics() []prometheus.Collector {
 	return []prometheus.Collector{
 		am.metrics.total,
+		am.metrics.alerts,
 	}
 }

@@ -15,9 +15,11 @@ const PathWebHook = "/webhook"
 type AlertManager struct {
 	logger *slog.Logger
 
+	alert       *alert.Alert
 	httpLog     *httplog.HTTPLog
 	httpHandler *httphandler.HTTPHandler
-	metrics     metrics
+
+	metrics metrics
 }
 
 type AlertManagerConfig struct {
@@ -43,6 +45,7 @@ func NewAlertManager(alert *alert.Alert, config AlertManagerConfig, logger *slog
 	am := AlertManager{
 		logger: logger,
 
+		alert:       alert,
 		httpLog:     httplog,
 		httpHandler: httpHandler,
 	}
