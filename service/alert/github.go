@@ -13,17 +13,20 @@ import (
 const GitHubTimeout = 10 * time.Second
 
 var (
+	ErrMissingRepository = errors.New("missing repository information, you must set owner/repo")
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 	ErrNoIssueNumber     = errors.New("received no issue number")
 )
 
 func (a *Alert) createGitHubIssue(ctx context.Context, alert AlertData) (int, error) {
-	ctx, _ = context.WithTimeout(ctx, GitHubTimeout)
+	ctx, cancel := context.WithTimeout(ctx, GitHubTimeout)
+	defer cancel()
+
 	rlb := NewRateLimitBackOff(a.logger)
 
 	f := func() (int, error) {
 		if a.owner == "" || a.repo == "" {
-			return 0, fmt.Errorf("you must set owner and repository via flags")
+			return 0, ErrMissingRepository
 		}
 
 		body := fmt.Sprintf("%s\nFired at: %s\n\n<details>%s</details>", alert.Description, alert.Time, alert.Details)
@@ -48,6 +51,7 @@ func (a *Alert) createGitHubIssue(ctx context.Context, alert AlertData) (int, er
 				rlb.ReleaseAt(resp.Rate.Reset.Time)
 				return 0, fmt.Errorf("error while creating issue: %w", errors.Join(err, ErrRateLimitExceeded))
 			}
+
 			return 0, fmt.Errorf("failed to create issue: %w", err)
 		}
 
@@ -58,5 +62,5 @@ func (a *Alert) createGitHubIssue(ctx context.Context, alert AlertData) (int, er
 		return *issue.Number, nil
 	}
 
-	return backoff.Retry(ctx, f, backoff.WithMaxTries(uint(a.maxRetries)), backoff.WithBackOff(rlb))
+	return backoff.Retry(ctx, f, backoff.WithMaxTries(uint(a.maxRetries)), backoff.WithBackOff(&rlb))
 }

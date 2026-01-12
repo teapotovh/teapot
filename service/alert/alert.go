@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v81/github"
+
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -59,6 +60,7 @@ func NewAlert(config AlertConfig, logger *slog.Logger) (*Alert, error) {
 	if len(config.Token) <= 0 {
 		return nil, ErrMissingToken
 	}
+
 	client := github.NewClient(nil).WithAuthToken(config.Token)
 
 	alert := Alert{

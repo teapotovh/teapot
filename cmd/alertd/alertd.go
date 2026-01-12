@@ -83,7 +83,11 @@ func main() {
 	observability.RegisterLivez(httpsrv)
 
 	if slices.Contains(*components, "alertmanager") {
-		alertmanager, err := alertmanager.NewAlertManager(alert, getAlertManagerConfig(), logger.With("sub", "alertmanager"))
+		alertmanager, err := alertmanager.NewAlertManager(
+			alert,
+			getAlertManagerConfig(),
+			logger.With("sub", "alertmanager"),
+		)
 		if err != nil {
 			logger.Error("error while initiating the httpsrv subsystem", "err", err)
 			os.Exit(CodeAlertManager)

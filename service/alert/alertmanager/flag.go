@@ -2,6 +2,7 @@ package alertmanager
 
 import (
 	flag "github.com/spf13/pflag"
+
 	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/httplog"
 )
