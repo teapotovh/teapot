@@ -52,7 +52,8 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 				return nil, webhandler.ErrNotFound
 			}
 
-			return nil, webhandler.NewInternalError(fmt.Errorf("could not read directory at %q: %w", path, err), nil)
+			err = fmt.Errorf("could not read directory at %q: %w", path, err)
+			return nil, webhandler.NewInternalError(err, nil)
 		}
 
 		var entries []entry

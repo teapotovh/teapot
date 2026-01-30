@@ -15,11 +15,19 @@ type WebAuthConfig struct {
 	ResetPasswordURL string
 }
 
+type AuthenticatedPath func(auth httpauth.Auth) string
+
 type WebAuthOptions struct {
 	LoginPath  string
 	LogoutPath string
-	ReturnPath string
+	ReturnPath AuthenticatedPath
 	App        string
+}
+
+func ConstantPath(path string) AuthenticatedPath {
+	return func(_ httpauth.Auth) string {
+		return path
+	}
 }
 
 type WebAuth struct {
@@ -30,7 +38,7 @@ type WebAuth struct {
 
 	loginPath  string
 	logoutPath string
-	returnPath string
+	returnPath AuthenticatedPath
 	app        string
 }
 

@@ -15,12 +15,16 @@ const (
 )
 
 func parseSet[T comparable](raw string, fn func(string) (T, error)) (map[T]ui.Unit, error) {
+	result := map[T]ui.Unit{}
+
+	if len(raw) <= 0 {
+		return result, nil
+	}
+
 	var strs []string
 	if err := json.Unmarshal([]byte(raw), &strs); err != nil {
 		return nil, fmt.Errorf("error while parsing header %q: %w", raw, err)
 	}
-
-	result := map[T]ui.Unit{}
 
 	for _, str := range strs {
 		key, err := fn(str)

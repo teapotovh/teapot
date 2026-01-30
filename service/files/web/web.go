@@ -50,7 +50,7 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 	webAuth, err := webauth.NewWebAuth(files.LDAPFactory(), config.WebAuth, webauth.WebAuthOptions{
 		LoginPath:  PathLogin,
 		LogoutPath: PathLogout,
-		ReturnPath: PathBrowse,
+		ReturnPath: webauth.ConstantPath(PathBrowse),
 		App:        App,
 	}, logger.With("component", "auth"))
 	if err != nil {

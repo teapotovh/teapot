@@ -73,28 +73,33 @@ func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) (*http.Cookie, error) {
+func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) (*http.Cookie, *Auth, error) {
 	client, err := ja.factory.NewClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error while creating LDAP client: %w", err)
+		return nil, nil, fmt.Errorf("error while creating LDAP client: %w", err)
 	}
 	defer client.Close()
 
 	user, err := client.Authenticate(username, password)
 	if err != nil {
 		if errors.Is(err, ldap.ErrInvalidCredentials) {
-			return nil, ErrInvalidCredentials
+			return nil, nil, ErrInvalidCredentials
 		}
 
-		return nil, fmt.Errorf("unexpected error while authneticating: %w", err)
+		return nil, nil, fmt.Errorf("unexpected error while authneticating: %w", err)
+	}
+	auth := Auth{
+		ExpiresAt: nil,
+		Username:  user.Username,
+		Admin:     user.Admin,
 	}
 
 	cookie, err := ja.authCookie(user.Username, user.Admin)
 	if err != nil {
-		return nil, fmt.Errorf("error while generating JWT cookie: %w", err)
+		return nil, nil, fmt.Errorf("error while generating JWT cookie: %w", err)
 	}
 
-	return cookie, nil
+	return cookie, &auth, nil
 }
 
 func (ja *JWTAuth) DeAuthenticate() http.Cookie {
