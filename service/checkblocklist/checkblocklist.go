@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
+	"net/netip"
 
 	"github.com/teapotovh/teapot/lib/kubeclient"
 	"github.com/teapotovh/teapot/lib/kubecontroller"
@@ -17,10 +15,8 @@ type CheckBlockList struct {
 	logger *slog.Logger
 
 	lists   map[BlockListName]BlockList
+	ips     map[string]netip.Addr
 	metrics metrics
-
-	client     *kubernetes.Clientset
-	controller *kubecontroller.Controller[*v1.Node]
 }
 
 type CheckBlockListConfig struct {
@@ -69,5 +65,7 @@ func NewCheckBlockList(config CheckBlockListConfig, logger *slog.Logger) (*Check
 
 // Run implements run.Runnable.
 func (cbl *CheckBlockList) Run(ctx context.Context, notify run.Notify) error {
+	notify.Notify()
+
 	return cbl.controller.Run(ctx, 1)
 }
