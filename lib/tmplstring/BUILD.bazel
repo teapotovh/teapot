@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tmplstring",
+    srcs = [
+        "parse.go",
+        "reflect.go",
+        "tmplstring.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/tmplstring",
+    visibility = ["//visibility:public"],
+)

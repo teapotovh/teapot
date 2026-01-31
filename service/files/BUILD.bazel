@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "files",
+    srcs = [
+        "files.go",
+        "flag.go",
+        "mount.go",
+        "readonly.go",
+        "session.go",
+        "session_flag.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/files",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ldap",
+        "//lib/observability",
+        "//lib/tmplstring",
+        "@com_github_ammario_tlru//:tlru",
+        "@com_github_hack_pad_hackpadfs//:hackpadfs",
+        "@com_github_hack_pad_hackpadfs//mem",
+        "@com_github_hack_pad_hackpadfs//mount",
+        "@com_github_hack_pad_hackpadfs//os",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

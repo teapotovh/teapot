@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "download_lib",
+    srcs = ["download.go"],
+    importpath = "github.com/teapotovh/teapot/lib/ui/htmx/download",
+    visibility = ["//visibility:private"],
+    deps = ["//lib/ui/htmx"],
+)
+
+go_binary(
+    name = "download",
+    embed = [":download_lib"],
+    visibility = ["//visibility:public"],
+)

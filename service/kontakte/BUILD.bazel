@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kontakte",
+    srcs = [
+        "auth.go",
+        "index.go",
+        "log.go",
+        "login.go",
+        "page.go",
+        "passwd.go",
+        "server.go",
+        "status.go",
+        "user.go",
+        "users.go",
+    ],
+    embedsrcs = ["style.css"],
+    importpath = "github.com/teapotovh/teapot/service/kontakte",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ldap",
+        "//service/kontakte/components",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//components",
+        "@dev_maragu_gomponents//html",
+        "@dev_maragu_gomponents//http",
+        "@dev_maragu_gomponents_htmx//:gomponents-htmx",
+        "@dev_maragu_gomponents_htmx//http",
+    ],
+)

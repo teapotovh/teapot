@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "internalip",
+    srcs = [
+        "flag.go",
+        "internalip.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/ccm/internalip",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "//service/ccm",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

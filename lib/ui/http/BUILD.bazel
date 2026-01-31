@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "http",
+    srcs = [
+        "dependencies.go",
+        "request.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/ui/http",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httphandler",
+        "//lib/ui",
+        "//lib/ui/dependency",
+    ],
+)

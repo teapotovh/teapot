@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubeclient",
+    srcs = [
+        "flag.go",
+        "kubeclient.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/kubeclient",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_spf13_pflag//:pflag",
+        "@io_k8s_client_go//kubernetes",
+        "@io_k8s_client_go//rest",
+        "@io_k8s_client_go//tools/clientcmd",
+    ],
+)

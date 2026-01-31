@@ -3,23 +3,26 @@ from logging import INFO as LEVEL_INFO
 from logging import basicConfig as loggingBasicConfig
 from logging import getLogger
 
-from embed import Embed, EmbedConfig
+from grpclib.utils import graceful_exit
+from grpclib.server import Server
 
-from embedd.server import Servicer, listen
+from service.embed import Embed, EmbedConfig
+from cmd.embedd.server import Embedder
 
 _logger = getLogger("embedd")
 _logger.setLevel(LEVEL_INFO)
 
 
 # This is the main entrypoint for the program
-def embedd() -> None:
+async def embedd() -> None:
     loggingBasicConfig(level=LEVEL_INFO)
     parser = ArgumentParser(
         prog="embedd",
         description="A gRPC service to generate vector embeddings for text inputs",
     )
 
-    _ = parser.add_argument("-a", "--addr", nargs="?", default="[::]:8150", type=str)
+    _ = parser.add_argument("-a", "--host", nargs="?", default="0.0.0.0", type=str)
+    _ = parser.add_argument("-p", "--port", nargs="?", default="8150", type=int)
     _ = parser.add_argument("-t", "--tokenizer-path", type=str)
     _ = parser.add_argument("-m", "--model-path", type=str)
     _ = parser.add_argument("-c", "--chunk_size", type=int, default=196)
@@ -36,8 +39,10 @@ def embedd() -> None:
     _logger.info("running with configuration: %s", svc_config)
 
     svc = Embed(svc_config)
-    svcr = Servicer(svc)
-    server = listen(svcr, args.addr)
+    svcr = Embedder(svc)
+    server = Server([svcr])
 
-    _logger.info("listening on %s", args.addr)
-    server.wait_for_termination()
+    with graceful_exit([server]):
+        await server.start(args.host, args.port)
+        _logger.info("listening on %s:%d", args.host, args.port)
+        await server.wait_closed()

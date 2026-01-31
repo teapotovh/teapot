@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "httphandler",
+    srcs = [
+        "errors.go",
+        "flag.go",
+        "handlers.go",
+        "httphandler.go",
+        "internal.go",
+        "redirect.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/httphandler",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_kataras_requestid//:requestid",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

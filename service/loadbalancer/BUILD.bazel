@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "loadbalancer",
+    srcs = [
+        "controller.go",
+        "flag.go",
+        "loadbalancer.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/loadbalancer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/broker",
+        "//lib/kubeclient",
+        "//lib/kubecontroller",
+        "//lib/run",
+        "@com_github_spf13_pflag//:pflag",
+        "@io_k8s_api//core/v1:core",
+        "@io_k8s_client_go//kubernetes",
+    ],
+)

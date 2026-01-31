@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "httplog",
+    srcs = [
+        "flag.go",
+        "handler.go",
+        "httplog.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/httplog",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/log",
+        "@com_github_kataras_requestid//:requestid",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

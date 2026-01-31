@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ui",
+    srcs = [
+        "component.go",
+        "context.go",
+        "flag.go",
+        "render.go",
+        "style.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/ui",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ui/dependency",
+        "//lib/ui/htmx",
+        "//lib/ui/openprops",
+        "//lib/ui/teapot",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_github_sqids_sqids_go//:sqids-go",
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//components",
+        "@dev_maragu_gomponents//html",
+        "@dev_maragu_gomponents_htmx//:gomponents-htmx",
+    ],
+)

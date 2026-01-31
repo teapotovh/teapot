@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "webdav",
+    srcs = [
+        "fs.go",
+        "webdav.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/files/webdav",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httpauth",
+        "//service/files",
+        "@com_github_hack_pad_hackpadfs//:hackpadfs",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_rs_cors//:cors",
+        "@org_golang_x_net//webdav",
+    ],
+)

@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "externalip",
+    srcs = [
+        "externalip.go",
+        "flag.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/ccm/externalip",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "//service/ccm",
+        "@com_github_cenkalti_backoff_v5//:backoff",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

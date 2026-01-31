@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "web",
+    srcs = [
+        "flag.go",
+        "page_browse.go",
+        "page_browse_dialog.go",
+        "page_file.go",
+        "page_index.go",
+        "paths.go",
+        "skeleton.go",
+        "web.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/files/web",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httphandler",
+        "//lib/httplog",
+        "//lib/pagetitle",
+        "//lib/ui",
+        "//lib/ui/components",
+        "//lib/webauth",
+        "//lib/webhandler",
+        "//service/files",
+        "@com_github_dustin_go_humanize//:go-humanize",
+        "@com_github_hack_pad_hackpadfs//:hackpadfs",
+        "@com_github_spf13_pflag//:pflag",
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//html",
+        "@dev_maragu_gomponents_htmx//:gomponents-htmx",
+        "@dev_maragu_gomponents_htmx//http",
+    ],
+)

@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "initialize",
+    srcs = ["initialize.go"],
+    importpath = "github.com/teapotovh/teapot/service/ccm/initialize",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/kubeutil",
+        "//lib/run",
+        "//service/ccm",
+    ],
+)

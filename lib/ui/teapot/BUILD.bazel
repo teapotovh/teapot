@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "teapot",
+    srcs = ["components.go"],
+    embedsrcs = [
+        "css/theme.css",
+        "js/render.js",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/ui/teapot",
+    visibility = ["//visibility:public"],
+    deps = ["//lib/ui/dependency"],
+)

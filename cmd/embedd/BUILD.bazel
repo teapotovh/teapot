@@ -1,0 +1,27 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# gazelle:resolve py proto.embed_pb2 //proto:embed_proto_py
+# gazelle:resolve py proto.embed_grpc //proto:embed_proto_grpc_py
+
+py_binary(
+    name = "main",
+    srcs = ["main.py"],
+    visibility = ["//:__subpackages__"],
+    deps = [":embedd"],
+)
+
+py_library(
+    name = "embedd",
+    srcs = [
+        "__init__.py",
+        "main.py",
+        "server.py",
+    ],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//proto:embed_proto_grpc_py",
+        "//proto:embed_proto_py",
+        "//service/embed",
+        "@pypi//grpclib",
+    ],
+)

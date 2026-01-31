@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "webhandler",
+    srcs = [
+        "export.go",
+        "flag.go",
+        "handlers.go",
+        "page.go",
+        "webhandler.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/webhandler",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httphandler",
+        "//lib/ui",
+        "//lib/ui/components",
+        "//lib/ui/http",
+        "@com_github_kataras_requestid//:requestid",
+        "@com_github_spf13_pflag//:pflag",
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//components",
+        "@dev_maragu_gomponents//html",
+        "@dev_maragu_gomponents_htmx//http",
+    ],
+)

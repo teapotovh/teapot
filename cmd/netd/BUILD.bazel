@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "netd_lib",
+    srcs = ["netd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/netd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/kubelog",
+        "//lib/log",
+        "//lib/run",
+        "//service/net",
+        "//service/net/cni",
+        "//service/net/router",
+        "//service/net/wireguard",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "netd",
+    embed = [":netd_lib"],
+    visibility = ["//visibility:public"],
+)

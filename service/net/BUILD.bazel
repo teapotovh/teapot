@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "net",
+    srcs = [
+        "cluster.go",
+        "controller.go",
+        "flag.go",
+        "local.go",
+        "local_flag.go",
+        "net.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/net",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/broker",
+        "//lib/kubeclient",
+        "//lib/kubecontroller",
+        "//lib/kubeutil",
+        "//lib/run",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_zx2c4_golang_wireguard_wgctrl//wgtypes",
+        "@io_k8s_api//core/v1:core",
+        "@io_k8s_client_go//kubernetes",
+    ],
+)

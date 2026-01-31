@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "components",
+    srcs = [
+        "body.go",
+        "button.go",
+        "dialog.go",
+        "grid.go",
+        "header.go",
+        "input.go",
+        "logo.go",
+        "notification.go",
+        "styles.go",
+        "wireframe.go",
+    ],
+    embedsrcs = ["logo.svg"],
+    importpath = "github.com/teapotovh/teapot/lib/ui/components",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ui",
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//components",
+        "@dev_maragu_gomponents//html",
+        "@dev_maragu_gomponents_htmx//:gomponents-htmx",
+    ],
+)

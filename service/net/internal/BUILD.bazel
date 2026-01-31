@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "internal",
+    srcs = ["util.go"],
+    importpath = "github.com/teapotovh/teapot/service/net/internal",
+    visibility = ["//service/net:__subpackages__"],
+)
