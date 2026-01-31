@@ -63,3 +63,10 @@ func FileInput(ctx ui.Context, id, label string, opts ...g.Node) g.Node {
 		h.Input(append(g.Group{h.Type("file"), h.ID(id), h.Name(id)}, opts...)...),
 	)
 }
+
+func ValueInput(ctx ui.Context, id, typ, label, value string, opts ...g.Node) g.Node {
+	return h.Div(c.JoinAttrs("class", append(g.Group{ctx.Class(InputStyle)}, opts...)),
+		h.Label(h.For(id), g.Text(label)),
+		h.Input(h.Type(typ), h.ID(id), h.Name(id), h.Value(value)),
+	)
+}

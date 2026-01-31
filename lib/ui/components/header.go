@@ -53,13 +53,15 @@ func Header(ctx ui.Context, left g.Node, right g.Node) g.Node {
 }
 
 var HeaderTitleStyle = ui.MustParseStyle(`
-		font-size: var(--font-size-3);
-		font-weight: var(--font-weight-6);
+	font-size: var(--font-size-3);
+	font-weight: var(--font-weight-6);
 
-		& a {
-				color: var(--theme-foreground-0);
-				text-decoration: none;
-		}
+	margin-right: var(--size-2);
+
+	& a {
+			color: var(--theme-foreground-0);
+			text-decoration: none;
+	}
 `)
 
 func HeaderTitle(ctx ui.Context, opts ...g.Node) g.Node {
@@ -71,7 +73,7 @@ var HeaderLinkStyle = ui.MustParseStyle(`
 		color: var(--theme-foreground-0);
 		text-decoration: underline;
 		
-		padding-left: var(--size-2);
+		padding-left: var(--size-3);
 `)
 
 func HeaderLink(ctx ui.Context, opts ...g.Node) g.Node {

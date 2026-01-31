@@ -1,31 +1,40 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"log/slog"
-	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	flag "github.com/spf13/pflag"
 
-	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/log"
+	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/kontakte"
 )
 
 const (
-	CodeLog    = -1
-	CodeInit   = -2
-	CodeListen = -3
+	CodeLog           = -1
+	CodeObservability = -2
+	CodeKontakte      = -3
+	CodeHTTP          = -4
+	CodeRun           = -5
 )
 
-func main() {
-	addr := flag.String("addr", ":8080", "The address to listen on")
-	jwtSecret := flag.String("jwt-secret", "", "The JWT secret key used to sign tokens")
+const HTTPKontaktePrefix = "/"
 
-	fs, getLdapConfig := ldap.LDAPFlagSet()
-	flag.CommandLine.AddFlagSet(fs)
+func main() {
 	fs, getLogConfig := log.LogFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getObservabilityConfig := observability.ObservabilityFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getKontakteConfig := kontakte.KontakteFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -37,25 +46,43 @@ func main() {
 		os.Exit(CodeLog)
 	}
 
-	jwt := *jwtSecret
-	if jwt == "" {
-		logger.Warn("using insecure empty jwt secret")
-	}
+	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	options := kontakte.ServerConfig{
-		Addr:           *addr,
-		JWTSecret:      jwt,
-		FactoryOptions: getLdapConfig(),
-	}
-
-	srv, err := kontakte.NewServer(options, logger.With("sub", "kontakte"))
+	observability, err := observability.NewObservability(getObservabilityConfig(), logger.With("sub", "observability"))
 	if err != nil {
-		logger.Error("error while initializing kontatke server", "err", err)
-		os.Exit(CodeInit)
+		logger.Error("error while initiating the observability subsystem", "err", err)
+		os.Exit(CodeObservability)
 	}
 
-	if err := srv.Listen(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("error while listening", "err", err)
-		os.Exit(CodeListen)
+	httpsrv, err := httpsrv.NewHTTPSrv(getHTTPSrvConfig(), logger.With("sub", "httpsrv"))
+	if err != nil {
+		logger.Error("error while initiating the httpsrv subsystem", "err", err)
+		os.Exit(CodeHTTP)
+	}
+
+	kontakte, err := kontakte.NewKontakte(getKontakteConfig(), logger.With("sub", "kontakte"))
+	if err != nil {
+		logger.Error("error while initializing the kontatke subsystem", "err", err)
+		os.Exit(CodeKontakte)
+	}
+
+	httpsrv.Register("kontakte", kontakte, HTTPKontaktePrefix)
+	// TODO
+	// observability.RegisterMetrics(kontakte)
+	// observability.RegisterReadyz(kontakte)
+
+	observability.RegisterMetrics(httpsrv)
+	observability.RegisterReadyz(httpsrv)
+	observability.RegisterLivez(httpsrv)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	run.Add("httpsrv", httpsrv, nil)
+	run.Add("observability", observability, nil)
+
+	if err := run.Run(ctx); err != nil {
+		logger.Error("error while running net components", "err", err)
+		os.Exit(CodeRun)
 	}
 }

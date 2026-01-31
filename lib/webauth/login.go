@@ -32,7 +32,7 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 			return loginError{err: ErrMissingCredentials}, nil
 		}
 
-		cookie, err := wa.auth.Authenticate(r.Context(), username, password)
+		cookie, auth, err := wa.auth.Authenticate(r.Context(), username, password)
 		if err != nil {
 			if errors.Is(err, httpauth.ErrInvalidCredentials) {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -44,11 +44,11 @@ func (wa *WebAuth) Login(w http.ResponseWriter, r *http.Request) (ui.Component, 
 
 		http.SetCookie(w, cookie)
 
-		return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
+		return nil, webhandler.NewRedirectError(wa.returnPath(*auth), http.StatusFound)
 
 	case http.MethodGet:
-		if GetAuth(r) != nil {
-			return nil, webhandler.NewRedirectError(wa.returnPath, http.StatusFound)
+		if auth := GetAuth(r); auth != nil {
+			return nil, webhandler.NewRedirectError(wa.returnPath(*auth), http.StatusFound)
 		}
 
 		component := login{path: wa.loginPath}

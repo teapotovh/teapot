@@ -25,3 +25,27 @@ var ErrorNotificationStyle = ui.MustParseStyle(`
 func ErrorNotification(ctx ui.Context, err error) g.Node {
 	return Notification(ctx, ctx.Class(ErrorNotificationStyle), g.Group{g.Textf("Error: %s", err)})
 }
+
+var SuccessNotificationStyle = ui.MustParseStyle(`
+  background: var(--theme-success-0);
+  border: var(--size-1) solid var(--theme-success-1);
+  color: var(--theme-background-9);
+`)
+
+func SuccessNotification(ctx ui.Context, msg g.Node) g.Node {
+	return Notification(ctx, ctx.Class(SuccessNotificationStyle), g.Group{msg})
+}
+
+var WarningNotificationStyle = ui.MustParseStyle(`
+  background: var(--theme-warning-0);
+  border: var(--size-1) solid var(--theme-warning-1);
+  color: var(--theme-background-8);
+
+	@media (prefers-color-scheme: dark) {
+  	color: var(--theme-background-4);
+	}
+`)
+
+func WarningNotification(ctx ui.Context, msg g.Node) g.Node {
+	return Notification(ctx, ctx.Class(WarningNotificationStyle), g.Group{msg})
+}
