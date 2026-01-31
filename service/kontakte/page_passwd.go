@@ -21,16 +21,21 @@ var (
 	ErrPasswd              = errors.New("error while changing password")
 )
 
+const (
+	passwordID       = "password"
+	repeatPasswordID = "repeat-password"
+)
+
 func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
 		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
 	}
 
+	username := r.PathValue("username")
+
 	switch r.Method {
 	case http.MethodGet:
-		username := r.PathValue("username")
-
 		component := passwd{
 			username:    username,
 			adminChange: auth.Admin && auth.Username != username,
@@ -43,8 +48,8 @@ func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component,
 		), nil
 
 	case http.MethodPost:
-		password := r.FormValue("password")
-		repeatPassword := r.FormValue("repeat-password")
+		password := r.FormValue(passwordID)
+		repeatPassword := r.FormValue(repeatPasswordID)
 
 		if password == "" || repeatPassword == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -55,9 +60,6 @@ func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component,
 			w.WriteHeader(http.StatusBadRequest)
 			return dialogError{err: fmt.Errorf("invalid passwd request: %w", ErrMismatchedPasswords)}, nil
 		}
-
-		// NOTE: this code could be de-duplicated from above with a middleware
-		username := r.PathValue("username")
 
 		if auth.Username != username && !auth.Admin {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -111,30 +113,50 @@ type passwd struct {
 	adminChange bool
 }
 
-// TODO: remove Class for style
+var PasswdOtherUserStyle = ui.MustParseStyle(`
+	font-weight: var(--font-weight-6);
+`)
+
+var PasswdInputStyle = ui.MustParseStyle(`
+  margin: var(--size-4) 0;
+`)
+
+var PasswdButtonsStyle = ui.MustParseStyle(`
+	display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+
+	margin: var(--size-2) 0;
+`)
+
+var PasswdErrorStyle = ui.MustParseStyle(`
+	margin: var(--size-3) 0;
+`)
+
 func (p passwd) Render(ctx ui.Context) g.Node {
-	return h.Section(h.Class("passwd"),
-		h.H2(
-			g.Iff(p.adminChange, func() g.Node {
-				return g.Textf("Change %s's password", p.username)
-			}),
-			g.Iff(!p.adminChange, func() g.Node {
-				return g.Text("Change your password")
-			}),
-		),
+	return g.Group{
+		g.Iff(p.adminChange, func() g.Node {
+			return components.WarningNotification(ctx, g.Group{
+				h.Span(g.Text("You are changing ")),
+				h.Span(ctx.Class(PasswdOtherUserStyle), g.Text(p.username)),
+				h.Span(g.Text("'s pasword, not yours!")),
+			})
+		}),
+		h.H2(ctx.Class(HeaderStyle), g.Text("Update password")),
 		h.Form(
 			hx.Ext("response-targets"),
 			hx.Post(PathPasswd(p.username)),
 			hx.Swap("innerHTML"),
 			g.Attr("hx-target-error", "#error-container"),
 
-			components.Input(ctx, "password", "password", "New password"),
-			components.Input(ctx, "repeat-password", "password", "Repeat new password"),
-			h.Div(h.Class("button-container"),
+			components.Input(ctx, passwordID, "password", "New password", ctx.Class(PasswdInputStyle)),
+			components.Input(ctx, repeatPasswordID, "password", "Repeat new password", ctx.Class(PasswdInputStyle)),
+
+			h.Div(ctx.Class(PasswdButtonsStyle),
 				components.Button(ctx, h.Type("submit"), g.Text("Change password")),
 			),
 
-			h.Div(h.ID("error-container")),
+			h.Div(ctx.Class(PasswdErrorStyle), h.ID("error-container")),
 		),
-	)
+	}
 }

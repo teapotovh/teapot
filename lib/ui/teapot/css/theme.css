@@ -8,6 +8,9 @@ html {
   --theme-success-light-0: var(--green-10);
   --theme-success-light-1: var(--green-9);
 
+  --theme-warning-light-0: var(--yellow-3);
+  --theme-warning-light-1: var(--yellow-4);
+
   --theme-background-light-0: var(--gray-0);
   --theme-background-light-1: var(--gray-1);
   --theme-background-light-2: var(--gray-2);
@@ -47,6 +50,9 @@ html {
   --theme-success-dark-0: var(--green-10);
   --theme-success-dark-1: var(--green-11);
 
+  --theme-warning-dark-0: var(--yellow-6);
+  --theme-warning-dark-1: var(--yellow-7);
+
   --theme-background-dark-0: var(--gray-12);
   --theme-background-dark-1: var(--gray-11);
   --theme-background-dark-2: var(--gray-10);
@@ -85,6 +91,9 @@ html {
 
   --theme-success-0: var(--theme-success-light-0);
   --theme-success-1: var(--theme-success-light-1);
+
+  --theme-warning-0: var(--theme-warning-light-0);
+  --theme-warning-1: var(--theme-warning-light-1);
 
   --theme-background-0: var(--theme-background-light-0);
   --theme-background-1: var(--theme-background-light-1);
@@ -128,6 +137,9 @@ html {
 
     --theme-success-0: var(--theme-success-dark-0);
     --theme-success-1: var(--theme-success-dark-1);
+
+    --theme-warning-0: var(--theme-warning-dark-0);
+    --theme-warning-1: var(--theme-warning-dark-1);
 
     --theme-background-0: var(--theme-background-dark-0);
     --theme-background-1: var(--theme-background-dark-1);
