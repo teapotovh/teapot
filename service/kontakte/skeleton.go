@@ -41,7 +41,11 @@ func (skeleton skeleton) Render(ctx ui.Context) g.Node {
 
 	return g.Group{
 		components.Header(ctx,
-			g.Group{components.HeaderTitle(ctx, h.Href(PathIndex), g.Text(AppShort))},
+			g.Group{
+				components.HeaderTitle(ctx, h.Href(PathIndex), g.Text(AppShort)),
+				components.HeaderLink(ctx, hx.Boost("true"), h.Href(PathUsers), g.Text(PageUsers)),
+				components.HeaderLink(ctx, hx.Boost("true"), h.Href(PathGroups), g.Text(PageGroups)),
+			},
 			g.Group{login},
 		),
 		components.Body(ctx, body),

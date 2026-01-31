@@ -5,8 +5,10 @@ import (
 )
 
 const (
-	App      = "Teapot Kontakte"
-	AppShort = "Kontakte"
+	App        = "Teapot Kontakte"
+	AppShort   = "Kontakte"
+	PageUsers  = "Users"
+	PageGroups = "Groups"
 
 	PathLogin  = "/login"
 	PathLogout = "/logout"
