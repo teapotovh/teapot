@@ -63,10 +63,6 @@ type user struct {
 	user *ldap.User
 }
 
-var UserHeaderStyle = ui.MustParseStyle(`
-	margin: var(--size-3) 0;
-`)
-
 var UserDNStyle = ui.MustParseStyle(`
   display: flex;
   flex-direction: column;
@@ -131,10 +127,9 @@ var UserChangePasswordStyle = ui.MustParseStyle(`
 	}
 `)
 
-// TODO: remove Class for style
 func (u user) Render(ctx ui.Context) g.Node {
 	return g.Group{
-		h.H2(ctx.Class(UserHeaderStyle), g.Text("Overview")),
+		h.H2(ctx.Class(HeaderStyle), g.Text("Overview")),
 		h.Section(
 			dn(ctx, u.user.Username, u.user.DN, u.user.Admin),
 
@@ -159,15 +154,15 @@ func (u user) Render(ctx ui.Context) g.Node {
 
 		components.HorizontalLine(ctx),
 
-		h.H2(ctx.Class(UserHeaderStyle), g.Text("Groups")),
-		h.Section(h.Class("groups"), g.Map(u.user.Groups, func(access string) g.Node {
+		h.H2(ctx.Class(HeaderStyle), g.Text("Groups")),
+		h.Section(g.Map(u.user.Groups, func(access string) g.Node {
 			return group(ctx, access)
 		})),
 
 		components.HorizontalLine(ctx),
 
-		h.H2(ctx.Class(UserHeaderStyle), g.Text("Accesses")),
-		h.Section(h.Class("accesses"), g.Map(u.user.Accesses, func(access string) g.Node {
+		h.H2(ctx.Class(HeaderStyle), g.Text("Accesses")),
+		h.Section(g.Map(u.user.Accesses, func(access string) g.Node {
 			return group(ctx, access)
 		})),
 	}

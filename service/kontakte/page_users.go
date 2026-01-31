@@ -11,6 +11,7 @@ import (
 	"github.com/teapotovh/teapot/lib/ldap"
 	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
+	"github.com/teapotovh/teapot/lib/ui/components"
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
@@ -46,20 +47,34 @@ type users struct {
 	users []*ldap.User
 }
 
-// TODO: remove Class for style
+var UsersLineStyle = ui.MustParseStyle(`
+	border: 1px solid var(--theme-wireframe-0);
+  margin: 1em 0;
+  padding: .5em;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+
+  text-decoration: none;
+`)
+
 func (u users) Render(ctx ui.Context) g.Node {
-	return h.Section(h.Class("users"),
-		h.H2(g.Text("Users")),
+	return h.Section(
+		h.H2(ctx.Class(HeaderStyle), g.Text("Users")),
 		g.Map(u.users, func(user *ldap.User) g.Node {
-			return h.Div(h.Class("line"),
-				h.A(hx.Boost("true"), h.Href(PathUser(user.Username)),
-					h.Class("dn"),
-					h.H4(g.Text(user.Username)),
-					h.Span(g.Text(user.DN)),
+			return h.Div(ctx.Class(UsersLineStyle),
+				h.A(
+					hx.Boost("true"),
+					h.Href(PathUser(user.Username)),
+					dn(ctx, user.Username, user.DN, user.Admin),
 				),
 
-				h.A(hx.Boost("true"), h.Href(PathPasswd(user.Username)),
-					h.Class("button"), g.Text("Change password"),
+				h.A(ctx.Class(components.ButtonStyle),
+					hx.Boost("true"),
+					h.Href(PathPasswd(user.Username)),
+					g.Text("Change Password"),
 				),
 			)
 		}),
