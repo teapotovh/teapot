@@ -44,7 +44,10 @@ func (k *Kontakte) User(w http.ResponseWriter, r *http.Request) (ui.Component, e
 
 		usr, err := client.User(username)
 		if err != nil {
-			return nil, webhandler.NewInternalError(fmt.Errorf("error while fetching user %q from LDAP: %w", username, err), nil)
+			return nil, webhandler.NewInternalError(
+				fmt.Errorf("error while fetching user %q from LDAP: %w", username, err),
+				nil,
+			)
 		}
 
 		component := user{user: usr}

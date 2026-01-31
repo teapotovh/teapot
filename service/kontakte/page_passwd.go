@@ -63,7 +63,10 @@ func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component,
 
 		if auth.Username != username && !auth.Admin {
 			w.WriteHeader(http.StatusUnauthorized)
-			return dialogError{err: fmt.Errorf("not authorized to perform password update: %w", webhandler.ErrBadRequest)}, nil
+
+			return dialogError{
+				err: fmt.Errorf("not authorized to perform password update: %w", webhandler.ErrBadRequest),
+			}, nil
 		}
 
 		client, err := k.factory.NewClient(r.Context())
@@ -78,6 +81,7 @@ func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component,
 		}
 
 		w.WriteHeader(http.StatusOK)
+
 		return dialogSuccess{
 			username: username,
 			message:  "The password has been updated successfully.",
@@ -105,6 +109,7 @@ func (ds dialogSuccess) Render(ctx ui.Context) g.Node {
 		g.Text(ds.message+" "),
 		h.A(hx.Boost("true"), h.Href(PathUser(ds.username)), g.Text("Go back")),
 	)
+
 	return components.SuccessNotification(ctx, component)
 }
 

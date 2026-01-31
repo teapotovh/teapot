@@ -88,6 +88,7 @@ func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) 
 
 		return nil, nil, fmt.Errorf("unexpected error while authneticating: %w", err)
 	}
+
 	auth := Auth{
 		ExpiresAt: nil,
 		Username:  user.Username,

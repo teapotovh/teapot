@@ -65,9 +65,11 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler = h.metricsMiddleware(handler)
 
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
+
 	if prefix != "/" {
 		handler = http.StripPrefix(prefix, handler)
 	}
+
 	h.mux.Handle(filepath.Join(prefix, "{path...}"), handler)
 }
 
