@@ -1,4 +1,7 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:push.bzl", "image_push")
 
 go_library(
     name = "ccmd_lib",
@@ -21,4 +24,30 @@ go_binary(
     name = "ccmd",
     embed = [":ccmd_lib"],
     visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/ccmd": ":ccmd",
+    },
+    compress = "zstd",
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_static_debian13",
+    layers = [
+        ":binary_layer",
+    ],
+    entrypoint = ["/ccmd"],
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/ccmd",
+    tag = "latest",
 )

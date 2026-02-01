@@ -1,4 +1,8 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:push.bzl", "image_push")
+load("@rules_img//img:load.bzl", "image_load")
 
 go_library(
     name = "netd_lib",
@@ -21,4 +25,36 @@ go_binary(
     name = "netd",
     embed = [":netd_lib"],
     visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/netd": ":netd",
+    },
+    compress = "zstd",
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_static_debian13",
+    layers = [
+        ":binary_layer",
+    ],
+    entrypoint = ["/netd"],
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/netd",
+    tag = "latest",
+)
+
+image_load(
+    name = "load",
+    image = ":image",
+    tag = "netd:latest",
 )

@@ -18,7 +18,7 @@ bazel_dep(name = "rules_python_gazelle_plugin", version = "1.8.3")
 bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
 
-bazel_dep(name = "rules_oci", version = "2.2.7")
+bazel_dep(name = "rules_img", version = "0.3.4")
 
 # --- Go Configuration ---
 # Sets up the Go SDK and dependencies from go.mod
@@ -42,3 +42,14 @@ pip.parse(
     requirements_lock = "//:requirements.txt",
 )
 use_repo(pip, "pypi")
+
+# --- OCI image configuration ---
+pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
+
+pull(
+    name = "distroless_static_debian13",
+    digest = "sha256:227aa7b4f3d89833db58676eacdbe9a49b5d5e4748e0ec3f05005335fa73aaf9",
+    registry = "gcr.io",
+    repository = "distroless/static-debian13",
+    tag = "latest",
+)
