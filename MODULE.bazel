@@ -19,6 +19,7 @@ bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
 
 bazel_dep(name = "rules_img", version = "0.3.4")
+bazel_dep(name = "rules_apko", version = "1.5.32")
 
 # --- Go Configuration ---
 # Sets up the Go SDK and dependencies from go.mod
@@ -53,3 +54,18 @@ pull(
     repository = "distroless/static-debian13",
     tag = "latest",
 )
+
+pull(
+    name = "alpine",
+    digest = "sha256:227aa7b4f3d89833db58676eacdbe9a49b5d5e4748e0ec3f05005335fa73aaf9",
+    registry = "mirror.gcr.io",
+    repository = "alpine",
+    tag = "latest",
+)
+
+apk = use_extension("@rules_apko//apko:extensions.bzl", "apko", dev_dependency = True)
+apk.translate_lock(
+    name = "image_iptables",
+    lock = "//image/iptables:apko.lock.json",
+)
+use_repo(apk, "image_iptables")

@@ -26,11 +26,19 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
+go_binary(
+    name = "ccmd_static",
+    embed = [":ccmd_lib"],
+    visibility = ["//visibility:public"],
+    pure = "on",
+    static = "on",
+)
+
 # OCI Image building
 image_layer(
     name = "binary_layer",
     srcs = {
-        "/ccmd": ":ccmd",
+        "/ccmd": ":ccmd_static",
     },
     compress = "zstd",
 )

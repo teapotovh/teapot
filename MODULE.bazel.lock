@@ -33,6 +33,7 @@
     "https://bcr.bazel.build/modules/aspect_bazel_lib/1.40.3/MODULE.bazel": "668e6bcb4d957fc0e284316dba546b705c8d43c857f87119619ee83c4555b859",
     "https://bcr.bazel.build/modules/aspect_bazel_lib/2.14.0/MODULE.bazel": "2b31ffcc9bdc8295b2167e07a757dbbc9ac8906e7028e5170a3708cecaac119f",
     "https://bcr.bazel.build/modules/aspect_bazel_lib/2.19.3/MODULE.bazel": "253d739ba126f62a5767d832765b12b59e9f8d2bc88cc1572f4a73e46eb298ca",
+    "https://bcr.bazel.build/modules/aspect_bazel_lib/2.19.4/MODULE.bazel": "d39e4b18e594d81c526d7cfc513e7ecfa8ca9eb5b61488d1d790faa94b34f2d9",
     "https://bcr.bazel.build/modules/aspect_bazel_lib/2.21.2/MODULE.bazel": "276347663a25b0d5bd6cad869252bea3e160c4d980e764b15f3bae7f80b30624",
     "https://bcr.bazel.build/modules/aspect_bazel_lib/2.22.5/MODULE.bazel": "004ba890363d05372a97248c37205ae64b6fa31047629cd2c0895a9d0c7779e8",
     "https://bcr.bazel.build/modules/aspect_bazel_lib/2.22.5/source.json": "ac2c3213df8f985785f1d0aeb7f0f73d5324e6e67d593d9b9470fb74a25d4a9b",
@@ -228,6 +229,8 @@
     "https://bcr.bazel.build/modules/re2/2024-07-02/MODULE.bazel": "0eadc4395959969297cbcf31a249ff457f2f1d456228c67719480205aa306daa",
     "https://bcr.bazel.build/modules/rules_android/0.1.1/MODULE.bazel": "48809ab0091b07ad0182defb787c4c5328bd3a278938415c00a7b69b50c4d3a8",
     "https://bcr.bazel.build/modules/rules_android/0.1.1/source.json": "e6986b41626ee10bdc864937ffb6d6bf275bb5b9c65120e6137d56e6331f089e",
+    "https://bcr.bazel.build/modules/rules_apko/1.5.32/MODULE.bazel": "383e6a92f7837c5d89d7f5bd374dd8885a4751b76bc12afca3ce04e50e283d81",
+    "https://bcr.bazel.build/modules/rules_apko/1.5.32/source.json": "ec49a5c3fe5ead166dc9c891e5f948f35894d7a8d1023966572e2784321be9ba",
     "https://bcr.bazel.build/modules/rules_apple/3.13.0/MODULE.bazel": "b4559a2c6281ca3165275bb36c1f0ac74666632adc5bdb680e366de7ce845f43",
     "https://bcr.bazel.build/modules/rules_apple/3.16.0/MODULE.bazel": "0d1caf0b8375942ce98ea944be754a18874041e4e0459401d925577624d3a54a",
     "https://bcr.bazel.build/modules/rules_apple/3.5.1/MODULE.bazel": "3d1bbf65ad3692003d36d8a29eff54d4e5c1c5f4bfb60f79e28646a924d9101c",
@@ -408,6 +411,215 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "@@rules_apko+//apko:extensions.bzl%apko": {
+      "general": {
+        "bzlTransitiveDigest": "ztt1qVsrZN8w6lF0ki70tpiN/0gzLKTyPFTC3y2Dkgg=",
+        "usagesDigest": "HTWWJTvPRcvPFR2Tbia4I1WXHpiBVKvtHjxcSjBxfNg=",
+        "recordedInputs": [
+          "REPO_MAPPING:rules_apko+,bazel_skylib bazel_skylib+",
+          "REPO_MAPPING:rules_apko+,bazel_tools bazel_tools",
+          "FILE:@@//image/iptables/apko.lock.json 0f16eab09fdfc24affcac737add4a6e60abd9826503a0e2320cf6186ef3043a1"
+        ],
+        "generatedRepoSpecs": {
+          "image_iptables_alpinelinux.org_keys_alpine-devel_40lists.alpinelinux.org-6165ee59.rsa.pub": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_keyring",
+            "attributes": {
+              "url": "https://alpinelinux.org/keys/alpine-devel%40lists.alpinelinux.org-6165ee59.rsa.pub"
+            }
+          },
+          "image_iptables_dl-cdn.alpinelinux.org_alpine_v3.23_main_x86_64_x86_64": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_repository",
+            "attributes": {
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/APKINDEX.tar.gz",
+              "architecture": "x86_64"
+            }
+          },
+          "image_iptables_musl_x86_64_1.2.5-r21": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "musl",
+              "version": "1.2.5-r21",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/musl-1.2.5-r21.apk",
+              "signature_range": "bytes=0-720",
+              "signature_checksum": "sha1-uYcRWa259rUG2eB/VHeXAQEE6MY=",
+              "control_range": "bytes=721-1248",
+              "control_checksum": "sha1-0Fp17BPhp6i6tWznzT3Hm9cn5pg=",
+              "data_range": "bytes=1249-413302",
+              "data_checksum": "sha256-32hfKEcHz6/PRvxVIe0ZMoHy8teiBw3rtr1o5uUaLt4="
+            }
+          },
+          "image_iptables_libmnl_x86_64_1.0.5-r2": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "libmnl",
+              "version": "1.0.5-r2",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libmnl-1.0.5-r2.apk",
+              "signature_range": "bytes=0-720",
+              "signature_checksum": "sha1-2OuWNnlvtr7VIPzNAsbtsr2Y5VA=",
+              "control_range": "bytes=721-1281",
+              "control_checksum": "sha1-kCNOzK84ww3e/hraLot1QbqY7Kk=",
+              "data_range": "bytes=1282-9026",
+              "data_checksum": "sha256-EoIbNq7KI+hLhgTnkB0ORj+9WXqoqZHerUideyszGhI="
+            }
+          },
+          "image_iptables_libnftnl_x86_64_1.3.0-r0": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "libnftnl",
+              "version": "1.3.0-r0",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libnftnl-1.3.0-r0.apk",
+              "signature_range": "bytes=0-725",
+              "signature_checksum": "sha1-esPuI6DnA6DVxQ4RgZacGe5/BzA=",
+              "control_range": "bytes=726-1322",
+              "control_checksum": "sha1-jAmOq2MFsRIOhAWG/BqEHua41c4=",
+              "data_range": "bytes=1323-65455",
+              "data_checksum": "sha256-CYWtJ++OHmep7HWETAHIs63paQfEWBnBS4yvZgSYIiM="
+            }
+          },
+          "image_iptables_libxtables_x86_64_1.8.11-r1": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "libxtables",
+              "version": "1.8.11-r1",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libxtables-1.8.11-r1.apk",
+              "signature_range": "bytes=0-724",
+              "signature_checksum": "sha1-1eD2akVU+lzLhU/Hmeb0w/Qqtw8=",
+              "control_range": "bytes=725-1342",
+              "control_checksum": "sha1-Fry5CzXUFFoJQ1gGL9/mI0Sik+0=",
+              "data_range": "bytes=1343-24650",
+              "data_checksum": "sha256-UydyYcnlyA2/lE6Dg+5oW4TyS/oLdzuBSuZ8msGyyVM="
+            }
+          },
+          "image_iptables_busybox_x86_64_1.37.0-r30": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "busybox",
+              "version": "1.37.0-r30",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/busybox-1.37.0-r30.apk",
+              "signature_range": "bytes=0-719",
+              "signature_checksum": "sha1-ocMKrwymImQy/Rq2viBfHJkO5ZU=",
+              "control_range": "bytes=720-2546",
+              "control_checksum": "sha1-8TR4AbuWsapA0X+CI3w/T/AqRyU=",
+              "data_range": "bytes=2547-504725",
+              "data_checksum": "sha256-ihFyyPEIV7V+d+gIUMuF+t/H9YsluNs+wafpaTwqvY0="
+            }
+          },
+          "image_iptables_busybox-binsh_x86_64_1.37.0-r30": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "busybox-binsh",
+              "version": "1.37.0-r30",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/busybox-binsh-1.37.0-r30.apk",
+              "signature_range": "bytes=0-722",
+              "signature_checksum": "sha1-NfYc7Ro9ITEElAGdZQWCucrZ9OQ=",
+              "control_range": "bytes=723-1281",
+              "control_checksum": "sha1-GI0tARCvpY6KPj5f1CSy2Zbfegk=",
+              "data_range": "bytes=1282-1564",
+              "data_checksum": "sha256-eN0qLZJXLMUTrO4hpoC38JZ2HKEthhCDXyO2ZO5rPg4="
+            }
+          },
+          "image_iptables_iptables_x86_64_1.8.11-r1": {
+            "repoRuleId": "@@rules_apko+//apko/private:apk.bzl%apk_import",
+            "attributes": {
+              "package_name": "iptables",
+              "version": "1.8.11-r1",
+              "architecture": "x86_64",
+              "url": "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/iptables-1.8.11-r1.apk",
+              "signature_range": "bytes=0-723",
+              "signature_checksum": "sha1-e/xBw9nB2EOYNbv2PjkrJKNFl3g=",
+              "control_range": "bytes=724-1969",
+              "control_checksum": "sha1-pNuTCWNRdpREy3QqZbOm3pH9mFM=",
+              "data_range": "bytes=1970-319201",
+              "data_checksum": "sha256-3aK5KWq6qe9H0N3Cl2/zQO6knJGEOAFV06qP6XCoAEo="
+            }
+          },
+          "image_iptables": {
+            "repoRuleId": "@@rules_apko+//apko:translate_lock.bzl%translate_apko_lock",
+            "attributes": {
+              "target_name": "image_iptables",
+              "lock": "@@//image/iptables:apko.lock.json"
+            }
+          },
+          "apko_darwin_amd64": {
+            "repoRuleId": "@@rules_apko+//apko:repositories.bzl%apko_repositories",
+            "attributes": {
+              "platform": "darwin_amd64",
+              "sha256": "sha256-fLjSGhsRWi9JA7+Fv/zwzZQjwEaY6RFPzt5HLTthzAQ=",
+              "url": "https://github.com/chainguard-dev/apko/releases/download/v1.0.0/apko_1.0.0_darwin_amd64.tar.gz",
+              "apko_version": "1.0.0",
+              "strip_prefix": "apko_1.0.0_darwin_amd64"
+            }
+          },
+          "apko_darwin_arm64": {
+            "repoRuleId": "@@rules_apko+//apko:repositories.bzl%apko_repositories",
+            "attributes": {
+              "platform": "darwin_arm64",
+              "sha256": "sha256-KU2ImPAvglwcJAqFIUixmnY5w7PACR0KI180fzxc214=",
+              "url": "https://github.com/chainguard-dev/apko/releases/download/v1.0.0/apko_1.0.0_darwin_arm64.tar.gz",
+              "apko_version": "1.0.0",
+              "strip_prefix": "apko_1.0.0_darwin_arm64"
+            }
+          },
+          "apko_linux_386": {
+            "repoRuleId": "@@rules_apko+//apko:repositories.bzl%apko_repositories",
+            "attributes": {
+              "platform": "linux_386",
+              "sha256": "sha256-hX3VJh0JDcNY/S6Th+KfyEfZEP1ZBqC0LJ7GzhN1oPI=",
+              "url": "https://github.com/chainguard-dev/apko/releases/download/v1.0.0/apko_1.0.0_linux_386.tar.gz",
+              "apko_version": "1.0.0",
+              "strip_prefix": "apko_1.0.0_linux_386"
+            }
+          },
+          "apko_linux_amd64": {
+            "repoRuleId": "@@rules_apko+//apko:repositories.bzl%apko_repositories",
+            "attributes": {
+              "platform": "linux_amd64",
+              "sha256": "sha256-fM197MGdkzNTkF90GiNpCXe7nPjaZAVfS0dXVkEVT/Y=",
+              "url": "https://github.com/chainguard-dev/apko/releases/download/v1.0.0/apko_1.0.0_linux_amd64.tar.gz",
+              "apko_version": "1.0.0",
+              "strip_prefix": "apko_1.0.0_linux_amd64"
+            }
+          },
+          "apko_linux_arm64": {
+            "repoRuleId": "@@rules_apko+//apko:repositories.bzl%apko_repositories",
+            "attributes": {
+              "platform": "linux_arm64",
+              "sha256": "sha256-mS/vqpQvqgPShq2Q26HzsEfi6Ra6S0wU/IQ79j7gAFw=",
+              "url": "https://github.com/chainguard-dev/apko/releases/download/v1.0.0/apko_1.0.0_linux_arm64.tar.gz",
+              "apko_version": "1.0.0",
+              "strip_prefix": "apko_1.0.0_linux_arm64"
+            }
+          },
+          "apko_toolchains": {
+            "repoRuleId": "@@rules_apko+//apko/private:toolchains_repo.bzl%toolchains_repo",
+            "attributes": {
+              "user_repository_name": "apko",
+              "platforms": [
+                "darwin_amd64",
+                "darwin_arm64",
+                "linux_386",
+                "linux_amd64",
+                "linux_arm64"
+              ]
+            }
+          }
+        },
+        "moduleExtensionMetadata": {
+          "explicitRootModuleDirectDeps": [],
+          "explicitRootModuleDirectDevDeps": [
+            "image_iptables"
+          ],
+          "useAllRepos": "NO",
+          "reproducible": false
+        }
+      }
+    },
     "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {
       "general": {
         "bzlTransitiveDigest": "ABI1D/sbS1ovwaW/kHDoj8nnXjQ0oKU9fzmzEG4iT8o=",
