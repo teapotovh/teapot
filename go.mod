@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-iptables v0.8.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.12
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/btree v1.1.3
 	github.com/google/go-github/v81 v81.0.0
 	github.com/google/gopacket v1.1.19
