@@ -19,7 +19,7 @@ require (
 	github.com/lib/pq v1.11.1
 	github.com/lmittmann/tint v1.1.2
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
-	github.com/prometheus/alertmanager v0.30.0
+	github.com/prometheus/alertmanager v0.30.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/cors v1.11.1
 	github.com/spf13/pflag v1.0.10
