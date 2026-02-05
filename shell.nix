@@ -16,6 +16,7 @@ in pkgs.mkShell {
     golangci-lint-langserver
 
     python313
+    python313Packages.ruff
 
     grpcurl
 
