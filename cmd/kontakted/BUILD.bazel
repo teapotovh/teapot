@@ -6,8 +6,10 @@ go_library(
     importpath = "github.com/teapotovh/teapot/cmd/kontakted",
     visibility = ["//visibility:private"],
     deps = [
-        "//lib/ldap",
+        "//lib/httpsrv",
         "//lib/log",
+        "//lib/observability",
+        "//lib/run",
         "//service/kontakte",
         "@com_github_spf13_pflag//:pflag",
     ],
