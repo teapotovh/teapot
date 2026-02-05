@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bottin",
+    srcs = [
+        "acl.go",
+        "bottin.go",
+        "flag.go",
+        "hash.go",
+        "log.go",
+        "memberof.go",
+        "read.go",
+        "util.go",
+        "write.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/bottin",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ldapserver",
+        "//lib/ldapserver/goldap",
+        "//service/bottin/store",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_jsimonetti_pwscheme//ssha256",
+        "@com_github_jsimonetti_pwscheme//ssha512",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

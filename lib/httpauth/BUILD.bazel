@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "httpauth",
+    srcs = [
+        "basic.go",
+        "httpauth.go",
+        "jwt.go",
+        "jwt_flag.go",
+        "metrics.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/httpauth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ldap",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

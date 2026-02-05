@@ -1,0 +1,8 @@
+contents:
+  repositories:
+    - https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+  packages:
+    - iptables
+
+archs:
+  - amd64

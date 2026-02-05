@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "openprops",
+    srcs = ["components.go"],
+    embedsrcs = [
+        "css/animations.css",
+        "css/aspects.css",
+        "css/borders.css",
+        "css/brand-colors.css",
+        "css/colors.css",
+        "css/dummy.css",
+        "css/durations.css",
+        "css/easings.css",
+        "css/fonts.css",
+        "css/gradients.css",
+        "css/masks.corner-cuts.css",
+        "css/masks.edges.css",
+        "css/media.css",
+        "css/normalize.css",
+        "css/shadows.css",
+        "css/sizes.css",
+        "css/supports.css",
+        "css/zindex.css",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/ui/openprops",
+    visibility = ["//visibility:public"],
+    deps = ["//lib/ui/dependency"],
+)

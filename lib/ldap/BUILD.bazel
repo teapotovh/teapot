@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ldap",
+    srcs = [
+        "client.go",
+        "factory.go",
+        "find.go",
+        "flag.go",
+        "metrics.go",
+        "passwd.go",
+        "user.go",
+        "util.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/ldap",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "//lib/tmplstring",
+        "@com_github_go_ldap_ldap_v3//:ldap",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

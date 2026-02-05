@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "store",
+    srcs = [
+        "flag.go",
+        "mem.go",
+        "psql.go",
+        "store.go",
+        "types.go",
+    ],
+    embedsrcs = ["schema.sql"],
+    importpath = "github.com/teapotovh/teapot/service/bottin/store",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_google_btree//:btree",
+        "@com_github_lib_pq//:pq",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

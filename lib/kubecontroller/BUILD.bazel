@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubecontroller",
+    srcs = ["kubecontroller.go"],
+    importpath = "github.com/teapotovh/teapot/lib/kubecontroller",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@io_k8s_apimachinery//pkg/api/meta",
+        "@io_k8s_apimachinery//pkg/fields",
+        "@io_k8s_apimachinery//pkg/runtime",
+        "@io_k8s_apimachinery//pkg/util/runtime",
+        "@io_k8s_apimachinery//pkg/util/wait",
+        "@io_k8s_client_go//kubernetes",
+        "@io_k8s_client_go//kubernetes/scheme",
+        "@io_k8s_client_go//restmapper",
+        "@io_k8s_client_go//tools/cache",
+        "@io_k8s_client_go//util/workqueue",
+    ],
+)

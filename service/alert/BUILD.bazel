@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "alert",
+    srcs = [
+        "alert.go",
+        "flag.go",
+        "github.go",
+        "metrics.go",
+        "rate_limit_backoff.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/alert",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "//lib/run",
+        "@com_github_cenkalti_backoff_v5//:backoff",
+        "@com_github_google_go_github_v81//github",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

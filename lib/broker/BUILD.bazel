@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "broker",
+    srcs = ["broker.go"],
+    importpath = "github.com/teapotovh/teapot/lib/broker",
+    visibility = ["//visibility:public"],
+)

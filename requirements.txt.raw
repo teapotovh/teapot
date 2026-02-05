@@ -1,0 +1,5 @@
+grpclib
+tokenizers
+numpy
+onnxruntime
+semantic-text-splitter

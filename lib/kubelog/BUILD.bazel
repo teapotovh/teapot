@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubelog",
+    srcs = ["kubelog.go"],
+    importpath = "github.com/teapotovh/teapot/lib/kubelog",
+    visibility = ["//visibility:public"],
+    deps = ["@io_k8s_klog_v2//:klog"],
+)

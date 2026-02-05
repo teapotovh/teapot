@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "htmx",
+    srcs = ["components.go"],
+    embedsrcs = [
+        "js/dummy.js",
+        "js/htmx.js",
+        "js/response-targets.js",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/ui/htmx",
+    visibility = ["//visibility:public"],
+    deps = ["//lib/ui/dependency"],
+)

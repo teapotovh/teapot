@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "router",
+    srcs = [
+        "flag.go",
+        "router.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/net/router",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "//service/net",
+        "//service/net/internal",
+        "//service/net/wireguard",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_github_vishvananda_netlink//:netlink",
+    ],
+)

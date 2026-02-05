@@ -1,0 +1,43 @@
+# GENERATED FILE - DO NOT EDIT!
+#
+# To update this file, run:
+#   bazel run //:gazelle_python_manifest.update
+
+---
+manifest:
+  modules_mapping:
+    anyio: anyio
+    certifi: certifi
+    click: click
+    coloredlogs: coloredlogs
+    filelock: filelock
+    flatbuffers: flatbuffers
+    fsspec: fsspec
+    google.protobuf: protobuf
+    grpclib: grpclib
+    h11: h11
+    h2: h2
+    hf_xet: hf_xet
+    hpack: hpack
+    httpcore: httpcore
+    httpx: httpx
+    huggingface_hub: huggingface_hub
+    humanfriendly: humanfriendly
+    hyperframe: hyperframe
+    idna: idna
+    isympy: sympy
+    mpmath: mpmath
+    multidict: multidict
+    numpy: numpy
+    onnxruntime: onnxruntime
+    packaging: packaging
+    semantic_text_splitter: semantic_text_splitter
+    shellingham: shellingham
+    sympy: sympy
+    tokenizers: tokenizers
+    tqdm: tqdm
+    typer: typer_slim
+    typing_extensions: typing_extensions
+    yaml: pyyaml
+  pip_repository:
+    name: pypi

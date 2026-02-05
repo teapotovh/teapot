@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "webauth",
+    srcs = [
+        "flag.go",
+        "login.go",
+        "logout.go",
+        "metrics.go",
+        "webauth.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/webauth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httpauth",
+        "//lib/ldap",
+        "//lib/pagetitle",
+        "//lib/ui",
+        "//lib/ui/components",
+        "//lib/webhandler",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//html",
+        "@dev_maragu_gomponents_htmx//:gomponents-htmx",
+    ],
+)

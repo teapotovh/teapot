@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "alertd_lib",
+    srcs = ["alertd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/alertd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/httpsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/alert",
+        "//service/alert/alertmanager",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "alertd",
+    embed = [":alertd_lib"],
+    visibility = ["//visibility:public"],
+)

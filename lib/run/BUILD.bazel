@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "run",
+    srcs = ["run.go"],
+    importpath = "github.com/teapotovh/teapot/lib/run",
+    visibility = ["//visibility:public"],
+)

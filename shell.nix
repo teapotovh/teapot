@@ -5,26 +5,24 @@ let
     LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib/
     unset SOURCE_DATE_EPOCH
   '';
+  bazel = pkgs.writeShellScriptBin "bazel" ''
+    exec ${pkgs.steam-run}/bin/steam-run ${pkgs.bazelisk}/bin/bazelisk "$@"
+  '';
 in pkgs.mkShell {
   buildInputs = with pkgs; [
-    gnumake
-    protobuf
-
     go
     gopls
-    protoc-gen-go
-    protoc-gen-go-vtproto
     golangci-lint
     golangci-lint-langserver
 
     python313
-    python313Packages.venvShellHook
-    python313Packages.ipython
-    uv
+    python313Packages.ruff
 
     grpcurl
+
+    bazelisk
+    steam-run
+    bazel
+    python313Packages.pip-tools
   ];
-  venvDir = "./.venv";
-  postVenvCreation = shellHook;
-  postShellHook = shellHook;
 }

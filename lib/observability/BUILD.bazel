@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "observability",
+    srcs = [
+        "flag.go",
+        "observability.go",
+        "prometheus.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/observability",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_prometheus_client_golang//prometheus/promhttp",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

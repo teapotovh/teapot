@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "components",
+    srcs = [
+        "button.go",
+        "field.go",
+        "input.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/kontakte/components",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@dev_maragu_gomponents//:gomponents",
+        "@dev_maragu_gomponents//html",
+    ],
+)

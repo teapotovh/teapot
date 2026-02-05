@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "arp",
+    srcs = [
+        "arp.go",
+        "flag.go",
+        "listener.go",
+        "speaker.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/loadbalancer/arp",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "//service/loadbalancer",
+        "@com_github_google_gopacket//:gopacket",
+        "@com_github_google_gopacket//afpacket",
+        "@com_github_google_gopacket//layers",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

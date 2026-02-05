@@ -1,0 +1,30 @@
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@pypi//:requirements.bzl", "all_whl_requirements")
+load("@rules_python_gazelle_plugin//manifest:defs.bzl", "gazelle_python_manifest")
+load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
+
+gazelle_binary(
+    name = "gazelle_multilang",
+    languages = [
+        "@gazelle//language/go",
+        "@gazelle//language/proto",
+        "@rules_python_gazelle_plugin//python",
+    ],
+)
+
+modules_mapping(
+    name = "modules_map",
+    wheels = all_whl_requirements,
+)
+
+gazelle_python_manifest(
+    name = "gazelle_python_manifest",
+    manifest = "gazelle_python.yaml",
+    modules_mapping = ":modules_map",
+    pip_repository_name = "pypi",
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_multilang",
+)

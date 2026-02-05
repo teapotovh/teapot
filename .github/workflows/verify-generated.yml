@@ -1,0 +1,35 @@
+name: Verify Generated Files
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  verify:
+    name: Verify that generated files are up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bazelisk
+        uses: bazel-contrib/setup-bazel@0.18.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Generate the gazelle_python.yaml file
+        run: bazel run //:gazelle_python_manifest.update
+
+      - name: Generate gazelle BUILD.bazel files
+        run: bazelisk run //:gazelle
+
+      - name: Check for differences
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated files are out of date."
+            exit 1
+          fi

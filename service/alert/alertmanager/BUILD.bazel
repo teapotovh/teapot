@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "alertmanager",
+    srcs = [
+        "alertmanager.go",
+        "flag.go",
+        "metrics.go",
+        "webhook.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/alert/alertmanager",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httphandler",
+        "//lib/httplog",
+        "//service/alert",
+        "@com_github_prometheus_alertmanager//template",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

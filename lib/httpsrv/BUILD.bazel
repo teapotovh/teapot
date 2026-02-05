@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "httpsrv",
+    srcs = [
+        "flag.go",
+        "httpsrv.go",
+        "metrics.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/httpsrv",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "//lib/run",
+        "@com_github_kataras_requestid//:requestid",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

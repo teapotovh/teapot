@@ -1,0 +1,20 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpclib_library", "python_proto_library")
+
+proto_library(
+    name = "embed_proto",
+    srcs = ["embed.proto"],
+    visibility = ["//visibility:public"],
+)
+
+python_proto_library(
+    name = "embed_proto_py",
+    protos = [":embed_proto"],
+    visibility = ["//visibility:public"],
+)
+
+python_grpclib_library(
+    name = "embed_proto_grpc_py",
+    protos = [":embed_proto"],
+    visibility = ["//visibility:public"],
+)

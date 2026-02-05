@@ -1,0 +1,3 @@
+To update the lockfiles:
+
+$ bazel run @rules_apko//apko:apko -- lock path/to/apko.yaml

@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "wireguard",
+    srcs = [
+        "flag.go",
+        "util.go",
+        "wireguard.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/net/wireguard",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "//service/net",
+        "//service/net/internal",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_github_vishvananda_netlink//:netlink",
+        "@com_zx2c4_golang_wireguard_wgctrl//:wgctrl",
+        "@com_zx2c4_golang_wireguard_wgctrl//wgtypes",
+    ],
+)

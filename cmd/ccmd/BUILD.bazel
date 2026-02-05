@@ -1,0 +1,61 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:push.bzl", "image_push")
+
+go_library(
+    name = "ccmd_lib",
+    srcs = ["ccmd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/ccmd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/kubelog",
+        "//lib/log",
+        "//lib/run",
+        "//service/ccm",
+        "//service/ccm/externalip",
+        "//service/ccm/initialize",
+        "//service/ccm/internalip",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "ccmd",
+    embed = [":ccmd_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "ccmd_static",
+    embed = [":ccmd_lib"],
+    pure = "on",
+    static = "on",
+    visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/ccmd": ":ccmd_static",
+    },
+    compress = "zstd",
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_static_debian13",
+    entrypoint = ["/ccmd"],
+    layers = [
+        ":binary_layer",
+    ],
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/ccmd",
+    tag = "latest",
+)

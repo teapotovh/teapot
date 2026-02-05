@@ -1,0 +1,78 @@
+load("@rules_apko//apko:defs.bzl", "apko_image")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:load.bzl", "image_load")
+load("@rules_img//img:push.bzl", "image_push")
+
+go_library(
+    name = "netd_lib",
+    srcs = ["netd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/netd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/kubelog",
+        "//lib/log",
+        "//lib/run",
+        "//service/net",
+        "//service/net/cni",
+        "//service/net/router",
+        "//service/net/wireguard",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "netd",
+    embed = [":netd_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "netd_static",
+    embed = [":netd_lib"],
+    pure = "on",
+    static = "on",
+    visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/netd": ":netd_static",
+    },
+    compress = "zstd",
+)
+
+apko_image(
+    name = "iptables_layer",
+    config = "//image/iptables:apko.yaml",
+    contents = "@image_iptables//:contents",
+    output = "docker",
+    tag = "iptables_base:latest",
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_static_debian13",
+    entrypoint = ["/netd"],
+    layers = [
+        ":iptables_layer",
+        ":binary_layer",
+    ],
+)
+
+image_load(
+    name = "load",
+    image = ":image",
+    tag = "ghcr.io/teapotovh/netd:latest",
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/netd",
+    tag = "latest",
+)
