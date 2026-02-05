@@ -1,4 +1,3 @@
-# .github/workflows/verify-generated.yml
 name: Verify Generated Files
 
 on:
@@ -15,33 +14,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up Bazelisk
+        uses: bazel-contrib/setup-bazel@0.18.0
         with:
-          go-version: '1.22'
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
 
-      - name: Set up Python with uv
-        uses: ammaraskar/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'uv'
-          cache-dependency-path: 'uv.lock'
+      - name: Generate the gazelle_python.yaml file
+        run: bazel run //:gazelle_python_manifest.update
 
-      - name: Install Bazel
-        uses: bazel-contrib/setup-bazel@v4
-        with:
-          bazel-version-file: .bazelversion
-          bazelisk-version: "1.19.0" # A recent version of bazelisk
-
-      - name: Generate Python requirements.txt
-        run: uv pip freeze > requirements.txt
-
-      - name: Generate Go BUILD files
-        run: bazelisk run //:gazelle -- -fix
+      - name: Generate gazelle BUILD.bazel files
+        run: bazelisk run //:gazelle
 
       - name: Check for differences
         run: |
           if ! git diff --exit-code; then
-            echo "::error::Generated files are out of date. Please run 'pre-commit run --all-files' locally and commit the changes."
+            echo "::error::Generated files are out of date."
             exit 1
           fi
