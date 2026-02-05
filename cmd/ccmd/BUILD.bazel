@@ -1,6 +1,6 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("@rules_img//img:layer.bzl", "image_layer")
 load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
 load("@rules_img//img:push.bzl", "image_push")
 
 go_library(
@@ -29,9 +29,9 @@ go_binary(
 go_binary(
     name = "ccmd_static",
     embed = [":ccmd_lib"],
-    visibility = ["//visibility:public"],
     pure = "on",
     static = "on",
+    visibility = ["//visibility:public"],
 )
 
 # OCI Image building
@@ -46,10 +46,10 @@ image_layer(
 image_manifest(
     name = "image",
     base = "@distroless_static_debian13",
+    entrypoint = ["/ccmd"],
     layers = [
         ":binary_layer",
     ],
-    entrypoint = ["/ccmd"],
 )
 
 image_push(
