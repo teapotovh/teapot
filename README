@@ -43,6 +43,7 @@ Bazel usage:
 To generate basically all build files with gazelle:
 
 $ bazel run //:gazelle
+$ bazel mod tidy
 
 When you want to add a Python dependency, add it to requirements.txt.raw, then:
 

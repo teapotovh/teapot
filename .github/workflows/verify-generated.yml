@@ -25,7 +25,9 @@ jobs:
         run: bazel run //:gazelle_python_manifest.update
 
       - name: Generate gazelle BUILD.bazel files
-        run: bazelisk run //:gazelle
+        run: |
+          bazel run //:gazelle
+          bazel mod tidy
 
       - name: Check for differences
         run: |
