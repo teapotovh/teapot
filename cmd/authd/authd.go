@@ -14,18 +14,18 @@ import (
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
-	"github.com/teapotovh/teapot/service/kontakte"
+	"github.com/teapotovh/teapot/service/auth"
 )
 
 const (
 	CodeLog           = -1
 	CodeObservability = -2
-	CodeKontakte      = -3
+	CodeAuth          = -3
 	CodeHTTP          = -4
 	CodeRun           = -5
 )
 
-const HTTPKontaktePrefix = "/"
+const HTTPAuthPrefix = "/"
 
 func main() {
 	fs, getLogConfig := log.LogFlagSet()
@@ -34,7 +34,7 @@ func main() {
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getKontakteConfig := kontakte.KontakteFlagSet()
+	fs, getAuthConfig := auth.AuthFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -60,16 +60,16 @@ func main() {
 		os.Exit(CodeHTTP)
 	}
 
-	kontakte, err := kontakte.NewKontakte(getKontakteConfig(), logger.With("sub", "kontakte"))
+	auth, err := auth.NewAuth(getAuthConfig(), logger.With("sub", "auth"))
 	if err != nil {
-		logger.Error("error while initializing the kontakte subsystem", "err", err)
-		os.Exit(CodeKontakte)
+		logger.Error("error while initializing the auth subsystem", "err", err)
+		os.Exit(CodeAuth)
 	}
 
-	httpsrv.Register("kontakte", kontakte, HTTPKontaktePrefix)
+	httpsrv.Register("auth", auth, HTTPAuthPrefix)
 	// TODO
-	// observability.RegisterMetrics(kontakte)
-	// observability.RegisterReadyz(kontakte)
+	// observability.RegisterMetrics(auth)
+	// observability.RegisterReadyz(auth)
 
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
@@ -82,7 +82,7 @@ func main() {
 	run.Add("observability", observability, nil)
 
 	if err := run.Run(ctx); err != nil {
-		logger.Error("error while running kontakte components", "err", err)
+		logger.Error("error while running auth components", "err", err)
 		os.Exit(CodeRun)
 	}
 }

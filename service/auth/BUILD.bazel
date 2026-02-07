@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "auth",
+    srcs = [
+        "auth.go",
+        "flag.go",
+        "oidc.go",
+        "paths.go",
+        "redirect.go",
+        "skeleton.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/auth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httplog",
+        "//lib/ldap",
+        "//lib/ui",
+        "//lib/ui/components",
+        "//lib/webauth",
+        "//lib/webhandler",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_github_zitadel_oidc_v3//pkg/op",
+        "@dev_maragu_gomponents//:gomponents",
+    ],
+)

@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "authd_lib",
+    srcs = ["authd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/authd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/httpsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/auth",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "authd",
+    embed = [":authd_lib"],
+    visibility = ["//visibility:public"],
+)
