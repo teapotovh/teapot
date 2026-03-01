@@ -72,7 +72,7 @@ tokenizers==0.22.2
     # via -r requirements.txt.raw
 tqdm==4.67.3
     # via huggingface-hub
-typer-slim==0.21.1
+typer-slim==0.24.0
     # via huggingface-hub
 typing-extensions==4.15.0
     # via
