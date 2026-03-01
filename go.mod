@@ -16,7 +16,7 @@ require (
 	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150
 	github.com/kataras/requestid v0.0.2
-	github.com/lib/pq v1.11.1
+	github.com/lib/pq v1.11.2
 	github.com/lmittmann/tint v1.1.2
 	github.com/prometheus/alertmanager v0.31.1
 	github.com/prometheus/client_golang v1.23.2
