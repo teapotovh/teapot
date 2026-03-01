@@ -13,6 +13,13 @@ import (
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
+type KontakteConfig struct {
+	HTTPLog    httplog.HTTPLogConfig
+	WebHandler webhandler.WebHandlerConfig
+	LDAP       ldap.LDAPConfig
+	WebAuth    webauth.WebAuthConfig
+}
+
 // Kontakte is the kontakte HTTP server that renders web pages for users to
 // modify their LDAP information.
 type Kontakte struct {
@@ -22,13 +29,6 @@ type Kontakte struct {
 	webHandler *webhandler.WebHandler
 	factory    *ldap.Factory
 	webAuth    *webauth.WebAuth
-}
-
-type KontakteConfig struct {
-	HTTPLog    httplog.HTTPLogConfig
-	WebHandler webhandler.WebHandlerConfig
-	LDAP       ldap.LDAPConfig
-	WebAuth    webauth.WebAuthConfig
 }
 
 func NewKontakte(config KontakteConfig, logger *slog.Logger) (*Kontakte, error) {

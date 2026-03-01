@@ -32,40 +32,5 @@ func newOIDCProvider(config oidcConfig, logger *slog.Logger) (*op.Provider, erro
 		return nil, fmt.Errorf("error while parsing cryptographic key from hex string %q: %w", config.key, err)
 	}
 
-	cfg := op.Config{
-		CryptoKey:                cryptoKey,
-		DefaultLogoutRedirectURI: PathLogout,
-
-		CodeMethodS256:          true,
-		AuthMethodPost:          true,
-		AuthMethodPrivateKeyJWT: true,
-		GrantTypeRefreshToken:   true,
-		RequestObjectSupported:  true,
-
-		SupportedUILocales: []language.Tag{language.English},
-
-		DeviceAuthorization: op.DeviceAuthorizationConfig{
-			Lifetime:     config.duration,
-			PollInterval: config.duration,
-			UserFormPath: PathDevice,
-			UserCode:     op.UserCodeBase20,
-		},
-	}
-
-	var opts = []op.Option{
-		op.WithLogger(logger),
-		op.WithAllowInsecure(),
-	}
-
-	opts = append(opts)
-
-	var storage op.Storage
-	var issuer func(insecure bool) (op.IssuerFromRequest, error)
-
-	handler, err := op.NewProvider(&cfg, storage, issuer, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("error while constructing provider: %w", err)
-	}
-
 	return handler, err
 }

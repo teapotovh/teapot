@@ -22,5 +22,6 @@ go_library(
         "@com_github_spf13_pflag//:pflag",
         "@com_github_zitadel_oidc_v3//pkg/op",
         "@dev_maragu_gomponents//:gomponents",
+        "@org_golang_x_text//language",
     ],
 )
