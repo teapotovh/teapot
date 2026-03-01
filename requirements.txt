@@ -70,7 +70,7 @@ sympy==1.14.0
     # via onnxruntime
 tokenizers==0.22.2
     # via -r requirements.txt.raw
-tqdm==4.67.2
+tqdm==4.67.3
     # via huggingface-hub
 typer-slim==0.21.1
     # via huggingface-hub
