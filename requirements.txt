@@ -58,7 +58,7 @@ packaging==26.0
     # via
     #   huggingface-hub
     #   onnxruntime
-protobuf==6.33.5
+protobuf==7.34.1
     # via onnxruntime
 pyyaml==6.0.3
     # via huggingface-hub
