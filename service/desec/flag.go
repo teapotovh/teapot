@@ -18,13 +18,20 @@ func DesecFlagSet() (*flag.FlagSet, func() DesecConfig) {
 		"teapot.ovh",
 		"the domain to manage within desec.io",
 	)
+	maxRetries := fs.Uint64(
+		"desec-max-retries",
+		5,
+		"maximum number of retries to perform a request against the deSEC API",
+	)
+
 	httpLogFS, getHTTPLogConfig := httplog.HTTPLogFlagSet()
 	fs.AddFlagSet(httpLogFS)
 
 	return fs, func() DesecConfig {
 		return DesecConfig{
-			Token:  *token,
-			Domain: *domain,
+			Token:      *token,
+			Domain:     *domain,
+			MaxRetries: *maxRetries,
 
 			HTTPLog: getHTTPLogConfig(),
 		}

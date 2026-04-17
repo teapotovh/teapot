@@ -7,18 +7,20 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/nrdcg/desec"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/teapotovh/teapot/lib/httplog"
+	"github.com/teapotovh/teapot/lib/log"
 	ednsprovider "sigs.k8s.io/external-dns/provider"
 )
 
 type Desec struct {
 	logger *slog.Logger
 
-	token  string
 	domain string
 
 	httpLog  *httplog.HTTPLog
+	client   *desec.Client
 	provider ednsprovider.Provider
 	webhook  *webhook
 	metrics  metrics
@@ -26,8 +28,9 @@ type Desec struct {
 
 // DesecConfig is the configuration for the Desec service.
 type DesecConfig struct {
-	Token  string
-	Domain string
+	Token      string
+	Domain     string
+	MaxRetries uint64
 
 	HTTPLog httplog.HTTPLogConfig
 }
@@ -41,13 +44,18 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
+	client := desec.New(config.Token, desec.ClientOptions{
+		RetryMax: int(config.MaxRetries),
+		Logger:   log.NewRetryableHTTPAdaptor(logger.With("component", "client")),
+	})
+
 	desec := Desec{
 		logger: logger,
 
-		token:  config.Token,
 		domain: config.Domain,
 
 		httpLog: httpLog,
+		client:  client,
 	}
 
 	desec.provider = &provider{

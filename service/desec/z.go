@@ -2,22 +2,44 @@ package desec
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/http"
 
 	"github.com/teapotovh/teapot/lib/observability"
 )
 
-func (d *Desec) canConnect(ctx context.Context) error {
-	// TODO: implement when we have the API client
-	return nil
-}
+var ErrMismatchedDomain = errors.New("mismatched domain name")
 
-func (d *Desec) canAuthenticate(ctx context.Context) error {
-	// TODO: implement when we have the API client
+func (d *Desec) canConnect(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.client.BaseURL, nil)
+	if err != nil {
+		return fmt.Errorf("error while building request to base URL: %w", err)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("error while performing GET to base URL: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code on base URL: %d", res.StatusCode)
+	}
+
 	return nil
 }
 
 func (d *Desec) hasDomain(ctx context.Context) error {
-	// TODO: implement when we have the API client
+	domain, err := d.client.Domains.Get(ctx, d.domain)
+	if err != nil {
+		return fmt.Errorf("error while fetching deSEC domain: %w", err)
+	}
+
+	if domain.Name != d.domain {
+		return fmt.Errorf("%w: expected %s, got %s", ErrMismatchedDomain, d.domain, domain.Name)
+	}
+
+	fmt.Println(domain)
 	return nil
 }
 
@@ -25,7 +47,6 @@ func (d *Desec) hasDomain(ctx context.Context) error {
 func (d *Desec) ReadinessChecks() map[string]observability.Check {
 	return map[string]observability.Check{
 		"desec/connect": observability.CheckFunc(d.canConnect),
-		"desec/auth":    observability.CheckFunc(d.canAuthenticate),
 		"desec/domain":  observability.CheckFunc(d.hasDomain),
 	}
 }

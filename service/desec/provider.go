@@ -7,6 +7,7 @@ import (
 
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
+	ednsprovider "sigs.k8s.io/external-dns/provider"
 )
 
 type provider struct {
@@ -45,3 +46,6 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
 	return nil, ErrNotImplemented
 }
+
+// Ensure *provider implements ednsprovider.Provider
+var _ ednsprovider.Provider = &provider{}
