@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"slices"
+	"strconv"
+	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/teapotovh/teapot/lib/httplog"
-	// webhookapi "sigs.k8s.io/external-dns/provider/webhook/api"
+	ednsprovider "sigs.k8s.io/external-dns/provider"
 )
 
 type Desec struct {
@@ -16,8 +18,10 @@ type Desec struct {
 	token  string
 	domain string
 
-	httpLog *httplog.HTTPLog
-	metrics metrics
+	httpLog  *httplog.HTTPLog
+	provider ednsprovider.Provider
+	webhook  *webhook
+	metrics  metrics
 }
 
 // DesecConfig is the configuration for the Desec service.
@@ -46,63 +50,53 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 		httpLog: httpLog,
 	}
 
+	desec.provider = &provider{
+		logger: logger.With("component", "provider"),
+		desec:  &desec,
+	}
+
+	desec.webhook = &webhook{
+		logger:   logger.With("component", "webhook"),
+		provider: desec.provider,
+	}
+
 	desec.initMetrics()
 
 	return &desec, nil
 }
 
-func allowMethod(handler http.HandlerFunc, methods ...string) http.Handler {
+func (d *Desec) collectWebhookMetrics(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !slices.Contains(methods, r.Method) {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
+		start := time.Now()
+		rw := responseWriter{
+			ResponseWriter: w,
+		}
+		handler.ServeHTTP(&rw, r)
+
+		duration := time.Since(start)
+		code := rw.statusCode
+		labels := prometheus.Labels{
+			"path": r.URL.Path,
+			"code": strconv.Itoa(code),
 		}
 
-		handler(w, r)
+		d.metrics.providerTotal.With(labels).Inc()
+		d.metrics.providerDuration.With(labels).Observe(duration.Seconds())
 	})
 }
 
-var (
-	UrlAdjustEndpoints = "/adjustendpoints"
-	UrlApplyChanges    = "/applychanges"
-	UrlRecords         = "/records"
-)
-
-type srv struct {
-	logger *slog.Logger
-}
-
-func (s *srv) NegotiateHandler(w http.ResponseWriter, r *http.Request) {
-	s.logger.InfoContext(r.Context(), "dio cane 1")
-	w.Write([]byte("NegotiateHandler"))
-}
-
-func (s *srv) RecordsHandler(w http.ResponseWriter, r *http.Request) {
-	s.logger.InfoContext(r.Context(), "dio cane 2")
-	w.Write([]byte("RecordsHandler"))
-}
-
-func (s *srv) AdjustEndpointsHandler(w http.ResponseWriter, r *http.Request) {
-	s.logger.InfoContext(r.Context(), "dio cane 3")
-	w.Write([]byte("AdjustEndpointsHandler"))
-}
-
 func (d *Desec) Handler(prefix string) http.Handler {
-	srv := srv{d.logger}
-	// srv := webhookapi.WebhookServer{
-	// 	Provider:
-	// }
-
 	mux := http.NewServeMux()
 
-	mux.Handle("/", allowMethod(srv.NegotiateHandler, http.MethodGet))
-	mux.Handle(UrlRecords, allowMethod(srv.RecordsHandler, http.MethodGet, http.MethodPost))
-	mux.Handle(UrlAdjustEndpoints, allowMethod(srv.AdjustEndpointsHandler, http.MethodPost))
+	mux.HandleFunc(UrlNegotiate, d.webhook.NegotiateHandler)
+	mux.HandleFunc(UrlRecords, d.webhook.RecordsHandler)
+	mux.HandleFunc(UrlAdjustEndpoints, d.webhook.AdjustEndpointsHandler)
 
 	var handler http.Handler = mux
 
 	handler = d.httpLog.LogMiddleware(handler)
 	handler = d.httpLog.ExtractMiddleware(handler)
+	handler = d.collectWebhookMetrics(handler)
 
 	return handler
 }

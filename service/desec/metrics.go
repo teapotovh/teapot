@@ -1,6 +1,8 @@
 package desec
 
 import (
+	"net/http"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -35,7 +37,7 @@ func (d *Desec) initMetrics() {
 			Name: "desec_provider_calls_total",
 			Help: "Total number external-dns provider calls",
 		},
-		[]string{"code"},
+		[]string{"path", "code"},
 	)
 
 	d.metrics.providerDuration = prometheus.NewHistogramVec(
@@ -44,7 +46,7 @@ func (d *Desec) initMetrics() {
 			Help:    "external-dns API call latency",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"code"},
+		[]string{"path", "code"},
 	)
 }
 
@@ -57,4 +59,15 @@ func (d *Desec) Metrics() []prometheus.Collector {
 		d.metrics.providerTotal,
 		d.metrics.providerDuration,
 	}
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
