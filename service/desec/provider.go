@@ -3,6 +3,7 @@ package desec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"sigs.k8s.io/external-dns/endpoint"
@@ -34,17 +35,29 @@ var ErrNotImplemented = errors.New("not implemented")
 
 // Records implements ednsprovider.Provider
 func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
+	rrsets, err := p.desec.client.Records.GetAll(ctx, p.desec.domain, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error while fetching all RRSets: %w", err)
+	}
+
+	slog.DebugContext(ctx, "fetched all rrsets", "rrsets", rrsets)
+
+	endpoints, err := groupRRSets(ctx, rrsets, p.logger)
+	if err != nil {
+		return nil, fmt.Errorf("error while grouping RRSets into endpoints: %w", err)
+	}
+
+	return endpoints, nil
+}
+
+// AdjustEndpoints implements ednsprovider.Provider
+func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
 	return nil, ErrNotImplemented
 }
 
 // ApplyChanges implements ednsprovider.Provider
 func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	return ErrNotImplemented
-}
-
-// AdjustEndpoints implements ednsprovider.Provider
-func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
-	return nil, ErrNotImplemented
 }
 
 // Ensure *provider implements ednsprovider.Provider

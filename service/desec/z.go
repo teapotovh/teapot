@@ -39,7 +39,6 @@ func (d *Desec) hasDomain(ctx context.Context) error {
 		return fmt.Errorf("%w: expected %s, got %s", ErrMismatchedDomain, d.domain, domain.Name)
 	}
 
-	fmt.Println(domain)
 	return nil
 }
 
