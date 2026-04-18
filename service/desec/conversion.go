@@ -12,9 +12,12 @@ import (
 )
 
 var (
+	ErrInvalidLabelType    = errors.New("invalid type for label record")
 	ErrInvalidLabelRecords = errors.New("invalid number of label records")
+	ErrSpecialCharacter    = errors.New("contains special character")
 	ErrInvalidKeyValuePair = errors.New("invalid key-value pair")
 	ErrMissingQuotes       = errors.New("missing quotes")
+	ErrUnexpectedDomain    = errors.New("unexpected domain")
 )
 
 func canonicalize(dn string) string {
@@ -35,9 +38,8 @@ func join(name, dn string) string {
 type labels map[string]string
 
 func rrsetToEndpoint(rrset desec.RRSet, labels labels) *endpoint.Endpoint {
-	dnsName := join(rrset.Name, rrset.Domain)
 	return &endpoint.Endpoint{
-		DNSName:    dnsName,
+		DNSName:    canonicalize(rrset.Name),
 		Targets:    rrset.Records,
 		RecordType: rrset.Type,
 		RecordTTL:  endpoint.TTL(rrset.TTL),
@@ -55,15 +57,11 @@ var recordTypesSet = map[string]unit{
 	"afsdb":      unit{},
 	"apl":        unit{},
 	"caa":        unit{},
-	"cdnskey":    unit{},
-	"cds":        unit{},
 	"cert":       unit{},
 	"cname":      unit{},
 	"dhcid":      unit{},
 	"dname":      unit{},
-	"dnskey":     unit{},
 	"dlv":        unit{},
-	"ds":         unit{},
 	"eui48":      unit{},
 	"eui64":      unit{},
 	"hinfo":      unit{},
@@ -96,6 +94,10 @@ func couldBeLabel(rrset desec.RRSet) bool {
 	}
 
 	parts := strings.Split(rrset.Name, labelSeparator)
+	if len(parts) <= 1 {
+		return false
+	}
+
 	_, ok := recordTypesSet[parts[0]]
 	return ok
 }
@@ -105,12 +107,15 @@ func labelName(rrset desec.RRSet) string {
 }
 
 func parseLabels(rrset desec.RRSet) (labels, error) {
+	if strings.ToLower(rrset.Type) != "txt" {
+		return nil, fmt.Errorf("%w: expected TXT, got %s", ErrInvalidLabelType, rrset.Type)
+	}
+
 	if len(rrset.Records) != 1 {
 		return nil, fmt.Errorf("%w: expected exactly one, instead got %d", ErrInvalidLabelRecords, len(rrset.Records))
 	}
 
 	value := rrset.Records[0]
-	fmt.Println(value, strings.HasPrefix(value, "\""), strings.HasSuffix(value, "\""))
 	if !strings.HasPrefix(value, "\"") || !strings.HasSuffix(value, "\"") {
 		return nil, fmt.Errorf("invalid label value: %w", ErrMissingQuotes)
 	}
@@ -128,6 +133,26 @@ func parseLabels(rrset desec.RRSet) (labels, error) {
 	}
 
 	return labels, nil
+}
+
+func hasSpecialChar(str string) bool {
+	return strings.Contains(str, ",") || strings.Contains(str, "=")
+}
+
+func endcodeLabels(labels labels) (string, error) {
+	var pairs []string
+	for key, value := range labels {
+		if hasSpecialChar(key) {
+			return "", fmt.Errorf("invalid key %q: %w", ErrSpecialCharacter)
+		}
+		if hasSpecialChar(value) {
+			return "", fmt.Errorf("invalid value %q: %w", ErrSpecialCharacter)
+		}
+
+		pairs = append(pairs, key+"="+value)
+	}
+
+	return "\"" + strings.Join(pairs, ",") + "\"", nil
 }
 
 func groupRRSets(ctx context.Context, rrsets []desec.RRSet, logger *slog.Logger) ([]*endpoint.Endpoint, error) {
@@ -160,4 +185,65 @@ func groupRRSets(ctx context.Context, rrsets []desec.RRSet, logger *slog.Logger)
 	}
 
 	return endpoints, nil
+}
+
+func partialRRSetFromFQDN(fqdn string, domain string) desec.RRSet {
+	fqdn = canonicalize(fqdn)
+	domain = canonicalize(domain)
+	subName := strings.TrimSuffix(fqdn, "."+domain)
+	return desec.RRSet{
+		Name:    fqdn,
+		Domain:  domain,
+		SubName: subName,
+	}
+}
+
+func endpointsToRRSets(endpoints []*endpoint.Endpoint, domain string) ([]desec.RRSet, error) {
+	var rrsets []desec.RRSet
+
+	for _, endpoint := range endpoints {
+		// For each endpoint, two RRSets are created:
+		// 1. The actual RRSet for the DNS record
+		// 2. The RRSet to store the labels
+
+		record := partialRRSetFromFQDN(endpoint.DNSName, domain)
+		record.Type = endpoint.RecordType
+		record.Records = endpoint.Targets
+		record.TTL = int(endpoint.RecordTTL)
+
+		ln := labelName(record)
+		labelRecord := partialRRSetFromFQDN(ln, domain)
+		labelRecord.Type = "TXT"
+		lbls, err := endcodeLabels(labels(endpoint.Labels))
+		if err != nil {
+			return nil, fmt.Errorf("could not encode labels for endpoint %q: %w", endpoint.DNSName, err)
+		}
+		labelRecord.Records = []string{lbls}
+		record.TTL = int(endpoint.RecordTTL)
+
+		rrsets = append(rrsets, record, labelRecord)
+	}
+
+	return rrsets, nil
+}
+
+func endpointsToRRSetsIdentifiers(endpoints []*endpoint.Endpoint, domain string) []desec.RRSet {
+	var rrsets []desec.RRSet
+
+	for _, endpoint := range endpoints {
+		// For each endpoint, two RRSets are created:
+		// 1. The actual RRSet for the DNS record
+		// 2. The RRSet to store the labels
+
+		record := partialRRSetFromFQDN(endpoint.DNSName, domain)
+		record.Type = endpoint.RecordType
+
+		ln := labelName(record)
+		labelRecord := partialRRSetFromFQDN(ln, domain)
+		labelRecord.Type = "TXT"
+
+		rrsets = append(rrsets, record, labelRecord)
+	}
+
+	return rrsets
 }

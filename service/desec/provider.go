@@ -5,11 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
+	"github.com/nrdcg/desec"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 	ednsprovider "sigs.k8s.io/external-dns/provider"
 )
+
+var ErrAliasUnsupported = errors.New("ALIAS records are not supported")
 
 type provider struct {
 	logger *slog.Logger
@@ -52,12 +57,80 @@ func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 
 // AdjustEndpoints implements ednsprovider.Provider
 func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
-	return nil, ErrNotImplemented
+	for _, e := range endpoints {
+		if strings.ToLower(e.RecordType) == "alias" {
+			return nil, ErrAliasUnsupported
+		}
+
+		if !strings.HasSuffix(e.DNSName, p.desec.domain) {
+			return nil, fmt.Errorf("%w: expected %s to be under %s", ErrUnexpectedDomain, e.DNSName, p.desec.domain)
+		}
+
+		if time.Duration(e.RecordTTL)*time.Second < time.Hour {
+			e.RecordTTL = endpoint.TTL(time.Hour / time.Second)
+		}
+	}
+
+	return endpoints, nil
 }
 
 // ApplyChanges implements ednsprovider.Provider
 func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	return ErrNotImplemented
+	var (
+		create []desec.RRSet
+		update []desec.RRSet
+		remove []desec.RRSet
+
+		err error
+	)
+
+	// First, we have a "planning phase" where we compute all the RRSets to
+	// perform the API calls. This way, if we have any errors due to validity checks,
+	// we fail before we perform partial updates using the API.
+
+	if len(changes.Create) > 0 {
+		create, err = endpointsToRRSets(changes.Create, p.desec.domain)
+		if err != nil {
+			return fmt.Errorf("error while converting new endpoints to RRSets: %w", err)
+		}
+	}
+
+	if len(changes.UpdateNew) > 0 {
+		update, err = endpointsToRRSets(changes.UpdateNew, p.desec.domain)
+		if err != nil {
+			return fmt.Errorf("error while converting updates to endpoints to RRSets: %w", err)
+		}
+	}
+
+	if len(changes.Delete) > 0 {
+		remove = endpointsToRRSetsIdentifiers(changes.Delete, p.desec.domain)
+	}
+
+	if len(create) > 0 {
+		if _, err := p.desec.client.Records.BulkCreate(ctx, p.desec.domain, create); err != nil {
+			return fmt.Errorf("error while creating RRSets for the new endpoints: %w", err)
+		}
+
+		p.logger.Info("created new RRSets", "amount", len(create), "endpoints", changes.Create, "rrsets", create)
+	}
+
+	if len(update) > 0 {
+		if _, err := p.desec.client.Records.BulkUpdate(ctx, desec.FullResource, p.desec.domain, create); err != nil {
+			return fmt.Errorf("error while updating RRSets for already-existing endpoints: %w", err)
+		}
+
+		p.logger.Info("updated existing RRSets", "amount", len(create), "endpoints", changes.Create, "rrsets", create)
+	}
+
+	if len(remove) > 0 {
+		if err := p.desec.client.Records.BulkDelete(ctx, p.desec.domain, remove); err != nil {
+			return fmt.Errorf("error while deleting old RRSets: %w", err)
+		}
+
+		p.logger.Info("deleted old RRSets", "amount", len(remove), "endpoints", changes.Create, "rrsets", remove)
+	}
+
+	return nil
 }
 
 // Ensure *provider implements ednsprovider.Provider

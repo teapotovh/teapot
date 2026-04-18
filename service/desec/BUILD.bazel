@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "desec",
+    srcs = [
+        "conversion.go",
+        "desec.go",
+        "flag.go",
+        "metrics.go",
+        "provider.go",
+        "webhook.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/desec",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httplog",
+        "//lib/log",
+        "//lib/observability",
+        "@com_github_nrdcg_desec//:desec",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+        "@io_k8s_sigs_external_dns//endpoint",
+        "@io_k8s_sigs_external_dns//plan",
+        "@io_k8s_sigs_external_dns//provider",
+    ],
+)
