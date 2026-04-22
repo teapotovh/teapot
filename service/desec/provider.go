@@ -22,18 +22,11 @@ type provider struct {
 	desec *Desec
 }
 
-type domainFilter struct {
-	domain string
-}
-
-// Match implements endpoint.DomainFilterInterface
-func (d *domainFilter) Match(domain string) bool {
-	return domain == d.domain
-}
-
 // GetDomainFilter implements ednsprovider.Provider
 func (p *provider) GetDomainFilter() endpoint.DomainFilterInterface {
-	return &domainFilter{p.desec.domain}
+	return &endpoint.DomainFilter{
+		Filters: []string{p.desec.domain},
+	}
 }
 
 var ErrNotImplemented = errors.New("not implemented")
@@ -57,6 +50,7 @@ func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 
 // AdjustEndpoints implements ednsprovider.Provider
 func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
+	var result []*endpoint.Endpoint
 	for _, e := range endpoints {
 		if strings.ToLower(e.RecordType) == "alias" {
 			return nil, ErrAliasUnsupported
@@ -69,9 +63,19 @@ func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.
 		if time.Duration(e.RecordTTL)*time.Second < time.Hour {
 			e.RecordTTL = endpoint.TTL(time.Hour / time.Second)
 		}
+
+		if strings.ToLower(e.RecordType) == "txt" {
+			for i, target := range e.Targets {
+				if !strings.HasPrefix(target, "\"") || !strings.HasSuffix(target, "\"") {
+					e.Targets[i] = "\"" + e.Targets[i] + "\""
+				}
+			}
+		}
+
+		result = append(result, e)
 	}
 
-	return endpoints, nil
+	return result, nil
 }
 
 // ApplyChanges implements ednsprovider.Provider
@@ -107,6 +111,7 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	}
 
 	if len(create) > 0 {
+		p.logger.Debug("applying new rrsets", "rrsets", create)
 		if _, err := p.desec.client.Records.BulkCreate(ctx, p.desec.domain, create); err != nil {
 			return fmt.Errorf("error while creating RRSets for the new endpoints: %w", err)
 		}
@@ -115,6 +120,7 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	}
 
 	if len(update) > 0 {
+		p.logger.Debug("applying updated rrsets", "rrsets", update)
 		if _, err := p.desec.client.Records.BulkUpdate(ctx, desec.FullResource, p.desec.domain, create); err != nil {
 			return fmt.Errorf("error while updating RRSets for already-existing endpoints: %w", err)
 		}
@@ -123,6 +129,7 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	}
 
 	if len(remove) > 0 {
+		p.logger.Debug("removing rrsets", "rrsets", remove)
 		if err := p.desec.client.Records.BulkDelete(ctx, p.desec.domain, remove); err != nil {
 			return fmt.Errorf("error while deleting old RRSets: %w", err)
 		}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/nrdcg/desec"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -201,27 +202,32 @@ func partialRRSetFromFQDN(fqdn string, domain string) desec.RRSet {
 func endpointsToRRSets(endpoints []*endpoint.Endpoint, domain string) ([]desec.RRSet, error) {
 	var rrsets []desec.RRSet
 
-	for _, endpoint := range endpoints {
+	for _, e := range endpoints {
 		// For each endpoint, two RRSets are created:
 		// 1. The actual RRSet for the DNS record
 		// 2. The RRSet to store the labels
 
-		record := partialRRSetFromFQDN(endpoint.DNSName, domain)
-		record.Type = endpoint.RecordType
-		record.Records = endpoint.Targets
-		record.TTL = int(endpoint.RecordTTL)
+		record := partialRRSetFromFQDN(e.DNSName, domain)
+		record.Type = e.RecordType
+		record.Records = e.Targets
 
-		ln := labelName(record)
-		labelRecord := partialRRSetFromFQDN(ln, domain)
-		labelRecord.Type = "TXT"
-		lbls, err := endcodeLabels(labels(endpoint.Labels))
-		if err != nil {
-			return nil, fmt.Errorf("could not encode labels for endpoint %q: %w", endpoint.DNSName, err)
+		if time.Duration(e.RecordTTL)*time.Second < time.Hour {
+			e.RecordTTL = endpoint.TTL(time.Hour / time.Second)
 		}
-		labelRecord.Records = []string{lbls}
-		record.TTL = int(endpoint.RecordTTL)
+		record.TTL = int(e.RecordTTL)
 
-		rrsets = append(rrsets, record, labelRecord)
+		// ln := labelName(record)
+		// labelRecord := partialRRSetFromFQDN(ln, domain)
+		// labelRecord.Type = "TXT"
+		// lbls, err := endcodeLabels(labels(endpoint.Labels))
+		// if err != nil {
+		// 	return nil, fmt.Errorf("could not encode labels for endpoint %q: %w", endpoint.DNSName, err)
+		// }
+		// labelRecord.Records = []string{lbls}
+		// labelRecord.TTL = int(endpoint.RecordTTL)
+
+		// rrsets = append(rrsets, record, labelRecord)
+		rrsets = append(rrsets, record)
 	}
 
 	return rrsets, nil
