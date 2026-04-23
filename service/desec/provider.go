@@ -29,8 +29,6 @@ func (p *provider) GetDomainFilter() endpoint.DomainFilterInterface {
 	}
 }
 
-var ErrNotImplemented = errors.New("not implemented")
-
 // Records implements ednsprovider.Provider
 func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	rrsets, err := p.desec.client.Records.GetAll(ctx, p.desec.domain, nil)
@@ -40,7 +38,7 @@ func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 
 	slog.DebugContext(ctx, "fetched all rrsets", "rrsets", rrsets)
 
-	endpoints, err := groupRRSets(ctx, rrsets, p.logger)
+	endpoints, err := rrsetsToEndpoints(ctx, rrsets, p.logger)
 	if err != nil {
 		return nil, fmt.Errorf("error while grouping RRSets into endpoints: %w", err)
 	}
@@ -57,7 +55,8 @@ func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.
 		}
 
 		if !strings.HasSuffix(e.DNSName, p.desec.domain) {
-			return nil, fmt.Errorf("%w: expected %s to be under %s", ErrUnexpectedDomain, e.DNSName, p.desec.domain)
+			p.logger.Warn("invalid endpoint provided, expected it to be under domain", "domain", p.desec.domain, "endpoint", e)
+			continue
 		}
 
 		if time.Duration(e.RecordTTL)*time.Second < time.Hour {
