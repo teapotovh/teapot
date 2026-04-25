@@ -13,6 +13,11 @@ func DesecFlagSet() (*flag.FlagSet, func() DesecConfig) {
 		"",
 		"the token to access the GitHub API. Needs permission to create issues",
 	)
+	dryRun := fs.Bool(
+		"desec-dry-run",
+		false,
+		"whether to run the provider in dry-run mode (requests are not sent to desec.io)",
+	)
 	domain := fs.String(
 		"desec-domain",
 		"teapot.ovh",
@@ -32,6 +37,7 @@ func DesecFlagSet() (*flag.FlagSet, func() DesecConfig) {
 			Token:      *token,
 			Domain:     *domain,
 			MaxRetries: *maxRetries,
+			DryRun:     *dryRun,
 
 			HTTPLog: getHTTPLogConfig(),
 		}

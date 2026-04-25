@@ -59,6 +59,14 @@ func partialRRSetFromFQDN(fqdn string, domain string) desec.RRSet {
 	}
 }
 
+func ttl(raw endpoint.TTL) int {
+	if time.Duration(raw)*time.Second < time.Hour {
+		return int(time.Hour / time.Second)
+	}
+
+	return int(raw)
+}
+
 func endpointsToRRSets(endpoints []*endpoint.Endpoint, domain string) ([]desec.RRSet, error) {
 	var rrsets []desec.RRSet
 
@@ -66,11 +74,7 @@ func endpointsToRRSets(endpoints []*endpoint.Endpoint, domain string) ([]desec.R
 		record := partialRRSetFromFQDN(e.DNSName, domain)
 		record.Type = e.RecordType
 		record.Records = e.Targets
-
-		if time.Duration(e.RecordTTL)*time.Second < time.Hour {
-			e.RecordTTL = endpoint.TTL(time.Hour / time.Second)
-		}
-		record.TTL = int(e.RecordTTL)
+		record.TTL = ttl(e.RecordTTL)
 
 		rrsets = append(rrsets, record)
 	}
@@ -84,6 +88,7 @@ func endpointsToRRSetsIdentifiers(endpoints []*endpoint.Endpoint, domain string)
 	for _, e := range endpoints {
 		record := partialRRSetFromFQDN(e.DNSName, domain)
 		record.Type = e.RecordType
+		record.TTL = ttl(e.RecordTTL)
 
 		rrsets = append(rrsets, record)
 	}

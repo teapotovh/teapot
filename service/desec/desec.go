@@ -31,6 +31,7 @@ type DesecConfig struct {
 	Token      string
 	Domain     string
 	MaxRetries uint64
+	DryRun     bool
 
 	HTTPLog httplog.HTTPLogConfig
 }
@@ -44,10 +45,18 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
-	client := desec.New(config.Token, desec.ClientOptions{
+	clientOptions := desec.ClientOptions{
 		RetryMax: int(config.MaxRetries),
 		Logger:   log.NewRetryableHTTPAdaptor(logger.With("component", "client")),
-	})
+	}
+	if config.DryRun {
+		clientOptions.HTTPClient = &http.Client{
+			Transport: &MockTransport{
+				logger: logger.With("component", "mock"),
+			},
+		}
+	}
+	client := desec.New(config.Token, clientOptions)
 
 	desec := Desec{
 		logger: logger,

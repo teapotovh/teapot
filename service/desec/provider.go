@@ -110,30 +110,30 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	}
 
 	if len(create) > 0 {
-		p.logger.Debug("applying new rrsets", "rrsets", create)
+		p.logger.Debug("applying new rrsets", "endpoints", changes.Create, "rrsets", create)
 		if _, err := p.desec.client.Records.BulkCreate(ctx, p.desec.domain, create); err != nil {
 			return fmt.Errorf("error while creating RRSets for the new endpoints: %w", err)
 		}
 
-		p.logger.Info("created new RRSets", "amount", len(create), "endpoints", changes.Create, "rrsets", create)
+		p.logger.Info("created new RRSets", "amount", len(create))
 	}
 
 	if len(update) > 0 {
-		p.logger.Debug("applying updated rrsets", "rrsets", update)
-		if _, err := p.desec.client.Records.BulkUpdate(ctx, desec.FullResource, p.desec.domain, create); err != nil {
+		p.logger.Debug("applying updated rrsets", "oldEndpoints", changes.UpdateOld, "newEndpoints", changes.UpdateNew, "rrsets", update)
+		if _, err := p.desec.client.Records.BulkUpdate(ctx, desec.FullResource, p.desec.domain, update); err != nil {
 			return fmt.Errorf("error while updating RRSets for already-existing endpoints: %w", err)
 		}
 
-		p.logger.Info("updated existing RRSets", "amount", len(create), "endpoints", changes.Create, "rrsets", create)
+		p.logger.Info("updated existing RRSets", "amount", len(update))
 	}
 
 	if len(remove) > 0 {
-		p.logger.Debug("removing rrsets", "rrsets", remove)
+		p.logger.Debug("removing rrsets", "endpoints", changes.Create, "rrsets", remove)
 		if err := p.desec.client.Records.BulkDelete(ctx, p.desec.domain, remove); err != nil {
 			return fmt.Errorf("error while deleting old RRSets: %w", err)
 		}
 
-		p.logger.Info("deleted old RRSets", "amount", len(remove), "endpoints", changes.Create, "rrsets", remove)
+		p.logger.Info("deleted old RRSets", "amount", len(remove))
 	}
 
 	return nil
