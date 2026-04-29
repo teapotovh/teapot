@@ -1,4 +1,8 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:load.bzl", "image_load")
+load("@rules_img//img:push.bzl", "image_push")
 
 go_library(
     name = "bottind_lib",
@@ -17,4 +21,62 @@ go_binary(
     name = "bottind",
     embed = [":bottind_lib"],
     visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "bottind_static",
+    embed = [":bottind_lib"],
+    pure = "on",
+    static = "on",
+    visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/bottind": ":bottind_static",
+    },
+    compress = "zstd",
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_static_debian13",
+    entrypoint = ["/bottind"],
+    layers = [
+        ":binary_layer",
+    ],
+)
+
+image_load(
+    name = "load",
+    image = ":image",
+    tag = "ghcr.io/teapotovh/bottind:latest",
+)
+
+image_push(
+    name = "push_latest",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/bottind",
+    tag = "latest",
+    stamp = "disabled",
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/bottind",
+    tag_file = "//bazel:version_file",
+    stamp = "disabled",
+)
+
+image_push(
+    name = "push_ttl",
+    image = ":image",
+    registry = "ttl.sh",
+    repository = "teapotovh_bottind",
+    tag = "1h",
 )

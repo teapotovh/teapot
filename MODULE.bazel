@@ -18,7 +18,7 @@ bazel_dep(name = "rules_python_gazelle_plugin", version = "1.8.3")
 bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
 
-bazel_dep(name = "rules_img", version = "0.3.4")
+bazel_dep(name = "rules_img", version = "0.3.8")
 bazel_dep(name = "rules_apko", version = "1.5.32")
 
 # --- Go Configuration ---
