@@ -1,15 +1,15 @@
 genrule(
-  name = "version_file",
-  outs = ["version.txt"],
-  cmd_bash = "grep -Po '^STABLE_TEAPOT_VERSION\\s+\\K.*' bazel-out/stable-status.txt > $@",
-  stamp = True,
-  visibility = ["//visibility:public"],
+    name = "version_file",
+    outs = ["version.txt"],
+    cmd_bash = "grep -Po '^STABLE_TEAPOT_VERSION\\s+\\K.*' bazel-out/stable-status.txt > $@",
+    stamp = True,
+    visibility = ["//visibility:public"],
 )
 
 genrule(
-  name = "version_file_latest",
-  srcs = [":version_file"],
-  outs = ["versions.txt"],
-  cmd = "cat $(location :version_file) > $@ && echo 'latest' >> $@",
-  visibility = ["//visibility:public"],
+    name = "version_file_latest",
+    srcs = [":version_file"],
+    outs = ["versions.txt"],
+    cmd = "cat $(location :version_file) > $@ && echo 'latest' >> $@",
+    visibility = ["//visibility:public"],
 )

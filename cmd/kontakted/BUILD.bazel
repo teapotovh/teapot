@@ -58,21 +58,12 @@ image_load(
 )
 
 image_push(
-    name = "push_latest",
-    image = ":image",
-    registry = "ghcr.io",
-    repository = "teapotovh/kontakted",
-    tag = "latest",
-    stamp = "disabled",
-)
-
-image_push(
     name = "push",
     image = ":image",
     registry = "ghcr.io",
     repository = "teapotovh/kontakted",
-    tag_file = "//bazel:version_file",
     stamp = "disabled",
+    tag_file = "//bazel:version_file",
 )
 
 image_push(
