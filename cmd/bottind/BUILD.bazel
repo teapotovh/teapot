@@ -61,7 +61,7 @@ image_push(
     registry = "ghcr.io",
     repository = "teapotovh/bottind",
     stamp = "disabled",
-    tag_file = "//bazel:version_file",
+    tag_file = "//bazel:version_file_latest",
 )
 
 image_push(
