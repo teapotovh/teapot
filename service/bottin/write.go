@@ -322,8 +322,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 	}
 
 	// First permission check with no particular attributes
-	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{}) &&
-		!server.acl.Check(user, "modifyAdd", dn, []store.AttributeKey{}) {
+	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{}) {
 		return goldap.ResultCodeInsufficientAccessRights, nil
 	}
 
@@ -371,9 +370,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 		}
 
 		// Check for permission to modify this attribute
-		if !server.acl.Check(user, "modify", dn, []store.AttributeKey{attr}) &&
-			change.Operation() != ldapserver.ModifyRequestChangeOperationAdd ||
-			!server.acl.Check(user, "modifyAdd", dn, []store.AttributeKey{attr}) {
+		if !server.acl.Check(user, "modify", dn, []store.AttributeKey{attr}) {
 			return goldap.ResultCodeInsufficientAccessRights, nil
 		}
 
