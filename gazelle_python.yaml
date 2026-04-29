@@ -36,7 +36,6 @@ manifest:
     sympy: sympy
     tokenizers: tokenizers
     tqdm: tqdm
-    typer: typer_slim
     typing_extensions: typing_extensions
     yaml: pyyaml
   pip_repository:
