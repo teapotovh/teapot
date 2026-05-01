@@ -62,7 +62,7 @@ protobuf==6.33.5
     # via onnxruntime
 pyyaml==6.0.3
     # via huggingface-hub
-semantic-text-splitter==0.29.0
+semantic-text-splitter==0.30.1
     # via -r requirements.txt.raw
 shellingham==1.5.4
     # via huggingface-hub
