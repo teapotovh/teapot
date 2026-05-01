@@ -11,7 +11,7 @@ type MockTransport struct {
 	logger *slog.Logger
 }
 
-// RoundTrip implements http.RoundTripper
+// RoundTrip implements http.RoundTripper.
 func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	attrs := []any{
 		slog.String("method", req.Method),
@@ -28,6 +28,7 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	header := http.Header{
 		"Content-Type": []string{"application/json"},
 	}
+
 	return &http.Response{
 		StatusCode: http.StatusOK,
 		Status:     "200 OK",

@@ -24,14 +24,14 @@ type provider struct {
 	managedTypes []string
 }
 
-// GetDomainFilter implements ednsprovider.Provider
+// GetDomainFilter implements ednsprovider.Provider.
 func (p *provider) GetDomainFilter() endpoint.DomainFilterInterface {
 	return &endpoint.DomainFilter{
 		Filters: []string{p.desec.domain},
 	}
 }
 
-// Records implements ednsprovider.Provider
+// Records implements ednsprovider.Provider.
 func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	rrsets, err := p.getAll(ctx, p.desec.domain, nil)
 	if err != nil {
@@ -39,7 +39,7 @@ func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	}
 
 	rrsets = filterRRSets(rrsets, p.managedTypes)
-	slog.DebugContext(ctx, "fetched all rrsets", "rrsets", rrsets)
+	p.logger.DebugContext(ctx, "fetched all rrsets", "rrsets", rrsets)
 
 	endpoints, err := groupRRSets(ctx, rrsets, p.logger)
 	if err != nil {
@@ -49,16 +49,24 @@ func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	return endpoints, nil
 }
 
-// AdjustEndpoints implements ednsprovider.Provider
+// AdjustEndpoints implements ednsprovider.Provider.
 func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
 	var result []*endpoint.Endpoint
+
 	for _, e := range endpoints {
 		if strings.ToLower(e.RecordType) == "alias" {
 			return nil, ErrAliasUnsupported
 		}
 
 		if !strings.HasSuffix(e.DNSName, p.desec.domain) {
-			p.logger.Debug("ignoring provided endpoint, expected it to be under domain", "domain", p.desec.domain, "endpoint", e)
+			p.logger.Debug(
+				"ignoring provided endpoint, expected it to be under domain",
+				"domain",
+				p.desec.domain,
+				"endpoint",
+				e,
+			)
+
 			continue
 		}
 
@@ -80,7 +88,7 @@ func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.
 	return result, nil
 }
 
-// ApplyChanges implements ednsprovider.Provider
+// ApplyChanges implements ednsprovider.Provider.
 func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	var (
 		create []desec.RRSet
@@ -116,6 +124,7 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 		for _, rrset := range create {
 			p.logger.DebugContext(ctx, "creating rrset", "rrset", rrset)
 		}
+
 		if _, err := p.bulkCreate(ctx, p.desec.domain, create); err != nil {
 			return fmt.Errorf("error while creating RRSets for the new endpoints: %w", err)
 		}
@@ -127,6 +136,7 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 		for _, rrset := range update {
 			p.logger.DebugContext(ctx, "updating rrset", "rrset", rrset)
 		}
+
 		if _, err := p.bulkUpdate(ctx, desec.FullResource, p.desec.domain, update); err != nil {
 			return fmt.Errorf("error while updating RRSets for already-existing endpoints: %w", err)
 		}
@@ -138,6 +148,7 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 		for _, rrset := range remove {
 			p.logger.DebugContext(ctx, "removing rrset", "rrset", rrset)
 		}
+
 		if err := p.bulkDelete(ctx, p.desec.domain, remove); err != nil {
 			return fmt.Errorf("error while deleting old RRSets: %w", err)
 		}
@@ -162,7 +173,12 @@ func (p *provider) bulkCreate(ctx context.Context, domainName string, rrSets []d
 	return p.desec.client.Records.BulkCreate(ctx, domainName, rrSets)
 }
 
-func (p *provider) bulkUpdate(ctx context.Context, mode desec.UpdateMode, domainName string, rrSets []desec.RRSet) ([]desec.RRSet, error) {
+func (p *provider) bulkUpdate(
+	ctx context.Context,
+	mode desec.UpdateMode,
+	domainName string,
+	rrSets []desec.RRSet,
+) ([]desec.RRSet, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
@@ -176,5 +192,5 @@ func (p *provider) bulkDelete(ctx context.Context, domainName string, rrSets []d
 	return p.desec.client.Records.BulkDelete(ctx, domainName, rrSets)
 }
 
-// Ensure *provider implements ednsprovider.Provider
+// Ensure *provider implements ednsprovider.Provider.
 var _ ednsprovider.Provider = &provider{}

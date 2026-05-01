@@ -22,12 +22,15 @@ var (
 
 func canonicalize(dn string) string {
 	var parts []string
-	for _, part := range strings.Split(dn, ".") {
+
+	for part := range strings.SplitSeq(dn, ".") {
 		if len(part) > 0 {
 			parts = append(parts, part)
 		}
 	}
+
 	fqdn := strings.Join(parts, ".") + "."
+
 	return strings.ToLower(fqdn)
 }
 
@@ -46,40 +49,40 @@ var labelSeparator = "-"
 type unit struct{}
 
 var recordTypesSet = map[string]unit{
-	"a":          unit{},
-	"aaaa":       unit{},
-	"afsdb":      unit{},
-	"apl":        unit{},
-	"caa":        unit{},
-	"cert":       unit{},
-	"cname":      unit{},
-	"dhcid":      unit{},
-	"dname":      unit{},
-	"dlv":        unit{},
-	"eui48":      unit{},
-	"eui64":      unit{},
-	"hinfo":      unit{},
-	"https":      unit{},
-	"kx":         unit{},
-	"l32":        unit{},
-	"l64":        unit{},
-	"loc":        unit{},
-	"lp":         unit{},
-	"mx":         unit{},
-	"naptr":      unit{},
-	"nid":        unit{},
-	"ns":         unit{},
-	"openpgpkey": unit{},
-	"ptr":        unit{},
-	"rp":         unit{},
-	"smimea":     unit{},
-	"spf":        unit{},
-	"srv":        unit{},
-	"sshfp":      unit{},
-	"svcb":       unit{},
-	"tlsa":       unit{},
-	"txt":        unit{},
-	"uri":        unit{},
+	"a":          {},
+	"aaaa":       {},
+	"afsdb":      {},
+	"apl":        {},
+	"caa":        {},
+	"cert":       {},
+	"cname":      {},
+	"dhcid":      {},
+	"dname":      {},
+	"dlv":        {},
+	"eui48":      {},
+	"eui64":      {},
+	"hinfo":      {},
+	"https":      {},
+	"kx":         {},
+	"l32":        {},
+	"l64":        {},
+	"loc":        {},
+	"lp":         {},
+	"mx":         {},
+	"naptr":      {},
+	"nid":        {},
+	"ns":         {},
+	"openpgpkey": {},
+	"ptr":        {},
+	"rp":         {},
+	"smimea":     {},
+	"spf":        {},
+	"srv":        {},
+	"sshfp":      {},
+	"svcb":       {},
+	"tlsa":       {},
+	"txt":        {},
+	"uri":        {},
 }
 
 func couldBeLabel(rrset desec.RRSet) bool {
@@ -97,6 +100,7 @@ func couldBeLabel(rrset desec.RRSet) bool {
 	}
 
 	_, ok := recordTypesSet[parts[0]]
+
 	return ok
 }
 
@@ -121,6 +125,7 @@ func groupRRSets(ctx context.Context, rrsets []desec.RRSet, logger *slog.Logger)
 	}
 
 	var endpoints []*endpoint.Endpoint
+
 	for _, rrset := range rrsets {
 		ln := labelName(rrset)
 		labels, hasLabels := potentialLabels[ln]
@@ -141,6 +146,7 @@ func partialRRSetFromFQDN(fqdn string, domain string) desec.RRSet {
 	fqdn = canonicalize(fqdn)
 	domain = canonicalize(domain)
 	subName := strings.TrimSuffix(fqdn, "."+domain)
+
 	return desec.RRSet{
 		Name:    fqdn,
 		Domain:  domain,
@@ -187,10 +193,12 @@ func endpointsToRRSetsIdentifiers(endpoints []*endpoint.Endpoint, domain string)
 
 func filterRRSets(rrsets []desec.RRSet, managedTypes []string) []desec.RRSet {
 	var result []desec.RRSet
+
 	for _, rrset := range rrsets {
 		if slices.Contains(managedTypes, strings.ToLower(rrset.Type)) {
 			result = append(result, rrset)
 		}
 	}
+
 	return result
 }

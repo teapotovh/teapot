@@ -4,6 +4,7 @@ import (
 	"time"
 
 	flag "github.com/spf13/pflag"
+
 	"github.com/teapotovh/teapot/lib/httplog"
 )
 
@@ -25,7 +26,7 @@ func DesecFlagSet() (*flag.FlagSet, func() DesecConfig) {
 		"teapot.ovh",
 		"the domain to manage within desec.io",
 	)
-	maxRetries := fs.Uint64(
+	maxRetries := fs.Int(
 		"desec-max-retries",
 		5,
 		"maximum number of retries to perform a request against the deSEC API",
@@ -38,7 +39,7 @@ func DesecFlagSet() (*flag.FlagSet, func() DesecConfig) {
 	managedTypes := fs.StringSlice(
 		"desec-managed-types",
 		[]string{"a", "mx", "txt"},
-		"list of dns record types to be managed by the DeSEC provider. This should match with external-dns's configuration",
+		"list of dns record types to be managed by the deSEC provider. This should match with external-dns's configuration",
 	)
 
 	httpLogFS, getHTTPLogConfig := httplog.HTTPLogFlagSet()

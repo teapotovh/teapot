@@ -9,9 +9,10 @@ import (
 
 	"github.com/nrdcg/desec"
 	"github.com/prometheus/client_golang/prometheus"
+	ednsprovider "sigs.k8s.io/external-dns/provider"
+
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/log"
-	ednsprovider "sigs.k8s.io/external-dns/provider"
 )
 
 type Desec struct {
@@ -30,7 +31,7 @@ type Desec struct {
 type DesecConfig struct {
 	Token        string
 	Domain       string
-	MaxRetries   uint64
+	MaxRetries   int
 	DryRun       bool
 	DesecTimeout time.Duration
 	ManagedTypes []string
@@ -48,7 +49,7 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 	}
 
 	clientOptions := desec.ClientOptions{
-		RetryMax: int(config.MaxRetries),
+		RetryMax: config.MaxRetries,
 		Logger:   log.NewRetryableHTTPAdaptor(logger.With("component", "client")),
 	}
 	if config.DryRun {
@@ -58,6 +59,7 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 			},
 		}
 	}
+
 	client := desec.New(config.Token, clientOptions)
 
 	desec := Desec{
@@ -86,6 +88,22 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 	return &desec, nil
 }
 
+func (d *Desec) Handler(prefix string) http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc(URLNegotiate, d.webhook.NegotiateHandler)
+	mux.HandleFunc(URLRecords, d.webhook.RecordsHandler)
+	mux.HandleFunc(URLAdjustEndpoints, d.webhook.AdjustEndpointsHandler)
+
+	var handler http.Handler = mux
+
+	handler = d.httpLog.LogMiddleware(handler)
+	handler = d.httpLog.ExtractMiddleware(handler)
+	handler = d.collectWebhookMetrics(handler)
+
+	return handler
+}
+
 func (d *Desec) collectWebhookMetrics(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -104,20 +122,4 @@ func (d *Desec) collectWebhookMetrics(handler http.Handler) http.Handler {
 		d.metrics.providerTotal.With(labels).Inc()
 		d.metrics.providerDuration.With(labels).Observe(duration.Seconds())
 	})
-}
-
-func (d *Desec) Handler(prefix string) http.Handler {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc(UrlNegotiate, d.webhook.NegotiateHandler)
-	mux.HandleFunc(UrlRecords, d.webhook.RecordsHandler)
-	mux.HandleFunc(UrlAdjustEndpoints, d.webhook.AdjustEndpointsHandler)
-
-	var handler http.Handler = mux
-
-	handler = d.httpLog.LogMiddleware(handler)
-	handler = d.httpLog.ExtractMiddleware(handler)
-	handler = d.collectWebhookMetrics(handler)
-
-	return handler
 }

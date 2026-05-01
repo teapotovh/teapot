@@ -9,9 +9,12 @@ import (
 	"github.com/teapotovh/teapot/lib/observability"
 )
 
-var ErrMismatchedDomain = errors.New("mismatched domain name")
+var (
+	ErrMismatchedDomain = errors.New("mismatched domain name")
+	ErrUnexpectedStatus = errors.New("unexpected status code")
+)
 
-func (d *Desec) canConnect(ctx context.Context) error {
+func (d *Desec) canConnect(ctx context.Context) (err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.client.BaseURL, nil)
 	if err != nil {
 		return fmt.Errorf("error while building request to base URL: %w", err)
@@ -22,8 +25,14 @@ func (d *Desec) canConnect(ctx context.Context) error {
 		return fmt.Errorf("error while performing GET to base URL: %w", err)
 	}
 
+	defer func() {
+		if e := res.Body.Close(); e != nil {
+			err = fmt.Errorf("error while closing deSEC request body: %w", err)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code on base URL: %d", res.StatusCode)
+		return fmt.Errorf("%w on base URL: %d", ErrUnexpectedStatus, res.StatusCode)
 	}
 
 	return nil
