@@ -52,7 +52,7 @@ numpy==2.4.4
     # via
     #   -r requirements.txt.raw
     #   onnxruntime
-onnxruntime==1.24.4
+onnxruntime==1.25.1
     # via -r requirements.txt.raw
 packaging==26.2
     # via
