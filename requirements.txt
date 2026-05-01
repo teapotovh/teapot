@@ -34,7 +34,7 @@ httpcore==1.0.9
     # via httpx
 httpx==0.28.1
     # via huggingface-hub
-huggingface-hub==1.8.0
+huggingface-hub==1.13.0
     # via tokenizers
 humanfriendly==10.0
     # via coloredlogs
