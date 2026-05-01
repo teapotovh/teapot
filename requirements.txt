@@ -14,7 +14,7 @@ click==8.3.1
     # via typer-slim
 coloredlogs==15.0.1
     # via onnxruntime
-filelock==3.25.2
+filelock==3.29.0
     # via huggingface-hub
 flatbuffers==25.12.19
     # via onnxruntime
