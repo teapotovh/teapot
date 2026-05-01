@@ -30,7 +30,7 @@ require (
 	k8s.io/apimachinery v0.34.6
 	k8s.io/client-go v0.34.6
 	k8s.io/klog/v2 v2.130.1
-	maragu.dev/gomponents v1.2.0
+	maragu.dev/gomponents v1.3.0
 	maragu.dev/gomponents-htmx v0.6.1
 )
 
