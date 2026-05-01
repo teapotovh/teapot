@@ -19,7 +19,9 @@ var ErrAliasUnsupported = errors.New("ALIAS records are not supported")
 type provider struct {
 	logger *slog.Logger
 
-	desec *Desec
+	desec        *Desec
+	timeout      time.Duration
+	managedTypes []string
 }
 
 // GetDomainFilter implements ednsprovider.Provider
@@ -31,14 +33,15 @@ func (p *provider) GetDomainFilter() endpoint.DomainFilterInterface {
 
 // Records implements ednsprovider.Provider
 func (p *provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
-	rrsets, err := p.desec.client.Records.GetAll(ctx, p.desec.domain, nil)
+	rrsets, err := p.getAll(ctx, p.desec.domain, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching all RRSets: %w", err)
 	}
 
+	rrsets = filterRRSets(rrsets, p.managedTypes)
 	slog.DebugContext(ctx, "fetched all rrsets", "rrsets", rrsets)
 
-	endpoints, err := rrsetsToEndpoints(ctx, rrsets, p.logger)
+	endpoints, err := groupRRSets(ctx, rrsets, p.logger)
 	if err != nil {
 		return nil, fmt.Errorf("error while grouping RRSets into endpoints: %w", err)
 	}
@@ -55,7 +58,7 @@ func (p *provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.
 		}
 
 		if !strings.HasSuffix(e.DNSName, p.desec.domain) {
-			p.logger.Warn("invalid endpoint provided, expected it to be under domain", "domain", p.desec.domain, "endpoint", e)
+			p.logger.Debug("ignoring provided endpoint, expected it to be under domain", "domain", p.desec.domain, "endpoint", e)
 			continue
 		}
 
@@ -110,33 +113,67 @@ func (p *provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	}
 
 	if len(create) > 0 {
-		p.logger.Debug("applying new rrsets", "endpoints", changes.Create, "rrsets", create)
-		if _, err := p.desec.client.Records.BulkCreate(ctx, p.desec.domain, create); err != nil {
+		for _, rrset := range create {
+			p.logger.DebugContext(ctx, "creating rrset", "rrset", rrset)
+		}
+		if _, err := p.bulkCreate(ctx, p.desec.domain, create); err != nil {
 			return fmt.Errorf("error while creating RRSets for the new endpoints: %w", err)
 		}
 
-		p.logger.Info("created new RRSets", "amount", len(create))
+		p.logger.InfoContext(ctx, "created new RRSets", "amount", len(create))
 	}
 
 	if len(update) > 0 {
-		p.logger.Debug("applying updated rrsets", "oldEndpoints", changes.UpdateOld, "newEndpoints", changes.UpdateNew, "rrsets", update)
-		if _, err := p.desec.client.Records.BulkUpdate(ctx, desec.FullResource, p.desec.domain, update); err != nil {
+		for _, rrset := range update {
+			p.logger.DebugContext(ctx, "updating rrset", "rrset", rrset)
+		}
+		if _, err := p.bulkUpdate(ctx, desec.FullResource, p.desec.domain, update); err != nil {
 			return fmt.Errorf("error while updating RRSets for already-existing endpoints: %w", err)
 		}
 
-		p.logger.Info("updated existing RRSets", "amount", len(update))
+		p.logger.InfoContext(ctx, "updated existing RRSets", "amount", len(update))
 	}
 
 	if len(remove) > 0 {
-		p.logger.Debug("removing rrsets", "endpoints", changes.Create, "rrsets", remove)
-		if err := p.desec.client.Records.BulkDelete(ctx, p.desec.domain, remove); err != nil {
+		for _, rrset := range remove {
+			p.logger.DebugContext(ctx, "removing rrset", "rrset", rrset)
+		}
+		if err := p.bulkDelete(ctx, p.desec.domain, remove); err != nil {
 			return fmt.Errorf("error while deleting old RRSets: %w", err)
 		}
 
-		p.logger.Info("deleted old RRSets", "amount", len(remove))
+		p.logger.InfoContext(ctx, "deleted old RRSets", "amount", len(remove))
 	}
 
 	return nil
+}
+
+func (p *provider) getAll(ctx context.Context, domainName string, filter *desec.RRSetFilter) ([]desec.RRSet, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	return p.desec.client.Records.GetAll(ctx, domainName, filter)
+}
+
+func (p *provider) bulkCreate(ctx context.Context, domainName string, rrSets []desec.RRSet) ([]desec.RRSet, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	return p.desec.client.Records.BulkCreate(ctx, domainName, rrSets)
+}
+
+func (p *provider) bulkUpdate(ctx context.Context, mode desec.UpdateMode, domainName string, rrSets []desec.RRSet) ([]desec.RRSet, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	return p.desec.client.Records.BulkUpdate(ctx, mode, domainName, rrSets)
+}
+
+func (p *provider) bulkDelete(ctx context.Context, domainName string, rrSets []desec.RRSet) error {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	return p.desec.client.Records.BulkDelete(ctx, domainName, rrSets)
 }
 
 // Ensure *provider implements ednsprovider.Provider

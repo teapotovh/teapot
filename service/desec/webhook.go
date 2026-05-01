@@ -1,7 +1,6 @@
 package desec
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -28,7 +27,7 @@ type webhook struct {
 func (wh *webhook) RecordsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		records, err := wh.provider.Records(context.Background())
+		records, err := wh.provider.Records(r.Context())
 		if err != nil {
 			wh.logger.ErrorContext(r.Context(), "error while fetching records", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -50,7 +49,7 @@ func (wh *webhook) RecordsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := wh.provider.ApplyChanges(context.Background(), &changes)
+		err := wh.provider.ApplyChanges(r.Context(), &changes)
 		if err != nil {
 			wh.logger.ErrorContext(r.Context(), "failed to apply changes", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)

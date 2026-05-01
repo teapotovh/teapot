@@ -28,10 +28,12 @@ type Desec struct {
 
 // DesecConfig is the configuration for the Desec service.
 type DesecConfig struct {
-	Token      string
-	Domain     string
-	MaxRetries uint64
-	DryRun     bool
+	Token        string
+	Domain       string
+	MaxRetries   uint64
+	DryRun       bool
+	DesecTimeout time.Duration
+	ManagedTypes []string
 
 	HTTPLog httplog.HTTPLogConfig
 }
@@ -68,8 +70,10 @@ func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
 	}
 
 	desec.provider = &provider{
-		logger: logger.With("component", "provider"),
-		desec:  &desec,
+		logger:       logger.With("component", "provider"),
+		desec:        &desec,
+		timeout:      config.DesecTimeout,
+		managedTypes: append(config.ManagedTypes, "txt"),
 	}
 
 	desec.webhook = &webhook{

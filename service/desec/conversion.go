@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -30,19 +31,107 @@ func canonicalize(dn string) string {
 	return strings.ToLower(fqdn)
 }
 
-func rrsetToEndpoint(rrset desec.RRSet) *endpoint.Endpoint {
+func rrsetToEndpoint(rrset desec.RRSet, labels endpoint.Labels) *endpoint.Endpoint {
 	return &endpoint.Endpoint{
 		DNSName:    canonicalize(rrset.Name),
 		Targets:    rrset.Records,
 		RecordType: rrset.Type,
 		RecordTTL:  endpoint.TTL(rrset.TTL),
+		Labels:     map[string]string(labels),
 	}
 }
 
-func rrsetsToEndpoints(ctx context.Context, rrsets []desec.RRSet, logger *slog.Logger) ([]*endpoint.Endpoint, error) {
+var labelSeparator = "-"
+
+type unit struct{}
+
+var recordTypesSet = map[string]unit{
+	"a":          unit{},
+	"aaaa":       unit{},
+	"afsdb":      unit{},
+	"apl":        unit{},
+	"caa":        unit{},
+	"cert":       unit{},
+	"cname":      unit{},
+	"dhcid":      unit{},
+	"dname":      unit{},
+	"dlv":        unit{},
+	"eui48":      unit{},
+	"eui64":      unit{},
+	"hinfo":      unit{},
+	"https":      unit{},
+	"kx":         unit{},
+	"l32":        unit{},
+	"l64":        unit{},
+	"loc":        unit{},
+	"lp":         unit{},
+	"mx":         unit{},
+	"naptr":      unit{},
+	"nid":        unit{},
+	"ns":         unit{},
+	"openpgpkey": unit{},
+	"ptr":        unit{},
+	"rp":         unit{},
+	"smimea":     unit{},
+	"spf":        unit{},
+	"srv":        unit{},
+	"sshfp":      unit{},
+	"svcb":       unit{},
+	"tlsa":       unit{},
+	"txt":        unit{},
+	"uri":        unit{},
+}
+
+func couldBeLabel(rrset desec.RRSet) bool {
+	if strings.ToLower(rrset.Type) != "txt" {
+		return false
+	}
+
+	if len(rrset.Records) <= 0 {
+		return false
+	}
+
+	parts := strings.Split(rrset.Name, labelSeparator)
+	if len(parts) <= 1 {
+		return false
+	}
+
+	_, ok := recordTypesSet[parts[0]]
+	return ok
+}
+
+func labelName(rrset desec.RRSet) string {
+	return canonicalize(rrset.Type + labelSeparator + rrset.Name)
+}
+
+func groupRRSets(ctx context.Context, rrsets []desec.RRSet, logger *slog.Logger) ([]*endpoint.Endpoint, error) {
+	potentialLabels := map[string]endpoint.Labels{}
+
+	// First pass: take all TXT RRSets that could be labels and populate potentialLabels
+	for _, rrset := range rrsets {
+		if couldBeLabel(rrset) {
+			labels, err := endpoint.NewLabelsFromStringPlain(rrset.Records[0])
+			if err != nil {
+				logger.DebugContext(ctx, "ignoring potential labels RRSet due to error", "rrset", rrset, "err", err)
+				continue
+			}
+
+			potentialLabels[rrset.Name] = labels
+		}
+	}
+
 	var endpoints []*endpoint.Endpoint
 	for _, rrset := range rrsets {
-		endpoints = append(endpoints, rrsetToEndpoint(rrset))
+		ln := labelName(rrset)
+		labels, hasLabels := potentialLabels[ln]
+		_, isLabel := potentialLabels[rrset.Name]
+		// If the RRSet is not a label itself and it has no labels, we have some discrepancy
+		if !isLabel && !hasLabels {
+			logger.WarnContext(ctx, "RRSet has no labels associated", "rrset", rrset, "labelName", ln)
+		}
+
+		endpoint := rrsetToEndpoint(rrset, labels)
+		endpoints = append(endpoints, endpoint)
 	}
 
 	return endpoints, nil
@@ -94,4 +183,14 @@ func endpointsToRRSetsIdentifiers(endpoints []*endpoint.Endpoint, domain string)
 	}
 
 	return rrsets
+}
+
+func filterRRSets(rrsets []desec.RRSet, managedTypes []string) []desec.RRSet {
+	var result []desec.RRSet
+	for _, rrset := range rrsets {
+		if slices.Contains(managedTypes, strings.ToLower(rrset.Type)) {
+			result = append(result, rrset)
+		}
+	}
+	return result
 }
