@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "logd_lib",
+    srcs = ["logd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/logd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/httpsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/log",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "logd",
+    embed = [":logd_lib"],
+    visibility = ["//visibility:public"],
+)
