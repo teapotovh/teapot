@@ -76,6 +76,7 @@ func main() {
 
 	run.Add("httpsrv", httpsrv, nil)
 	run.Add("observability", observability, nil)
+	run.Add("log", log, nil)
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running log components", "err", err)
