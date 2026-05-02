@@ -4,6 +4,7 @@ go_library(
     name = "log",
     srcs = [
         "flag.go",
+        "handler.go",
         "log.go",
         "metrics.go",
         "z.go",
@@ -11,6 +12,8 @@ go_library(
     importpath = "github.com/teapotovh/teapot/service/log",
     visibility = ["//visibility:public"],
     deps = [
+        "//lib/httphandler",
+        "//lib/httplog",
         "//lib/observability",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
