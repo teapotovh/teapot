@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nrdcg/desec"
+	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 	ednsprovider "sigs.k8s.io/external-dns/provider"
@@ -163,14 +164,22 @@ func (p *provider) getAll(ctx context.Context, domainName string, filter *desec.
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	return p.desec.client.Records.GetAll(ctx, domainName, filter)
+	start := time.Now()
+	res, err := p.desec.client.Records.GetAll(ctx, domainName, filter)
+	p.updateMetrics("list", start, err)
+
+	return res, err
 }
 
 func (p *provider) bulkCreate(ctx context.Context, domainName string, rrSets []desec.RRSet) ([]desec.RRSet, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	return p.desec.client.Records.BulkCreate(ctx, domainName, rrSets)
+	start := time.Now()
+	res, err := p.desec.client.Records.BulkCreate(ctx, domainName, rrSets)
+	p.updateMetrics("create", start, err)
+
+	return res, err
 }
 
 func (p *provider) bulkUpdate(
@@ -182,15 +191,39 @@ func (p *provider) bulkUpdate(
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	return p.desec.client.Records.BulkUpdate(ctx, mode, domainName, rrSets)
+	start := time.Now()
+	res, err := p.desec.client.Records.BulkUpdate(ctx, mode, domainName, rrSets)
+	p.updateMetrics("update", start, err)
+
+	return res, err
 }
 
 func (p *provider) bulkDelete(ctx context.Context, domainName string, rrSets []desec.RRSet) error {
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	return p.desec.client.Records.BulkDelete(ctx, domainName, rrSets)
+	start := time.Now()
+	err := p.desec.client.Records.BulkDelete(ctx, domainName, rrSets)
+	p.updateMetrics("delete", start, err)
+
+	return err
 }
 
 // Ensure *provider implements ednsprovider.Provider.
 var _ ednsprovider.Provider = &provider{}
+
+func (p *provider) updateMetrics(operation string, start time.Time, err error) {
+	duration := time.Since(start)
+
+	hasErr := "no"
+	if err != nil {
+		hasErr = "yes"
+	}
+
+	labels := prometheus.Labels{
+		"operation": operation,
+		"error":     hasErr,
+	}
+	p.desec.metrics.total.With(labels).Inc()
+	p.desec.metrics.duration.With(labels).Observe(duration.Seconds())
+}

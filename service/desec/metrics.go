@@ -20,7 +20,7 @@ func (d *Desec) initMetrics() {
 			Name: "desec_calls_total",
 			Help: "Total number of deSEC API calls",
 		},
-		[]string{"code"},
+		[]string{"operation", "error"},
 	)
 
 	d.metrics.duration = prometheus.NewHistogramVec(
@@ -29,7 +29,7 @@ func (d *Desec) initMetrics() {
 			Help:    "deSEC API calls latency",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"code"},
+		[]string{"operation", "error"},
 	)
 
 	d.metrics.providerTotal = prometheus.NewCounterVec(
