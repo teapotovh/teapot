@@ -98,7 +98,7 @@ func (w *worker) openLogFile() error {
 
 func (w *worker) closeCurrentFile() error {
 	path := w.logFilePath(LatestLogFilename)
-	if err := w.writer.Flush(); err != nil {
+	if err := w.buffered.Flush(); err != nil {
 		return fmt.Errorf("error while flushing current log file %q: %w", path, err)
 	}
 
@@ -141,7 +141,7 @@ func (w *worker) run() {
 		case <-flush.Triggered():
 			w.logger.Debug("flushing to disk")
 
-			if err := w.writer.Flush(); err != nil {
+			if err := w.buffered.Flush(); err != nil {
 				w.logger.Error("error while flushing log buffer", "err", err)
 			}
 
@@ -204,6 +204,13 @@ func (w *worker) run() {
 				continue
 			}
 
+			if err := w.writer.Flush(); err != nil {
+				err = fmt.Errorf("error while flushing log buffer after write: %w", err)
+				req.result <- err
+
+				continue
+			}
+
 			linesWrittenSinceLastFlush++
 			newPosition := w.buffered.Position()
 			bytesWrittenSinceLastRotate += newPosition - lastPosition
@@ -230,7 +237,7 @@ func (w *worker) run() {
 
 func (w *worker) stop() error {
 	<-w.stopped
-	if err := w.writer.Flush(); err != nil {
+	if err := w.buffered.Flush(); err != nil {
 		return fmt.Errorf("error while flushing log buffer during shutdown: %w", err)
 	}
 	if err := w.file.Close(); err != nil {
