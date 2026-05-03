@@ -30,6 +30,7 @@ type Observability struct {
 	collectors []prometheus.Collector
 
 	prometheus *httpServicePrometheus
+	pprof      *httpServicePProf
 	readyz     *httpServiceZ
 	livez      *httpServiceZ
 }
@@ -54,6 +55,9 @@ func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observa
 		logger:   logger.With("component", "prometheus"),
 		registry: obs.registry,
 	}
+	obs.pprof = &httpServicePProf{
+		logger: logger.With("component", "pprof"),
+	}
 	obs.readyz = &httpServiceZ{
 		logger: logger.With("component", "readyz"),
 		name:   "readyz",
@@ -66,6 +70,7 @@ func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observa
 	}
 
 	mux.Handle("/metrics", obs.prometheus.Handler("/metrics"))
+	mux.Handle("/debug/{path...}", obs.pprof.Handler("/debug"))
 	mux.Handle("/readyz", obs.readyz.Handler("/readyz"))
 	mux.Handle("/ready/{name}", obs.readyz.Handler("/readyz"))
 	mux.Handle("/livez", obs.livez.Handler("/livez"))
