@@ -57,7 +57,10 @@ func (m *WorkerManager) Run(ctx context.Context, notify run.Notify) (err error) 
 	m.terminating.Store(true)
 	m.workers.Range(func(key, value any) bool {
 		worker := value.(*worker)
-		worker.stop()
+		err := worker.stop()
+		if err != nil {
+			m.logger.Error("error while stopping worker", "source", key, "err", err)
+		}
 		return true
 	})
 

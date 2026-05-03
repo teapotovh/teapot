@@ -138,6 +138,11 @@ func (w *worker) run() {
 			linesWrittenSinceLastFlush = 0
 
 		case <-rotate.Triggered():
+			if bytesWrittenSinceLastRotate == 0 {
+				w.logger.Debug("skipping log rotation since no new logs have been written since last rotation")
+				continue
+			}
+
 			expoBackoff := backoff.NewExponentialBackOff()
 			expoBackoff.InitialInterval = time.Second
 			expoBackoff.Multiplier = 2
@@ -190,7 +195,7 @@ func (w *worker) run() {
 			}
 
 			linesWrittenSinceLastFlush++
-			bytesWrittenSinceLastRotate++
+			bytesWrittenSinceLastRotate += uint64(l) //nolint:gosec
 
 			if bytesWrittenSinceLastRotate > w.maxFileSizeBeforeRotate {
 				rotate.Trigger()
@@ -203,8 +208,13 @@ func (w *worker) run() {
 	}
 }
 
-func (w *worker) stop() {
+func (w *worker) stop() error {
 	<-w.stopped
-	w.buffered.Flush() // TODO: errors
-	w.file.Close()     // TODO: errors
+	if err := w.buffered.Flush(); err != nil {
+		return fmt.Errorf("error while flushing log buffer during shutdown: %w", err)
+	}
+	if err := w.file.Close(); err != nil {
+		return fmt.Errorf("error while closing log file during shutdown: %w", err)
+	}
+	return nil
 }
