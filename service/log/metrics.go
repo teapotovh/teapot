@@ -36,7 +36,6 @@ func (l *Log) initMetrics() {
 }
 
 func (l *Log) Metrics() []prometheus.Collector {
-	// TODO
 	return []prometheus.Collector{
 		l.metrics.total,
 		l.metrics.duration,

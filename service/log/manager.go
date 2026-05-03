@@ -33,9 +33,10 @@ type WorkerManager struct {
 
 	terminating atomic.Bool
 	workers     sync.Map
+	metrics     *metrics
 }
 
-func NewWorkerManager(path string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, logger *slog.Logger) *WorkerManager {
+func NewWorkerManager(path string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, metrics *metrics, logger *slog.Logger) *WorkerManager {
 	return &WorkerManager{
 		logger: logger,
 
@@ -45,6 +46,7 @@ func NewWorkerManager(path string, flushInterval time.Duration, maxLogLinesBefor
 		rotateInterval:          rotateInterval,
 		maxFileSizeBeforeRotate: maxFileSizeBeforeRotate,
 		capacity:                capacity,
+		metrics:                 metrics,
 	}
 }
 
@@ -67,7 +69,7 @@ func (m *WorkerManager) Run(ctx context.Context, notify run.Notify) (err error) 
 	return nil
 }
 
-func (m *WorkerManager) process(e event) error {
+func (m *WorkerManager) process(e event, level string) error {
 	if m.terminating.Load() {
 		return ErrTerminating
 	}
@@ -79,8 +81,10 @@ func (m *WorkerManager) process(e event) error {
 
 	result := make(chan error)
 	w.request <- workerRequest{
-		data:   e.Data,
-		result: result,
+		data:       e.Data,
+		result:     result,
+		insertedAt: time.Now(),
+		level:      level,
 	}
 
 	return <-result
@@ -99,7 +103,7 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 		}
 
 		l := m.logger.With("source", source, "component", "worker")
-		nw, err := newWorker(m.context, source, p, m.flushInterval, m.maxLogLinesBeforeFlush, m.rotateInterval, m.maxFileSizeBeforeRotate, m.capacity, l)
+		nw, err := newWorker(m.context, source, p, m.flushInterval, m.maxLogLinesBeforeFlush, m.rotateInterval, m.maxFileSizeBeforeRotate, m.capacity, m.metrics, l)
 		if err != nil {
 			return nil, fmt.Errorf("error while creating worker for source %q: %w", source, err)
 		}

@@ -47,19 +47,17 @@ func NewLog(config LogConfig, logger *slog.Logger) (*Log, error) {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
-	manager := NewWorkerManager(config.Path, config.FlushInterval, config.MaxLogLinesBeforeFlush, config.RotateInterval, config.MaxFileSizeBeforeRotate, config.Capacity, logger.With("component", "manager"))
-
 	log := Log{
 		logger: logger,
 
-		path:    config.Path,
-		manager: manager,
+		path: config.Path,
 
 		httpHandler: httpHandler,
 		httpLog:     httpLog,
 	}
 
 	log.initMetrics()
+	log.manager = NewWorkerManager(config.Path, config.FlushInterval, config.MaxLogLinesBeforeFlush, config.RotateInterval, config.MaxFileSizeBeforeRotate, config.Capacity, &log.metrics, logger.With("component", "manager"))
 
 	return &log, nil
 }

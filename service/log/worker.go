@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -39,14 +40,17 @@ type worker struct {
 	rotating bool
 	request  chan workerRequest
 	stopped  chan unit
+	metrics  *metrics
 }
 
 type workerRequest struct {
-	data   json.RawMessage
-	result chan error
+	data       json.RawMessage
+	result     chan error
+	insertedAt time.Time
+	level      string
 }
 
-func newWorker(ctx context.Context, source string, logDirectory string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, logger *slog.Logger) (*worker, error) {
+func newWorker(ctx context.Context, source string, logDirectory string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, metrics *metrics, logger *slog.Logger) (*worker, error) {
 	w := worker{
 		logger:  logger,
 		context: ctx,
@@ -60,6 +64,7 @@ func newWorker(ctx context.Context, source string, logDirectory string, flushInt
 
 		request: make(chan workerRequest, capacity),
 		stopped: make(chan unit, 1),
+		metrics: metrics,
 	}
 
 	if err := w.openLogFile(); err != nil {
@@ -117,7 +122,7 @@ func (w *worker) run() {
 	flush := newManualTicker(w.flushInterval)
 	defer flush.Stop()
 
-	rotate := newManualTicker(w.flushInterval)
+	rotate := newManualTicker(w.rotateInterval)
 	defer rotate.Stop()
 
 	linesWrittenSinceLastFlush := uint32(0)
@@ -202,6 +207,14 @@ func (w *worker) run() {
 			} else if linesWrittenSinceLastFlush > w.maxLogLinesBeforeFlush {
 				flush.Trigger()
 			}
+
+			labels := prometheus.Labels{
+				"source": w.source,
+				"level":  req.level,
+			}
+			w.metrics.total.With(labels).Inc()
+			w.metrics.duration.With(labels).Observe(float64(time.Since(req.insertedAt).Seconds()))
+			w.metrics.size.With(prometheus.Labels{"source": w.source}).Set(float64(bytesWrittenSinceLastRotate))
 
 			req.result <- nil
 		}

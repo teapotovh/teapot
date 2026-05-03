@@ -17,6 +17,21 @@ type event struct {
 	Data      json.RawMessage `json:"data"`
 }
 
+const LogLevelUnkown = "unknown"
+
+type maybeLogLevel struct {
+	Level string `json:"level"`
+}
+
+func tryExtractLevel(data json.RawMessage) string {
+	var ll maybeLogLevel
+	if err := json.Unmarshal(data, &ll); err == nil {
+		return ll.Level
+	}
+
+	return LogLevelUnkown
+}
+
 func (l *Log) handleLogs(w http.ResponseWriter, r *http.Request) error {
 	var event event
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
@@ -27,7 +42,8 @@ func (l *Log) handleLogs(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("%w: error while closing the request body: %w", httphandler.ErrBadRequest, err)
 	}
 
-	if err := l.manager.process(event); err != nil {
+	level := tryExtractLevel(event.Data)
+	if err := l.manager.process(event, level); err != nil {
 		return fmt.Errorf("%w: error while storing log: %w", httphandler.ErrInternal, err)
 	}
 
