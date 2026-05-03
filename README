@@ -26,6 +26,9 @@ for teapot.ovh, listed below:
   password hashes, Consul backend (swapped with psql). A lot of the business
   logic has been rewritten/improved. Configuration has been adapted to our style.
 
+- `logd`: a log storage with rotation and compression. Can receive logs from
+  fluent-bit.
+
 - `kontakted` (WIP, needs adapatation to the monorepo): a self-service/admin
   panel to manage user's credentials/details stored in LDAP.
 
