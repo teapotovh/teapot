@@ -1,16 +1,16 @@
 package log
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/cenkalti/backoff/v5"
 )
 
 var (
@@ -19,23 +19,7 @@ var (
 	LogFileMode = os.FileMode(0o644)
 )
 
-type flushBuffer struct {
-	buf bytes.Buffer
-	w   io.Writer
-}
-
-func newFlushBuffer(w io.Writer) *flushBuffer {
-	return &flushBuffer{w: w}
-}
-
-func (f *flushBuffer) Write(p []byte) (int, error) {
-	return f.buf.Write(p)
-}
-
-func (f *flushBuffer) Flush() error {
-	_, err := f.buf.WriteTo(f.w)
-	return err
-}
+const LatestLogFilename = "latest"
 
 type unit struct{}
 
@@ -43,12 +27,18 @@ type worker struct {
 	logger  *slog.Logger
 	context context.Context
 
-	logDirectory  string
-	file          *os.File
-	flushInterval time.Duration
-	buffered      *flushBuffer
-	request       chan workerRequest
-	stopped       chan unit
+	source                  string
+	logDirectory            string
+	flushInterval           time.Duration
+	maxLogLinesBeforeFlush  uint32
+	rotateInterval          time.Duration
+	maxFileSizeBeforeRotate uint64
+
+	file     *os.File
+	buffered *flushBuffer
+	rotating bool
+	request  chan workerRequest
+	stopped  chan unit
 }
 
 type workerRequest struct {
@@ -56,51 +46,127 @@ type workerRequest struct {
 	result chan error
 }
 
-func newWorker(ctx context.Context, logDirectory string, flushInterval time.Duration, capacity uint32, logger *slog.Logger) (*worker, error) {
-	logPath := filepath.Join(logDirectory, "latest.log") // TODO: log rotation
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, LogFileMode)
-	if err != nil {
-		return nil, fmt.Errorf("error while opening log file at %q: %w", logPath, err)
-	}
-
-	logger.Info("path", "path", logDirectory, "file", logPath)
-
-	buffered := newFlushBuffer(file)
+func newWorker(ctx context.Context, source string, logDirectory string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, logger *slog.Logger) (*worker, error) {
 	w := worker{
 		logger:  logger,
 		context: ctx,
 
-		file:          file,
-		flushInterval: flushInterval,
-		buffered:      buffered,
-		request:       make(chan workerRequest, capacity),
-		stopped:       make(chan unit, 1),
+		source:                  source,
+		logDirectory:            logDirectory,
+		flushInterval:           flushInterval,
+		maxLogLinesBeforeFlush:  maxLogLinesBeforeFlush,
+		rotateInterval:          rotateInterval,
+		maxFileSizeBeforeRotate: maxFileSizeBeforeRotate,
+
+		request: make(chan workerRequest, capacity),
+		stopped: make(chan unit, 1),
+	}
+
+	if err := w.openLogFile(); err != nil {
+		return nil, err
 	}
 
 	return &w, nil
 }
 
+func (w *worker) logFilePath(name string) string {
+	name = w.source + "-" + name
+	path := filepath.Join(w.logDirectory, name)
+	return path + ".jsonl"
+}
+
+func (w *worker) openLogFile() error {
+	logPath := w.logFilePath(LatestLogFilename)
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, LogFileMode)
+	if err != nil {
+		return fmt.Errorf("error while opening log file at %q: %w", logPath, err)
+	}
+
+	w.file = file
+	w.buffered = newFlushBuffer(file)
+
+	return nil
+}
+
+func (w *worker) closeCurrentFile() error {
+	path := w.logFilePath(LatestLogFilename)
+	if err := w.buffered.Flush(); err != nil {
+		return fmt.Errorf("error while flushing current log file %q: %w", path, err)
+	}
+
+	if err := w.file.Close(); err != nil {
+		return fmt.Errorf("error while closing current log file %q: %w", path, err)
+	}
+	w.file = nil
+	w.buffered = nil
+
+	archivalPath := w.logFilePath(time.Now().Format(time.RFC3339))
+	if _, err := os.Stat(archivalPath); !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("attempted to archive file to already existing path: %q (%w)", archivalPath, err)
+	}
+
+	if err := os.Rename(path, archivalPath); err != nil {
+		return fmt.Errorf("error while arching current log file to %q: %w", archivalPath, err)
+	}
+
+	w.logger.Info("rotated current log file to archival path", "path", archivalPath)
+	return nil
+}
+
 func (w *worker) run() {
-	flushTicker := time.NewTicker(w.flushInterval)
-	defer flushTicker.Stop()
+	flush := newManualTicker(w.flushInterval)
+	defer flush.Stop()
 
-	flush := make(chan unit)
-	defer close(flush)
+	rotate := newManualTicker(w.flushInterval)
+	defer rotate.Stop()
 
-	linesWrittenSinceLastFlush := 0
+	linesWrittenSinceLastFlush := uint32(0)
+	bytesWrittenSinceLastRotate := uint64(0)
 
 	for {
 		select {
 		case <-w.context.Done():
 			return
 
-		case <-flushTicker.C:
-		case <-flush:
+		case <-flush.Triggered():
+			w.logger.Debug("flushing to disk")
+
 			if err := w.buffered.Flush(); err != nil {
-				w.logger.Error("error while flushing log buffer", "error", err)
+				w.logger.Error("error while flushing log buffer", "err", err)
 			}
 
 			linesWrittenSinceLastFlush = 0
+
+		case <-rotate.Triggered():
+			expoBackoff := backoff.NewExponentialBackOff()
+			expoBackoff.InitialInterval = time.Second
+			expoBackoff.Multiplier = 2
+
+			for {
+				err := w.closeCurrentFile()
+				if err == nil {
+					break
+				}
+
+				sleep := expoBackoff.NextBackOff()
+				w.logger.Error("error while performing rotation", "err", err, "waiting", sleep)
+				time.Sleep(sleep)
+			}
+
+			linesWrittenSinceLastFlush = 0
+			bytesWrittenSinceLastRotate = 0
+
+			expoBackoff.Reset()
+			for {
+				err := w.openLogFile()
+				if err == nil {
+					break
+				}
+
+				sleep := expoBackoff.NextBackOff()
+				w.logger.Error("error while performing rotation", "err", err, "waiting", sleep)
+				time.Sleep(sleep)
+			}
 
 		case req := <-w.request:
 			w.logger.Debug("writing log", "bytes", len(req.data))
@@ -124,11 +190,12 @@ func (w *worker) run() {
 			}
 
 			linesWrittenSinceLastFlush++
-			if linesWrittenSinceLastFlush > 100 {
-				select {
-				case flush <- unit{}:
-				default:
-				}
+			bytesWrittenSinceLastRotate++
+
+			if bytesWrittenSinceLastRotate > w.maxFileSizeBeforeRotate {
+				rotate.Trigger()
+			} else if linesWrittenSinceLastFlush > w.maxLogLinesBeforeFlush {
+				flush.Trigger()
 			}
 
 			req.result <- nil

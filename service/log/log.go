@@ -24,9 +24,12 @@ type Log struct {
 }
 
 type LogConfig struct {
-	Path          string
-	FlushInterval time.Duration
-	Capacity      uint32
+	Path                    string
+	FlushInterval           time.Duration
+	MaxLogLinesBeforeFlush  uint32
+	RotateInterval          time.Duration
+	MaxFileSizeBeforeRotate uint64
+	Capacity                uint32
 
 	HTTPHandler httphandler.HTTPHandlerConfig
 	HTTPLog     httplog.HTTPLogConfig
@@ -44,7 +47,7 @@ func NewLog(config LogConfig, logger *slog.Logger) (*Log, error) {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
-	manager := NewWorkerManager(config.Path, config.FlushInterval, config.Capacity, logger.With("component", "manager"))
+	manager := NewWorkerManager(config.Path, config.FlushInterval, config.MaxLogLinesBeforeFlush, config.RotateInterval, config.MaxFileSizeBeforeRotate, config.Capacity, logger.With("component", "manager"))
 
 	log := Log{
 		logger: logger,
