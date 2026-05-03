@@ -36,7 +36,16 @@ type WorkerManager struct {
 	metrics     *metrics
 }
 
-func NewWorkerManager(path string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, metrics *metrics, logger *slog.Logger) *WorkerManager {
+func NewWorkerManager(
+	path string,
+	flushInterval time.Duration,
+	maxLogLinesBeforeFlush uint32,
+	rotateInterval time.Duration,
+	maxFileSizeBeforeRotate uint64,
+	capacity uint32,
+	metrics *metrics,
+	logger *slog.Logger,
+) *WorkerManager {
 	return &WorkerManager{
 		logger: logger,
 
@@ -53,16 +62,19 @@ func NewWorkerManager(path string, flushInterval time.Duration, maxLogLinesBefor
 // Run implements run.Runnable.
 func (m *WorkerManager) Run(ctx context.Context, notify run.Notify) (err error) {
 	m.context = ctx
+
 	notify.Notify()
 
 	<-ctx.Done()
 	m.terminating.Store(true)
 	m.workers.Range(func(key, value any) bool {
 		worker := value.(*worker)
+
 		err := worker.stop()
 		if err != nil {
 			m.logger.Error("error while stopping worker", "source", key, "err", err)
 		}
+
 		return true
 	})
 
@@ -103,12 +115,25 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 		}
 
 		l := m.logger.With("source", source, "component", "worker")
-		nw, err := newWorker(m.context, source, p, m.flushInterval, m.maxLogLinesBeforeFlush, m.rotateInterval, m.maxFileSizeBeforeRotate, m.capacity, m.metrics, l)
+
+		nw, err := newWorker(
+			m.context,
+			source,
+			p,
+			m.flushInterval,
+			m.maxLogLinesBeforeFlush,
+			m.rotateInterval,
+			m.maxFileSizeBeforeRotate,
+			m.capacity,
+			m.metrics,
+			l,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error while creating worker for source %q: %w", source, err)
 		}
 
 		go nw.run()
+
 		w = nw
 		m.workers.Store(source, w)
 	}

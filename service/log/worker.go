@@ -39,7 +39,6 @@ type worker struct {
 	file     *os.File
 	buffered *flushBuffer
 	writer   *gzip.Writer
-	rotating bool
 	request  chan workerRequest
 	stopped  chan unit
 	metrics  *metrics
@@ -52,7 +51,18 @@ type workerRequest struct {
 	level      string
 }
 
-func newWorker(ctx context.Context, source string, logDirectory string, flushInterval time.Duration, maxLogLinesBeforeFlush uint32, rotateInterval time.Duration, maxFileSizeBeforeRotate uint64, capacity uint32, metrics *metrics, logger *slog.Logger) (*worker, error) {
+func newWorker(
+	ctx context.Context,
+	source string,
+	logDirectory string,
+	flushInterval time.Duration,
+	maxLogLinesBeforeFlush uint32,
+	rotateInterval time.Duration,
+	maxFileSizeBeforeRotate uint64,
+	capacity uint32,
+	metrics *metrics,
+	logger *slog.Logger,
+) (*worker, error) {
 	w := worker{
 		logger:  logger,
 		context: ctx,
@@ -77,14 +87,14 @@ func newWorker(ctx context.Context, source string, logDirectory string, flushInt
 }
 
 func (w *worker) logFilePath(name string) string {
-	name = w.source + "-" + name
-	path := filepath.Join(w.logDirectory, name)
-	return path + ".jsonl.gz"
+	name = w.source + "-" + name + ".jsonl.gz"
+	return filepath.Join(w.logDirectory, filepath.Clean(name))
 }
 
 func (w *worker) openLogFile() error {
 	logPath := w.logFilePath(LatestLogFilename)
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, LogFileMode)
+
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, LogFileMode) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("error while opening log file at %q: %w", logPath, err)
 	}
@@ -109,6 +119,7 @@ func (w *worker) closeCurrentFile() error {
 	if err := w.file.Close(); err != nil {
 		return fmt.Errorf("error while closing current log file %q: %w", path, err)
 	}
+
 	w.file = nil
 	w.writer = nil
 
@@ -122,9 +133,11 @@ func (w *worker) closeCurrentFile() error {
 	}
 
 	w.logger.Info("rotated current log file to archival path", "path", archivalPath)
+
 	return nil
 }
 
+//nolint:gocyclo
 func (w *worker) run() {
 	flush := newManualTicker(w.flushInterval)
 	defer flush.Stop()
@@ -184,6 +197,7 @@ func (w *worker) run() {
 			bytesWrittenSinceLastRotate = 0
 
 			expoBackoff.Reset()
+
 			for {
 				err := w.openLogFile()
 				if err == nil {

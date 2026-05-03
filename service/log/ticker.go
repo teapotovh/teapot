@@ -17,7 +17,24 @@ func newManualTicker(interval time.Duration) *manualTicker {
 		stop:   make(chan unit),
 	}
 	go m.run()
+
 	return m
+}
+
+func (m *manualTicker) Triggered() <-chan unit {
+	return m.out
+}
+
+func (m *manualTicker) Trigger() {
+	select {
+	case m.manual <- unit{}:
+	default:
+	}
+}
+
+func (m *manualTicker) Stop() {
+	m.ticker.Stop()
+	close(m.stop)
 }
 
 func (m *manualTicker) run() {
@@ -37,20 +54,4 @@ func (m *manualTicker) run() {
 			return
 		}
 	}
-}
-
-func (m *manualTicker) Triggered() <-chan unit {
-	return m.out
-}
-
-func (m *manualTicker) Trigger() {
-	select {
-	case m.manual <- unit{}:
-	default:
-	}
-}
-
-func (m *manualTicker) Stop() {
-	m.ticker.Stop()
-	close(m.stop)
 }

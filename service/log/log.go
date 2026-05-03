@@ -57,7 +57,16 @@ func NewLog(config LogConfig, logger *slog.Logger) (*Log, error) {
 	}
 
 	log.initMetrics()
-	log.manager = NewWorkerManager(config.Path, config.FlushInterval, config.MaxLogLinesBeforeFlush, config.RotateInterval, config.MaxFileSizeBeforeRotate, config.Capacity, &log.metrics, logger.With("component", "manager"))
+	log.manager = NewWorkerManager(
+		config.Path,
+		config.FlushInterval,
+		config.MaxLogLinesBeforeFlush,
+		config.RotateInterval,
+		config.MaxFileSizeBeforeRotate,
+		config.Capacity,
+		&log.metrics,
+		logger.With("component", "manager"),
+	)
 
 	return &log, nil
 }
