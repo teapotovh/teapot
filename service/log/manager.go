@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/teapotovh/teapot/lib/run"
 )
@@ -23,19 +24,21 @@ type WorkerManager struct {
 	logger  *slog.Logger
 	context context.Context
 
-	directory string
-	capacity  uint32
+	directory     string
+	flushInterval time.Duration
+	capacity      uint32
 
 	terminating atomic.Bool
 	workers     sync.Map
 }
 
-func NewWorkerManager(path string, capacity uint32, logger *slog.Logger) *WorkerManager {
+func NewWorkerManager(path string, flushInterval time.Duration, capacity uint32, logger *slog.Logger) *WorkerManager {
 	return &WorkerManager{
 		logger: logger,
 
-		directory: path,
-		capacity:  capacity,
+		directory:     path,
+		flushInterval: flushInterval,
+		capacity:      capacity,
 	}
 }
 
@@ -87,7 +90,7 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 		}
 
 		l := m.logger.With("source", source, "component", "worker")
-		nw, err := newWorker(m.context, p, m.capacity, l)
+		nw, err := newWorker(m.context, p, m.flushInterval, m.capacity, l)
 		if err != nil {
 			return nil, fmt.Errorf("error while creating worker for source %q: %w", source, err)
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/httplog"
@@ -23,8 +24,9 @@ type Log struct {
 }
 
 type LogConfig struct {
-	Path     string
-	Capacity uint32
+	Path          string
+	FlushInterval time.Duration
+	Capacity      uint32
 
 	HTTPHandler httphandler.HTTPHandlerConfig
 	HTTPLog     httplog.HTTPLogConfig
@@ -42,7 +44,7 @@ func NewLog(config LogConfig, logger *slog.Logger) (*Log, error) {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
-	manager := NewWorkerManager(config.Path, config.Capacity, logger.With("component", "manager"))
+	manager := NewWorkerManager(config.Path, config.FlushInterval, config.Capacity, logger.With("component", "manager"))
 
 	log := Log{
 		logger: logger,
