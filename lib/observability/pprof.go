@@ -19,14 +19,6 @@ type httpServicePProf struct {
 	logger *slog.Logger
 }
 
-func (p *httpServicePProf) wrapHandler(handler http.HandlerFunc) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p.logger.Warn("calling pprof debug endpoint", "path", r.URL.Path, "query", r.URL.Query())
-
-		handler(w, r)
-	})
-}
-
 // Handler implements httpsrv.Handler.
 func (p *httpServicePProf) Handler(prefix string) http.Handler {
 	mux := http.NewServeMux()
@@ -38,4 +30,12 @@ func (p *httpServicePProf) Handler(prefix string) http.Handler {
 	mux.Handle(prefix+"/pprof/trace", p.wrapHandler(pprof.Trace))
 
 	return mux
+}
+
+func (p *httpServicePProf) wrapHandler(handler http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p.logger.Warn("calling pprof debug endpoint", "path", r.URL.Path, "query", r.URL.Query())
+
+		handler(w, r)
+	})
 }
