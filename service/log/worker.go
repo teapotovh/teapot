@@ -1,6 +1,7 @@
 package log
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,7 @@ type worker struct {
 
 	file     *os.File
 	buffered *flushBuffer
+	writer   *gzip.Writer
 	rotating bool
 	request  chan workerRequest
 	stopped  chan unit
@@ -77,7 +79,7 @@ func newWorker(ctx context.Context, source string, logDirectory string, flushInt
 func (w *worker) logFilePath(name string) string {
 	name = w.source + "-" + name
 	path := filepath.Join(w.logDirectory, name)
-	return path + ".jsonl"
+	return path + ".jsonl.gz"
 }
 
 func (w *worker) openLogFile() error {
@@ -89,13 +91,14 @@ func (w *worker) openLogFile() error {
 
 	w.file = file
 	w.buffered = newFlushBuffer(file)
+	w.writer = gzip.NewWriter(w.buffered)
 
 	return nil
 }
 
 func (w *worker) closeCurrentFile() error {
 	path := w.logFilePath(LatestLogFilename)
-	if err := w.buffered.Flush(); err != nil {
+	if err := w.writer.Flush(); err != nil {
 		return fmt.Errorf("error while flushing current log file %q: %w", path, err)
 	}
 
@@ -103,7 +106,7 @@ func (w *worker) closeCurrentFile() error {
 		return fmt.Errorf("error while closing current log file %q: %w", path, err)
 	}
 	w.file = nil
-	w.buffered = nil
+	w.writer = nil
 
 	archivalPath := w.logFilePath(time.Now().Format(time.RFC3339))
 	if _, err := os.Stat(archivalPath); !errors.Is(err, os.ErrNotExist) {
@@ -128,6 +131,8 @@ func (w *worker) run() {
 	linesWrittenSinceLastFlush := uint32(0)
 	bytesWrittenSinceLastRotate := uint64(0)
 
+	lastPosition := w.buffered.Position()
+
 	for {
 		select {
 		case <-w.context.Done():
@@ -136,7 +141,7 @@ func (w *worker) run() {
 		case <-flush.Triggered():
 			w.logger.Debug("flushing to disk")
 
-			if err := w.buffered.Flush(); err != nil {
+			if err := w.writer.Flush(); err != nil {
 				w.logger.Error("error while flushing log buffer", "err", err)
 			}
 
@@ -185,7 +190,7 @@ func (w *worker) run() {
 				req.data = append(req.data, '\n')
 			}
 
-			l, err := w.buffered.Write(req.data)
+			l, err := w.writer.Write(req.data)
 			if err != nil {
 				err = fmt.Errorf("error while writing log line to disk: %w", err)
 				req.result <- err
@@ -200,7 +205,9 @@ func (w *worker) run() {
 			}
 
 			linesWrittenSinceLastFlush++
-			bytesWrittenSinceLastRotate += uint64(l) //nolint:gosec
+			newPosition := w.buffered.Position()
+			bytesWrittenSinceLastRotate += newPosition - lastPosition
+			lastPosition = newPosition
 
 			if bytesWrittenSinceLastRotate > w.maxFileSizeBeforeRotate {
 				rotate.Trigger()
@@ -223,7 +230,7 @@ func (w *worker) run() {
 
 func (w *worker) stop() error {
 	<-w.stopped
-	if err := w.buffered.Flush(); err != nil {
+	if err := w.writer.Flush(); err != nil {
 		return fmt.Errorf("error while flushing log buffer during shutdown: %w", err)
 	}
 	if err := w.file.Close(); err != nil {
