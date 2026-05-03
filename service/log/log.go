@@ -15,7 +15,7 @@ type Log struct {
 	logger *slog.Logger
 
 	path    string
-	manager *Manager
+	manager *WorkerManager
 
 	httpHandler *httphandler.HTTPHandler
 	httpLog     *httplog.HTTPLog
@@ -42,7 +42,7 @@ func NewLog(config LogConfig, logger *slog.Logger) (*Log, error) {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
-	manager := NewManager(config.Capacity, logger.With("component", "manager"))
+	manager := NewWorkerManager(config.Path, config.Capacity, logger.With("component", "manager"))
 
 	log := Log{
 		logger: logger,

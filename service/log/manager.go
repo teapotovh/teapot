@@ -3,32 +3,44 @@ package log
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 
 	"github.com/teapotovh/teapot/lib/run"
 )
 
-var ErrTerminating = errors.New("process terminating")
+var (
+	ErrTerminating = errors.New("process terminating")
 
-type Manager struct {
+	DirFileMode = os.FileMode(0o0750)
+)
+
+type WorkerManager struct {
 	logger  *slog.Logger
 	context context.Context
 
-	capacity    uint32
+	directory string
+	capacity  uint32
+
 	terminating atomic.Bool
 	workers     sync.Map
 }
 
-func NewManager(capacity uint32, logger *slog.Logger) *Manager {
-	return &Manager{
+func NewWorkerManager(path string, capacity uint32, logger *slog.Logger) *WorkerManager {
+	return &WorkerManager{
 		logger: logger,
+
+		directory: path,
+		capacity:  capacity,
 	}
 }
 
 // Run implements run.Runnable.
-func (m *Manager) Run(ctx context.Context, notify run.Notify) (err error) {
+func (m *WorkerManager) Run(ctx context.Context, notify run.Notify) (err error) {
 	m.context = ctx
 	notify.Notify()
 
@@ -43,12 +55,16 @@ func (m *Manager) Run(ctx context.Context, notify run.Notify) (err error) {
 	return nil
 }
 
-func (m *Manager) process(e event) error {
+func (m *WorkerManager) process(e event) error {
 	if m.terminating.Load() {
 		return ErrTerminating
 	}
 
-	w := m.worker(e.Source)
+	w, err := m.worker(e.Source)
+	if err != nil {
+		return fmt.Errorf("could not get worker: %w", err)
+	}
+
 	result := make(chan error)
 	w.request <- workerRequest{
 		data:   e.Data,
@@ -58,15 +74,28 @@ func (m *Manager) process(e event) error {
 	return <-result
 }
 
-func (m *Manager) worker(source string) *worker {
+func (m *WorkerManager) logPath(source string) string {
+	return filepath.Join(m.directory, source)
+}
+
+func (m *WorkerManager) worker(source string) (*worker, error) {
 	w, ok := m.workers.Load(source)
 	if !ok {
-		nw := newWorker(m.context, m.capacity, m.logger.With("source", source))
-		go nw.run()
+		p := m.logPath(source)
+		if err := os.MkdirAll(p, DirFileMode); err != nil {
+			return nil, fmt.Errorf("could not create log directory %q: %w", p, err)
+		}
 
+		l := m.logger.With("source", source, "component", "worker")
+		nw, err := newWorker(m.context, p, m.capacity, l)
+		if err != nil {
+			return nil, fmt.Errorf("error while creating worker for source %q: %w", source, err)
+		}
+
+		go nw.run()
 		w = nw
 		m.workers.Store(source, w)
 	}
 
-	return w.(*worker)
+	return w.(*worker), nil
 }
