@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "flag.go",
         "observability.go",
+        "pprof.go",
         "prometheus.go",
         "z.go",
     ],
