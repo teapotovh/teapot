@@ -53,6 +53,7 @@ func (l *Log) handleLogs(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	var wg sync.WaitGroup
+
 	logErrors := make([]error, len(events))
 	for i, event := range events {
 		wg.Go(func() {
@@ -62,9 +63,11 @@ func (l *Log) handleLogs(w http.ResponseWriter, r *http.Request) error {
 			}
 		})
 	}
+
 	wg.Wait()
 
 	var collected []error
+
 	for i, err := range logErrors {
 		if err != nil {
 			collected = append(collected, fmt.Errorf("%d: %w", i, err))

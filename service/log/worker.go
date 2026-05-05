@@ -159,6 +159,7 @@ func (w *worker) run() {
 			if linesWrittenSinceLastFlush <= 0 {
 				continue
 			}
+
 			w.logger.Debug("flushing to disk")
 
 			if err := w.writer.Flush(); err != nil {

@@ -11,8 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/teapotovh/teapot/lib/run"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var (
@@ -122,6 +123,7 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 		l := m.logger.With("source", source, "component", "worker")
 
 		m.logger.Debug("starting worker", "source", source)
+
 		nw, err := newWorker(
 			m.context,
 			source,
@@ -141,6 +143,7 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 		go nw.run()
 
 		m.workers.Store(source, nw)
+
 		return nw, nil
 	})
 	if err != nil {
