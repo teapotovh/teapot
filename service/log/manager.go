@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/teapotovh/teapot/lib/run"
+	"golang.org/x/sync/singleflight"
 )
 
 var (
@@ -33,6 +34,7 @@ type WorkerManager struct {
 
 	terminating atomic.Bool
 	workers     sync.Map
+	sf          singleflight.Group
 	metrics     *metrics
 }
 
@@ -107,8 +109,11 @@ func (m *WorkerManager) logPath(source string) string {
 }
 
 func (m *WorkerManager) worker(source string) (*worker, error) {
-	w, ok := m.workers.Load(source)
-	if !ok {
+	if w, ok := m.workers.Load(source); ok {
+		return w.(*worker), nil
+	}
+
+	w, err, _ := m.sf.Do(source, func() (any, error) {
 		p := m.logPath(source)
 		if err := os.MkdirAll(p, DirFileMode); err != nil {
 			return nil, fmt.Errorf("could not create log directory %q: %w", p, err)
@@ -116,6 +121,7 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 
 		l := m.logger.With("source", source, "component", "worker")
 
+		m.logger.Debug("starting worker", "source", source)
 		nw, err := newWorker(
 			m.context,
 			source,
@@ -134,8 +140,11 @@ func (m *WorkerManager) worker(source string) (*worker, error) {
 
 		go nw.run()
 
-		w = nw
-		m.workers.Store(source, w)
+		m.workers.Store(source, nw)
+		return nw, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return w.(*worker), nil

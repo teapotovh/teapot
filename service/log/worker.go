@@ -156,6 +156,9 @@ func (w *worker) run() {
 			return
 
 		case <-flush.Triggered():
+			if linesWrittenSinceLastFlush <= 0 {
+				continue
+			}
 			w.logger.Debug("flushing to disk")
 
 			if err := w.writer.Flush(); err != nil {
@@ -173,7 +176,7 @@ func (w *worker) run() {
 			linesWrittenSinceLastFlush = 0
 
 		case <-rotate.Triggered():
-			if bytesWrittenSinceLastRotate == 0 {
+			if bytesWrittenSinceLastRotate <= 0 {
 				w.logger.Debug("skipping log rotation since no new logs have been written since last rotation")
 				continue
 			}

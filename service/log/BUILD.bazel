@@ -23,5 +23,6 @@ go_library(
         "@com_github_cenkalti_backoff_v5//:backoff",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
+        "@org_golang_x_sync//singleflight",
     ],
 )
