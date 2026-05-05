@@ -70,7 +70,8 @@ image_push(
     image = ":image",
     registry = "ghcr.io",
     repository = "teapotovh/desecd",
-    tag = "latest",
+    stamp = "disabled",
+    tag_file = "//bazel:version_file_latest",
 )
 
 image_push(
