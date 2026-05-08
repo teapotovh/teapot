@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	hxhttp "maragu.dev/gomponents-htmx/http"
+
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/dependency"
 )
@@ -39,6 +41,10 @@ func parseSet[T comparable](raw string, fn func(string) (T, error)) (map[T]ui.Un
 }
 
 func AlreadyLoadedFromRequest(r *http.Request) (ui.AlreadyLoaded, error) {
+	if !hxhttp.IsRequest(r.Header) {
+		return ui.EmptyAlreadyLoaded(), nil
+	}
+
 	styles, err := parseSet(r.Header.Get(HeaderTeapotStyles), func(s string) (string, error) { return s, nil })
 	if err != nil {
 		return ui.AlreadyLoaded{}, fmt.Errorf(

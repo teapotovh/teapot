@@ -12,5 +12,6 @@ go_library(
         "//lib/httphandler",
         "//lib/ui",
         "//lib/ui/dependency",
+        "@dev_maragu_gomponents_htmx//http",
     ],
 )

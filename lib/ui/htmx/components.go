@@ -11,6 +11,7 @@ import (
 var Components = []string{
 	"htmx.org",
 	"htmx-ext-response-targets",
+	"htmx-ext-head-support",
 }
 
 //go:generate go run ./download/
