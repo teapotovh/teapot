@@ -52,6 +52,8 @@ type Dependency struct {
 	Name string
 }
 
+type DependencyGraph map[Dependency][]Dependency
+
 func ParseDependency(raw string) (Dependency, error) {
 	parts := strings.Split(raw, ":")
 	if len(parts) != 2 {

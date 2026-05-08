@@ -11,6 +11,7 @@ import (
 	"maps"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -41,6 +42,7 @@ type Renderer struct {
 	pathDependencies map[string]dependency.Dependency
 	assetPath        string
 	debug            bool
+	linearized       sync.Map
 }
 
 func NewRenderer(config RendererConfig, logger *slog.Logger) (*Renderer, error) {
@@ -112,15 +114,35 @@ func (rer *Renderer) Dependency(path string) (dependency.Dependency, []byte, err
 	return dependency.Dependency{}, nil, ErrMissingDependency
 }
 
-var defaultDependencies = map[dependency.Dependency]Unit{
-	{Type: dependency.DependencyTypeScript, Name: "htmx"}:             {}, // htmx/htmx
-	{Type: dependency.DependencyTypeScript, Name: "response-targets"}: {}, // htmx/response-targets
-	{Type: dependency.DependencyTypeScript, Name: "head-support"}:     {}, // htmx/head-support
-	{Type: dependency.DependencyTypeScript, Name: "render"}:           {}, // teapot/render
+var (
+	ScriptHTMX                = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "htmx"}             // htmx/htmx
+	ScriptHTMXResponseTargets = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "response-targets"} // htmx/response-targets
+	ScriptHTMXHeadSupport     = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "head-support"}     // htmx/head-support
+	ScriptTeapotRender        = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "render"}           // teapot/render
 
-	{Type: dependency.DependencyTypeStyle, Name: "colors"}:    {}, // open-props/colors
-	{Type: dependency.DependencyTypeStyle, Name: "normalize"}: {}, // open-props/normalize
-	{Type: dependency.DependencyTypeStyle, Name: "font"}:      {}, // open-props/font
+	StyleNormalize = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "normalize"} // open-props/normalize
+	StyleColors    = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "colors"}    // open-props/colors
+	StyleFont      = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "font"}      // open-props/font
+)
+
+var defaultDependencies = map[dependency.Dependency]Unit{
+	ScriptHTMX:                {},
+	ScriptHTMXResponseTargets: {},
+	ScriptHTMXHeadSupport:     {},
+	ScriptTeapotRender:        {},
+
+	StyleColors:    {},
+	StyleNormalize: {},
+	StyleFont:      {},
+}
+
+var DependencyGraph = dependency.DependencyGraph{
+	ScriptHTMXResponseTargets: []dependency.Dependency{ScriptHTMX},
+	ScriptHTMXHeadSupport:     []dependency.Dependency{ScriptHTMX},
+	ScriptTeapotRender:        []dependency.Dependency{ScriptHTMX},
+
+	StyleColors: []dependency.Dependency{StyleNormalize},
+	StyleFont:   []dependency.Dependency{StyleNormalize},
 }
 
 type AlreadyLoaded struct {
@@ -224,10 +246,14 @@ func (rer *Renderer) renderWithDependencies(
 		styles       []*Style
 	)
 
-	// TODO: the order in which script dependencies are inserted is important.
-	// For example, htmx-ext-response-targets and render need to be registered
-	// after htmx. We need proper dependency tree linearization to handle this.
-	for dep := range rerCtx.dependencies {
+	// The order in which script dependencies are inserted is important.
+	// For example, htmx-ext-response-targets and render need to be registered after htmx.
+	linearized, err := rer.Linearize(rerCtx.dependencies, DependencyGraph)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error while linearizing dependencies: %w", err)
+	}
+
+	for _, dep := range linearized {
 		if _, ok := loaded.Dependencies[dep]; ok {
 			continue
 		}
