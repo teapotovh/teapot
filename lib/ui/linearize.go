@@ -16,11 +16,16 @@ func cacheKey(units map[dependency.Dependency]Unit) [32]byte {
 	for dep := range units {
 		entries = append(entries, dep.String())
 	}
+
 	sort.Strings(entries)
+
 	return sha256.Sum256([]byte(strings.Join(entries, ",")))
 }
 
-func (rer *Renderer) Linearize(units map[dependency.Dependency]Unit, graph dependency.DependencyGraph) ([]dependency.Dependency, error) {
+func (rer *Renderer) Linearize(
+	units map[dependency.Dependency]Unit,
+	graph dependency.DependencyGraph,
+) ([]dependency.Dependency, error) {
 	key := cacheKey(units)
 	if cached, ok := rer.linearized.Load(key); ok {
 		return cached.([]dependency.Dependency), nil
@@ -32,10 +37,14 @@ func (rer *Renderer) Linearize(units map[dependency.Dependency]Unit, graph depen
 	}
 
 	rer.linearized.Store(key, result)
+
 	return result, nil
 }
 
-func linearize(units map[dependency.Dependency]Unit, graph dependency.DependencyGraph) ([]dependency.Dependency, error) {
+func linearize(
+	units map[dependency.Dependency]Unit,
+	graph dependency.DependencyGraph,
+) ([]dependency.Dependency, error) {
 	inDegree := make(map[dependency.Dependency]int)
 	dependents := make(map[dependency.Dependency][]dependency.Dependency)
 
@@ -43,17 +52,20 @@ func linearize(units map[dependency.Dependency]Unit, graph dependency.Dependency
 		if _, ok := inDegree[dep]; !ok {
 			inDegree[dep] = 0
 		}
+
 		for _, req := range graph[dep] {
 			// only consider edges within our unit set
 			if _, ok := units[req]; !ok {
 				continue
 			}
+
 			dependents[req] = append(dependents[req], dep)
 			inDegree[dep]++
 		}
 	}
 
 	queue := make([]dependency.Dependency, 0)
+
 	for dep, degree := range inDegree {
 		if degree == 0 {
 			queue = append(queue, dep)
@@ -64,6 +76,7 @@ func linearize(units map[dependency.Dependency]Unit, graph dependency.Dependency
 	for len(queue) > 0 {
 		node := queue[0]
 		queue = queue[1:]
+
 		result = append(result, node)
 
 		for _, dependent := range dependents[node] {

@@ -115,14 +115,29 @@ func (rer *Renderer) Dependency(path string) (dependency.Dependency, []byte, err
 }
 
 var (
-	ScriptHTMX                = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "htmx"}             // htmx/htmx
-	ScriptHTMXResponseTargets = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "response-targets"} // htmx/response-targets
-	ScriptHTMXHeadSupport     = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "head-support"}     // htmx/head-support
-	ScriptTeapotRender        = dependency.Dependency{Type: dependency.DependencyTypeScript, Name: "render"}           // teapot/render
+	ScriptHTMX = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "htmx",
+	} // htmx/htmx
+	ScriptHTMXResponseTargets = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "response-targets",
+	} // htmx/response-targets
+	ScriptHTMXHeadSupport = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "head-support",
+	} // htmx/head-support
+	ScriptTeapotRender = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "render",
+	} // teapot/render
 
-	StyleNormalize = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "normalize"} // open-props/normalize
-	StyleColors    = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "colors"}    // open-props/colors
-	StyleFont      = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "font"}      // open-props/font
+	StyleNormalize = dependency.Dependency{
+		Type: dependency.DependencyTypeStyle,
+		Name: "normalize",
+	} // open-props/normalize
+	StyleColors = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "colors"} // open-props/colors
+	StyleFont   = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "font"}   // open-props/font
 )
 
 var defaultDependencies = map[dependency.Dependency]Unit{
@@ -192,7 +207,13 @@ func (rer *Renderer) Render(ctx context.Context, w io.Writer, loaded AlreadyLoad
 }
 
 // RenderPage renders a full page to the response. It adds styles as necessary.
-func (rer *Renderer) RenderPage(ctx context.Context, w io.Writer, loaded AlreadyLoaded, opts c.HTML5Props, body Component) error {
+func (rer *Renderer) RenderPage(
+	ctx context.Context,
+	w io.Writer,
+	loaded AlreadyLoaded,
+	opts c.HTML5Props,
+	body Component,
+) error {
 	styles, scripts, node, err := rer.renderWithDependencies(ctx, loaded, body)
 	if err != nil {
 		return err
@@ -230,6 +251,7 @@ func (rer *Renderer) contextRender(component Component) (renderContext, g.Node) 
 	return ctx, node
 }
 
+//nolint:gocyclo
 func (rer *Renderer) renderWithDependencies(
 	ctx context.Context,
 	loaded AlreadyLoaded,
