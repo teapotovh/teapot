@@ -3,7 +3,6 @@ package ui
 import (
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -12,14 +11,13 @@ import (
 
 var ErrCyclicDependency = errors.New("cyclic dependency detected: linearization is not possible")
 
-func cacheKey(units map[dependency.Dependency]Unit) string {
+func cacheKey(units map[dependency.Dependency]Unit) [32]byte {
 	entries := make([]string, 0, len(units))
 	for dep := range units {
 		entries = append(entries, dep.String())
 	}
 	sort.Strings(entries)
-	h := sha256.Sum256([]byte(strings.Join(entries, ",")))
-	return fmt.Sprintf("%x", h)
+	return sha256.Sum256([]byte(strings.Join(entries, ",")))
 }
 
 func (rer *Renderer) Linearize(units map[dependency.Dependency]Unit, graph dependency.DependencyGraph) ([]dependency.Dependency, error) {
