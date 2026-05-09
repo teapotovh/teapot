@@ -6,6 +6,7 @@ go_library(
         "client.go",
         "constants.go",
         "context.go",
+        "flag.go",
         "message.go",
         "packet.go",
         "responsemessage.go",
@@ -14,5 +15,9 @@ go_library(
     ],
     importpath = "github.com/teapotovh/teapot/lib/ldapserver",
     visibility = ["//visibility:public"],
-    deps = ["//lib/ldapserver/goldap"],
+    deps = [
+        "//lib/ldapserver/goldap",
+        "//lib/run",
+        "@com_github_spf13_pflag//:pflag",
+    ],
 )

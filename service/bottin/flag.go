@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	DefaultAddr   = "0.0.0.0:1389"
 	DefaultBaseDN = "dc=teapot,dc=ovh"
 	DefaultACL    = []string{
 		"ANONYMOUS::bind:*,ou=users,dc=teapot,dc=ovh:",

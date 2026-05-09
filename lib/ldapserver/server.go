@@ -3,70 +3,60 @@ package ldapserver
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var ErrMissingHandler = errors.New("ldap server has no defined handler function")
 
-// Server is an LDAP server.
-type Server struct {
-	Listener        net.Listener
-	Handler         Handler
-	logger          *slog.Logger
-	OnNewConnection func(c net.Conn) error
-	wg              sync.WaitGroup
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
+type unit struct{}
+
+type LDAPSrvConfig struct {
+	Address       string
+	ShutdownDelay time.Duration
+	ReadTimeout   time.Duration
+	WriteTimeout  time.Duration
+}
+
+// LDAPServer is an LDAP server.
+type LDAPServer struct {
+	logger *slog.Logger
+
+	address       string
+	shutdownDelay time.Duration
+	readTimeout   time.Duration
+	writeTimeout  time.Duration
+
+	listener net.Listener
+	handler  Handler
+	wg       sync.WaitGroup
 }
 
 // NewServer return a LDAP Server.
-func NewServer(logger *slog.Logger) *Server {
-	return &Server{
+func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPServer {
+	return &LDAPServer{
 		logger: logger,
+
+		address:       config.Address,
+		shutdownDelay: config.ShutdownDelay,
+		readTimeout:   config.ReadTimeout,
+		writeTimeout:  config.WriteTimeout,
 	}
 }
 
 // Handle registers the handler for the server.
-func (s *Server) Handle(h Handler) {
-	if s.Handler != nil {
-		s.logger.Warn("overwriting ldap handler", "old", s.Handler, "new", h)
+func (s *LDAPServer) Handle(h Handler) {
+	if s.handler != nil {
+		s.logger.Warn("overwriting ldap handler", "old", s.handler, "new", h)
 	}
 
-	s.Handler = h
-}
-
-type Option func(*Server) error
-
-// ListenAndServe listens on the TCP network address s.Addr and then
-// calls `serve` to handle requests on incoming connections.
-// When the context is canceled, the server gracefully closes all connections.
-func (s *Server) ListenAndServe(ctx context.Context, addr string, options ...Option) (err error) {
-	s.Listener, err = net.Listen("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("error while listening on tcp socket: %w", err)
-	}
-
-	for _, option := range options {
-		if err := option(s); err != nil {
-			return fmt.Errorf("error while applying option: %w", err)
-		}
-	}
-
-	return s.serve(ctx)
-}
-
-// WithTLS returns an Option that wraps the TLS connection with TLS.
-func WithTLS(config *tls.Config) Option {
-	return func(srv *Server) error {
-		srv.Listener = tls.NewListener(srv.Listener, config)
-		return nil
-	}
+	s.handler = h
 }
 
 // Wait waits for the termination of all LDAP client connections.
@@ -75,85 +65,108 @@ func WithTLS(config *tls.Config) Option {
 // Notice of Disconnection.  In this case, each
 // protocol peer gracefully terminates the LDAP session by ceasing
 // exchanges at the LDAP message layer, tearing down any SASL layer,
-// tearing down any TLS layer, and closing the transport connection.
+// and closing the transport connection.
 // A protocol peer may determine that the continuation of any
 // communication would be pernicious, and in this case, it may abruptly
 // terminate the session by ceasing communication and closing the
 // transport connection.
 // In either case, the LDAP session is terminated.
-func (s *Server) Wait() {
-	s.logger.Debug("gracefully closing client connections")
-	s.wg.Wait()
+func (s *LDAPServer) Wait() {
 }
 
-// Handle requests messages on the ln listener.
-func (s *Server) serve(ctx context.Context) (err error) {
+// Run implements run.Runnable.
+func (s *LDAPServer) Run(ctx context.Context, notify run.Notify) (err error) {
+	if s.handler == nil {
+		return ErrMissingHandler
+	}
+
+	cfg := net.ListenConfig{}
+	s.listener, err = cfg.Listen(ctx, "tcp", s.address)
+	if err != nil {
+		return fmt.Errorf("error while listening on tcp socket %q: %w", s.address, err)
+	}
+
 	defer func() {
-		if lisErr := s.Listener.Close(); lisErr != nil && err == nil {
+		if lisErr := s.listener.Close(); lisErr != nil && err == nil {
 			err = fmt.Errorf("error while closing ldap listener: %w", err)
 		}
 	}()
 
-	if s.Handler == nil {
-		return ErrMissingHandler
-	}
+	notify.Notify()
 
 	i := 0
-
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Debug("context canceled, stopping server", "listener", s.Listener)
-			return nil
+			s.logger.DebugContext(ctx, "gracefully closing client connections")
+
+			var ch chan unit
+			defer close(ch)
+			go func() {
+				s.wg.Wait()
+				ch <- unit{}
+			}()
+
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(s.shutdownDelay))
+			defer cancel()
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-ch:
+				return nil
+			}
+
 		default:
-		}
+			s.listener.Accept()
 
-		i += 1
-		ctx := context.WithValue(ctx, ContextKeyConnectionID, i)
+			i += 1
+			ctx := context.WithValue(ctx, ContextKeyConnectionID, i)
 
-		rw, err := s.Listener.Accept()
-		if nil != err {
-			var ne *net.OpError
-			if ok := errors.As(err, &ne); ok && ne.Timeout() {
+			rw, err := s.listener.Accept()
+			if nil != err {
+				var ne *net.OpError
+				if ok := errors.As(err, &ne); ok && ne.Timeout() {
+					continue
+				}
+
+				s.logger.WarnContext(ctx, "error while handling incoming connection", "err", err)
+
 				continue
 			}
 
-			s.logger.WarnContext(ctx, "error while handling incoming connection", "err", err)
+			if s.readTimeout > 0 {
+				if err := rw.SetReadDeadline(time.Now().Add(s.readTimeout)); err != nil {
+					s.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
+					continue
+				}
+			}
 
-			continue
-		}
+			if s.writeTimeout > 0 {
+				if err := rw.SetWriteDeadline(time.Now().Add(s.writeTimeout)); err != nil {
+					s.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
+					continue
+				}
+			}
 
-		if s.ReadTimeout != 0 {
-			if err := rw.SetReadDeadline(time.Now().Add(s.ReadTimeout)); err != nil {
-				s.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
+			s.logger.DebugContext(ctx, "accepted connection", "addr", rw.RemoteAddr().String())
+
+			cli, err := s.newClient(rw, i)
+			if err != nil {
+				s.logger.WarnContext(ctx, "error while creating a new client for the connection", "err", err)
 				continue
 			}
+
+			go cli.serve(ctx)
 		}
-
-		if s.WriteTimeout != 0 {
-			if err := rw.SetWriteDeadline(time.Now().Add(s.WriteTimeout)); err != nil {
-				s.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
-				continue
-			}
-		}
-
-		s.logger.DebugContext(ctx, "accepted connection", "addr", rw.RemoteAddr().String())
-
-		cli, err := s.newClient(rw, i)
-		if err != nil {
-			s.logger.WarnContext(ctx, "error while creating a new client for the connection", "err", err)
-			continue
-		}
-
-		go cli.serve(ctx)
 	}
 }
 
 // Return a new session with the connection
 // client has a writer and reader buffer.
-func (s *Server) newClient(rwc net.Conn, id int) (c *client, err error) {
+func (s *LDAPServer) newClient(rwc net.Conn, id int) (c *client, err error) {
 	c = &client{
-		logger: s.logger.With("client", id),
+		logger: s.logger,
 		srv:    s,
 		id:     id,
 		rwc:    rwc,

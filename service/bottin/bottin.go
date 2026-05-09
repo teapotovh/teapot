@@ -2,6 +2,8 @@ package bottin
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -41,21 +43,21 @@ var (
 )
 
 type BottinConfig struct {
-	Store         store.StoreConfig
-	BaseDN        string
-	Passwd        string
-	TLSCertFile   string
-	TLSKeyFile    string
-	TLSServerName string
-	ACL           []string
+	Store  store.StoreConfig
+	BaseDN string
+	Passwd string
+	ACL    []string
 }
 
 type Bottin struct {
-	store      store.Store
-	logger     *slog.Logger
-	rootPasswd string
+	logger *slog.Logger
+
 	baseDN     store.DN
+	rootPasswd string
 	acl        ACL
+
+	store  store.Store
+	Routes *ldapserver.RouteMux
 }
 
 func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
@@ -69,6 +71,18 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 		return nil, fmt.Errorf("error while parsing baseDN: %w", err)
 	}
 
+	if config.Passwd == "" {
+		adminPassBytes := make([]byte, 8)
+
+		_, err := rand.Read(adminPassBytes)
+		if err != nil {
+			return nil, fmt.Errorf("error while generating random root password: %w", err)
+		}
+
+		config.Passwd = base64.RawURLEncoding.EncodeToString(adminPassBytes)
+		logger.Info("using randomly generated root password", "passwd", config.Passwd)
+	}
+
 	hash, err := ssha512Encode(config.Passwd)
 	if err != nil {
 		return nil, fmt.Errorf("error while hashing root passwd: %w", err)
@@ -79,13 +93,22 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 		return nil, fmt.Errorf("error while initializing bottin store: %w", err)
 	}
 
-	return &Bottin{
-		logger:     slog.New(NewContextHandler(logger.Handler())),
+	routes := ldapserver.NewRouteMux(logger.With("sub", "router"))
+
+	bottin := Bottin{
+		logger: slog.New(NewContextHandler(logger.Handler())),
+
 		baseDN:     baseDN,
 		rootPasswd: hash,
 		acl:        acl,
-		store:      store,
-	}, nil
+
+		store:  store,
+		Routes: routes,
+	}
+
+	bottin.initRoutes()
+
+	return &bottin, nil
 }
 
 const AnonymousUser = "ANONYMOUS"
@@ -97,7 +120,18 @@ func EmptyUser() User {
 	}
 }
 
-func (server *Bottin) Init(ctx context.Context) error {
+func (server *Bottin) initRoutes() {
+	server.Routes.Bind(server.HandleBind)
+	server.Routes.Search(server.HandleSearch)
+	server.Routes.Add(server.HandleAdd)
+	server.Routes.Compare(server.HandleCompare)
+	server.Routes.Delete(server.HandleDelete)
+	server.Routes.Modify(server.HandleModify)
+	server.Routes.Extended(server.HandlePasswordModify).
+		RequestName(ldapserver.NoticeOfPasswordModify).Label("PasswordModify")
+}
+
+func (server *Bottin) init(ctx context.Context) error {
 	// Check that root object exists.
 	// If it does, we're done. Otherwise, we have some initialization to do.
 	exists, err := server.existsEntry(ctx, server.baseDN)
