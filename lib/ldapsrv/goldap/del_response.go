@@ -3,8 +3,8 @@ package message
 //
 //        DelResponse ::= [APPLICATION 11] LDAPResult
 
-func (del *DelResponse) SetResultCode(code int32) {
-	del.resultCode = ENUMERATED(code)
+func (del *DelResponse) SetResultCode(code ENUMERATED) {
+	del.resultCode = code
 }
 
 func readDelResponse(bytes *Bytes) (ret DelResponse, err error) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/teapotovh/teapot/lib/ldapsrv"
-	goldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
@@ -15,16 +15,33 @@ var (
 	ErrUnsupportedFilter = errors.New("unsupported filter")
 )
 
-// TODO: return ResultCodeNoSuchObject if len(entries) < 1
-// TODO: return ResultCodeOperationsError if len(entries) > 1.
 func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, error) {
 	entries, err := server.store.List(ctx, dn.Prefix(), true)
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching entry with DN %q from store: %w", dn.String(), err)
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry with DN %q from store: %w",
+			ldapsrv.ErrOperationsError,
+			dn.String(),
+			err,
+		)
 	}
 
-	if len(entries) != 1 {
-		return nil, fmt.Errorf("error while fetching entry %q: %w", dn.String(), ErrNotFound)
+	if len(entries) < 1 {
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry %q: %w",
+			ldapsrv.ErrNoSuchObject,
+			dn.String(),
+			ErrNotFound,
+		)
+	}
+
+	if len(entries) > 1 {
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry %q: %w",
+			ldapsrv.ErrOperationsError,
+			dn.String(),
+			ErrNotFound,
+		)
 	}
 
 	return &entries[0], nil
@@ -39,89 +56,48 @@ func (server *Bottin) existsEntry(ctx context.Context, dn store.DN) (bool, error
 	return len(entries) == 1, nil
 }
 
-func (server *Bottin) HandleCompare(
-	ctx context.Context,
-	w ldapsrv.ResponseWriter,
-	m *ldapsrv.Message,
-) context.Context {
-	r := m.GetCompareRequest()
-
-	code, err := server.handleCompareInternal(ctx, &r)
-
-	res := ldapsrv.NewResponse(code)
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	w.Write(goldap.CompareResponse(res))
-
-	return ctx
-}
-
-func (server *Bottin) handleCompareInternal(ctx context.Context, r *goldap.CompareRequest) (int32, error) {
+func (server *Bottin) Compare(ctx context.Context, r ldap.CompareRequest) (bool, error) {
 	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 	attr := store.NewAttributeKey(string(r.Ava().AttributeDesc()))
 	expected := string(r.Ava().AssertionValue())
 
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
-		return goldap.ResultCodeInvalidDNSyntax, err
+		return false, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check permissions
 	if !server.acl.Check(user, "read", dn, []store.AttributeKey{attr}) {
-		return goldap.ResultCodeInsufficientAccessRights, nil
+		return false, fmt.Errorf(
+			"could not read %q: %w",
+			dn,
+			ldapsrv.ErrInsufficientAccessRights,
+		)
 	}
 
 	server.logger.InfoContext(ctx, "comparing entry", "dn", dn, "attr", attr)
 
 	entry, err := server.getEntry(ctx, dn)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return false, err
 	}
 
 	values := entry.Get(attr)
 	for _, v := range values {
 		if valueMatch(attr, v, expected) {
-			return goldap.ResultCodeCompareTrue, nil
+			return true, nil
 		}
 	}
 
-	return goldap.ResultCodeCompareFalse, nil
-}
-
-func (server *Bottin) HandleSearch(
-	ctx context.Context,
-	w ldapsrv.ResponseWriter,
-	m *ldapsrv.Message,
-) context.Context {
-	r := m.GetSearchRequest()
-	code, err := server.handleSearchInternal(ctx, w, &r)
-
-	res := ldapsrv.NewResponse(code)
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	if code != goldap.ResultCodeSuccess {
-		server.logger.ErrorContext(ctx, "error while performing search", "req", r, "err", err)
-	}
-
-	w.Write(goldap.SearchResultDone(res))
-
-	return ctx
+	return false, nil
 }
 
 //nolint:all
-func (server *Bottin) handleSearchInternal(
-	ctx context.Context,
-	w ldapsrv.ResponseWriter,
-	r *goldap.SearchRequest,
-) (int32, error) {
+func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.SearchResultEntry, error) {
 	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 	baseObject, err := server.parseDN(string(r.BaseObject()), true)
 	if err != nil {
-		return goldap.ResultCodeInvalidDNSyntax, err
+		return nil, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	server.logger.InfoContext(
@@ -138,26 +114,29 @@ func (server *Bottin) handleSearchInternal(
 	)
 
 	if !server.acl.Check(user, "read", baseObject, []store.AttributeKey{}) {
-		return goldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
-			"please specify a base object on which you have read rights",
+		return nil, fmt.Errorf(
+			"could not read %q: %w",
+			baseObject,
+			ldapsrv.ErrInsufficientAccessRights,
 		)
 	}
 
 	baseObjectLevel := baseObject.Level()
-	exact := r.Scope() == goldap.SearchRequestScopeBaseObject
+	exact := r.Scope() == ldap.SearchRequestScopeBaseObject
 	entries, err := server.store.List(ctx, baseObject.Prefix(), exact)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return nil, fmt.Errorf("(%w), error while listing objects: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	server.logger.DebugContext(ctx, "retrieved entries", "entries", entries, "base", baseObject)
 
+	var results []ldap.SearchResultEntry
 	for _, entry := range entries {
-		if r.Scope() == goldap.SearchRequestScopeBaseObject {
+		if r.Scope() == ldap.SearchRequestScopeBaseObject {
 			if entry.DN.Equal(baseObject) {
 				continue
 			}
-		} else if r.Scope() == goldap.SearchRequestSingleLevel {
+		} else if r.Scope() == ldap.SearchRequestSingleLevel {
 			if entry.DN.Level() != baseObjectLevel+1 {
 				continue
 			}
@@ -165,7 +144,13 @@ func (server *Bottin) handleSearchInternal(
 		// Filter out if we don't match requested filter
 		matched, err := applyFilter(entry, r.Filter())
 		if err != nil {
-			return goldap.ResultCodeUnwillingToPerform, err
+			return nil, fmt.Errorf(
+				"(%w), error while applying filter %q on %q: %w",
+				ldapsrv.ErrUnwillingToPerform,
+				r.Filter(),
+				entry.DN.String(),
+				err,
+			)
 		}
 		if !matched {
 			continue
@@ -204,21 +189,22 @@ func (server *Bottin) handleSearchInternal(
 			}
 
 			// Send result
-			resultVals := []goldap.AttributeValue{}
+			resultVals := []ldap.AttributeValue{}
 			for _, v := range val {
-				resultVals = append(resultVals, goldap.AttributeValue(v))
+				resultVals = append(resultVals, ldap.AttributeValue(v))
 			}
-			e.AddAttribute(goldap.AttributeDescription(attr), resultVals...)
+			e.AddAttribute(ldap.AttributeDescription(attr), resultVals...)
 		}
-		w.Write(e)
+
+		results = append(results, e)
 	}
 
-	return goldap.ResultCodeSuccess, nil
+	return results, nil
 }
 
 //nolint:gocyclo
-func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
-	if fAnd, ok := filter.(goldap.FilterAnd); ok {
+func applyFilter(entry store.Entry, filter ldap.Filter) (bool, error) {
+	if fAnd, ok := filter.(ldap.FilterAnd); ok {
 		for _, cond := range fAnd {
 			res, err := applyFilter(entry, cond)
 			if err != nil {
@@ -231,7 +217,7 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 		}
 
 		return true, nil
-	} else if fOr, ok := filter.(goldap.FilterOr); ok {
+	} else if fOr, ok := filter.(ldap.FilterOr); ok {
 		for _, cond := range fOr {
 			res, err := applyFilter(entry, cond)
 			if err != nil {
@@ -244,14 +230,14 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 		}
 
 		return false, nil
-	} else if fNot, ok := filter.(goldap.FilterNot); ok {
+	} else if fNot, ok := filter.(ldap.FilterNot); ok {
 		res, err := applyFilter(entry, fNot.Filter)
 		if err != nil {
 			return false, err
 		}
 
 		return !res, nil
-	} else if fPresent, ok := filter.(goldap.FilterPresent); ok {
+	} else if fPresent, ok := filter.(ldap.FilterPresent); ok {
 		what := string(fPresent)
 		// Case insensitive search
 		for desc, values := range entry.Attributes {
@@ -261,7 +247,7 @@ func applyFilter(entry store.Entry, filter goldap.Filter) (bool, error) {
 		}
 
 		return false, nil
-	} else if fEquality, ok := filter.(goldap.FilterEqualityMatch); ok {
+	} else if fEquality, ok := filter.(ldap.FilterEqualityMatch); ok {
 		desc := string(fEquality.AttributeDesc())
 		target := string(fEquality.AssertionValue())
 		// Case insensitive attribute search

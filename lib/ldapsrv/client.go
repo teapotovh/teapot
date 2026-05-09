@@ -166,7 +166,13 @@ func (c *client) serve(ctx context.Context) {
 		// @see RFC https://tools.ietf.org/html/rfc4511#section-4.14.1
 		if req, ok := message.ProtocolOp().(ldap.ExtendedRequest); ok {
 			if req.RequestName() == NoticeOfStartTLS {
-				c.ProcessRequestMessage(ctx, &message)
+				res := NewResponse(ldap.ResultCodeUnwillingToPerform)
+				res.SetDiagnosticMessage("StartTLS is not supported")
+
+				m := ldap.NewLDAPMessageWithProtocolOp(res)
+				m.SetMessageID(message.MessageID())
+
+				c.chanOut <- m
 				continue
 			}
 		}
@@ -184,7 +190,7 @@ type ResponseWriter interface {
 
 type responseWriterImpl struct {
 	chanOut   chan *ldap.LDAPMessage
-	messageID int32
+	messageID ldap.MessageID
 }
 
 func (w responseWriterImpl) Write(po ldap.ProtocolOp) {
@@ -224,9 +230,9 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 	var w responseWriterImpl
 
 	w.chanOut = c.chanOut
-	w.messageID = int32(m.MessageID())
+	w.messageID = m.MessageID()
 
-	return c.srv.handler.ServeLDAP(ctx, w, &m)
+	return c.srv.handle(ctx, w, &m)
 }
 
 func (c *client) registerRequest(m *Message) {

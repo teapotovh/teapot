@@ -4,6 +4,7 @@ go_library(
     name = "bottin",
     srcs = [
         "acl.go",
+        "auth.go",
         "bottin.go",
         "flag.go",
         "hash.go",

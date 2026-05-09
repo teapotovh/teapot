@@ -52,28 +52,13 @@ func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
 	}
 }
 
-// Handle registers the handler for the server.
-func (s *LDAPSrv) Handle(h Handler) {
+// Register registers the handler for the server.
+func (s *LDAPSrv) Register(h Handler) {
 	if s.handler != nil {
 		s.logger.Warn("overwriting ldap handler", "old", s.handler, "new", h)
 	}
 
 	s.handler = h
-}
-
-// Wait waits for the termination of all LDAP client connections.
-//
-// Termination of the LDAP session is initiated by the server sending a
-// Notice of Disconnection.  In this case, each
-// protocol peer gracefully terminates the LDAP session by ceasing
-// exchanges at the LDAP message layer, tearing down any SASL layer,
-// and closing the transport connection.
-// A protocol peer may determine that the continuation of any
-// communication would be pernicious, and in this case, it may abruptly
-// terminate the session by ceasing communication and closing the
-// transport connection.
-// In either case, the LDAP session is terminated.
-func (s *LDAPSrv) Wait() {
 }
 
 // Run implements run.Runnable.

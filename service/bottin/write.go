@@ -9,46 +9,23 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/teapotovh/teapot/lib/ldapsrv"
-	goldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
 var (
-	ErrHasChildren = errors.New("has children")
-	ErrNotFound    = errors.New("not found")
+	ErrHasChildren   = errors.New("has children")
+	ErrNotFound      = errors.New("not found")
+	ErrAlreadyExists = errors.New("already exists")
 )
 
-func (server *Bottin) HandleAdd(
-	ctx context.Context,
-	w ldapsrv.ResponseWriter,
-	m *ldapsrv.Message,
-) context.Context {
-	r := m.GetAddRequest()
-
-	code, err := server.handleAddInternal(ctx, &r)
-
-	res := ldapsrv.NewResponse(code)
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	if code == goldap.ResultCodeSuccess {
-		server.logger.InfoContext(ctx, "successfully added", "entry", r.Entry())
-	} else {
-		server.logger.ErrorContext(ctx, "error while adding entry", "entry", r.Entry(), "err", err)
-	}
-
-	w.Write(goldap.AddResponse(res))
-
-	return ctx
-}
-
-//nolint:all
-func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddRequest) (int32, error) {
+//nolint:gocyclo
+func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 	user := ldapsrv.GetUser[User](ctx, EmptyUser)
+
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
-		return goldap.ResultCodeInvalidDNSyntax, err
+		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check permissions
@@ -56,8 +33,13 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 	for _, attribute := range r.Attributes() {
 		attrList = append(attrList, store.NewAttributeKey(string(attribute.Type_())))
 	}
+
 	if !server.acl.Check(user, "add", dn, attrList) {
-		return goldap.ResultCodeInsufficientAccessRights, nil
+		return fmt.Errorf(
+			"could not add %q: %w",
+			dn,
+			ldapsrv.ErrInsufficientAccessRights,
+		)
 	}
 
 	server.logger.InfoContext(ctx, "adding entry", "dn", dn, "attributes", attrList)
@@ -65,20 +47,26 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 	// Check that object does not already exist
 	exists, err := server.existsEntry(ctx, dn)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 	}
+
 	if exists {
-		return goldap.ResultCodeEntryAlreadyExists, nil
+		return fmt.Errorf("(%w) %w", ldapsrv.ErrEntryAlreadyExists, ErrAlreadyExists)
 	}
 
 	// Check that parent object exists
-	parentDn := dn.Parent()
-	parentExists, err := server.existsEntry(ctx, parentDn)
+	parentDN := dn.Parent()
+
+	parentExists, err := server.existsEntry(ctx, parentDN)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 	}
+
 	if !parentExists {
-		return goldap.ResultCodeNoSuchObject, fmt.Errorf("parent object with DN %q does not exist", parentDn.String())
+		return fmt.Errorf(
+			"(%w) parent object with DN %q does not exist",
+			ldapsrv.ErrNoSuchObject,
+			parentDN)
 	}
 
 	// If adding a group, track of who the members will be so that their memberOf field can be updated later
@@ -86,8 +74,10 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 
 	// Check attributes
 	attrs := make(store.Attributes)
+
 	for _, attribute := range r.Attributes() {
 		key := store.NewAttributeKey(string(attribute.Type_()))
+
 		vals := []string{}
 		for _, val := range attribute.Vals() {
 			vals = append(vals, string(val))
@@ -96,25 +86,30 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 		// Fail if they are trying to write memberOf, we manage this ourselves
 		err = canUpdateAttribute(key)
 		if err != nil {
-			return goldap.ResultCodeObjectClassViolation, err
+			return fmt.Errorf("(%w) %w", ldapsrv.ErrObjectClassViolation, err)
 		}
+
 		if key.EqualFold(AttrMember) {
 			// If they are writing a member list, we have to check they are adding valid members
 			// Also, rewrite member list to use canonical DN syntax (no spaces, all lowercase)
 			for _, member := range vals {
 				memberCanonical, err := server.parseDN(member, false)
 				if err != nil {
-					return goldap.ResultCodeInvalidDNSyntax, err
+					return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 				}
+
 				exists, err = server.existsEntry(ctx, memberCanonical)
 				if err != nil {
-					return goldap.ResultCodeOperationsError, err
+					return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 				}
+
 				if !exists {
-					return goldap.ResultCodeNoSuchObject, fmt.Errorf(
-						"cannot add %q to members, it does not exist",
+					return fmt.Errorf(
+						"(%w) cannot add %q to members, it does not exist",
+						ldapsrv.ErrNoSuchObject,
 						memberCanonical)
 				}
+
 				members = append(members, memberCanonical)
 			}
 
@@ -122,6 +117,7 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 			for _, member := range members {
 				memberVal = append(memberVal, member.String())
 			}
+
 			attrs[key] = memberVal
 		} else {
 			attrs[key] = append(attrs[key], vals...)
@@ -134,7 +130,7 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 
 	uuid, err := uuid.NewRandom()
 	if err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("error while generating random uuid: %w", err)
+		return fmt.Errorf("(%w) error while generating random uuid: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Write system attributes
@@ -144,73 +140,51 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("error while beginning transaction: %w", err)
+		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// This ensures the dn[].Type attribute is set to the appropriate value
 	entry := store.NewEntry(dn, attrs)
 	if err = tx.Store(entry); err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("error while storing entry: %w", err)
+		return fmt.Errorf("(%w) error while storing entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// If our item has a member list, add it to all of its member's memberOf attribute
 	for _, member := range members {
 		if err := server.membershipAdd(tx, AttrMemberOf, member, dn); err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf(
-				"error while adding %q to group %q: %w",
-				member.String(),
-				dn.String(),
+			return fmt.Errorf(
+				"(%w) error while adding %q to group %q: %w",
+				ldapsrv.ErrOperationsError,
+				member,
+				dn,
 				err,
 			)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("could not commit transaction: %w", err)
+		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return goldap.ResultCodeSuccess, nil
-}
-
-// Delete request ------------------------
-
-func (server *Bottin) HandleDelete(
-	ctx context.Context,
-	w ldapsrv.ResponseWriter,
-	m *ldapsrv.Message,
-) context.Context {
-	r := m.GetDeleteRequest()
-
-	code, err := server.handleDeleteInternal(ctx, &r)
-
-	res := ldapsrv.NewResponse(code)
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	if code == goldap.ResultCodeSuccess {
-		server.logger.InfoContext(ctx, "successfully deleted", "req", r)
-	} else {
-		server.logger.ErrorContext(ctx, "error while deleting entry", "req", r, "err", err)
-	}
-
-	w.Write(goldap.DelResponse(res))
-
-	return ctx
+	return nil
 }
 
 //nolint:gocyclo
-func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelRequest) (int32, error) {
+func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 
-	dn, err := server.parseDN(string(*r), false)
+	dn, err := server.parseDN(string(r), false)
 	if err != nil {
-		return goldap.ResultCodeInvalidDNSyntax, err
+		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check for delete permission
 	if !server.acl.Check(user, "delete", dn, []store.AttributeKey{}) {
-		return goldap.ResultCodeInsufficientAccessRights, nil
+		return fmt.Errorf(
+			"could not delete %q: %w",
+			dn,
+			ldapsrv.ErrInsufficientAccessRights,
+		)
 	}
 
 	server.logger.InfoContext(ctx, "deleting entry", "dn", dn)
@@ -218,17 +192,22 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	// Check that this LDAP entry exists and has no children
 	entries, err := server.store.List(ctx, dn.Prefix(), false)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return fmt.Errorf(
+			"(%w) error while fetching entry with DN %q from store: %w",
+			ldapsrv.ErrOperationsError,
+			dn.String(),
+			err,
+		)
 	}
 
 	if len(entries) == 0 {
-		return goldap.ResultCodeNoSuchObject, fmt.Errorf("error fetching entry %q: %w", dn, ErrNotFound)
+		return fmt.Errorf("(%w) error fetching entry: %w", ldapsrv.ErrNoSuchObject, ErrNotFound)
 	}
 
 	for _, entry := range entries {
 		if !entry.DN.Equal(dn) {
-			return goldap.ResultCodeNotAllowedOnNonLeaf, fmt.Errorf(
-				"cannot delete %q: %w", dn, ErrHasChildren)
+			return fmt.Errorf(
+				"(%w) cannot delete %q: %w", ldapsrv.ErrNotAllowedOnNonLeaf, dn, ErrHasChildren)
 		}
 	}
 
@@ -240,27 +219,28 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("error while beginning transaction: %w", err)
+		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Delete the LDAP entry
 	if err = tx.Delete(dn); err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return fmt.Errorf("(%w) error while deleting entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Delete it from the member list of all the groups it was a member of
 	for _, group := range memberOf {
 		gdn, err := server.parseDN(group, false)
 		if err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf(
-				"error while parsing DN from group members attribute: %w",
+			return fmt.Errorf(
+				"(%w) error while parsing DN from group members attribute: %w",
+				ldapsrv.ErrInvalidDNSyntax,
 				err,
 			)
 		}
 
 		err = server.membershipRemove(tx, AttrMember, gdn, dn)
 		if err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf("could not update attribute after removal: %w", err)
+			return fmt.Errorf("(%w) could not update attribute after removal: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
@@ -268,70 +248,50 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 	for _, member := range memberList {
 		mdn, err := server.parseDN(member, false)
 		if err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf(
-				"error while parsing DN from memberOf attribute: %w",
+			return fmt.Errorf(
+				"(%w) error while parsing DN from memberOf attribute: %w",
+				ldapsrv.ErrInvalidDNSyntax,
 				err,
 			)
 		}
 
 		if err := server.membershipRemove(tx, AttrMemberOf, mdn, dn); err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf("error while removing memberOf: %w", err)
+			return fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("could not commit transaction: %w", err)
+		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return goldap.ResultCodeSuccess, nil
+	return nil
 }
 
-// Modify request ------------------------
-
-func (server *Bottin) HandleModify(
-	ctx context.Context,
-	w ldapsrv.ResponseWriter,
-	m *ldapsrv.Message,
-) context.Context {
-	r := m.GetModifyRequest()
-
-	code, err := server.handleModifyInternal(ctx, &r)
-
-	res := ldapsrv.NewResponse(code)
-	if err != nil {
-		res.SetDiagnosticMessage(err.Error())
-	}
-
-	if code == goldap.ResultCodeSuccess {
-		server.logger.InfoContext(ctx, "successfully modified", "entry", r.Object())
-	} else {
-		server.logger.ErrorContext(ctx, "error while modifying entry", "entry", r.Object(), "err", err)
-	}
-
-	w.Write(goldap.ModifyResponse(res))
-
-	return ctx
-}
-
-//nolint:all
-func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.ModifyRequest) (int32, error) {
+//nolint:gocyclo
+func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 	user := ldapsrv.GetUser[User](ctx, EmptyUser)
+
 	dn, err := server.parseDN(string(r.Object()), false)
 	if err != nil {
-		return goldap.ResultCodeInvalidDNSyntax, err
+		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// First permission check with no particular attributes
 	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{}) {
-		return goldap.ResultCodeInsufficientAccessRights, nil
+		return fmt.Errorf(
+			"cannot not modify %q: %w",
+			dn,
+			ldapsrv.ErrInsufficientAccessRights,
+		)
 	}
 
 	server.logger.InfoContext(ctx, "modifying entry", "dn", dn)
 
 	prevEntry, err := server.getEntry(ctx, dn)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return err
 	}
+
 	dnFirstComponent := prevEntry.DN[0]
 
 	var (
@@ -341,8 +301,10 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 
 	// Produce new entry values to be saved
 	attrs := make(store.Attributes)
+
 	for _, change := range r.Changes() {
 		attr := store.NewAttributeKey(string(change.Modification().Type_()))
+
 		changeValues := []string{}
 		for _, v := range change.Modification().Vals() {
 			changeValues = append(changeValues, string(v))
@@ -360,18 +322,25 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 		// Check that this attribute is not system-managed thus restricted
 		err = canUpdateAttribute(attr)
 		if err != nil {
-			return goldap.ResultCodeObjectClassViolation, err
+			return fmt.Errorf("(%w) %w", ldapsrv.ErrObjectClassViolation, err)
 		}
+
 		if attr.EqualFold(store.NewAttributeKey(dnFirstComponent.Type)) {
-			return goldap.ResultCodeObjectClassViolation, fmt.Errorf(
-				"%q may not be changed as it is part of object path",
+			return fmt.Errorf(
+				"(%w) %q may not be changed as it is part of object path",
+				ldapsrv.ErrObjectClassViolation,
 				attr,
 			)
 		}
 
 		// Check for permission to modify this attribute
 		if !server.acl.Check(user, "modify", dn, []store.AttributeKey{attr}) {
-			return goldap.ResultCodeInsufficientAccessRights, nil
+			return fmt.Errorf(
+				"cannot not modify attribute %q on %q: %w",
+				attr,
+				dn,
+				ldapsrv.ErrInsufficientAccessRights,
+			)
 		}
 
 		// If we are changing ATTR_MEMBER, rewrite all values to canonical form
@@ -379,8 +348,9 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 			for i := range changeValues {
 				canonicalVal, err := server.parseDN(changeValues[i], false)
 				if err != nil {
-					return goldap.ResultCodeInvalidDNSyntax, err
+					return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 				}
+
 				changeValues[i] = canonicalVal.String()
 			}
 		}
@@ -403,8 +373,9 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 					if attr.EqualFold(AttrMember) {
 						valDN, err := server.parseDN(val, false)
 						if err != nil {
-							return goldap.ResultCodeInvalidDNSyntax, err
+							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
+
 						addMembers = append(addMembers, valDN)
 					}
 				}
@@ -416,8 +387,9 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 					for _, val := range attrs[attr] {
 						valDN, err := server.parseDN(val, false)
 						if err != nil {
-							return goldap.ResultCodeInvalidDNSyntax, err
+							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
+
 						delMembers = append(delMembers, valDN)
 					}
 				}
@@ -426,6 +398,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 			} else {
 				// Delete only those specified
 				newList := []string{}
+
 				for _, prevVal := range attrs[attr] {
 					if !slices.Contains(changeValues, prevVal) {
 						newList = append(newList, prevVal)
@@ -433,12 +406,14 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 						if attr.EqualFold(AttrMember) {
 							valDN, err := server.parseDN(prevVal, false)
 							if err != nil {
-								return goldap.ResultCodeInvalidDNSyntax, err
+								return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 							}
+
 							delMembers = append(delMembers, valDN)
 						}
 					}
 				}
+
 				attrs[attr] = newList
 			}
 		} else if change.Operation() == ldapsrv.ModifyRequestChangeOperationReplace {
@@ -447,21 +422,25 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 					if !slices.Contains(attrs[attr], newMem) {
 						valDN, err := server.parseDN(newMem, false)
 						if err != nil {
-							return goldap.ResultCodeInvalidDNSyntax, err
+							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
+
 						addMembers = append(addMembers, valDN)
 					}
 				}
+
 				for _, prevMem := range attrs[attr] {
 					if !slices.Contains(changeValues, prevMem) {
 						valDN, err := server.parseDN(prevMem, false)
 						if err != nil {
-							return goldap.ResultCodeInvalidDNSyntax, err
+							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
+
 						delMembers = append(delMembers, valDN)
 					}
 				}
 			}
+
 			attrs[attr] = changeValues
 		}
 	}
@@ -470,18 +449,18 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 	for i := range addMembers {
 		exists, err := server.existsEntry(ctx, addMembers[i])
 		if err != nil {
-			return goldap.ResultCodeOperationsError, err
+			return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 		}
+
 		if !exists {
-			return goldap.ResultCodeNoSuchObject, fmt.Errorf(
-				"cannot add member %q, it does not exist", addMembers[i])
+			return fmt.Errorf("(%w) cannot add member %q, it does not exist", ldapsrv.ErrNoSuchObject, addMembers[i])
 		}
 	}
 
 	for k, v := range attrs {
 		if k.EqualFold(AttrObjectClass) && len(v) == 0 {
-			return goldap.ResultCodeInsufficientAccessRights, fmt.Errorf(
-				"cannot remove all objectclass values")
+			return fmt.Errorf(
+				"(%w) cannot remove all objectclass values", ldapsrv.ErrInsufficientAccessRights)
 		}
 	}
 
@@ -491,31 +470,31 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("error while beginning transaction: %w", err)
+		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Save the edited values
 	entry := store.NewEntry(prevEntry.DN, attrs)
 	if err = tx.Store(entry); err != nil {
-		return goldap.ResultCodeOperationsError, err
+		return fmt.Errorf("(%w) error while storing updated entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Update memberOf for added members and deleted members
 	for _, addMem := range addMembers {
 		if err := server.membershipAdd(tx, AttrMemberOf, addMem, dn); err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf("error while adding memberOf: %w", err)
+			return fmt.Errorf("(%w) error while adding memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	for _, delMem := range delMembers {
 		if err := server.membershipRemove(tx, AttrMemberOf, delMem, dn); err != nil {
-			return goldap.ResultCodeOperationsError, fmt.Errorf("error while removing memberOf: %w", err)
+			return fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return goldap.ResultCodeOperationsError, fmt.Errorf("could not commit transaction: %w", err)
+		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return goldap.ResultCodeSuccess, nil
+	return nil
 }

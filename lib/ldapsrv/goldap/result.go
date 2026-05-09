@@ -269,8 +269,8 @@ func (l LDAPResult) sizeComponents() (size int) {
 	return
 }
 
-func (l *LDAPResult) SetResultCode(code int32) {
-	l.resultCode = ENUMERATED(code)
+func (l *LDAPResult) SetResultCode(code ENUMERATED) {
+	l.resultCode = code
 }
 
 func (l *LDAPResult) SeMatchedDN(code string) {
