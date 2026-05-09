@@ -15,7 +15,7 @@ type Context interface {
 
 type Unit struct{}
 
-type context struct {
+type renderContext struct {
 	renderer *Renderer
 
 	styles       map[*Style]Unit
@@ -23,9 +23,9 @@ type context struct {
 }
 
 // Ensure *context implements Context.
-var _ Context = (*context)(nil)
+var _ Context = (*renderContext)(nil)
 
-func (c *context) Class(styles ...*Style) g.Node {
+func (c *renderContext) Class(styles ...*Style) g.Node {
 	var ids []string
 
 	for _, style := range styles {
@@ -39,7 +39,7 @@ func (c *context) Class(styles ...*Style) g.Node {
 	return h.Class(strings.Join(ids, " "))
 }
 
-func (c *context) register(style *Style) {
+func (c *renderContext) register(style *Style) {
 	c.styles[style] = Unit{}
 	for _, dep := range style.dependencies {
 		c.dependencies[dep] = Unit{}

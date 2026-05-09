@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"maps"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -39,6 +41,8 @@ type Renderer struct {
 	dependencyPaths  map[dependency.Dependency]string
 	pathDependencies map[string]dependency.Dependency
 	assetPath        string
+	debug            bool
+	linearized       sync.Map
 }
 
 func NewRenderer(config RendererConfig, logger *slog.Logger) (*Renderer, error) {
@@ -62,6 +66,10 @@ func NewRenderer(config RendererConfig, logger *slog.Logger) (*Renderer, error) 
 	}
 
 	return &renderer, nil
+}
+
+func (rer *Renderer) Debug(dbg bool) {
+	rer.debug = dbg
 }
 
 type DependenciesFunc func() (map[dependency.Dependency][]byte, error)
@@ -106,19 +114,59 @@ func (rer *Renderer) Dependency(path string) (dependency.Dependency, []byte, err
 	return dependency.Dependency{}, nil, ErrMissingDependency
 }
 
-var defaultDependencies = map[dependency.Dependency]Unit{
-	{Type: dependency.DependencyTypeScript, Name: "htmx"}:             {}, // htmx/htmx
-	{Type: dependency.DependencyTypeScript, Name: "response-targets"}: {}, // htmx/response-targets
-	{Type: dependency.DependencyTypeScript, Name: "render"}:           {}, // teapot/render
+var (
+	ScriptHTMX = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "htmx",
+	} // htmx/htmx
+	ScriptHTMXResponseTargets = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "response-targets",
+	} // htmx/response-targets
+	ScriptHTMXHeadSupport = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "head-support",
+	} // htmx/head-support
+	ScriptTeapotRender = dependency.Dependency{
+		Type: dependency.DependencyTypeScript,
+		Name: "render",
+	} // teapot/render
 
-	{Type: dependency.DependencyTypeStyle, Name: "colors"}:    {}, // open-props/colors
-	{Type: dependency.DependencyTypeStyle, Name: "normalize"}: {}, // open-props/normalize
-	{Type: dependency.DependencyTypeStyle, Name: "font"}:      {}, // open-props/font
+	StyleNormalize = dependency.Dependency{
+		Type: dependency.DependencyTypeStyle,
+		Name: "normalize",
+	} // open-props/normalize
+	StyleColors = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "colors"} // open-props/colors
+	StyleFont   = dependency.Dependency{Type: dependency.DependencyTypeStyle, Name: "font"}   // open-props/font
+)
+
+var defaultDependencies = map[dependency.Dependency]Unit{
+	ScriptHTMX:                {},
+	ScriptHTMXResponseTargets: {},
+	ScriptHTMXHeadSupport:     {},
+	ScriptTeapotRender:        {},
+
+	StyleColors:    {},
+	StyleNormalize: {},
+	StyleFont:      {},
+}
+
+var DependencyGraph = dependency.DependencyGraph{
+	ScriptHTMXResponseTargets: []dependency.Dependency{ScriptHTMX},
+	ScriptHTMXHeadSupport:     []dependency.Dependency{ScriptHTMX},
+	ScriptTeapotRender:        []dependency.Dependency{ScriptHTMX},
+
+	StyleColors: []dependency.Dependency{StyleNormalize},
+	StyleFont:   []dependency.Dependency{StyleNormalize},
 }
 
 type AlreadyLoaded struct {
 	Styles       map[string]Unit
 	Dependencies map[dependency.Dependency]Unit
+}
+
+func (al AlreadyLoaded) IsEmpty() bool {
+	return len(al.Styles) <= 0 && len(al.Dependencies) <= 0
 }
 
 func EmptyAlreadyLoaded() AlreadyLoaded {
@@ -140,8 +188,8 @@ func registerScript[T fmt.Stringer](target string, elements []T) (string, error)
 }
 
 // Render renders a component to the response. It adds styles as necessary.
-func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Component) error {
-	styles, scripts, node, err := rer.renderWithDependencies(loaded, component)
+func (rer *Renderer) Render(ctx context.Context, w io.Writer, loaded AlreadyLoaded, component Component) error {
+	styles, scripts, node, err := rer.renderWithDependencies(ctx, loaded, component)
 	if err != nil {
 		return err
 	}
@@ -159,14 +207,20 @@ func (rer *Renderer) Render(w io.Writer, loaded AlreadyLoaded, component Compone
 }
 
 // RenderPage renders a full page to the response. It adds styles as necessary.
-func (rer *Renderer) RenderPage(w io.Writer, opts c.HTML5Props, body Component) error {
-	loaded := EmptyAlreadyLoaded()
-
-	styles, scripts, node, err := rer.renderWithDependencies(loaded, body)
+func (rer *Renderer) RenderPage(
+	ctx context.Context,
+	w io.Writer,
+	loaded AlreadyLoaded,
+	opts c.HTML5Props,
+	body Component,
+) error {
+	styles, scripts, node, err := rer.renderWithDependencies(ctx, loaded, body)
 	if err != nil {
 		return err
 	}
 
+	// Preprend hx-ext before all body elements
+	opts.Body = append([]g.Node{hx.Ext("head-support")}, opts.Body...)
 	opts.Head = append(opts.Head, styles...)
 	opts.Head = append(opts.Head, scripts...)
 	opts.Body = append(opts.Body, node)
@@ -186,8 +240,8 @@ func (rer *Renderer) dependencyPath(dep dependency.Dependency) (string, error) {
 	return "", fmt.Errorf("could not find path for dependency %q: %w", dep, ErrDependencyNotRegistered)
 }
 
-func (rer *Renderer) contextRender(component Component) (context, g.Node) {
-	ctx := context{
+func (rer *Renderer) contextRender(component Component) (renderContext, g.Node) {
+	ctx := renderContext{
 		renderer:     rer,
 		styles:       map[*Style]Unit{},
 		dependencies: maps.Clone(defaultDependencies),
@@ -197,12 +251,14 @@ func (rer *Renderer) contextRender(component Component) (context, g.Node) {
 	return ctx, node
 }
 
+//nolint:gocyclo
 func (rer *Renderer) renderWithDependencies(
+	ctx context.Context,
 	loaded AlreadyLoaded,
 	component Component,
 ) ([]g.Node, []g.Node, g.Node, error) {
-	ctx, node := rer.contextRender(component)
-	rer.logger.Debug("rendering with", "styles", ctx.styles, "dependencies", ctx.dependencies)
+	rerCtx, node := rer.contextRender(component)
+	rer.logger.DebugContext(ctx, "rendering with", "styles", rerCtx.styles, "dependencies", rerCtx.dependencies)
 
 	var (
 		links   []g.Node
@@ -212,10 +268,14 @@ func (rer *Renderer) renderWithDependencies(
 		styles       []*Style
 	)
 
-	// TODO: the order in which script dependencies are inserted is important.
-	// For example, htmx-ext-response-targets and render need to be registered
-	// after htmx. We need proper dependency tree linearization to handle this.
-	for dep := range ctx.dependencies {
+	// The order in which script dependencies are inserted is important.
+	// For example, htmx-ext-response-targets and render need to be registered after htmx.
+	linearized, err := rer.Linearize(rerCtx.dependencies, DependencyGraph)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error while linearizing dependencies: %w", err)
+	}
+
+	for _, dep := range linearized {
 		if _, ok := loaded.Dependencies[dep]; ok {
 			continue
 		}
@@ -227,9 +287,9 @@ func (rer *Renderer) renderWithDependencies(
 
 		switch dep.Type {
 		case dependency.DependencyTypeStyle:
-			links = append(links, h.Link(h.Rel("stylesheet"), h.Href(url)))
+			links = append(links, h.Link(hx.Preserve("true"), h.Rel("stylesheet"), h.Href(url)))
 		case dependency.DependencyTypeScript:
-			scripts = append(scripts, h.Script(h.Src(url)))
+			scripts = append(scripts, h.Script(hx.Preserve("true"), h.Src(url)))
 		case dependency.DependencyTypeInvalid:
 		default:
 			return nil, nil, nil, dependency.ErrInvalidDependency
@@ -241,12 +301,17 @@ func (rer *Renderer) renderWithDependencies(
 	// Generate style element for all components in this page
 	var stylesheet strings.Builder
 
-	for style := range ctx.styles {
+	for style := range rerCtx.styles {
 		if _, ok := loaded.Styles[style.id]; ok {
 			continue
 		}
 
-		rule := fmt.Sprintf(".%s {\n  %s\n}", style.id, strings.ReplaceAll(style.css, "\n", "\n  "))
+		var rule string
+		if rer.debug {
+			rule = fmt.Sprintf(".%s {\n  %s\n}", style.id, strings.ReplaceAll(style.css, "\n", "\n  "))
+		} else {
+			rule = fmt.Sprintf(".%s{%s}", style.id, strings.ReplaceAll(style.css, "\n", ""))
+		}
 
 		_, err := stylesheet.WriteString(rule)
 		if err != nil {
@@ -257,7 +322,9 @@ func (rer *Renderer) renderWithDependencies(
 	}
 
 	if stylesheet.Len() > 0 {
-		links = append(links, h.StyleEl(hx.SwapOOB("beforeend"), h.ID("style"), g.Raw(stylesheet.String())))
+		style := stylesheet.String()
+		hash := sha256.Sum256([]byte(style))
+		links = append(links, h.StyleEl(h.ID(fmt.Sprintf("style-%x", hash)), hx.Preserve("true"), g.Raw(style)))
 	}
 
 	// Add script tags to update the list of styles and dependencies registered
@@ -267,7 +334,7 @@ func (rer *Renderer) renderWithDependencies(
 	}
 
 	if len(styles) > 0 {
-		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(src))))
+		scripts = append(scripts, h.Script(h.Data("inject", ""), g.Raw(src)))
 	}
 
 	drc, err := registerScript("dependencies", dependencies)
@@ -276,7 +343,7 @@ func (rer *Renderer) renderWithDependencies(
 	}
 
 	if len(dependencies) > 0 {
-		scripts = append(scripts, h.Div(hx.SwapOOB("afterbegin:head"), h.Script(g.Raw(drc))))
+		scripts = append(scripts, h.Script(h.Data("inject", ""), g.Raw(drc)))
 	}
 
 	return links, scripts, node, nil

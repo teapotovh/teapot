@@ -87,14 +87,14 @@ func wrapErrorHandler[T error](
 		}
 
 		if component != nil {
-			if hxhttp.IsRequest(r.Header) && !hxhttp.IsBoosted(r.Header) {
-				// Don't render the skeleton in an HTMX request
-				al, err := uihttp.AlreadyLoadedFromRequest(r)
-				if err != nil {
-					return fmt.Errorf("error while loading already loaded for error handler: %w", err)
-				}
+			// Don't render the skeleton in an HTMX request
+			al, err := uihttp.AlreadyLoadedFromRequest(r)
+			if err != nil {
+				return fmt.Errorf("error while loading already loaded for error handler: %w", err)
+			}
 
-				err = renderer.Render(w, al, component)
+			if hxhttp.IsRequest(r.Header) && !hxhttp.IsBoosted(r.Header) {
+				err = renderer.Render(r.Context(), w, al, component)
 				if err != nil {
 					return fmt.Errorf("error while rendering error handler: %w", err)
 				}
@@ -104,7 +104,7 @@ func wrapErrorHandler[T error](
 					return fmt.Errorf("error while rendering skeleton for error handler: %w", err)
 				}
 
-				err := renderer.RenderPage(w, c.HTML5Props{
+				err := renderer.RenderPage(r.Context(), w, al, c.HTML5Props{
 					Title:       ErrPageTitle,
 					Language:    Lang,
 					Description: ErrPageDescription,
@@ -127,13 +127,18 @@ func (wh *WebHandler) Adapt(fn WebHandlerFunc) http.Handler {
 		}
 
 		if page, ok := component.(page); ok {
+			al, err := uihttp.AlreadyLoadedFromRequest(r)
+			if err != nil {
+				return httphandler.NewInternalError(err, nil)
+			}
+
 			// If we're rendering a full page, place the component inside the skeleton
 			component, err = wh.skeleton(r, component)
 			if err != nil {
 				return httphandler.NewInternalError(err, ErrSkeleton)
 			}
 
-			err := wh.renderer.RenderPage(w, c.HTML5Props{
+			err = wh.renderer.RenderPage(r.Context(), w, al, c.HTML5Props{
 				Title:       page.Title(),
 				Language:    page.Language(),
 				Description: page.Description(),
@@ -147,7 +152,7 @@ func (wh *WebHandler) Adapt(fn WebHandlerFunc) http.Handler {
 				return httphandler.NewInternalError(err, nil)
 			}
 
-			err = wh.renderer.Render(w, al, component)
+			err = wh.renderer.Render(r.Context(), w, al, component)
 			if err != nil {
 				return httphandler.NewInternalError(err, ErrRendering)
 			}

@@ -7,6 +7,7 @@ go_library(
         "js/dummy.js",
         "js/htmx.js",
         "js/response-targets.js",
+        "js/head-support.js",
     ],
     importpath = "github.com/teapotovh/teapot/lib/ui/htmx",
     visibility = ["//visibility:public"],

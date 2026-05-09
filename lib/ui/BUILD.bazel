@@ -6,6 +6,7 @@ go_library(
         "component.go",
         "context.go",
         "flag.go",
+        "linearize.go",
         "render.go",
         "style.go",
     ],
