@@ -96,7 +96,7 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 	routes := ldapsrv.NewRouteMux(logger.With("sub", "router"))
 
 	bottin := Bottin{
-		logger: slog.New(NewContextHandler(logger.Handler())),
+		logger: slog.New(ldapsrv.NewContextHandler(logger.Handler())),
 
 		baseDN:     baseDN,
 		rootPasswd: hash,
@@ -118,17 +118,6 @@ func EmptyUser() User {
 		user:   AnonymousUser,
 		groups: []string{},
 	}
-}
-
-func (server *Bottin) initRoutes() {
-	server.Routes.Bind(server.HandleBind)
-	server.Routes.Search(server.HandleSearch)
-	server.Routes.Add(server.HandleAdd)
-	server.Routes.Compare(server.HandleCompare)
-	server.Routes.Delete(server.HandleDelete)
-	server.Routes.Modify(server.HandleModify)
-	server.Routes.Extended(server.HandlePasswordModify).
-		RequestName(ldapsrv.NoticeOfPasswordModify).Label("PasswordModify")
 }
 
 func (server *Bottin) Initialize(ctx context.Context) error {
@@ -224,6 +213,17 @@ func (server *Bottin) HandleBind(
 	w.Write(res)
 
 	return ctx
+}
+
+func (server *Bottin) initRoutes() {
+	server.Routes.Bind(server.HandleBind)
+	server.Routes.Search(server.HandleSearch)
+	server.Routes.Add(server.HandleAdd)
+	server.Routes.Compare(server.HandleCompare)
+	server.Routes.Delete(server.HandleDelete)
+	server.Routes.Modify(server.HandleModify)
+	server.Routes.Extended(server.HandlePasswordModify).
+		RequestName(ldapsrv.NoticeOfPasswordModify).Label("PasswordModify")
 }
 
 func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) {

@@ -7,7 +7,6 @@ go_library(
         "bottin.go",
         "flag.go",
         "hash.go",
-        "log.go",
         "memberof.go",
         "read.go",
         "util.go",

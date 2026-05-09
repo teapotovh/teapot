@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -41,7 +43,7 @@ type LDAPSrv struct {
 // NewServer return a LDAP Server.
 func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
 	return &LDAPSrv{
-		logger: logger,
+		logger: slog.New(NewContextHandler(logger.Handler())),
 
 		address:       config.Address,
 		shutdownDelay: config.ShutdownDelay,
@@ -81,6 +83,7 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 	}
 
 	cfg := net.ListenConfig{}
+
 	s.listener, err = cfg.Listen(ctx, "tcp", s.address)
 	if err != nil {
 		return fmt.Errorf("error while listening on tcp socket %q: %w", s.address, err)
@@ -95,15 +98,18 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 	notify.Notify()
 
 	i := 0
+
 	for {
 		select {
 		case <-ctx.Done():
 			s.logger.DebugContext(ctx, "gracefully closing client connections")
 
-			var ch chan unit
+			ch := make(chan unit)
 			defer close(ch)
+
 			go func() {
 				s.wg.Wait()
+
 				ch <- unit{}
 			}()
 
@@ -118,12 +124,7 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 			}
 
 		default:
-			s.listener.Accept()
-
-			i += 1
-			ctx := context.WithValue(ctx, ContextKeyConnectionID, i)
-
-			rw, err := s.listener.Accept()
+			conn, err := s.listener.Accept()
 			if nil != err {
 				var ne *net.OpError
 				if ok := errors.As(err, &ne); ok && ne.Timeout() {
@@ -135,44 +136,49 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 				continue
 			}
 
-			if s.readTimeout > 0 {
-				if err := rw.SetReadDeadline(time.Now().Add(s.readTimeout)); err != nil {
-					s.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
-					continue
-				}
-			}
+			ctx := context.WithValue(ctx, ContextKeyAddr, conn.RemoteAddr().String())
 
-			if s.writeTimeout > 0 {
-				if err := rw.SetWriteDeadline(time.Now().Add(s.writeTimeout)); err != nil {
-					s.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
-					continue
-				}
-			}
-
-			s.logger.DebugContext(ctx, "accepted connection", "addr", rw.RemoteAddr().String())
-
-			cli, err := s.newClient(rw, i)
+			uid, err := uuid.NewRandom()
 			if err != nil {
-				s.logger.WarnContext(ctx, "error while creating a new client for the connection", "err", err)
+				s.logger.WarnContext(ctx, "could not generate request id", "err", err)
+
+				uid = uuid.UUID{}
+			}
+
+			ctx = context.WithValue(ctx, ContextKeyRequestID, uid)
+
+			if err := s.setupConnection(ctx, conn, i); err != nil {
+				s.logger.ErrorContext(ctx, "error while setting up connection", "err", err)
 				continue
 			}
-
-			go cli.serve(ctx)
 		}
 	}
 }
 
-// Return a new session with the connection
-// client has a writer and reader buffer.
-func (s *LDAPSrv) newClient(rwc net.Conn, id int) (c *client, err error) {
-	c = &client{
+func (s *LDAPSrv) setupConnection(ctx context.Context, conn net.Conn, id int) error {
+	if s.readTimeout > 0 {
+		if err := conn.SetReadDeadline(time.Now().Add(s.readTimeout)); err != nil {
+			return fmt.Errorf("error while setting read deadline: %w", err)
+		}
+	}
+
+	if s.writeTimeout > 0 {
+		if err := conn.SetWriteDeadline(time.Now().Add(s.writeTimeout)); err != nil {
+			return fmt.Errorf("error while setting write deadline: %w", err)
+		}
+	}
+
+	s.logger.DebugContext(ctx, "accepted connection")
+	client := &client{
 		logger: s.logger,
 		srv:    s,
 		id:     id,
-		rwc:    rwc,
-		br:     bufio.NewReader(rwc),
-		bw:     bufio.NewWriter(rwc),
+		rwc:    conn,
+		br:     bufio.NewReader(conn),
+		bw:     bufio.NewWriter(conn),
 	}
 
-	return c, nil
+	go client.serve(ctx)
+
+	return nil
 }

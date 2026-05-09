@@ -1,10 +1,10 @@
-package bottin
+package ldapsrv
 
 import (
 	"context"
 	"log/slog"
 
-	"github.com/teapotovh/teapot/lib/ldapsrv"
+	"github.com/google/uuid"
 )
 
 // ContextHandler is a custom slog.Handler that prints values from
@@ -18,12 +18,16 @@ func NewContextHandler(h slog.Handler) *ContextHandler {
 }
 
 func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
-	if cID := ctx.Value(ldapsrv.ContextKeyConnectionID); cID != nil {
-		r.AddAttrs(slog.Int("client", cID.(int)))
+	if addr := ctx.Value(ContextKeyAddr); addr != nil {
+		r.AddAttrs(slog.String("addr", addr.(string)))
 	}
 
-	if user := ctx.Value(ldapsrv.ContextKeyUser); user != nil {
-		r.AddAttrs(slog.Any("user", user.(User)))
+	if requestID := ctx.Value(ContextKeyRequestID); requestID != nil {
+		r.AddAttrs(slog.String("requestid", requestID.(uuid.UUID).String()))
+	}
+
+	if user := ctx.Value(ContextKeyUser); user != nil {
+		r.AddAttrs(slog.Any("user", user))
 	}
 
 	return h.handler.Handle(ctx, r)

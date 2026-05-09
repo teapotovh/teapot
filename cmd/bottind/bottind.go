@@ -49,6 +49,7 @@ func main() {
 		logger.Error("error while constructing server", "err", err)
 		os.Exit(CodeBottin)
 	}
+
 	ldapsrv.Handle(bottin.Routes)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -62,7 +63,7 @@ func main() {
 	run.Add("ldapsrv", ldapsrv, nil)
 
 	if err := run.Run(ctx); err != nil {
-		logger.Error("error while running net components", "err", err)
+		logger.Error("error while running bottin components", "err", err)
 		os.Exit(CodeRun)
 	}
 }

@@ -113,7 +113,7 @@ func main() {
 	run.Add("observability", observability, nil)
 
 	if err := run.Run(ctx); err != nil {
-		logger.Error("error while running net components", "err", err)
+		logger.Error("error while running files components", "err", err)
 		os.Exit(CodeRun)
 	}
 }

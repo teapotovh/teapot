@@ -153,11 +153,9 @@ func (r *Run) Run(ctx context.Context) error {
 		}
 	}
 
-	done := ctx.Done()
-
 	var err error
 	select {
-	case <-done:
+	case <-ctx.Done():
 		break
 	case err = <-r.errors:
 		break
