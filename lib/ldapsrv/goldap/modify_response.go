@@ -32,6 +32,6 @@ func (m ModifyResponse) size() int {
 	return LDAPResult(m).sizeTagged(TagModifyResponse)
 }
 
-func (m *ModifyResponse) SetResultCode(code int32) {
-	m.resultCode = ENUMERATED(code)
+func (m *ModifyResponse) SetResultCode(code ENUMERATED) {
+	m.resultCode = code
 }

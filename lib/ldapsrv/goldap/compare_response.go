@@ -3,8 +3,8 @@ package message
 //
 //        CompareResponse ::= [APPLICATION 15] LDAPResult
 
-func (response *CompareResponse) SetResultCode(code int32) {
-	response.resultCode = ENUMERATED(code)
+func (response *CompareResponse) SetResultCode(code ENUMERATED) {
+	response.resultCode = code
 }
 
 func readCompareResponse(bytes *Bytes) (ret CompareResponse, err error) {

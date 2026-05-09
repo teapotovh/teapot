@@ -140,8 +140,8 @@ func (l *LDAPMessage) MessageID() MessageID {
 	return l.messageID
 }
 
-func (l *LDAPMessage) SetMessageID(ID int32) {
-	l.messageID = MessageID(ID)
+func (l *LDAPMessage) SetMessageID(ID MessageID) {
+	l.messageID = ID
 }
 
 func (l *LDAPMessage) Controls() *Controls {

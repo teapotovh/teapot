@@ -42,15 +42,14 @@ func main() {
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	ldapsrv := ldapsrv.NewServer(getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
-
 	bottin, err := bottin.NewBottin(getBottinConfig(), logger.With("sub", "bottin"))
 	if err != nil {
 		logger.Error("error while constructing server", "err", err)
 		os.Exit(CodeBottin)
 	}
 
-	ldapsrv.Handle(bottin.Routes)
+	ldapsrv := ldapsrv.NewServer(getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
+	ldapsrv.Register(bottin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

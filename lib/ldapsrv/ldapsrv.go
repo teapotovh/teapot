@@ -52,8 +52,8 @@ func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
 	}
 }
 
-// Handle registers the handler for the server.
-func (s *LDAPSrv) Handle(h Handler) {
+// Register registers the handler for the server.
+func (s *LDAPSrv) Register(h Handler) {
 	if s.handler != nil {
 		s.logger.Warn("overwriting ldap handler", "old", s.handler, "new", h)
 	}
