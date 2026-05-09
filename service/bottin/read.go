@@ -18,15 +18,30 @@ var (
 func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, error) {
 	entries, err := server.store.List(ctx, dn.Prefix(), true)
 	if err != nil {
-		return nil, fmt.Errorf("(%w) error while fetching entry with DN %q from store: %w", ldapsrv.ErrOperationsError, dn.String(), err)
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry with DN %q from store: %w",
+			ldapsrv.ErrOperationsError,
+			dn.String(),
+			err,
+		)
 	}
 
 	if len(entries) < 1 {
-		return nil, fmt.Errorf("(%w) error while fetching entry %q: %w", ldapsrv.ErrNoSuchObject, dn.String(), ErrNotFound)
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry %q: %w",
+			ldapsrv.ErrNoSuchObject,
+			dn.String(),
+			ErrNotFound,
+		)
 	}
 
 	if len(entries) > 1 {
-		return nil, fmt.Errorf("(%w) error while fetching entry %q: %w", ldapsrv.ErrOperationsError, dn.String(), ErrNotFound)
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry %q: %w",
+			ldapsrv.ErrOperationsError,
+			dn.String(),
+			ErrNotFound,
+		)
 	}
 
 	return &entries[0], nil
@@ -129,7 +144,13 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 		// Filter out if we don't match requested filter
 		matched, err := applyFilter(entry, r.Filter())
 		if err != nil {
-			return nil, fmt.Errorf("(%w), error while applying filter %q on %q: %w", ldapsrv.ErrUnwillingToPerform, r.Filter(), entry.DN.String(), err)
+			return nil, fmt.Errorf(
+				"(%w), error while applying filter %q on %q: %w",
+				ldapsrv.ErrUnwillingToPerform,
+				r.Filter(),
+				entry.DN.String(),
+				err,
+			)
 		}
 		if !matched {
 			continue

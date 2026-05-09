@@ -47,6 +47,7 @@ func (server *Bottin) Bind(ctx context.Context, r ldap.BindRequest) (context.Con
 	}
 
 	var errs []error
+
 	for _, hash := range hashes {
 		server.logger.InfoContext(ctx, "matching against hash", "hash", hash)
 
@@ -84,6 +85,7 @@ func (server *Bottin) Extended(ctx context.Context, r ldap.ExtendedRequest) erro
 	}
 
 	passwd := passwordModifyRequest.NewPassword()
+
 	user := ldapsrv.GetUser(ctx, EmptyUser)
 	if user.user == AnonymousUser {
 		return fmt.Errorf("(%w) %w", ldapsrv.ErrInsufficientAccessRights, ErrNotAuthenticated)

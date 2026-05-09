@@ -48,7 +48,7 @@ func (u *UnimplementedHandler) Extended(ctx context.Context, r ldap.ExtendedRequ
 	return ErrUnimplemented
 }
 
-// Ensure UnimplementedHandler implements Hanlder.
+// Ensure UnimplementedHandler implements Handler.
 var _ Handler = &UnimplementedHandler{}
 
 // Constant to LDAP Request protocol Type names.
@@ -62,6 +62,7 @@ const (
 	operationExtended = "ExtendedRequest"
 )
 
+//nolint:gocyclo
 func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) context.Context {
 	// Catch a AbandonRequest not handled by user
 	switch v := r.ProtocolOp().(type) {
@@ -73,13 +74,15 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 	}
 
 	code := ldap.ResultCodeSuccess
-	var err error = nil
+
+	var err error
 
 	switch r.ProtocolOpName() {
 	case operationBind:
 		ctx, err = s.handler.Bind(ctx, r.GetBindRequest())
 	case operationSearch:
 		var results []ldap.SearchResultEntry
+
 		results, err = s.handler.Search(ctx, r.GetSearchRequest())
 
 		for _, result := range results {
@@ -93,6 +96,7 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 		err = s.handler.Modify(ctx, r.GetModifyRequest())
 	case operationCompare:
 		var matched bool
+
 		matched, err = s.handler.Compare(ctx, r.GetCompareRequest())
 
 		if matched {
@@ -112,6 +116,7 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 		s.logger.Error("error while handling operation", "operation", r.ProtocolOpName(), "err", err)
 
 		type withErrorCode interface{ LDAPCode() ldap.ENUMERATED }
+
 		var ec withErrorCode
 		if errors.As(err, &ec) {
 			code = ec.LDAPCode()
