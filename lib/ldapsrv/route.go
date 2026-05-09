@@ -1,11 +1,11 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"context"
 	"log/slog"
 	"strings"
 
-	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 )
 
 // Constant to LDAP Request protocol Type names.
@@ -136,7 +136,7 @@ func (r *route) RequestName(name ldap.LDAPOID) *route {
 }
 
 // NewRouteMux returns a new *RouteMux
-// RouteMux implements ldapserver.Handler.
+// RouteMux implements ldapsrv.Handler.
 func NewRouteMux(logger *slog.Logger) *RouteMux {
 	return &RouteMux{
 		logger: logger,

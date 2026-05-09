@@ -1,4 +1,4 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"net"

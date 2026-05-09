@@ -10,7 +10,7 @@ go_library(
     importpath = "github.com/teapotovh/teapot/cmd/bottind",
     visibility = ["//visibility:private"],
     deps = [
-        "//lib/ldapserver",
+        "//lib/ldapsrv",
         "//lib/log",
         "//lib/run",
         "//service/bottin",

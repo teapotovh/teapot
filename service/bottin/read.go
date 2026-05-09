@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/teapotovh/teapot/lib/ldapserver"
-	goldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	"github.com/teapotovh/teapot/lib/ldapsrv"
+	goldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
@@ -41,14 +41,14 @@ func (server *Bottin) existsEntry(ctx context.Context, dn store.DN) (bool, error
 
 func (server *Bottin) HandleCompare(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetCompareRequest()
 
 	code, err := server.handleCompareInternal(ctx, &r)
 
-	res := ldapserver.NewResponse(code)
+	res := ldapsrv.NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
@@ -59,7 +59,7 @@ func (server *Bottin) HandleCompare(
 }
 
 func (server *Bottin) handleCompareInternal(ctx context.Context, r *goldap.CompareRequest) (int32, error) {
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 	attr := store.NewAttributeKey(string(r.Ava().AttributeDesc()))
 	expected := string(r.Ava().AssertionValue())
 
@@ -92,13 +92,13 @@ func (server *Bottin) handleCompareInternal(ctx context.Context, r *goldap.Compa
 
 func (server *Bottin) HandleSearch(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetSearchRequest()
 	code, err := server.handleSearchInternal(ctx, w, &r)
 
-	res := ldapserver.NewResponse(code)
+	res := ldapsrv.NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
@@ -115,10 +115,10 @@ func (server *Bottin) HandleSearch(
 //nolint:all
 func (server *Bottin) handleSearchInternal(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
+	w ldapsrv.ResponseWriter,
 	r *goldap.SearchRequest,
 ) (int32, error) {
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 	baseObject, err := server.parseDN(string(r.BaseObject()), true)
 	if err != nil {
 		return goldap.ResultCodeInvalidDNSyntax, err
@@ -176,7 +176,7 @@ func (server *Bottin) handleSearchInternal(
 			continue
 		}
 
-		e := ldapserver.NewSearchResultEntry(entry.DN.String())
+		e := ldapsrv.NewSearchResultEntry(entry.DN.String())
 		for attr, val := range entry.Attributes {
 			// If attribute is not in request, exclude it from returned entry
 			if len(r.Attributes()) > 0 {

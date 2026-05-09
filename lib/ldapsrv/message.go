@@ -1,9 +1,9 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"fmt"
 
-	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 )
 
 type Message struct {

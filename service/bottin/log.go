@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/teapotovh/teapot/lib/ldapserver"
+	"github.com/teapotovh/teapot/lib/ldapsrv"
 )
 
 // ContextHandler is a custom slog.Handler that prints values from
@@ -18,11 +18,11 @@ func NewContextHandler(h slog.Handler) *ContextHandler {
 }
 
 func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
-	if cID := ctx.Value(ldapserver.ContextKeyConnectionID); cID != nil {
+	if cID := ctx.Value(ldapsrv.ContextKeyConnectionID); cID != nil {
 		r.AddAttrs(slog.Int("client", cID.(int)))
 	}
 
-	if user := ctx.Value(ldapserver.ContextKeyUser); user != nil {
+	if user := ctx.Value(ldapsrv.ContextKeyUser); user != nil {
 		r.AddAttrs(slog.Any("user", user.(User)))
 	}
 

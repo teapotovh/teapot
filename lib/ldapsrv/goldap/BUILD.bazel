@@ -74,7 +74,7 @@ go_library(
         "uri.go",
         "write.go",
     ],
-    importpath = "github.com/teapotovh/teapot/lib/ldapserver/goldap",
+    importpath = "github.com/teapotovh/teapot/lib/ldapsrv/goldap",
     visibility = ["//visibility:public"],
 )
 

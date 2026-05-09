@@ -10,7 +10,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 
-	"github.com/teapotovh/teapot/lib/ldapserver"
+	"github.com/teapotovh/teapot/lib/ldapsrv"
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/bottin"
@@ -26,7 +26,7 @@ const (
 func main() {
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getLDAPSrvConfig := ldapserver.LDAPSrvFlagSet()
+	fs, getLDAPSrvConfig := ldapsrv.LDAPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getBottinConfig := bottin.BottinFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -42,7 +42,7 @@ func main() {
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
-	ldapsrv := ldapserver.NewServer(getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
+	ldapsrv := ldapsrv.NewServer(getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
 
 	bottin, err := bottin.NewBottin(getBottinConfig(), logger.With("sub", "bottin"))
 	if err != nil {

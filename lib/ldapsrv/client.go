@@ -1,4 +1,4 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 type client struct {
 	rwc         net.Conn
 	chanOut     chan *ldap.LDAPMessage
-	srv         *LDAPServer
+	srv         *LDAPSrv
 	br          *bufio.Reader
 	bw          *bufio.Writer
 	logger      *slog.Logger

@@ -1,7 +1,7 @@
 load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "ldapserver",
+    name = "ldapsrv",
     srcs = [
         "client.go",
         "constants.go",
@@ -13,10 +13,10 @@ go_library(
         "route.go",
         "server.go",
     ],
-    importpath = "github.com/teapotovh/teapot/lib/ldapserver",
+    importpath = "github.com/teapotovh/teapot/lib/ldapsrv",
     visibility = ["//visibility:public"],
     deps = [
-        "//lib/ldapserver/goldap",
+        "//lib/ldapsrv/goldap",
         "//lib/run",
         "@com_github_spf13_pflag//:pflag",
     ],

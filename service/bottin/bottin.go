@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/teapotovh/teapot/lib/ldapserver"
-	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	"github.com/teapotovh/teapot/lib/ldapsrv"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
@@ -57,7 +57,7 @@ type Bottin struct {
 	acl        ACL
 
 	store  store.Store
-	Routes *ldapserver.RouteMux
+	Routes *ldapsrv.RouteMux
 }
 
 func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
@@ -93,7 +93,7 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 		return nil, fmt.Errorf("error while initializing bottin store: %w", err)
 	}
 
-	routes := ldapserver.NewRouteMux(logger.With("sub", "router"))
+	routes := ldapsrv.NewRouteMux(logger.With("sub", "router"))
 
 	bottin := Bottin{
 		logger: slog.New(NewContextHandler(logger.Handler())),
@@ -128,7 +128,7 @@ func (server *Bottin) initRoutes() {
 	server.Routes.Delete(server.HandleDelete)
 	server.Routes.Modify(server.HandleModify)
 	server.Routes.Extended(server.HandlePasswordModify).
-		RequestName(ldapserver.NoticeOfPasswordModify).Label("PasswordModify")
+		RequestName(ldapsrv.NoticeOfPasswordModify).Label("PasswordModify")
 }
 
 func (server *Bottin) Initialize(ctx context.Context) error {
@@ -178,14 +178,14 @@ func (server *Bottin) Initialize(ctx context.Context) error {
 
 func (server *Bottin) HandlePasswordModify(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetExtendedRequest()
 	resultCode, err := server.handlePasswordModifyInternal(ctx, &r)
 
-	res := ldapserver.NewExtendedResponse(resultCode)
-	res.SetResponseName(ldapserver.NoticeOfPasswordModify)
+	res := ldapsrv.NewExtendedResponse(resultCode)
+	res.SetResponseName(ldapsrv.NoticeOfPasswordModify)
 
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
@@ -204,13 +204,13 @@ func (server *Bottin) HandlePasswordModify(
 
 func (server *Bottin) HandleBind(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetBindRequest()
 	ctx, resultCode, err := server.handleBindInternal(ctx, &r)
 
-	res := ldapserver.NewBindResponse(resultCode)
+	res := ldapsrv.NewBindResponse(resultCode)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
@@ -261,7 +261,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 
 	passwd := passwordModifyRequest.NewPassword()
 
-	user := ldapserver.GetUser(ctx, EmptyUser)
+	user := ldapsrv.GetUser(ctx, EmptyUser)
 	if user.user == AnonymousUser {
 		return ldap.ResultCodeInsufficientAccessRights, ErrNotAuthenticated
 	}
@@ -323,7 +323,7 @@ func (server *Bottin) handlePasswordModifyInternal(ctx context.Context, r *ldap.
 }
 
 func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindRequest) (context.Context, int32, error) {
-	user := ldapserver.GetUser(ctx, EmptyUser)
+	user := ldapsrv.GetUser(ctx, EmptyUser)
 
 	dn, err := server.parseDN(string(r.Name()), false)
 	if err != nil {
@@ -365,7 +365,7 @@ func (server *Bottin) handleBindInternal(ctx context.Context, r *ldap.BindReques
 
 		if valid {
 			groups := entry.Get(AttrMemberOf)
-			ctx = ldapserver.WithUser(ctx, User{
+			ctx = ldapsrv.WithUser(ctx, User{
 				user:   string(r.Name()),
 				groups: groups,
 			})

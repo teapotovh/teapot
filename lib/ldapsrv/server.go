@@ -1,4 +1,4 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"bufio"
@@ -24,8 +24,8 @@ type LDAPSrvConfig struct {
 	WriteTimeout  time.Duration
 }
 
-// LDAPServer is an LDAP server.
-type LDAPServer struct {
+// LDAPSrv is an LDAP server.
+type LDAPSrv struct {
 	logger *slog.Logger
 
 	address       string
@@ -39,8 +39,8 @@ type LDAPServer struct {
 }
 
 // NewServer return a LDAP Server.
-func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPServer {
-	return &LDAPServer{
+func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
+	return &LDAPSrv{
 		logger: logger,
 
 		address:       config.Address,
@@ -51,7 +51,7 @@ func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPServer {
 }
 
 // Handle registers the handler for the server.
-func (s *LDAPServer) Handle(h Handler) {
+func (s *LDAPSrv) Handle(h Handler) {
 	if s.handler != nil {
 		s.logger.Warn("overwriting ldap handler", "old", s.handler, "new", h)
 	}
@@ -71,11 +71,11 @@ func (s *LDAPServer) Handle(h Handler) {
 // terminate the session by ceasing communication and closing the
 // transport connection.
 // In either case, the LDAP session is terminated.
-func (s *LDAPServer) Wait() {
+func (s *LDAPSrv) Wait() {
 }
 
 // Run implements run.Runnable.
-func (s *LDAPServer) Run(ctx context.Context, notify run.Notify) (err error) {
+func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 	if s.handler == nil {
 		return ErrMissingHandler
 	}
@@ -164,7 +164,7 @@ func (s *LDAPServer) Run(ctx context.Context, notify run.Notify) (err error) {
 
 // Return a new session with the connection
 // client has a writer and reader buffer.
-func (s *LDAPServer) newClient(rwc net.Conn, id int) (c *client, err error) {
+func (s *LDAPSrv) newClient(rwc net.Conn, id int) (c *client, err error) {
 	c = &client{
 		logger: s.logger,
 		srv:    s,

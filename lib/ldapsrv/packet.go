@@ -1,4 +1,4 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 )
 
 var (

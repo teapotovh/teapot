@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/teapotovh/teapot/lib/ldapserver"
-	goldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	"github.com/teapotovh/teapot/lib/ldapsrv"
+	goldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
@@ -20,14 +20,14 @@ var (
 
 func (server *Bottin) HandleAdd(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetAddRequest()
 
 	code, err := server.handleAddInternal(ctx, &r)
 
-	res := ldapserver.NewResponse(code)
+	res := ldapsrv.NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
@@ -45,7 +45,7 @@ func (server *Bottin) HandleAdd(
 
 //nolint:all
 func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddRequest) (int32, error) {
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
 		return goldap.ResultCodeInvalidDNSyntax, err
@@ -176,14 +176,14 @@ func (server *Bottin) handleAddInternal(ctx context.Context, r *goldap.AddReques
 
 func (server *Bottin) HandleDelete(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetDeleteRequest()
 
 	code, err := server.handleDeleteInternal(ctx, &r)
 
-	res := ldapserver.NewResponse(code)
+	res := ldapsrv.NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
@@ -201,7 +201,7 @@ func (server *Bottin) HandleDelete(
 
 //nolint:gocyclo
 func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelRequest) (int32, error) {
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 
 	dn, err := server.parseDN(string(*r), false)
 	if err != nil {
@@ -290,14 +290,14 @@ func (server *Bottin) handleDeleteInternal(ctx context.Context, r *goldap.DelReq
 
 func (server *Bottin) HandleModify(
 	ctx context.Context,
-	w ldapserver.ResponseWriter,
-	m *ldapserver.Message,
+	w ldapsrv.ResponseWriter,
+	m *ldapsrv.Message,
 ) context.Context {
 	r := m.GetModifyRequest()
 
 	code, err := server.handleModifyInternal(ctx, &r)
 
-	res := ldapserver.NewResponse(code)
+	res := ldapsrv.NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
 	}
@@ -315,7 +315,7 @@ func (server *Bottin) HandleModify(
 
 //nolint:all
 func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.ModifyRequest) (int32, error) {
-	user := ldapserver.GetUser[User](ctx, EmptyUser)
+	user := ldapsrv.GetUser[User](ctx, EmptyUser)
 	dn, err := server.parseDN(string(r.Object()), false)
 	if err != nil {
 		return goldap.ResultCodeInvalidDNSyntax, err
@@ -396,7 +396,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 		}
 
 		// Apply effective modification on entry[attr]
-		if change.Operation() == ldapserver.ModifyRequestChangeOperationAdd {
+		if change.Operation() == ldapsrv.ModifyRequestChangeOperationAdd {
 			for _, val := range changeValues {
 				if !slices.Contains(attrs[attr], val) {
 					attrs[attr] = append(attrs[attr], val)
@@ -409,7 +409,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 					}
 				}
 			}
-		} else if change.Operation() == ldapserver.ModifyRequestChangeOperationDelete {
+		} else if change.Operation() == ldapsrv.ModifyRequestChangeOperationDelete {
 			if len(changeValues) == 0 {
 				// Delete everything
 				if attr.EqualFold(AttrMember) {
@@ -441,7 +441,7 @@ func (server *Bottin) handleModifyInternal(ctx context.Context, r *goldap.Modify
 				}
 				attrs[attr] = newList
 			}
-		} else if change.Operation() == ldapserver.ModifyRequestChangeOperationReplace {
+		} else if change.Operation() == ldapsrv.ModifyRequestChangeOperationReplace {
 			if attr.EqualFold(AttrMember) {
 				for _, newMem := range changeValues {
 					if !slices.Contains(attrs[attr], newMem) {
