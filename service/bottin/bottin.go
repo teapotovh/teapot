@@ -131,7 +131,7 @@ func (server *Bottin) initRoutes() {
 		RequestName(ldapserver.NoticeOfPasswordModify).Label("PasswordModify")
 }
 
-func (server *Bottin) init(ctx context.Context) error {
+func (server *Bottin) Initialize(ctx context.Context) error {
 	// Check that root object exists.
 	// If it does, we're done. Otherwise, we have some initialization to do.
 	exists, err := server.existsEntry(ctx, server.baseDN)

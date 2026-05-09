@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	CodeLog    = -1
-	CodeBottin = -2
-	CodeRun    = -3
+	CodeLog        = -1
+	CodeBottin     = -2
+	CodeInitialize = -3
+	CodeRun        = -4
 )
 
 func main() {
@@ -52,6 +53,11 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	if err := bottin.Initialize(ctx); err != nil {
+		logger.Error("error while running initializing bottin", "err", err)
+		os.Exit(CodeInitialize)
+	}
 
 	run.Add("ldapsrv", ldapsrv, nil)
 
