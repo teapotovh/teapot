@@ -68,7 +68,7 @@ func main() {
 
 	desec, err := desec.NewDesec(getDesecConfig(), logger.With("sub", "desec"))
 	if err != nil {
-		logger.Error("error while initializing the webdav subsystem", "err", err)
+		logger.Error("error while initializing the desec subsystem", "err", err)
 		os.Exit(CodeDesec)
 	}
 
@@ -83,7 +83,7 @@ func main() {
 	run.Add("observability", observability, nil)
 
 	if err := run.Run(ctx); err != nil {
-		logger.Error("error while running net components", "err", err)
+		logger.Error("error while running desec components", "err", err)
 		os.Exit(CodeRun)
 	}
 }

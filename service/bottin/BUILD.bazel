@@ -7,7 +7,6 @@ go_library(
         "bottin.go",
         "flag.go",
         "hash.go",
-        "log.go",
         "memberof.go",
         "read.go",
         "util.go",
@@ -16,8 +15,8 @@ go_library(
     importpath = "github.com/teapotovh/teapot/service/bottin",
     visibility = ["//visibility:public"],
     deps = [
-        "//lib/ldapserver",
-        "//lib/ldapserver/goldap",
+        "//lib/ldapsrv",
+        "//lib/ldapsrv/goldap",
         "//service/bottin/store",
         "@com_github_google_uuid//:uuid",
         "@com_github_jsimonetti_pwscheme//ssha256",

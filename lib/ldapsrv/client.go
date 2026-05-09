@@ -1,4 +1,4 @@
-package ldapserver
+package ldapsrv
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 type client struct {
 	rwc         net.Conn
 	chanOut     chan *ldap.LDAPMessage
-	srv         *Server
+	srv         *LDAPSrv
 	br          *bufio.Reader
 	bw          *bufio.Writer
 	logger      *slog.Logger
@@ -77,13 +77,6 @@ func (c *client) serve(ctx context.Context) {
 		}
 	}()
 
-	if onc := c.srv.OnNewConnection; onc != nil {
-		if err := onc(c.rwc); err != nil {
-			c.logger.DebugContext(ctx, "error while running OnNewConnection", "err", err)
-			return
-		}
-	}
-
 	// Create the ldap response queue to be writted to client (buffered to 20)
 	// buffered to 20 means that If client is slow to handler responses, Server
 	// Handlers will stop to send more respones
@@ -126,13 +119,13 @@ func (c *client) serve(ctx context.Context) {
 	c.requestList = make(map[int]*Message)
 
 	for {
-		if c.srv.ReadTimeout != 0 {
-			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.ReadTimeout)); err != nil {
+		if c.srv.readTimeout != 0 {
+			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.readTimeout)); err != nil {
 				c.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
 			}
 		}
-		if c.srv.WriteTimeout != 0 {
-			if err := c.rwc.SetWriteDeadline(time.Now().Add(c.srv.WriteTimeout)); err != nil {
+		if c.srv.writeTimeout != 0 {
+			if err := c.rwc.SetWriteDeadline(time.Now().Add(c.srv.writeTimeout)); err != nil {
 				c.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
 			}
 		}
@@ -233,7 +226,7 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 	w.chanOut = c.chanOut
 	w.messageID = int32(m.MessageID())
 
-	return c.srv.Handler.ServeLDAP(ctx, w, &m)
+	return c.srv.handler.ServeLDAP(ctx, w, &m)
 }
 
 func (c *client) registerRequest(m *Message) {

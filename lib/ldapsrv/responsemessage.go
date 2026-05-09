@@ -1,6 +1,6 @@
-package ldapserver
+package ldapsrv
 
-import ldap "github.com/teapotovh/teapot/lib/ldapserver/goldap"
+import ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 
 func NewBindResponse(resultCode int32) ldap.BindResponse {
 	r := ldap.BindResponse{}
