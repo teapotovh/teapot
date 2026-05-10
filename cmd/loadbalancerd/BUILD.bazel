@@ -33,43 +33,47 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
+#
+# NOTE: This component is no longer used, so we don't build images for it anymore
+#
+
 # OCI Image building
-image_layer(
-    name = "binary_layer",
-    srcs = {
-        "/loadbalancerd": ":loadbalancerd_static",
-    },
-    compress = "zstd",
-)
-
-image_manifest(
-    name = "image",
-    base = "@netbase_static_debian13",
-    entrypoint = ["/loadbalancerd"],
-    layers = [
-        ":binary_layer",
-    ],
-)
-
-image_load(
-    name = "load",
-    image = ":image",
-    tag = "ghcr.io/teapotovh/loadbalancerd:latest",
-)
-
-image_push(
-    name = "push",
-    image = ":image",
-    registry = "ghcr.io",
-    repository = "teapotovh/loadbalancerd",
-    stamp = "disabled",
-    tag_file = "//bazel:version_file_latest",
-)
-
-image_push(
-    name = "push_ttl",
-    image = ":image",
-    registry = "ttl.sh",
-    repository = "teapotovh_loadbalancerd",
-    tag = "1h",
-)
+# image_layer(
+#     name = "binary_layer",
+#     srcs = {
+#         "/loadbalancerd": ":loadbalancerd_static",
+#     },
+#     compress = "zstd",
+# )
+#
+# image_manifest(
+#     name = "image",
+#     base = "@netbase_static_debian13",
+#     entrypoint = ["/loadbalancerd"],
+#     layers = [
+#         ":binary_layer",
+#     ],
+# )
+#
+# image_load(
+#     name = "load",
+#     image = ":image",
+#     tag = "ghcr.io/teapotovh/loadbalancerd:latest",
+# )
+#
+# image_push(
+#     name = "push",
+#     image = ":image",
+#     registry = "ghcr.io",
+#     repository = "teapotovh/loadbalancerd",
+#     stamp = "disabled",
+#     tag_file = "//bazel:version_file_latest",
+# )
+#
+# image_push(
+#     name = "push_ttl",
+#     image = ":image",
+#     registry = "ttl.sh",
+#     repository = "teapotovh_loadbalancerd",
+#     tag = "1h",
+# )
