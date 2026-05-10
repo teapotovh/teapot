@@ -28,7 +28,7 @@ func (l *Log) initMetrics() {
 
 	l.metrics.size = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "log_file_size",
+			Name: "log_file_size_total",
 			Help: "Number of bytes in the current log file",
 		},
 		[]string{"source"},
