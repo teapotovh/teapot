@@ -1,4 +1,8 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:load.bzl", "image_load")
+load("@rules_img//img:push.bzl", "image_push")
 
 go_library(
     name = "loadbalancerd_lib",
@@ -19,4 +23,53 @@ go_binary(
     name = "loadbalancerd",
     embed = [":loadbalancerd_lib"],
     visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "loadbalancerd_static",
+    embed = [":loadbalancerd_lib"],
+    pure = "on",
+    static = "on",
+    visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/loadbalancerd": ":loadbalancerd_static",
+    },
+    compress = "zstd",
+)
+
+image_manifest(
+    name = "image",
+    base = "@netbase_static_debian13",
+    entrypoint = ["/loadbalancerd"],
+    layers = [
+        ":binary_layer",
+    ],
+)
+
+image_load(
+    name = "load",
+    image = ":image",
+    tag = "ghcr.io/teapotovh/loadbalancerd:latest",
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/loadbalancerd",
+    stamp = "disabled",
+    tag_file = "//bazel:version_file_latest",
+)
+
+image_push(
+    name = "push_ttl",
+    image = ":image",
+    registry = "ttl.sh",
+    repository = "teapotovh_loadbalancerd",
+    tag = "1h",
 )

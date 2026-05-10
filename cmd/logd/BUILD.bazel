@@ -58,14 +58,6 @@ image_load(
 )
 
 image_push(
-    name = "push_latest",
-    image = ":image",
-    registry = "ghcr.io",
-    repository = "teapotovh/logd",
-    tag = "latest",
-)
-
-image_push(
     name = "push",
     image = ":image",
     registry = "ghcr.io",
