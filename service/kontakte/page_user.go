@@ -11,10 +11,12 @@ import (
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
 
+	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/ldap"
 	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
+	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
@@ -31,11 +33,20 @@ const (
 	gidID       = "gid"
 )
 
+func canViewUser(auth *httpauth.Auth, username string) bool {
+	return auth != nil && (auth.Username == username || auth.Admin)
+}
+
 func (k *Kontakte) User(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	username := r.PathValue("username")
+
+	auth := webauth.GetAuth(r)
+	if !canViewUser(auth, username) {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		username := r.PathValue("username")
-
 		client, err := k.factory.NewClient(r.Context())
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)

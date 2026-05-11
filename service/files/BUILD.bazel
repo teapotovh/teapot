@@ -5,10 +5,12 @@ go_library(
     srcs = [
         "files.go",
         "flag.go",
+        "metrics.go",
         "mount.go",
         "readonly.go",
         "session.go",
         "session_flag.go",
+        "z.go",
     ],
     importpath = "github.com/teapotovh/teapot/service/files",
     visibility = ["//visibility:public"],
