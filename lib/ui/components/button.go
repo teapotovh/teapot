@@ -21,6 +21,11 @@ var ButtonStyle = ui.MustParseStyle(`
 		outline-offset: 0;
 		outline: var(--size-1) solid var(--theme-brand-0);
 	}
+
+	&[disabled] {
+		background: var(--theme-background-7);
+		cursor: not-allowed;
+	}
 `)
 
 func Button(ctx ui.Context, children ...g.Node) g.Node {

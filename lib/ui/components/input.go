@@ -29,6 +29,12 @@ var InputStyle = ui.MustParseStyle(`
 		outline-offset: 0;
 		outline: var(--size-1) solid var(--theme-brand-1);
 	}
+
+	& input[disabled] {
+		background: var(--theme-background-3);
+		border-color: var(--theme-wireframe-0);
+		cursor: not-allowed;
+	}
 `)
 
 func Input(ctx ui.Context, id, typ, label string, opts ...g.Node) g.Node {
@@ -64,9 +70,14 @@ func FileInput(ctx ui.Context, id, label string, opts ...g.Node) g.Node {
 	)
 }
 
-func ValueInput(ctx ui.Context, id, typ, label, value string, opts ...g.Node) g.Node {
+func ValueInput(ctx ui.Context, id, typ, label, value string, enabled bool, opts ...g.Node) g.Node {
+	inputOpts := []g.Node{h.Type(typ), h.ID(id), h.Name(id), h.Value(value)}
+	if !enabled {
+		inputOpts = append(inputOpts, h.Disabled())
+	}
+
 	return h.Div(c.JoinAttrs("class", append(g.Group{ctx.Class(InputStyle)}, opts...)),
 		h.Label(h.For(id), g.Text(label)),
-		h.Input(h.Type(typ), h.ID(id), h.Name(id), h.Value(value)),
+		h.Input(inputOpts...),
 	)
 }
