@@ -12,10 +12,16 @@ import (
 	"github.com/teapotovh/teapot/lib/pagetitle"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/ui/components"
+	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
 )
 
 func (k *Kontakte) Users(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	auth := webauth.GetAuth(r)
+	if auth == nil || !auth.Admin {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		client, err := k.factory.NewClient(r.Context())

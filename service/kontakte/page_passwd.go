@@ -27,12 +27,12 @@ const (
 )
 
 func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	username := r.PathValue("username")
+
 	auth := webauth.GetAuth(r)
-	if auth == nil {
+	if !canViewUser(auth, username) {
 		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
 	}
-
-	username := r.PathValue("username")
 
 	switch r.Method {
 	case http.MethodGet:
