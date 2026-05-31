@@ -15,11 +15,13 @@ go_library(
         "metrics.go",
         "packet.go",
         "responsemessage.go",
+        "z.go",
     ],
     importpath = "github.com/teapotovh/teapot/lib/ldapsrv",
     visibility = ["//visibility:public"],
     deps = [
         "//lib/ldapsrv/goldap",
+        "//lib/observability",
         "//lib/run",
         "@com_github_google_uuid//:uuid",
         "@com_github_prometheus_client_golang//prometheus",

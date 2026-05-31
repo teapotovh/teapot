@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,6 +40,7 @@ type LDAPSrv struct {
 	handler  Handler
 	wg       sync.WaitGroup
 	metrics  metrics
+	running  atomic.Bool
 }
 
 // NewServer return a LDAP Server.
@@ -79,7 +81,9 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 		return fmt.Errorf("error while listening on tcp socket %q: %w", s.address, err)
 	}
 
+	s.running.Store(true)
 	defer func() {
+		s.running.Store(false)
 		if lisErr := s.listener.Close(); lisErr != nil && err == nil {
 			err = fmt.Errorf("error while closing ldap listener: %w", err)
 		}

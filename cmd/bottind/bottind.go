@@ -71,8 +71,8 @@ func main() {
 	// observability.RegisterReadyz(bottin)
 
 	observability.RegisterMetrics(ldapsrv)
-	// observability.RegisterReadyz(httpsrv)
-	// observability.RegisterLivez(httpsrv)
+	observability.RegisterReadyz(ldapsrv)
+	observability.RegisterLivez(ldapsrv)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
