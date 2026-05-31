@@ -40,7 +40,7 @@ humanfriendly==10.0
     # via coloredlogs
 hyperframe==6.1.0
     # via h2
-idna==3.13
+idna==3.15
     # via
     #   anyio
     #   httpx
