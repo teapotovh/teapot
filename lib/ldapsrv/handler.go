@@ -75,11 +75,14 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 	}
 
 	code := ldap.ResultCodeSuccess
+
 	var err error
 
 	start := time.Now()
+
 	defer func() {
-		s.metrics.duration.WithLabelValues(r.ProtocolOpName(), ldap.EnumeratedLDAPResultCode[code]).Observe(time.Since(start).Seconds())
+		s.metrics.duration.WithLabelValues(r.ProtocolOpName(), ldap.EnumeratedLDAPResultCode[code]).
+			Observe(time.Since(start).Seconds())
 	}()
 
 	switch r.ProtocolOpName() {

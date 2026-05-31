@@ -82,8 +82,10 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 	}
 
 	s.running.Store(true)
+
 	defer func() {
 		s.running.Store(false)
+
 		if lisErr := s.listener.Close(); lisErr != nil && err == nil {
 			err = fmt.Errorf("error while closing ldap listener: %w", err)
 		}
@@ -135,6 +137,7 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 			uid, err := uuid.NewRandom()
 			if err != nil {
 				s.logger.WarnContext(ctx, "could not generate request id", "err", err)
+
 				uid = uuid.UUID{}
 			}
 

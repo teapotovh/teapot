@@ -67,6 +67,7 @@ type Mem struct {
 func NewMem() *Mem {
 	m := Mem{tr: btree.NewG(2, mementryLess)}
 	m.metrics.initMetrics("mem")
+
 	return &m
 }
 
@@ -81,6 +82,7 @@ func (m *Mem) Ping(_ context.Context) error {
 // List implements Store.
 func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
 	now := time.Now()
+
 	defer func() {
 		m.metrics.operationDuration.WithLabelValues(operationList, status(err)).Observe(time.Since(now).Seconds())
 	}()
@@ -123,9 +125,9 @@ func (m *Mem) Begin(ctx context.Context) (Transaction, error) {
 }
 
 type MemTransaction struct {
-	ctx      context.Context
-	mu       sync.Mutex
-	commited bool
+	ctx       context.Context
+	mu        sync.Mutex
+	committed bool
 
 	mem     *Mem
 	changes []change
@@ -133,7 +135,7 @@ type MemTransaction struct {
 	start time.Time
 }
 
-// Context implements Transaction
+// Context implements Transaction.
 func (m *MemTransaction) Context() context.Context {
 	return m.ctx
 }
@@ -156,11 +158,13 @@ func (m *MemTransaction) Store(entry Entry) (err error) {
 	defer m.mu.Unlock()
 
 	start := time.Now()
+
 	defer func() {
-		m.mem.metrics.operationDuration.WithLabelValues(operationStore, status(err)).Observe(time.Since(start).Seconds())
+		m.mem.metrics.operationDuration.WithLabelValues(operationStore, status(err)).
+			Observe(time.Since(start).Seconds())
 	}()
 
-	if m.commited {
+	if m.committed {
 		return ErrCommitted
 	}
 
@@ -179,11 +183,13 @@ func (m *MemTransaction) Delete(dn DN) (err error) {
 	defer m.mu.Unlock()
 
 	start := time.Now()
+
 	defer func() {
-		m.mem.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).Observe(time.Since(start).Seconds())
+		m.mem.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).
+			Observe(time.Since(start).Seconds())
 	}()
 
-	if m.commited {
+	if m.committed {
 		return ErrCommitted
 	}
 
@@ -202,14 +208,15 @@ func (m *MemTransaction) Commit() (err error) {
 	}
 
 	defer func() {
-		m.mem.metrics.transactionDuration.WithLabelValues(strconv.Itoa(len(m.changes)), status(err)).Observe(time.Since(m.start).Seconds())
+		m.mem.metrics.transactionDuration.WithLabelValues(strconv.Itoa(len(m.changes)), status(err)).
+			Observe(time.Since(m.start).Seconds())
 	}()
 
 	// lock transaction to read all changes and cleanup changes
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.commited {
+	if m.committed {
 		return ErrCommitted
 	}
 
@@ -226,7 +233,8 @@ func (m *MemTransaction) Commit() (err error) {
 		}
 	}
 
-	m.commited = true
+	m.committed = true
+
 	return nil
 }
 

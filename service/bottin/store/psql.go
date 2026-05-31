@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	_ "embed"
-
-	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+
+	_ "embed"
+	_ "github.com/lib/pq"
 )
 
 //go:embed schema.sql
@@ -48,10 +48,11 @@ func NewPSQL(url string) (*PSQL, error) {
 
 	p := PSQL{db: db}
 	p.metrics.initMetrics("psql")
+
 	return &p, nil
 }
 
-// List implements Store.
+// Ping implements Store.
 func (p *PSQL) Ping(ctx context.Context) error {
 	if err := p.db.Ping(); err != nil {
 		return fmt.Errorf("error while pinging psql: %w", err)
@@ -75,12 +76,15 @@ var exactListQuery = `
 // List implements Store.
 func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
 	start := time.Now()
+
 	defer func() {
 		p.metrics.operationDuration.WithLabelValues(operationList, status(err)).Observe(time.Since(start).Seconds())
 	}()
 
 	var query string
+
 	prfx := prefix.String()
+
 	if exact {
 		query = exactListQuery
 	} else {
@@ -172,6 +176,7 @@ var storeQuery = `
 // Store implements Transaction.
 func (p *PSQLTransaction) Store(entry Entry) (err error) {
 	start := time.Now()
+
 	defer func() {
 		p.metrics.operationDuration.WithLabelValues(operationStore, status(err)).Observe(time.Since(start).Seconds())
 	}()
@@ -189,6 +194,7 @@ func (p *PSQLTransaction) Store(entry Entry) (err error) {
 	}
 
 	p.operations++
+
 	return nil
 }
 
@@ -197,6 +203,7 @@ var deleteQuery = `DELETE FROM entries WHERE dn = $1;`
 // Delete implements Transaction.
 func (p *PSQLTransaction) Delete(dn DN) (err error) {
 	start := time.Now()
+
 	defer func() {
 		p.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).Observe(time.Since(start).Seconds())
 	}()
@@ -209,13 +216,15 @@ func (p *PSQLTransaction) Delete(dn DN) (err error) {
 	}
 
 	p.operations++
+
 	return nil
 }
 
 // Commit implements Transaction.
 func (p *PSQLTransaction) Commit() (err error) {
 	defer func() {
-		p.metrics.transactionDuration.WithLabelValues(strconv.Itoa(p.operations), status(err)).Observe(time.Since(p.start).Seconds())
+		p.metrics.transactionDuration.WithLabelValues(strconv.Itoa(p.operations), status(err)).
+			Observe(time.Since(p.start).Seconds())
 	}()
 
 	if err := p.tx.Commit(); err != nil {
