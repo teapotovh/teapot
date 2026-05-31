@@ -67,7 +67,7 @@ func main() {
 
 	ldapsrv.Register(bottin)
 
-	// observability.RegisterMetrics(bottin)
+	observability.RegisterMetrics(bottin)
 	// observability.RegisterReadyz(bottin)
 
 	observability.RegisterMetrics(ldapsrv)

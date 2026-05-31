@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 var (
@@ -12,6 +14,8 @@ var (
 
 // Store provides an interface implemented by all types of stores for LDAP entries.
 type Store interface {
+	observability.Metrics
+
 	// Lists all entries under the provided prefix DN. If exact is true, only
 	// entries exactly matching this DN.
 	List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, error)

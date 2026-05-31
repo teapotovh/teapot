@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	_ "embed"
+
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 //go:embed schema.sql
@@ -15,6 +19,8 @@ var schema string
 
 type PSQL struct {
 	db *sql.DB
+
+	metrics metrics
 }
 
 func NewPSQL(url string) (*PSQL, error) {
@@ -40,7 +46,9 @@ func NewPSQL(url string) (*PSQL, error) {
 		return nil, fmt.Errorf("error while committing migration: %w", err)
 	}
 
-	return &PSQL{db: db}, nil
+	p := PSQL{db: db}
+	p.metrics.initMetrics("psql")
+	return &p, nil
 }
 
 var subListQuery = `
@@ -55,11 +63,14 @@ var exactListQuery = `
 		WHERE dn = $1;
 	`
 
-func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, er error) {
+func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
+	start := time.Now()
+	defer func() {
+		p.metrics.operationDuration.WithLabelValues(operationList, status(err)).Observe(time.Since(start).Seconds())
+	}()
+
 	var query string
-
 	prfx := prefix.String()
-
 	if exact {
 		query = exactListQuery
 	} else {
@@ -73,8 +84,8 @@ func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []E
 	}
 
 	defer func() {
-		if rowsErr := rows.Close(); rowsErr != nil && er == nil {
-			er = fmt.Errorf("error while closing psql rows iterator: %w", rowsErr)
+		if rowsErr := rows.Close(); rowsErr != nil && err == nil {
+			err = fmt.Errorf("error while closing psql rows iterator: %w", rowsErr)
 		}
 	}()
 
@@ -117,12 +128,22 @@ func (p *PSQL) Begin(ctx context.Context) (Transaction, error) {
 		return nil, fmt.Errorf("could not begin psql transaction: %w", err)
 	}
 
-	return &PSQLTransaction{ctx: ctx, tx: tx}, nil
+	return &PSQLTransaction{
+		ctx: ctx,
+		tx:  tx,
+
+		metrics: &p.metrics,
+		start:   time.Now(),
+	}, nil
 }
 
 type PSQLTransaction struct {
 	ctx context.Context
 	tx  *sql.Tx
+
+	metrics    *metrics
+	start      time.Time
+	operations int
 }
 
 func (p *PSQLTransaction) Context() context.Context {
@@ -136,7 +157,12 @@ var storeQuery = `
 		SET attributes = EXCLUDED.attributes;
 	`
 
-func (p *PSQLTransaction) Store(entry Entry) error {
+func (p *PSQLTransaction) Store(entry Entry) (err error) {
+	start := time.Now()
+	defer func() {
+		p.metrics.operationDuration.WithLabelValues(operationStore, status(err)).Observe(time.Since(start).Seconds())
+	}()
+
 	rawAttributes, err := json.Marshal(entry.Attributes)
 	if err != nil {
 		return fmt.Errorf("could not marshal entry attributes for psql: %w", err)
@@ -149,26 +175,46 @@ func (p *PSQLTransaction) Store(entry Entry) error {
 		return fmt.Errorf("error while inserting data with psql: %w", err)
 	}
 
+	p.operations++
 	return nil
 }
 
 var deleteQuery = `DELETE FROM entries WHERE dn = $1;`
 
-func (p *PSQLTransaction) Delete(dn DN) error {
+func (p *PSQLTransaction) Delete(dn DN) (err error) {
+	start := time.Now()
+	defer func() {
+		p.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).Observe(time.Since(start).Seconds())
+	}()
+
 	prefix := dn.Prefix().String()
 
-	_, err := p.tx.Exec(deleteQuery, prefix)
+	_, err = p.tx.Exec(deleteQuery, prefix)
 	if err != nil {
 		return fmt.Errorf("error while deleting entry in psql: %w", err)
 	}
 
+	p.operations++
 	return nil
 }
 
-func (p *PSQLTransaction) Commit() error {
+func (p *PSQLTransaction) Commit() (err error) {
+	defer func() {
+		p.metrics.transactionDuration.WithLabelValues(strconv.Itoa(p.operations), status(err)).Observe(time.Since(p.start).Seconds())
+	}()
+
 	if err := p.tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit psql transaction: %w", err)
 	}
 
 	return nil
+}
+
+// Metrics implements observability.Metrics.
+func (p *PSQL) Metrics() []prometheus.Collector {
+	return []prometheus.Collector{
+		p.metrics.backend,
+		p.metrics.operationDuration,
+		p.metrics.transactionDuration,
+	}
 }
