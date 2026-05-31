@@ -51,6 +51,15 @@ func NewPSQL(url string) (*PSQL, error) {
 	return &p, nil
 }
 
+// List implements Store.
+func (p *PSQL) Ping(ctx context.Context) error {
+	if err := p.db.Ping(); err != nil {
+		return fmt.Errorf("error while pinging psql: %w", err)
+	}
+
+	return nil
+}
+
 var subListQuery = `
 		SELECT dn, attributes
 		FROM entries
@@ -63,6 +72,7 @@ var exactListQuery = `
 		WHERE dn = $1;
 	`
 
+// List implements Store.
 func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
 	start := time.Now()
 	defer func() {
@@ -122,6 +132,7 @@ func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []E
 	return entries, nil
 }
 
+// Begin implements Store.
 func (p *PSQL) Begin(ctx context.Context) (Transaction, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -146,6 +157,7 @@ type PSQLTransaction struct {
 	operations int
 }
 
+// Context implements Transaction.
 func (p *PSQLTransaction) Context() context.Context {
 	return p.ctx
 }
@@ -157,6 +169,7 @@ var storeQuery = `
 		SET attributes = EXCLUDED.attributes;
 	`
 
+// Store implements Transaction.
 func (p *PSQLTransaction) Store(entry Entry) (err error) {
 	start := time.Now()
 	defer func() {
@@ -181,6 +194,7 @@ func (p *PSQLTransaction) Store(entry Entry) (err error) {
 
 var deleteQuery = `DELETE FROM entries WHERE dn = $1;`
 
+// Delete implements Transaction.
 func (p *PSQLTransaction) Delete(dn DN) (err error) {
 	start := time.Now()
 	defer func() {
@@ -198,6 +212,7 @@ func (p *PSQLTransaction) Delete(dn DN) (err error) {
 	return nil
 }
 
+// Commit implements Transaction.
 func (p *PSQLTransaction) Commit() (err error) {
 	defer func() {
 		p.metrics.transactionDuration.WithLabelValues(strconv.Itoa(p.operations), status(err)).Observe(time.Since(p.start).Seconds())

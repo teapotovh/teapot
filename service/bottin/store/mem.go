@@ -70,7 +70,15 @@ func NewMem() *Mem {
 	return &m
 }
 
-// List implements Store.List.
+// Ping implements Store.
+func (m *Mem) Ping(_ context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return nil
+}
+
+// List implements Store.
 func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
 	now := time.Now()
 	defer func() {
@@ -125,6 +133,7 @@ type MemTransaction struct {
 	start time.Time
 }
 
+// Context implements Transaction
 func (m *MemTransaction) Context() context.Context {
 	return m.ctx
 }
@@ -141,7 +150,7 @@ type change struct {
 	kind  changekind
 }
 
-// Store implements Store.Store.
+// Store implements Transaction.
 func (m *MemTransaction) Store(entry Entry) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -164,7 +173,7 @@ func (m *MemTransaction) Store(entry Entry) (err error) {
 	return nil
 }
 
-// Delete implements Store.Delete.
+// Delete implements Transaction.
 func (m *MemTransaction) Delete(dn DN) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

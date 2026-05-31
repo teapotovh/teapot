@@ -16,6 +16,9 @@ var (
 type Store interface {
 	observability.Metrics
 
+	// Ping allows pinging the store to verify that it is ready to accept requests
+	Ping(ctx context.Context) error
+
 	// Lists all entries under the provided prefix DN. If exact is true, only
 	// entries exactly matching this DN.
 	List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, error)
