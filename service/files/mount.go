@@ -68,6 +68,9 @@ func (m *mount) src(username string) (hpfs.FS, error) {
 		}
 
 		return fs, nil
+
+	case VFS3:
+		return nil, errors.New("unimplemented") // TODO
 	}
 
 	return nil, nil //nolint:nilnil // unreachable

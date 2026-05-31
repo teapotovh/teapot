@@ -19,12 +19,15 @@ type VFS uint8
 
 const (
 	VFSOS VFS = iota
+	VFS3  VFS = iota
 )
 
 func (vfs VFS) String() string {
 	switch vfs {
 	case VFSOS:
 		return "os"
+	case VFS3:
+		return "s3"
 	default:
 		return ""
 	}
