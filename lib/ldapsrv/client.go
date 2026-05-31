@@ -69,14 +69,18 @@ func (c *client) ReadPacket() (*messagePacket, error) {
 
 //nolint:all
 func (c *client) serve(ctx context.Context) {
+	c.srv.metrics.active.Inc()
+	c.srv.metrics.total.Add(1)
 	c.srv.wg.Add(1)
-	c.closing = make(chan bool)
 	defer func() {
+		c.srv.metrics.active.Dec()
+		c.srv.wg.Done()
 		if err := c.close(ctx); err != nil {
 			c.logger.DebugContext(ctx, "error while closing client", "err", err)
 		}
 	}()
 
+	c.closing = make(chan bool)
 	// Create the ldap response queue to be writted to client (buffered to 20)
 	// buffered to 20 means that If client is slow to handler responses, Server
 	// Handlers will stop to send more respones
@@ -307,8 +311,6 @@ func (c *client) close(ctx context.Context) error {
 	}
 
 	c.logger.DebugContext(ctx, "connection closed successfully")
-
-	c.srv.wg.Done() // signal to server that client shutdown is ok
 
 	return nil
 }

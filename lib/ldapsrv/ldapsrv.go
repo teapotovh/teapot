@@ -38,11 +38,12 @@ type LDAPSrv struct {
 	listener net.Listener
 	handler  Handler
 	wg       sync.WaitGroup
+	metrics  metrics
 }
 
 // NewServer return a LDAP Server.
-func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
-	return &LDAPSrv{
+func NewServer(config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv, error) {
+	srv := LDAPSrv{
 		logger: slog.New(NewContextHandler(logger.Handler())),
 
 		address:       config.Address,
@@ -50,6 +51,10 @@ func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
 		readTimeout:   config.ReadTimeout,
 		writeTimeout:  config.WriteTimeout,
 	}
+
+	srv.initMetrics()
+
+	return &srv, nil
 }
 
 // Register registers the handler for the server.
@@ -126,7 +131,6 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 			uid, err := uuid.NewRandom()
 			if err != nil {
 				s.logger.WarnContext(ctx, "could not generate request id", "err", err)
-
 				uid = uuid.UUID{}
 			}
 

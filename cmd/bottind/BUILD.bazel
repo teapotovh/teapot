@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//lib/ldapsrv",
         "//lib/log",
+        "//lib/observability",
         "//lib/run",
         "//service/bottin",
         "@com_github_spf13_pflag//:pflag",
