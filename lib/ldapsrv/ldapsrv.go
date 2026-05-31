@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,11 +39,13 @@ type LDAPSrv struct {
 	listener net.Listener
 	handler  Handler
 	wg       sync.WaitGroup
+	metrics  metrics
+	running  atomic.Bool
 }
 
 // NewServer return a LDAP Server.
-func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
-	return &LDAPSrv{
+func NewServer(config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv, error) {
+	srv := LDAPSrv{
 		logger: slog.New(NewContextHandler(logger.Handler())),
 
 		address:       config.Address,
@@ -50,6 +53,10 @@ func NewServer(config LDAPSrvConfig, logger *slog.Logger) *LDAPSrv {
 		readTimeout:   config.ReadTimeout,
 		writeTimeout:  config.WriteTimeout,
 	}
+
+	srv.initMetrics()
+
+	return &srv, nil
 }
 
 // Register registers the handler for the server.
@@ -74,7 +81,11 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 		return fmt.Errorf("error while listening on tcp socket %q: %w", s.address, err)
 	}
 
+	s.running.Store(true)
+
 	defer func() {
+		s.running.Store(false)
+
 		if lisErr := s.listener.Close(); lisErr != nil && err == nil {
 			err = fmt.Errorf("error while closing ldap listener: %w", err)
 		}

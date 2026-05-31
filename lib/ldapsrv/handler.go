@@ -3,6 +3,7 @@ package ldapsrv
 import (
 	"context"
 	"errors"
+	"time"
 
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 )
@@ -76,6 +77,13 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 	code := ldap.ResultCodeSuccess
 
 	var err error
+
+	start := time.Now()
+
+	defer func() {
+		s.metrics.duration.WithLabelValues(r.ProtocolOpName(), ldap.EnumeratedLDAPResultCode[code]).
+			Observe(time.Since(start).Seconds())
+	}()
 
 	switch r.ProtocolOpName() {
 	case operationBind:

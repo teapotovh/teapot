@@ -2,13 +2,19 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	btree "github.com/google/btree"
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+var ErrCommitted = errors.New("transaction already committed")
 
 type mementry struct {
 	entry  Entry
@@ -53,42 +59,57 @@ func mementryLess(a, b mementry) bool {
 }
 
 type Mem struct {
-	tr *btree.BTreeG[mementry]
-	mu sync.RWMutex
+	tr      *btree.BTreeG[mementry]
+	mu      sync.RWMutex
+	metrics metrics
 }
 
 func NewMem() *Mem {
-	return &Mem{
-		tr: btree.NewG(2, mementryLess),
-	}
+	m := Mem{tr: btree.NewG(2, mementryLess)}
+	m.metrics.initMetrics("mem")
+
+	return &m
 }
 
-// List implements Store.List.
-func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, error) {
+// Ping implements Store.
+func (m *Mem) Ping(_ context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return nil
+}
+
+// List implements Store.
+func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
+	now := time.Now()
+
+	defer func() {
+		m.metrics.operationDuration.WithLabelValues(operationList, status(err)).Observe(time.Since(now).Seconds())
+	}()
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	start := mementryFromPrefix(prefix)
 	end := mementryFromPrefix(prefixEnd(prefix))
-	collected := []Entry{}
 
 	m.tr.AscendRange(start, end, func(entry mementry) bool {
 		// For non-exact matches, continue looping and collect all results
 		if !exact {
-			collected = append(collected, entry.entry)
+			entries = append(entries, entry.entry)
 			return true
 		}
 
 		// For exact matches, stop if we found the one, otherwise continue looping
 		if entry.prefix.Equal(prefix) {
-			collected = append(collected, entry.entry)
+			entries = append(entries, entry.entry)
 			return false
 		}
 
 		return true
 	})
 
-	return collected, nil
+	return entries, nil
 }
 
 func (m *Mem) Begin(ctx context.Context) (Transaction, error) {
@@ -97,18 +118,24 @@ func (m *Mem) Begin(ctx context.Context) (Transaction, error) {
 	}
 
 	return &MemTransaction{
-		ctx: ctx,
-		mem: m,
+		ctx:   ctx,
+		mem:   m,
+		start: time.Now(),
 	}, nil
 }
 
 type MemTransaction struct {
-	ctx     context.Context
+	ctx       context.Context
+	mu        sync.Mutex
+	committed bool
+
 	mem     *Mem
 	changes []change
-	mu      sync.Mutex
+
+	start time.Time
 }
 
+// Context implements Transaction.
 func (m *MemTransaction) Context() context.Context {
 	return m.ctx
 }
@@ -125,10 +152,21 @@ type change struct {
 	kind  changekind
 }
 
-// Store implements Store.Store.
-func (m *MemTransaction) Store(entry Entry) error {
+// Store implements Transaction.
+func (m *MemTransaction) Store(entry Entry) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	start := time.Now()
+
+	defer func() {
+		m.mem.metrics.operationDuration.WithLabelValues(operationStore, status(err)).
+			Observe(time.Since(start).Seconds())
+	}()
+
+	if m.committed {
+		return ErrCommitted
+	}
 
 	c := change{
 		kind:  changekindStore,
@@ -139,10 +177,21 @@ func (m *MemTransaction) Store(entry Entry) error {
 	return nil
 }
 
-// Delete implements Store.Delete.
-func (m *MemTransaction) Delete(dn DN) error {
+// Delete implements Transaction.
+func (m *MemTransaction) Delete(dn DN) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	start := time.Now()
+
+	defer func() {
+		m.mem.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).
+			Observe(time.Since(start).Seconds())
+	}()
+
+	if m.committed {
+		return ErrCommitted
+	}
 
 	c := change{
 		kind:  changekindDelete,
@@ -153,18 +202,27 @@ func (m *MemTransaction) Delete(dn DN) error {
 	return nil
 }
 
-func (m *MemTransaction) Commit() error {
+func (m *MemTransaction) Commit() (err error) {
 	if err := m.ctx.Err(); err != nil {
 		return err
+	}
+
+	defer func() {
+		m.mem.metrics.transactionDuration.WithLabelValues(strconv.Itoa(len(m.changes)), status(err)).
+			Observe(time.Since(m.start).Seconds())
+	}()
+
+	// lock transaction to read all changes and cleanup changes
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.committed {
+		return ErrCommitted
 	}
 
 	// lock btree for writing
 	m.mem.mu.Lock()
 	defer m.mem.mu.Unlock()
-
-	// lock transaction to read all changes and cleanup changes
-	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	for _, change := range m.changes {
 		switch change.kind {
@@ -175,7 +233,16 @@ func (m *MemTransaction) Commit() error {
 		}
 	}
 
-	m.changes = m.changes[:0]
+	m.committed = true
 
 	return nil
+}
+
+// Metrics implements observability.Metrics.
+func (m *Mem) Metrics() []prometheus.Collector {
+	return []prometheus.Collector{
+		m.metrics.backend,
+		m.metrics.operationDuration,
+		m.metrics.transactionDuration,
+	}
 }
