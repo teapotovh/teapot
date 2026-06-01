@@ -10,7 +10,7 @@ certifi==2026.5.20
     # via
     #   httpcore
     #   httpx
-click==8.3.3
+click==8.4.1
     # via typer-slim
 coloredlogs==15.0.1
     # via onnxruntime
