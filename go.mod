@@ -30,7 +30,7 @@ require (
 	golang.org/x/sync v0.20.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	k8s.io/api v0.35.3
-	k8s.io/apimachinery v0.35.3
+	k8s.io/apimachinery v0.35.5
 	k8s.io/client-go v0.35.3
 	k8s.io/klog/v2 v2.140.0
 	maragu.dev/gomponents v1.3.0
