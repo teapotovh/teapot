@@ -19,7 +19,7 @@ require (
 	github.com/kataras/requestid v0.0.2
 	github.com/lib/pq v1.12.3
 	github.com/lmittmann/tint v1.1.3
-	github.com/nrdcg/desec v0.11.1
+	github.com/nrdcg/desec v0.11.2
 	github.com/prometheus/alertmanager v0.32.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/cors v1.11.1
