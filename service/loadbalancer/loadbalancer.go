@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/netip"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-
-	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/kubeclient"
-	"github.com/teapotovh/teapot/lib/kubecontroller"
 	"github.com/teapotovh/teapot/lib/run"
+	v1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 type LoadBalancerConfig struct {
@@ -22,54 +22,46 @@ type LoadBalancerConfig struct {
 type LoadBalancer struct {
 	logger *slog.Logger
 
-	client       *kubernetes.Clientset
-	broker       *broker.Broker[Event]
-	brokerCancel context.CancelFunc
-
-	controller *kubecontroller.Controller[*v1.Service]
-	state      map[string][]netip.Addr
-	prevEvent  Event
+	mgr    ctrl.Manager
+	client client.Client
 }
 
 func NewLoadBalancer(config LoadBalancerConfig, logger *slog.Logger) (*LoadBalancer, error) {
-	client, err := kubeclient.NewKubeClient(config.KubeClient, logger.With("component", "kubeclient"))
+	// ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+	cfg, err := kubeclient.GetConfig(config.KubeClient, logger.With("component", "kubeclient"))
 	if err != nil {
-		return nil, fmt.Errorf("error while building kubernetes client: %w", err)
+		return nil, fmt.Errorf("error while getting kubeconfig: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	lb := LoadBalancer{
-		logger:       logger,
-		client:       client,
-		broker:       broker.NewBroker[Event](),
-		brokerCancel: cancel,
-		state:        map[string][]netip.Addr{},
-	}
-
-	controllerConfig := kubecontroller.ControllerConfig[*v1.Service]{
-		Client:  client,
-		Handler: lb.handle,
-	}
-
-	lb.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{})
 	if err != nil {
-		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
+		return nil, fmt.Errorf("error while creating controller manager: %w", err)
 	}
 
-	go lb.broker.Run(ctx)
+	r := &LoadBalancer{
+		logger: logger,
+		client: mgr.GetClient(),
+	}
 
-	return &lb, nil
-}
+	// Watch Services with a LoadBalancer type predicate, and Pods that map back
+	// to Services via the podToService handler.
+	err = ctrl.NewControllerManagedBy(mgr).
+		For(&v1.Service{}, builder.WithPredicates(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+			svc, ok := obj.(*v1.Service)
+			return ok && svc.Spec.Type == v1.ServiceTypeLoadBalancer
+		}))).
+		Watches(&v1.Pod{}, handler.EnqueueRequestsFromMapFunc(r.podToService)).
+		Complete(r)
+	if err != nil {
+		return nil, fmt.Errorf("error while setting up controller: %w", err)
+	}
 
-func (lb *LoadBalancer) Broker() *broker.Broker[Event] {
-	return lb.broker
+	return r, nil
 }
 
 // Run implements run.Runnable.
 func (lb *LoadBalancer) Run(ctx context.Context, notify run.Notify) error {
-	defer lb.brokerCancel()
-
 	notify.Notify()
 
-	return lb.controller.Run(ctx, 1)
+	return lb.mgr.Start(ctx)
 }
