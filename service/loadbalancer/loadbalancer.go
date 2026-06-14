@@ -41,6 +41,7 @@ func NewLoadBalancer(config LoadBalancerConfig, logger *slog.Logger) (*LoadBalan
 	r := &LoadBalancer{
 		logger: logger,
 		client: mgr.GetClient(),
+		mgr:    mgr,
 	}
 
 	// Watch Services with a LoadBalancer type predicate, and Pods that map back
