@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "store",
+    srcs = [
+        "flag.go",
+        "mem.go",
+        "metrics.go",
+        "psql.go",
+        "store.go",
+        "types.go",
+    ],
+    embedsrcs = [
+        "migrations/00001_calendars.sql",
+        "migrations/00002_objects.sql",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/calendar/store",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "//lib/webdav/caldav",
+        "@com_github_emersion_go_ical//:go-ical",
+        "@com_github_jackc_pgx_v5//pgxpool",
+        "@com_github_jackc_pgx_v5//stdlib",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+        "@ht_sr_git__bitfehler_brant//:brant",
+        "@ht_sr_git__bitfehler_brant//database/dialect",
+    ],
+)
