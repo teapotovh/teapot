@@ -69,7 +69,7 @@ func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component,
 			}, nil
 		}
 
-		client, err := k.factory.NewClient(r.Context())
+		client, err := k.ldapFactory.NewClient(r.Context())
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}

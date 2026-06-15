@@ -121,7 +121,7 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 	// If the error is not nil, extract the status code from the error type, if available,
 	// let's use the unknown error code 'Other'.
 	if err != nil {
-		s.logger.Error("error while handling operation", "operation", r.ProtocolOpName(), "err", err)
+		s.logger.ErrorContext(ctx, "error while handling operation", "operation", r.ProtocolOpName(), "err", err)
 
 		type withErrorCode interface{ LDAPCode() ldap.ENUMERATED }
 

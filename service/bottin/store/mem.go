@@ -3,15 +3,15 @@ package store
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
-	btree "github.com/google/btree"
+	"github.com/google/btree"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var ErrCommitted = errors.New("transaction already committed")
@@ -36,22 +36,6 @@ func mementryFromPrefix(prefix Prefix) mementry {
 			Attributes: Attributes{},
 		},
 	}
-}
-
-func prefixEnd(prefix Prefix) Prefix {
-	if len(prefix) == 0 {
-		return Prefix(nil)
-	}
-
-	lastComponent := prefix[len(prefix)-1]
-	lastComponentValue := fmt.Sprintf("%s%c", lastComponent.Value, utf8.MaxRune)
-	cpy := prefix.Clone()
-	cpy[len(cpy)-1] = Component{
-		Type:  lastComponent.Type,
-		Value: lastComponentValue,
-	}
-
-	return cpy
 }
 
 func mementryLess(a, b mementry) bool {
@@ -81,12 +65,6 @@ func (m *Mem) Ping(_ context.Context) error {
 
 // List implements Store.
 func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
-	now := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationList, status(err)).Observe(time.Since(now).Seconds())
-	}()
-
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -118,14 +96,12 @@ func (m *Mem) Begin(ctx context.Context) (Transaction, error) {
 	}
 
 	return &MemTransaction{
-		ctx:   ctx,
 		mem:   m,
 		start: time.Now(),
 	}, nil
 }
 
 type MemTransaction struct {
-	ctx       context.Context
 	mu        sync.Mutex
 	committed bool
 
@@ -133,11 +109,6 @@ type MemTransaction struct {
 	changes []change
 
 	start time.Time
-}
-
-// Context implements Transaction.
-func (m *MemTransaction) Context() context.Context {
-	return m.ctx
 }
 
 type changekind uint8
@@ -153,16 +124,9 @@ type change struct {
 }
 
 // Store implements Transaction.
-func (m *MemTransaction) Store(entry Entry) (err error) {
+func (m *MemTransaction) Store(ctx context.Context, entry Entry) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
-	start := time.Now()
-
-	defer func() {
-		m.mem.metrics.operationDuration.WithLabelValues(operationStore, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
 
 	if m.committed {
 		return ErrCommitted
@@ -178,16 +142,9 @@ func (m *MemTransaction) Store(entry Entry) (err error) {
 }
 
 // Delete implements Transaction.
-func (m *MemTransaction) Delete(dn DN) (err error) {
+func (m *MemTransaction) Delete(ctx context.Context, dn DN) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
-	start := time.Now()
-
-	defer func() {
-		m.mem.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
 
 	if m.committed {
 		return ErrCommitted
@@ -202,15 +159,10 @@ func (m *MemTransaction) Delete(dn DN) (err error) {
 	return nil
 }
 
-func (m *MemTransaction) Commit() (err error) {
-	if err := m.ctx.Err(); err != nil {
+func (m *MemTransaction) Commit(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
-
-	defer func() {
-		m.mem.metrics.transactionDuration.WithLabelValues(strconv.Itoa(len(m.changes)), status(err)).
-			Observe(time.Since(m.start).Seconds())
-	}()
 
 	// lock transaction to read all changes and cleanup changes
 	m.mu.Lock()
@@ -238,11 +190,22 @@ func (m *MemTransaction) Commit() (err error) {
 	return nil
 }
 
+// Run implements run.Runnable
+//
+// This is a no-op.
+func (m *Mem) Run(ctx context.Context, notify run.Notify) error {
+	notify.Notify()
+	return nil
+}
+
 // Metrics implements observability.Metrics.
 func (m *Mem) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{
-		m.metrics.backend,
-		m.metrics.operationDuration,
-		m.metrics.transactionDuration,
-	}
+	return []prometheus.Collector{m.metrics.backend}
+}
+
+// ReadinessChecks implements run.ReadinessChecks
+//
+// This is a no-op.
+func (m *Mem) ReadinessChecks() map[string]observability.Check {
+	return map[string]observability.Check{}
 }

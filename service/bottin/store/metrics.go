@@ -5,26 +5,7 @@ import (
 )
 
 type metrics struct {
-	backend             *prometheus.CounterVec
-	operationDuration   *prometheus.HistogramVec
-	transactionDuration *prometheus.HistogramVec
-}
-
-const (
-	statusSuccess = "success"
-	statusError   = "error"
-
-	operationList   = "list"
-	operationStore  = "store"
-	operationDelete = "delete"
-)
-
-func status(err error) string {
-	if err != nil {
-		return statusError
-	}
-
-	return statusSuccess
+	backend *prometheus.CounterVec
 }
 
 func (m *metrics) initMetrics(backend string) {
@@ -37,21 +18,4 @@ func (m *metrics) initMetrics(backend string) {
 	)
 	// This is used purely to track which backend the current bottin instance is running
 	m.backend.WithLabelValues(backend).Add(1)
-
-	m.operationDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "bottin_store_operation_duration",
-			Help:    "Duration of how long a store operation took",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"operation", "status"},
-	)
-	m.transactionDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "bottin_store_transaction_duration",
-			Help:    "Duration of how long a whole store transaction took",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"operations", "status"},
-	)
 }

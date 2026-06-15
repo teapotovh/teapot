@@ -18,10 +18,10 @@ import (
 type Kontakte struct {
 	logger *slog.Logger
 
-	httpLog    *httplog.HTTPLog
-	webHandler *webhandler.WebHandler
-	factory    *ldap.Factory
-	webAuth    *webauth.WebAuth
+	httpLog     *httplog.HTTPLog
+	webHandler  *webhandler.WebHandler
+	ldapFactory *ldap.Factory
+	webAuth     *webauth.WebAuth
 }
 
 type KontakteConfig struct {
@@ -50,12 +50,12 @@ func NewKontakte(config KontakteConfig, logger *slog.Logger) (*Kontakte, error) 
 		return nil, fmt.Errorf("error while constructing webhandler: %w", err)
 	}
 
-	factory, err := ldap.NewFactory(config.LDAP, logger.With("component", "ldap"))
+	ldapFactory, err := ldap.NewFactory(config.LDAP, logger.With("component", "ldap"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building LDAP factory: %w", err)
 	}
 
-	webAuth, err := webauth.NewWebAuth(factory, config.WebAuth, webauth.WebAuthOptions{
+	webAuth, err := webauth.NewWebAuth(ldapFactory, config.WebAuth, webauth.WebAuthOptions{
 		LoginPath:  PathLogin,
 		LogoutPath: PathLogout,
 		ReturnPath: func(auth httpauth.Auth) string {
@@ -70,10 +70,10 @@ func NewKontakte(config KontakteConfig, logger *slog.Logger) (*Kontakte, error) 
 	kontakte := Kontakte{
 		logger: logger,
 
-		httpLog:    httpLog,
-		webHandler: webHandler,
-		factory:    factory,
-		webAuth:    webAuth,
+		httpLog:     httpLog,
+		webHandler:  webHandler,
+		ldapFactory: ldapFactory,
+		webAuth:     webAuth,
 	}
 
 	return &kontakte, nil

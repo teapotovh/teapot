@@ -2,106 +2,39 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"strconv"
-	"time"
+	"log/slog"
+	"slices"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/pgcache"
+	"github.com/teapotovh/teapot/lib/run"
+
 	_ "embed"
-	_ "github.com/lib/pq"
+)
+
+var (
+	ErrNotFound = errors.New("not found")
 )
 
 //go:embed schema.sql
 var schema string
 
 type PSQL struct {
-	db *sql.DB
+	pool  *pgxpool.Pool
+	table *pgcache.Table[Prefix, Entry]
 
 	metrics metrics
 }
 
-func NewPSQL(url string) (*PSQL, error) {
-	db, err := sql.Open("postgres", url)
-	if err != nil {
-		return nil, fmt.Errorf("error while opening connection to psql: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("error while connecting to psql: %w", err)
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("error while beginning migration: %w", err)
-	}
-
-	if _, err := tx.Exec(schema); err != nil {
-		return nil, fmt.Errorf("error while applying schema: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("error while committing migration: %w", err)
-	}
-
-	p := PSQL{db: db}
-	p.metrics.initMetrics("psql")
-
-	return &p, nil
-}
-
-// Ping implements Store.
-func (p *PSQL) Ping(ctx context.Context) error {
-	if err := p.db.Ping(); err != nil {
-		return fmt.Errorf("error while pinging psql: %w", err)
-	}
-
-	return nil
-}
-
-var subListQuery = `
-		SELECT dn, attributes
-		FROM entries
-		WHERE dn LIKE $1;
-	`
-
-var exactListQuery = `
-		SELECT dn, attributes
-		FROM entries
-		WHERE dn = $1;
-	`
-
-// List implements Store.
-func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
-	start := time.Now()
-
-	defer func() {
-		p.metrics.operationDuration.WithLabelValues(operationList, status(err)).Observe(time.Since(start).Seconds())
-	}()
-
-	var query string
-
-	prfx := prefix.String()
-
-	if exact {
-		query = exactListQuery
-	} else {
-		query = subListQuery
-		prfx += "%"
-	}
-
-	rows, err := p.db.QueryContext(ctx, query, prfx)
-	if err != nil {
-		return nil, fmt.Errorf("error while listing resources from psql: %w", err)
-	}
-
-	defer func() {
-		if rowsErr := rows.Close(); rowsErr != nil && err == nil {
-			err = fmt.Errorf("error while closing psql rows iterator: %w", rowsErr)
-		}
-	}()
+func parseRows(rows pgx.Rows) (entries []Entry, err error) {
+	defer rows.Close()
 
 	for rows.Next() {
 		var (
@@ -136,109 +69,190 @@ func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []E
 	return entries, nil
 }
 
-// Begin implements Store.
-func (p *PSQL) Begin(ctx context.Context) (Transaction, error) {
-	tx, err := p.db.BeginTx(ctx, nil)
+var listQuery = `
+		SELECT dn, attributes
+		FROM entries;
+`
+
+func listPSQL(ctx context.Context, conn *pgxpool.Pool) (entries []Entry, err error) {
+	rows, err := conn.Query(ctx, listQuery)
 	if err != nil {
-		return nil, fmt.Errorf("could not begin psql transaction: %w", err)
+		return nil, fmt.Errorf("error while listing entries from psql: %w", err)
 	}
 
-	return &PSQLTransaction{
-		ctx: ctx,
-		tx:  tx,
-
-		metrics: &p.metrics,
-		start:   time.Now(),
-	}, nil
+	return parseRows(rows)
 }
 
-type PSQLTransaction struct {
-	ctx context.Context
-	tx  *sql.Tx
+var getQuery = `
+		SELECT dn, attributes
+		FROM entries
+		WHERE dn = ANY($1);
+`
 
-	metrics    *metrics
-	start      time.Time
-	operations int
-}
+func getPSQL(ctx context.Context, conn *pgxpool.Pool, prefixes []Prefix) ([]Entry, error) {
+	dns := make([]string, 0, len(prefixes))
+	for _, prefix := range prefixes {
+		dns = append(dns, prefix.String())
+	}
 
-// Context implements Transaction.
-func (p *PSQLTransaction) Context() context.Context {
-	return p.ctx
+	rows, err := conn.Query(ctx, getQuery, dns)
+	if err != nil {
+		return nil, fmt.Errorf("error while listing select entries from psql: %w", err)
+	}
+
+	return parseRows(rows)
 }
 
 var storeQuery = `
 		INSERT INTO entries (dn, attributes)
-		VALUES ($1, $2::jsonb)
+	  SELECT unnest($1::text[]), unnest($2::jsonb[])
 		ON CONFLICT (dn) DO UPDATE
 		SET attributes = EXCLUDED.attributes;
 	`
 
-// Store implements Transaction.
-func (p *PSQLTransaction) Store(entry Entry) (err error) {
-	start := time.Now()
+func storePSQL(ctx context.Context, tx pgx.Tx, entries []Entry) error {
+	dns := make([]string, 0, len(entries))
+	attrs := make([][]byte, 0, len(entries))
 
-	defer func() {
-		p.metrics.operationDuration.WithLabelValues(operationStore, status(err)).Observe(time.Since(start).Seconds())
-	}()
+	for i, entry := range entries {
+		rawAttributes, err := json.Marshal(entry.Attributes)
+		if err != nil {
+			return fmt.Errorf("could not marshal attributes of entry %d for psql: %w", i, err)
+		}
 
-	rawAttributes, err := json.Marshal(entry.Attributes)
-	if err != nil {
-		return fmt.Errorf("could not marshal entry attributes for psql: %w", err)
+		prefix := entry.DN.Prefix()
+		dns = append(dns, prefix.String())
+		attrs = append(attrs, rawAttributes)
 	}
 
-	prefix := entry.DN.Prefix().String()
-
-	_, err = p.tx.Exec(storeQuery, prefix, rawAttributes)
+	_, err := tx.Exec(ctx, storeQuery, dns, attrs)
 	if err != nil {
-		return fmt.Errorf("error while inserting data with psql: %w", err)
+		return fmt.Errorf("error while inserting entries with psql: %w", err)
 	}
-
-	p.operations++
 
 	return nil
 }
 
-var deleteQuery = `DELETE FROM entries WHERE dn = $1;`
+var deleteQuery = `DELETE FROM entries WHERE dn = ANY($1);`
 
-// Delete implements Transaction.
-func (p *PSQLTransaction) Delete(dn DN) (err error) {
-	start := time.Now()
-
-	defer func() {
-		p.metrics.operationDuration.WithLabelValues(operationDelete, status(err)).Observe(time.Since(start).Seconds())
-	}()
-
-	prefix := dn.Prefix().String()
-
-	_, err = p.tx.Exec(deleteQuery, prefix)
-	if err != nil {
-		return fmt.Errorf("error while deleting entry in psql: %w", err)
+func deletePSQL(ctx context.Context, tx pgx.Tx, prefixes []Prefix) error {
+	dns := make([]string, 0, len(prefixes))
+	for _, prefix := range prefixes {
+		dns = append(dns, prefix.String())
 	}
 
-	p.operations++
+	_, err := tx.Exec(ctx, deleteQuery, dns)
+	if err != nil {
+		return fmt.Errorf("error while deleting entries in psql: %w", err)
+	}
 
 	return nil
+}
+
+func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error) {
+	// Use context.Background() here, as we want the pool to live for the lifetime
+	// of the program, while the provided context is only meant for databse initialization.
+	pool, err := pgxpool.New(context.Background(), url)
+	if err != nil {
+		return nil, fmt.Errorf("error while opening connection pool to psql: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("error while connecting to psql: %w", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error while beginning migration: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, schema); err != nil {
+		return nil, fmt.Errorf("error while applying schema: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("error while committing migration: %w", err)
+	}
+
+	table, err := pgcache.NewTable(pool, "entries", PrefixFromString, listPSQL, getPSQL, storePSQL, deletePSQL, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
+	}
+
+	p := PSQL{
+		pool:  pool,
+		table: table,
+	}
+	p.metrics.initMetrics("psql")
+
+	return &p, nil
+}
+
+// Ping implements Store.
+func (p *PSQL) Ping(ctx context.Context) error {
+	if err := p.pool.Ping(ctx); err != nil {
+		return fmt.Errorf("error while pinging psql: %w", err)
+	}
+
+	return nil
+}
+
+// List implements Store.
+func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, _ error) {
+	if exact {
+		entry, found := p.table.Get(prefix)
+		if found {
+			entries = append(entries, entry)
+		}
+	} else {
+		end := prefixEnd(prefix)
+		entries = slices.Collect(p.table.Between(prefix, end))
+	}
+
+	return entries, nil
+}
+
+// Begin implements Store.
+func (p *PSQL) Begin(ctx context.Context) (Transaction, error) {
+	tx, err := p.table.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not begin pgcache transaction: %w", err)
+	}
+
+	return &PSQLTransaction{tx: tx}, nil
+}
+
+type PSQLTransaction struct {
+	tx *pgcache.TableTx[Prefix, Entry]
+}
+
+// Store implements Transaction.
+func (p *PSQLTransaction) Store(ctx context.Context, entry Entry) (err error) {
+	return p.tx.Store(ctx, []Entry{entry})
+}
+
+// Delete implements Transaction.
+func (p *PSQLTransaction) Delete(ctx context.Context, dn DN) (err error) {
+	prefix := dn.Prefix()
+	return p.tx.Delete(ctx, []Prefix{prefix})
 }
 
 // Commit implements Transaction.
-func (p *PSQLTransaction) Commit() (err error) {
-	defer func() {
-		p.metrics.transactionDuration.WithLabelValues(strconv.Itoa(p.operations), status(err)).
-			Observe(time.Since(p.start).Seconds())
-	}()
+func (p *PSQLTransaction) Commit(ctx context.Context) (err error) {
+	return p.tx.Commit(ctx)
+}
 
-	if err := p.tx.Commit(); err != nil {
-		return fmt.Errorf("could not commit psql transaction: %w", err)
-	}
-
-	return nil
+// Run implements run.Runnable.
+func (p *PSQL) Run(ctx context.Context, notify run.Notify) error {
+	return p.table.Run(ctx, notify)
 }
 
 // Metrics implements observability.Metrics.
 func (p *PSQL) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{
-		p.metrics.backend,
-		p.metrics.operationDuration,
-		p.metrics.transactionDuration,
-	}
+	return append(p.table.Metrics(), p.metrics.backend)
+}
+
+// ReadinessChecks implements run.ReadinessChecks.
+func (p *PSQL) ReadinessChecks() map[string]observability.Check {
+	return p.table.ReadinessChecks()
 }

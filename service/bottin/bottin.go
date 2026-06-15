@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/teapotovh/teapot/lib/ldapsrv"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
@@ -83,7 +84,7 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 		return nil, fmt.Errorf("error while hashing root passwd: %w", err)
 	}
 
-	store, err := store.NewStore(config.Store)
+	store, err := store.NewStore(config.Store, logger.With("component", "store"))
 	if err != nil {
 		return nil, fmt.Errorf("error while initializing bottin store: %w", err)
 	}
@@ -101,6 +102,10 @@ func NewBottin(config BottinConfig, logger *slog.Logger) (*Bottin, error) {
 	return &bottin, nil
 }
 
+func (server *Bottin) Store() store.Store {
+	return server.store
+}
+
 const AnonymousUser = "ANONYMOUS"
 
 func EmptyUser() User {
@@ -110,7 +115,18 @@ func EmptyUser() User {
 	}
 }
 
-func (server *Bottin) Initialize(ctx context.Context) error {
+// Run implements run.Runnable.
+func (server *Bottin) Run(ctx context.Context, notify run.Notify) error {
+	if err := server.initialize(ctx); err != nil {
+		return fmt.Errorf("error while initializing: %w", err)
+	}
+
+	notify.Notify()
+
+	return nil
+}
+
+func (server *Bottin) initialize(ctx context.Context) error {
 	// Check that root object exists.
 	// If it does, we're done. Otherwise, we have some initialization to do.
 	exists, err := server.existsEntry(ctx, server.baseDN)
@@ -142,11 +158,11 @@ func (server *Bottin) Initialize(ctx context.Context) error {
 	}
 
 	entry := store.NewEntry(server.baseDN, baseAttributes)
-	if err = tx.Store(entry); err != nil {
+	if err = tx.Store(ctx, entry); err != nil {
 		return fmt.Errorf("error while storing base entry: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("could not commit store transaction: %w", err)
 	}
 

@@ -145,13 +145,13 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 
 	// This ensures the dn[].Type attribute is set to the appropriate value
 	entry := store.NewEntry(dn, attrs)
-	if err = tx.Store(entry); err != nil {
+	if err = tx.Store(ctx, entry); err != nil {
 		return fmt.Errorf("(%w) error while storing entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// If our item has a member list, add it to all of its member's memberOf attribute
 	for _, member := range members {
-		if err := server.membershipAdd(tx, AttrMemberOf, member, dn); err != nil {
+		if err := server.membershipAdd(ctx, tx, AttrMemberOf, member, dn); err != nil {
 			return fmt.Errorf(
 				"(%w) error while adding %q to group %q: %w",
 				ldapsrv.ErrOperationsError,
@@ -162,7 +162,7 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
@@ -223,7 +223,7 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 	}
 
 	// Delete the LDAP entry
-	if err = tx.Delete(dn); err != nil {
+	if err = tx.Delete(ctx, dn); err != nil {
 		return fmt.Errorf("(%w) error while deleting entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
@@ -238,7 +238,7 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 			)
 		}
 
-		err = server.membershipRemove(tx, AttrMember, gdn, dn)
+		err = server.membershipRemove(ctx, tx, AttrMember, gdn, dn)
 		if err != nil {
 			return fmt.Errorf("(%w) could not update attribute after removal: %w", ldapsrv.ErrOperationsError, err)
 		}
@@ -255,12 +255,12 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 			)
 		}
 
-		if err := server.membershipRemove(tx, AttrMemberOf, mdn, dn); err != nil {
+		if err := server.membershipRemove(ctx, tx, AttrMemberOf, mdn, dn); err != nil {
 			return fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
@@ -475,24 +475,24 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 
 	// Save the edited values
 	entry := store.NewEntry(prevEntry.DN, attrs)
-	if err = tx.Store(entry); err != nil {
+	if err = tx.Store(ctx, entry); err != nil {
 		return fmt.Errorf("(%w) error while storing updated entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Update memberOf for added members and deleted members
 	for _, addMem := range addMembers {
-		if err := server.membershipAdd(tx, AttrMemberOf, addMem, dn); err != nil {
+		if err := server.membershipAdd(ctx, tx, AttrMemberOf, addMem, dn); err != nil {
 			return fmt.Errorf("(%w) error while adding memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	for _, delMem := range delMembers {
-		if err := server.membershipRemove(tx, AttrMemberOf, delMem, dn); err != nil {
+		if err := server.membershipRemove(ctx, tx, AttrMemberOf, delMem, dn); err != nil {
 			return fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 

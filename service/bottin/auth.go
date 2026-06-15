@@ -136,11 +136,11 @@ func (server *Bottin) Extended(ctx context.Context, r ldap.ExtendedRequest) erro
 		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	if err = tx.Store(store.NewEntry(dn, attrs)); err != nil {
+	if err = tx.Store(ctx, store.NewEntry(dn, attrs)); err != nil {
 		return fmt.Errorf("(%w) error while updating password: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 

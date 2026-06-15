@@ -1,6 +1,7 @@
 package bottin
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
@@ -8,12 +9,13 @@ import (
 )
 
 func (server *Bottin) membershipAdd(
+	ctx context.Context,
 	tx store.Transaction,
 	attr store.AttributeKey,
 	member store.DN,
 	group store.DN,
 ) error {
-	entity, err := server.getEntry(tx.Context(), member)
+	entity, err := server.getEntry(ctx, member)
 	if err != nil {
 		return fmt.Errorf("error while fetching membership %s value (adding): %w", attr, err)
 	}
@@ -27,7 +29,7 @@ func (server *Bottin) membershipAdd(
 	membership = append(membership, group.String())
 
 	entity.Attributes[attr] = membership
-	if err = tx.Store(store.NewEntry(entity.DN, entity.Attributes)); err != nil {
+	if err = tx.Store(ctx, store.NewEntry(entity.DN, entity.Attributes)); err != nil {
 		return fmt.Errorf("error while updating membership %s value (adding): %w", attr, err)
 	}
 
@@ -35,12 +37,13 @@ func (server *Bottin) membershipAdd(
 }
 
 func (server *Bottin) membershipRemove(
+	ctx context.Context,
 	tx store.Transaction,
 	attr store.AttributeKey,
 	member store.DN,
 	group store.DN,
 ) error {
-	entity, err := server.getEntry(tx.Context(), member)
+	entity, err := server.getEntry(ctx, member)
 	if err != nil {
 		return fmt.Errorf("error while fetching membership %s value (removing): %w", attr, err)
 	}
@@ -66,7 +69,7 @@ func (server *Bottin) membershipRemove(
 
 	// Update value of the membership attribute
 	entity.Attributes[attr] = newMembership
-	if err = tx.Store(store.NewEntry(entity.DN, entity.Attributes)); err != nil {
+	if err = tx.Store(ctx, store.NewEntry(entity.DN, entity.Attributes)); err != nil {
 		return fmt.Errorf("error while updating membership %s value (removing): %w", attr, err)
 	}
 

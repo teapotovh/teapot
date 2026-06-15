@@ -47,7 +47,7 @@ func (k *Kontakte) User(w http.ResponseWriter, r *http.Request) (ui.Component, e
 
 	switch r.Method {
 	case http.MethodGet:
-		client, err := k.factory.NewClient(r.Context())
+		client, err := k.ldapFactory.NewClient(r.Context())
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}

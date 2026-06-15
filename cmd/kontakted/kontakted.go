@@ -20,8 +20,8 @@ import (
 const (
 	CodeLog           = -1
 	CodeObservability = -2
-	CodeKontakte      = -3
-	CodeHTTP          = -4
+	CodeHTTP          = -3
+	CodeKontakte      = -4
 	CodeRun           = -5
 )
 
