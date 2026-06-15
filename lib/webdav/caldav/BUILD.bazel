@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "caldav",
+    srcs = [
+        "caldav.go",
+        "client.go",
+        "elements.go",
+        "match.go",
+        "server.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/webdav/caldav",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/webdav",
+        "//lib/webdav/internal",
+        "@com_github_emersion_go_ical//:go-ical",
+    ],
+)
