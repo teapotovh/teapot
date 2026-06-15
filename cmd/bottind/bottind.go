@@ -22,8 +22,7 @@ const (
 	CodeObservability = -2
 	CodeLDAP          = -3
 	CodeBottin        = -4
-	CodeInitialize    = -5
-	CodeRun           = -6
+	CodeRun           = -5
 )
 
 func main() {
@@ -77,11 +76,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := bottin.Initialize(ctx); err != nil {
-		logger.Error("error while running initializing bottin", "err", err)
-		os.Exit(CodeInitialize)
-	}
-
+	run.Add("bottin/store", bottin.Store(), nil)
+	run.Add("bottin", bottin, nil)
 	run.Add("ldapsrv", ldapsrv, nil)
 	run.Add("observability", observability, nil)
 

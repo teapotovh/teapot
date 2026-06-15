@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var (
@@ -14,7 +17,9 @@ var (
 
 // Store provides an interface implemented by all types of stores for LDAP entries.
 type Store interface {
+	run.Runnable
 	observability.Metrics
+	observability.ReadinessChecks
 
 	// Ping allows pinging the store to verify that it is ready to accept requests
 	Ping(ctx context.Context) error
@@ -29,30 +34,31 @@ type Store interface {
 
 // Transaction provides an interface to modify the LDAP entries in the store.
 type Transaction interface {
-	// Returns the context associated with this transaction
-	Context() context.Context
-
 	// Store inserts or updates an entry in the store.
-	Store(entry Entry) error
+	Store(ctx context.Context, entry Entry) error
 
 	// Delete deletes the entry with the specified DN.
-	Delete(dn DN) error
+	Delete(ctx context.Context, dn DN) error
 
 	// Commit permanently saves the changes made through this transaction to the store.
-	Commit() error
+	Commit(ctx context.Context) error
 }
 
 type StoreConfig struct {
-	Type string
-	URL  string
+	Timeout time.Duration
+	Type    string
+	URL     string
 }
 
-func NewStore(config StoreConfig) (Store, error) {
+func NewStore(config StoreConfig, logger *slog.Logger) (Store, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+	defer cancel()
+
 	switch config.Type {
 	case "mem":
 		return NewMem(), nil
 	case "psql":
-		return NewPSQL(config.URL)
+		return NewPSQL(ctx, config.URL, logger.With("store", "psql"))
 	default:
 		return nil, fmt.Errorf("error instantiating store of type %q: %w", config.Type, ErrInvalidBackend)
 	}

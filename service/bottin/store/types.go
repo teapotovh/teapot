@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
@@ -122,16 +123,29 @@ func ParseDN(rawDN string) (DN, error) {
 // Checking if strings.HasPrefix(PR1, PR2) will tell you if one is subtree of the other.
 type Prefix []Component
 
+func PrefixFromString(rawPrefix string) (*Prefix, error) {
+	p, err := ParsePrefix(rawPrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	return &p, nil
+}
+
+func (prefix Prefix) Less(p Prefix) bool {
+	return strings.Compare(prefix.String(), p.String()) == -1
+}
+
 func (prefix Prefix) DN() DN {
 	return DN(reverse(prefix))
 }
 
-func (prefix Prefix) String() string {
-	return joinComponentSlice(prefix, prefixSeparator)
-}
-
 func (prefix Prefix) Clone() Prefix {
 	return slices.Clone(prefix)
+}
+
+func (prefix Prefix) String() string {
+	return joinComponentSlice(prefix, prefixSeparator)
 }
 
 func (prefix Prefix) Level() int {
@@ -169,8 +183,8 @@ func (ak1 AttributeKey) EqualFold(ak2 AttributeKey) bool {
 }
 
 type Entry struct {
-	Attributes Attributes
 	DN         DN
+	Attributes Attributes
 }
 
 func NewEntry(dn DN, attributes Attributes) Entry {
@@ -184,6 +198,11 @@ func NewEntry(dn DN, attributes Attributes) Entry {
 	return Entry{DN: dn, Attributes: attrs}
 }
 
+// Key implements pgcache.Object.
+func (e Entry) Key() Prefix {
+	return e.DN.Prefix()
+}
+
 func (attrs Attributes) Get(key AttributeKey) AttributeValue {
 	value, ok := attrs[key]
 	if !ok {
@@ -193,6 +212,22 @@ func (attrs Attributes) Get(key AttributeKey) AttributeValue {
 	return value
 }
 
-func (entry *Entry) Get(key AttributeKey) AttributeValue {
-	return entry.Attributes.Get(key)
+func (e *Entry) Get(key AttributeKey) AttributeValue {
+	return e.Attributes.Get(key)
+}
+
+func prefixEnd(prefix Prefix) Prefix {
+	if len(prefix) == 0 {
+		return Prefix(nil)
+	}
+
+	lastComponent := prefix[len(prefix)-1]
+	lastComponentValue := fmt.Sprintf("%s%c", lastComponent.Value, utf8.MaxRune)
+	cpy := prefix.Clone()
+	cpy[len(cpy)-1] = Component{
+		Type:  lastComponent.Type,
+		Value: lastComponentValue,
+	}
+
+	return cpy
 }

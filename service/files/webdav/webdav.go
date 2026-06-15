@@ -15,8 +15,8 @@ import (
 type WebDav struct {
 	logger *slog.Logger
 
-	files     *files.Files
-	basicAuth *httpauth.BasicAuth
+	files    *files.Files
+	httpAuth *httpauth.BasicAuth
 
 	cors *cors.Cors
 }
@@ -41,7 +41,7 @@ func NewWebDav(files *files.Files, config WebDavConfig, logger *slog.Logger) (*W
 		logger: logger,
 
 		files: files,
-		basicAuth: httpauth.NewBasicAuth(
+		httpAuth: httpauth.NewBasicAuth(
 			files.LDAPFactory(),
 			httpauth.DefaultBasicAuthErrorHandler,
 			logger.With("component", "auth"),
@@ -89,8 +89,8 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 		handler.ServeHTTP(w, r)
 	}))
 
-	handler = wd.basicAuth.Required(handler)
-	handler = wd.basicAuth.Middleware(handler)
+	handler = wd.httpAuth.Required(handler)
+	handler = wd.httpAuth.Middleware(handler)
 	handler = wd.cors.Handler(handler)
 
 	return handler

@@ -1,26 +1,25 @@
 load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "store",
+    name = "pgcache",
     srcs = [
-        "flag.go",
-        "mem.go",
+        "key.go",
         "metrics.go",
-        "psql.go",
-        "store.go",
+        "notification_manager.go",
+        "sorted_map.go",
+        "table.go",
         "types.go",
     ],
-    embedsrcs = ["schema.sql"],
-    importpath = "github.com/teapotovh/teapot/service/bottin/store",
+    importpath = "github.com/teapotovh/teapot/lib/pgcache",
     visibility = ["//visibility:public"],
     deps = [
         "//lib/observability",
-        "//lib/pgcache",
         "//lib/run",
+        "@com_github_cenkalti_backoff_v5//:backoff",
         "@com_github_google_btree//:btree",
+        "@com_github_google_uuid//:uuid",
         "@com_github_jackc_pgx_v5//:pgx",
         "@com_github_jackc_pgx_v5//pgxpool",
         "@com_github_prometheus_client_golang//prometheus",
-        "@com_github_spf13_pflag//:pflag",
     ],
 )

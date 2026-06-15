@@ -1,6 +1,7 @@
 package httpauth
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -14,7 +15,11 @@ const (
 )
 
 func GetAuth(r *http.Request) *Auth {
-	val := r.Context().Value(authContextKey)
+	return GetAuthContext(r.Context())
+}
+
+func GetAuthContext(ctx context.Context) *Auth {
+	val := ctx.Value(authContextKey)
 	if val == nil {
 		return nil
 	}
@@ -34,6 +39,10 @@ type Auth struct {
 // Only use behind endpoints secured with (Basic|JWT)Auth.Required() middleware.
 func MustGetAuth(r *http.Request) Auth {
 	return *GetAuth(r)
+}
+
+func MustGetAuthContext(ctx context.Context) Auth {
+	return *GetAuthContext(ctx)
 }
 
 func authFromUser(user *ldap.User, expiresAt *time.Time) Auth {
