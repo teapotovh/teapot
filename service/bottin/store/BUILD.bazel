@@ -10,7 +10,7 @@ go_library(
         "store.go",
         "types.go",
     ],
-    embedsrcs = ["schema.sql"],
+    embedsrcs = ["migrations/00001_entries.sql"],
     importpath = "github.com/teapotovh/teapot/service/bottin/store",
     visibility = ["//visibility:public"],
     deps = [
@@ -20,7 +20,10 @@ go_library(
         "@com_github_google_btree//:btree",
         "@com_github_jackc_pgx_v5//:pgx",
         "@com_github_jackc_pgx_v5//pgxpool",
+        "@com_github_jackc_pgx_v5//stdlib",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
+        "@ht_sr_git__bitfehler_brant//:brant",
+        "@ht_sr_git__bitfehler_brant//database/dialect",
     ],
 )

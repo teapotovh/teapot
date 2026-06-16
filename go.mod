@@ -3,6 +3,7 @@ module github.com/teapotovh/teapot
 go 1.25.9
 
 require (
+	git.sr.ht/~bitfehler/brant v0.5.1
 	github.com/ammario/tlru v0.4.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/coreos/go-iptables v0.8.0
@@ -82,6 +83,7 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
