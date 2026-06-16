@@ -2,12 +2,15 @@ package store
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
 
+	"git.sr.ht/~bitfehler/brant"
+	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,15 +19,15 @@ import (
 	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/run"
 
-	_ "embed"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var (
 	ErrNotFound = errors.New("not found")
 )
 
-//go:embed schema.sql
-var schema string
+//go:embed migrations/*.sql
+var migraitions embed.FS
 
 type PSQL struct {
 	pool  *pgxpool.Pool
@@ -150,6 +153,26 @@ func deletePSQL(ctx context.Context, tx pgx.Tx, prefixes []Prefix) error {
 }
 
 func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error) {
+	options := brant.DefaultOptions().WithTableName("_version").WithFilesystem(migraitions).WithDataSourceName(url)
+
+	provider, err := brant.NewProvider(logger, dialect.Postgres, options)
+	if err != nil {
+		return nil, fmt.Errorf("error while constructing migration provider: %w", err)
+	}
+
+	applied, err := provider.Up(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error while applying migrations: %w", err)
+	}
+
+	for _, migration := range applied {
+		logger.Info("applied migration", "migration", migration)
+	}
+
+	if err := provider.Close(); err != nil {
+		return nil, fmt.Errorf("error while closing migration connection: %w", err)
+	}
+
 	// Use context.Background() here, as we want the pool to live for the lifetime
 	// of the program, while the provided context is only meant for databse initialization.
 	pool, err := pgxpool.New(context.Background(), url)
@@ -159,19 +182,6 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("error while connecting to psql: %w", err)
-	}
-
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error while beginning migration: %w", err)
-	}
-
-	if _, err := tx.Exec(ctx, schema); err != nil {
-		return nil, fmt.Errorf("error while applying schema: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("error while committing migration: %w", err)
 	}
 
 	table, err := pgcache.NewTable(pool, "entries", PrefixFromString, listPSQL, getPSQL, storePSQL, deletePSQL, logger)
