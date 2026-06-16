@@ -5,4 +5,4 @@ CREATE TABLE entries (
 );
 
 -- +brant Down
-DELETE TABLE entries;
+DROP TABLE entries;
