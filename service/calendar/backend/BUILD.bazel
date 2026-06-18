@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "backend",
+    srcs = [
+        "backend.go",
+        "user_principal.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/calendar/backend",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httpauth",
+        "//lib/webdav",
+        "//lib/webdav/caldav",
+        "//service/calendar/store",
+        "@com_github_emersion_go_ical//:go-ical",
+    ],
+)
