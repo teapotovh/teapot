@@ -26,19 +26,10 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-//go:embed migrations/*.sql
-var migraitions embed.FS
-
-type PSQL struct {
-	pool  *pgxpool.Pool
-	table *pgcache.Table[Prefix, Entry]
-
-	metrics metrics
-}
-
-func parseRows(rows pgx.Rows) (entries []Entry, err error) {
+func parseRows(rows pgx.Rows) ([]Entry, error) {
 	defer rows.Close()
 
+	var entries []Entry
 	for rows.Next() {
 		var (
 			rawPrefix     string
@@ -65,7 +56,7 @@ func parseRows(rows pgx.Rows) (entries []Entry, err error) {
 		})
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("could not read all psql results: %w", err)
 	}
 
@@ -77,7 +68,7 @@ var listQuery = `
 		FROM entries;
 `
 
-func listPSQL(ctx context.Context, conn *pgxpool.Pool) (entries []Entry, err error) {
+func listPSQL(ctx context.Context, conn *pgxpool.Pool) ([]Entry, error) {
 	rows, err := conn.Query(ctx, listQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error while listing entries from psql: %w", err)
@@ -111,7 +102,7 @@ var storeQuery = `
 	  SELECT unnest($1::text[]), unnest($2::jsonb[])
 		ON CONFLICT (dn) DO UPDATE
 		SET attributes = EXCLUDED.attributes;
-	`
+`
 
 func storePSQL(ctx context.Context, tx pgx.Tx, entries []Entry) error {
 	dns := make([]string, 0, len(entries))
@@ -150,6 +141,16 @@ func deletePSQL(ctx context.Context, tx pgx.Tx, prefixes []Prefix) error {
 	}
 
 	return nil
+}
+
+//go:embed migrations/*.sql
+var migraitions embed.FS
+
+type PSQL struct {
+	pool  *pgxpool.Pool
+	table *pgcache.Table[Prefix, Entry]
+
+	metrics metrics
 }
 
 func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error) {

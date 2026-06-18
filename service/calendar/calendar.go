@@ -69,6 +69,10 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 	return &calendar, nil
 }
 
+func (c *Calendar) Store() store.Store {
+	return c.store
+}
+
 func (c *Calendar) Handler(prefix string) http.Handler {
 	var handler http.Handler = &caldav.Handler{
 		Prefix:  prefix,

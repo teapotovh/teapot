@@ -5,9 +5,10 @@ import (
 	"errors"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var (
@@ -19,15 +20,16 @@ var (
 
 type Mem struct {
 	mu        sync.RWMutex
-	calendars map[string]Calendar
-	objects   map[string]Object
+	calendars map[Path]Calendar
+	objects   map[Path]Object
 
 	metrics metrics
 }
 
 func NewMem() *Mem {
 	m := Mem{
-		calendars: map[string]Calendar{},
+		calendars: map[Path]Calendar{},
+		objects:   map[Path]Object{},
 	}
 	m.metrics.initMetrics("mem")
 
@@ -43,14 +45,7 @@ func (m *Mem) Ping(_ context.Context) error {
 }
 
 // CreateCalendar implements Store.
-func (m *Mem) CreateCalendar(ctx context.Context, calendar Calendar) (err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationCreateCalendar, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) CreateCalendar(ctx context.Context, calendar Calendar) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -64,19 +59,13 @@ func (m *Mem) CreateCalendar(ctx context.Context, calendar Calendar) (err error)
 }
 
 // ListCalendars implements Store.
-func (m *Mem) ListCalendars(ctx context.Context, basePath string) (calendars []Calendar, err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationCreateCalendar, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	var calendars []Calendar
 	for _, calendar := range m.calendars {
-		if strings.HasPrefix(calendar.Path, basePath) {
+		if strings.HasPrefix(string(calendar.Path), string(basePath)) {
 			calendars = append(calendars, calendar)
 		}
 	}
@@ -85,14 +74,7 @@ func (m *Mem) ListCalendars(ctx context.Context, basePath string) (calendars []C
 }
 
 // GetCalendar implements Store.
-func (m *Mem) GetCalendar(ctx context.Context, path string) (calendar *Calendar, err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationGetCalendar, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -104,14 +86,7 @@ func (m *Mem) GetCalendar(ctx context.Context, path string) (calendar *Calendar,
 }
 
 // CreateCalendarObject implements Store.
-func (m *Mem) CreateCalendarObject(ctx, object Object) (err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationCreateCalendarObject, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) CreateCalendarObject(ctx context.Context, object Object) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -125,19 +100,13 @@ func (m *Mem) CreateCalendarObject(ctx, object Object) (err error) {
 }
 
 // ListCalendarObjects implements Store.
-func (m *Mem) ListCalendarObjects(ctx, path string) (objects []Object, err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationListCalendarObjects, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) ListCalendarObjects(ctx context.Context, path Path) ([]Object, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	var objects []Object
 	for _, object := range m.objects {
-		if strings.HasPrefix(object.Path, path) {
+		if strings.HasPrefix(string(object.Path), string(path)) {
 			objects = append(objects, object)
 		}
 	}
@@ -146,14 +115,7 @@ func (m *Mem) ListCalendarObjects(ctx, path string) (objects []Object, err error
 }
 
 // GetCalendarObject implements Store.
-func (m *Mem) GetCalendarObject(ctx context.Context, path string) (object *Object, err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationGetCalendarObject, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) GetCalendarObject(ctx context.Context, path Path) (*Object, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -165,14 +127,7 @@ func (m *Mem) GetCalendarObject(ctx context.Context, path string) (object *Objec
 }
 
 // DeleteCalendarObject implements Store.
-func (m *Mem) DeleteCalendarObject(ctx, path string) (err error) {
-	start := time.Now()
-
-	defer func() {
-		m.metrics.operationDuration.WithLabelValues(operationDeleteCalendarObject, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
+func (m *Mem) DeleteCalendarObject(ctx context.Context, path Path) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -185,11 +140,22 @@ func (m *Mem) DeleteCalendarObject(ctx, path string) (err error) {
 	return nil
 }
 
+// Run implements run.Runnable
+//
+// This is a no-op.
+func (m *Mem) Run(ctx context.Context, notify run.Notify) error {
+	notify.Notify()
+	return nil
+}
+
 // Metrics implements observability.Metrics.
 func (m *Mem) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{
-		m.metrics.backend,
-		m.metrics.operationDuration,
-		m.metrics.transactionDuration,
-	}
+	return []prometheus.Collector{m.metrics.backend}
+}
+
+// ReadinessChecks implements run.ReadinessChecks
+//
+// This is a no-op.
+func (m *Mem) ReadinessChecks() map[string]observability.Check {
+	return map[string]observability.Check{}
 }
