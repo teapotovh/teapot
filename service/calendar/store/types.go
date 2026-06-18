@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/emersion/go-ical"
@@ -13,16 +14,41 @@ import (
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 )
 
+type Path string
+
+func PrefixFromString(rawPath string) (*Path, error) {
+	path := Path(rawPath)
+	return &path, nil
+}
+
+func (path Path) Less(p Path) bool {
+	return strings.Compare(string(path), string(p)) == -1
+}
+
+func (path Path) String() string {
+	return string(path)
+}
+
 type Calendar struct {
-	Path        string
+	Path        Path
 	Name        string
 	Description string
 }
 
+// Key implements pgcache.Object.
+func (c Calendar) Key() Path {
+	return c.Path
+}
+
 type Object struct {
-	Path    string
+	Path    Path
 	ModTime time.Time
 	Data    []byte
+}
+
+// Key implements pgcache.Object.
+func (o Object) Key() Path {
+	return o.Path
 }
 
 func (o *Object) Size() int64 {
@@ -58,7 +84,7 @@ func SerializeObject(obj caldav.CalendarObject) (*Object, error) {
 	}
 
 	so := Object{
-		Path:    obj.Path,
+		Path:    Path(obj.Path),
 		ModTime: obj.ModTime,
 		Data:    buf.Bytes(),
 	}

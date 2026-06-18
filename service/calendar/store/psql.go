@@ -3,23 +3,33 @@ package store
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/pgcache"
+	"github.com/teapotovh/teapot/lib/run"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+)
+
+var (
+	ErrAlreadyExists = errors.New("already exists")
+	ErrNotFound      = errors.New("not found")
 )
 
 //go:embed migrations/*.sql
 var migraitions embed.FS
 
 type PSQL struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	calendarTable *pgcache.Table[Path, Calendar]
+	objectTable   *pgcache.Table[Path, Object]
 
 	metrics metrics
 }
@@ -41,6 +51,10 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 		logger.Info("applied migration", "migration", migration)
 	}
 
+	if err := provider.Close(); err != nil {
+		return nil, fmt.Errorf("error while closing migration connection: %w", err)
+	}
+
 	// Use context.Background() here, as we want the pool to live for the lifetime
 	// of the program, while the provided context is only meant for databse initialization.
 	pool, err := pgxpool.New(context.Background(), url)
@@ -52,10 +66,48 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 		return nil, fmt.Errorf("error while connecting to psql: %w", err)
 	}
 
-	p := PSQL{pool: pool}
+	calendarTable, err := pgcache.NewTable(pool, "calendars", PrefixFromString, listCalendarPSQL, getCalendarPSQL, storeCalendarPSQL, deleteCalendarPSQL, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
+	}
+
+	objectTable, err := pgcache.NewTable(pool, "objects", PrefixFromString, listObjectPSQL, getObjectPSQL, storeObjectPSQL, deleteObjectPSQL, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
+	}
+
+	p := PSQL{
+		pool:          pool,
+		calendarTable: calendarTable,
+		objectTable:   objectTable,
+	}
 	p.metrics.initMetrics("psql")
 
 	return &p, nil
+}
+
+// unit may be used with runInTx when no result is expected
+type unit struct{}
+
+func runInTx[T pgcache.Object[Path], R any](table *pgcache.Table[Path, T], fn func(ctx context.Context, tx *pgcache.TableTx[Path, T]) (R, error)) func(context.Context) (R, error) {
+	var empty R
+	return func(ctx context.Context) (R, error) {
+		tx, err := table.Begin(ctx)
+		if err != nil {
+			return empty, fmt.Errorf("error while starting transaction: %w", err)
+		}
+
+		result, err := fn(ctx, tx)
+		if err != nil {
+			return empty, fmt.Errorf("error while running transaction body: %w", err)
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return empty, fmt.Errorf("error while committing transaction: %w", err)
+		}
+
+		return result, nil
+	}
 }
 
 // Ping implements Store.
@@ -67,117 +119,18 @@ func (p *PSQL) Ping(ctx context.Context) error {
 	return nil
 }
 
-var storeCalendarQuery = `
-	INSERT INTO calendars (path, name, description)
-	VALUES ($1, $2, $3);
-`
-
-// CreateCalendar implements Store.
-func (p *PSQL) CreateCalendar(ctx context.Context, calendar Calendar) (err error) {
-	start := time.Now()
-
-	defer func() {
-		p.metrics.operationDuration.WithLabelValues(operationCreateCalendar, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
-	_, err = p.pool.Exec(ctx, storeCalendarQuery, calendar.Path, calendar.Name, calendar.Description)
-	if err != nil {
-		return fmt.Errorf("error while inserting data with psql: %w", err)
-	}
-
-	return nil
-}
-
-var listCalendarsQuery = `
-	SELECT path, name, description
-	FROM calendars
-	WHERE path LIKE $1;
-`
-
-// ListCalendars implements Store.
-func (p *PSQL) ListCalendars(ctx context.Context, basePath string) (calendars []Calendar, err error) {
-	start := time.Now()
-
-	defer func() {
-		p.metrics.operationDuration.WithLabelValues(operationListCalendars, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
-	rows, err := p.pool.Query(ctx, listCalendarsQuery, basePath+"%")
-	if err != nil {
-		return nil, fmt.Errorf("error while listing calendars from psql: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var cal Calendar
-
-		if err := rows.Scan(&cal.Path, &cal.Name, &cal.Description); err != nil {
-			return nil, fmt.Errorf("could not extract three columns from psql list: %w", err)
-		}
-
-		calendars = append(calendars, cal)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("could not read all psql results: %w", err)
-	}
-
-	return calendars, nil
-}
-
-var getCalendarQuery = `
-	SELECT path, name, description
-	FROM calendars
-	WHERE path = $1
-	LIMIT 1;
-`
-
-// GetCalendar implements Store.
-func (p *PSQL) GetCalendar(ctx context.Context, path string) (calendar *Calendar, err error) {
-	start := time.Now()
-
-	defer func() {
-		p.metrics.operationDuration.WithLabelValues(operationGetCalendar, status(err)).
-			Observe(time.Since(start).Seconds())
-	}()
-
-	row := p.pool.QueryRow(ctx, getCalendarQuery, path)
-
-	var cal Calendar
-	if err := row.Scan(&cal.Path, &cal.Description); err != nil {
-		return nil, fmt.Errorf("could not extract three columns from row entry: %w", err)
-	}
-
-	return &cal, nil
-}
-
-// CreateCalendarObject implements Store.
-func (p *PSQL) CreateCalendarObject(ctx, object Object) error {
-	return nil
-}
-
-// ListCalendarObjects implements Store.
-func (p *PSQL) ListCalendarObjects(ctx, path string) ([]Object, error) {
-	return nil, nil
-}
-
-// GetCalendarObject implements Store.
-func (p *PSQL) GetCalendarObject(ctx context.Context, path string) (*Object, error) {
-	return nil, nil
-}
-
-// DeleteCalendarObject implements Store.
-func (p *PSQL) DeleteCalendarObject(ctx, path string) error {
-	return nil
+// Run implements run.Runnable.
+func (p *PSQL) Run(ctx context.Context, notify run.Notify) error {
+	cr := run.Combine(p.calendarTable, p.objectTable)
+	return cr.Run(ctx, notify)
 }
 
 // Metrics implements observability.Metrics.
 func (p *PSQL) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{
-		p.metrics.backend,
-		p.metrics.operationDuration,
-		p.metrics.transactionDuration,
-	}
+	return append(p.calendarTable.Metrics(), p.metrics.backend)
+}
+
+// ReadinessChecks implements run.ReadinessChecks.
+func (p *PSQL) ReadinessChecks() map[string]observability.Check {
+	return p.calendarTable.ReadinessChecks()
 }
