@@ -9,6 +9,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+func ptr[T any](value T) *T {
+	return &value
+}
+
 // Reconcile is triggered for a Service. It finds all pods matching the service
 // selector, collects the external IPs of their nodes, and sets them on the
 // Service.Status.LoadBalancer.Ingress.
@@ -52,7 +56,7 @@ func (lb *LoadBalancer) Reconcile(ctx context.Context, req reconcile.Request) (r
 			if addr.Type == v1.NodeExternalIP {
 				if _, ok := seen[addr.Address]; !ok {
 					seen[addr.Address] = struct{}{}
-					ingresses = append(ingresses, v1.LoadBalancerIngress{IP: addr.Address})
+					ingresses = append(ingresses, v1.LoadBalancerIngress{IP: addr.Address, IPMode: ptr(v1.LoadBalancerIPModeProxy)})
 				}
 			}
 		}
