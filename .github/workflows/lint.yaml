@@ -22,7 +22,7 @@ jobs:
       - name: golangci-lint run
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.6.2
+          version: v2.12.2
           only-new-issues: true
       - name: ruff check
         uses: astral-sh/ruff-action@v3
