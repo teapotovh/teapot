@@ -265,6 +265,11 @@ func applyFilter(entry store.Entry, filter ldap.Filter) (bool, error) {
 
 		return false, nil
 	} else {
-		return false, fmt.Errorf("error while applying filter %#v (of type %T): %w", filter, filter, ErrUnsupportedFilter)
+		return false, fmt.Errorf(
+			"error while applying filter %#v (of type %T): %w",
+			filter,
+			filter,
+			ErrUnsupportedFilter,
+		)
 	}
 }

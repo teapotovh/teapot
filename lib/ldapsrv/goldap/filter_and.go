@@ -1,6 +1,9 @@
 package message
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 //             and             [0] SET SIZE (1..MAX) OF filter Filter,
 
@@ -43,8 +46,8 @@ func (filterAnd *FilterAnd) readComponents(bytes *Bytes) (err error) {
 }
 
 func (filterAnd FilterAnd) write(bytes *Bytes) (size int) {
-	for i := len(filterAnd) - 1; i >= 0; i-- {
-		size += filterAnd[i].write(bytes)
+	for _, v := range slices.Backward(filterAnd) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classContextSpecific, isCompound, TagFilterAnd, size)

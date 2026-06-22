@@ -1,5 +1,7 @@
 package message
 
+import "slices"
+
 // Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI.
 func readTaggedReferral(bytes *Bytes, class int, tag int) (referral Referral, err error) {
 	err = bytes.ReadSubBytes(class, tag, referral.readComponents)
@@ -34,8 +36,8 @@ func (r Referral) Pointer() *Referral { return &r }
 
 // Referral ::= SEQUENCE SIZE (1..MAX) OF uri URI.
 func (r Referral) writeTagged(bytes *Bytes, class int, tag int) (size int) {
-	for i := len(r) - 1; i >= 0; i-- {
-		size += r[i].write(bytes)
+	for _, v := range slices.Backward(r) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(class, isCompound, tag, size)

@@ -5,6 +5,8 @@ package message
 //                       -- The LDAPString is constrained to
 //                       -- <attributeSelector> in Section 4.5.1.8
 
+import "slices"
+
 func readAttributeSelection(bytes *Bytes) (attributeSelection AttributeSelection, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, attributeSelection.readComponents)
 	if err != nil {
@@ -33,8 +35,8 @@ func (selection *AttributeSelection) readComponents(bytes *Bytes) (err error) {
 }
 
 func (selection AttributeSelection) write(bytes *Bytes) (size int) {
-	for i := len(selection) - 1; i >= 0; i-- {
-		size += selection[i].write(bytes)
+	for _, v := range slices.Backward(selection) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)

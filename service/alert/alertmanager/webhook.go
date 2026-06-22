@@ -46,11 +46,11 @@ func (am *AlertManager) Webhook(w http.ResponseWriter, r *http.Request) (err err
 		data.Receiver,
 		"status",
 		data.Status,
-		"groupLabels",
+		"group_labels",
 		data.GroupLabels,
-		"commonLabels",
+		"common_labels",
 		data.CommonLabels,
-		"commonAnnotations",
+		"common_annotations",
 		data.CommonAnnotations,
 	)
 

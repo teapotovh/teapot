@@ -277,7 +277,7 @@ func writeInt64(bytes *Bytes, i int64) int {
 
 	for j := range n {
 		if j < len(buf) {
-			b := i >> uint((n-1-j)*8) //nolint:gosec
+			b := i >> uint((n-1-j)*8)
 			buf[j] = byte(b)
 		}
 	}

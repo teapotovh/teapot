@@ -11,7 +11,7 @@ func toHex(b []byte) (r string) {
 
 	var rSb10 strings.Builder
 	for _, e := range b {
-		rSb10.WriteString(fmt.Sprintf("0x%x ", e))
+		fmt.Fprintf(&rSb10, "0x%x ", e)
 	}
 
 	r += rSb10.String()

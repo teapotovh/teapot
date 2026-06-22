@@ -33,16 +33,16 @@ func (a *Alert) createGitHubIssue(ctx context.Context, alert AlertData) (int, er
 
 		// Build the issue request
 		issueRequest := &github.IssueRequest{
-			Title: github.Ptr(alert.Title),
-			Body:  github.Ptr(body),
+			Title: new(alert.Title),
+			Body:  new(body),
 		}
 
 		if len(alert.Labels) > 0 {
-			issueRequest.Labels = github.Ptr(alert.Labels)
+			issueRequest.Labels = new(alert.Labels)
 		}
 
 		if len(a.assignees) > 0 {
-			issueRequest.Assignees = github.Ptr(a.assignees)
+			issueRequest.Assignees = new(a.assignees)
 		}
 
 		issue, resp, err := a.client.Issues.Create(ctx, a.owner, a.repo, issueRequest)

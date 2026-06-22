@@ -1,5 +1,7 @@
 package message
 
+import "slices"
+
 //	PartialAttribute ::= SEQUENCE {
 //	     type       AttributeDescription,
 //	     vals       SET OF value AttributeValue }
@@ -51,8 +53,8 @@ func (p *PartialAttribute) readValsComponents(bytes *Bytes) (err error) {
 //	     type       AttributeDescription,
 //	     vals       SET OF value AttributeValue }
 func (p PartialAttribute) write(bytes *Bytes) (size int) {
-	for i := len(p.vals) - 1; i >= 0; i-- {
-		size += p.vals[i].write(bytes)
+	for _, v := range slices.Backward(p.vals) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSet, size)

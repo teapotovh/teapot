@@ -132,7 +132,7 @@ func groupRRSets(ctx context.Context, rrsets []desec.RRSet, logger *slog.Logger)
 		_, isLabel := potentialLabels[rrset.Name]
 		// If the RRSet is not a label itself and it has no labels, we have some discrepancy
 		if !isLabel && !hasLabels {
-			logger.WarnContext(ctx, "RRSet has no labels associated", "rrset", rrset, "labelName", ln)
+			logger.WarnContext(ctx, "RRSet has no labels associated", "rrset", rrset, "label_name", ln)
 		}
 
 		endpoint := rrsetToEndpoint(rrset, labels)

@@ -1,6 +1,9 @@
 package message
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // substrings      [4] SubstringFilter,.
 func readFilterSubstrings(bytes *Bytes) (filtersubstrings FilterSubstrings, err error) {
@@ -131,8 +134,8 @@ func (f FilterSubstrings) write(bytes *Bytes) int {
 }
 
 func (s SubstringFilter) writeTagged(bytes *Bytes, class int, tag int) (size int) {
-	for i := len(s.substrings) - 1; i >= 0; i-- {
-		substring := s.substrings[i]
+	for _, v := range slices.Backward(s.substrings) {
+		substring := v
 		switch substring := substring.(type) {
 		case SubstringInitial:
 			size += AssertionValue(substring).writeTagged(bytes, classContextSpecific, TagSubstringInitial)
