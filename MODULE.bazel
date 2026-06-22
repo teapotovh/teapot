@@ -20,7 +20,7 @@ bazel_dep(name = "rules_img", version = "0.3.8")
 # --- Go Configuration ---
 # Sets up the Go SDK and dependencies from go.mod
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.25.9")
+go_sdk.download(version = "1.26.4")
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
