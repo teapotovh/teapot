@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
@@ -20,16 +19,10 @@ import (
 const (
 	CodeLog              = -1
 	CodeInitLoadBalancer = -2
-	CodeRun              = -4
+	CodeRun              = -3
 )
 
-var defaultComponents = []string{
-	"arp",
-}
-
 func main() {
-	components := flag.StringSliceP("components", "c", defaultComponents, "list of components to run")
-
 	fs, getLoadBalancerConfig := loadbalancer.LoadBalancerFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLogConfig := log.LogFlagSet()
@@ -48,18 +41,16 @@ func main() {
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
+	lb, err := loadbalancer.NewLoadBalancer(getLoadBalancerConfig(), logger.With("sub", "loadbalancer"))
+	if err != nil {
+		logger.Error("error while initializing loadbalancer controller", "err", err)
+		os.Exit(CodeInitLoadBalancer)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if slices.Contains(*components, "loadbalancer") {
-		lb, err := loadbalancer.NewLoadBalancer(getLoadBalancerConfig(), logger.With("sub", "loadbalancer"))
-		if err != nil {
-			logger.Error("error while initializing loadbalancer controller", "err", err)
-			os.Exit(CodeInitLoadBalancer)
-		}
-
-		run.Add("loadbalancer", lb, nil)
-	}
+	run.Add("loadbalancer", lb, nil)
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running loadbalancer components", "err", err)
