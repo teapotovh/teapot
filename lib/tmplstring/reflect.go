@@ -40,7 +40,6 @@ func fieldsInStructHelper(t reflect.Type) []string {
 	var fields []string
 
 	for field := range t.Fields() {
-
 		if field.IsExported() {
 			fields = append(fields, field.Name)
 

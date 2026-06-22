@@ -12,7 +12,6 @@ import (
 
 type unit struct{}
 
-//go:fix inline
 func ptr[T any](value T) *T {
 	return new(value)
 }

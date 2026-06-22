@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -245,13 +244,10 @@ func (w *worker) run() {
 				flush.Trigger()
 			}
 
-			labels := prometheus.Labels{
-				"source": w.source,
-				"level":  req.level,
-			}
-			w.metrics.total.With(labels).Inc()
-			w.metrics.duration.With(labels).Observe(float64(time.Since(req.insertedAt).Seconds()))
-			w.metrics.size.With(prometheus.Labels{"source": w.source}).Set(float64(bytesWrittenSinceLastRotate))
+			w.metrics.total.WithLabelValues(w.source, req.level).Inc()
+			w.metrics.duration.WithLabelValues(w.source, req.level).
+				Observe(float64(time.Since(req.insertedAt).Seconds()))
+			w.metrics.size.WithLabelValues(w.source).Set(float64(bytesWrittenSinceLastRotate))
 
 			req.result <- nil
 		}

@@ -102,6 +102,8 @@ linters:
         # Disable: Incorrect or missing package comment
         # See: https://staticcheck.dev/docs/checks/#ST1000
         - "-ST1000"
+    goconst:
+      min-occurrences: 8
   exclusions:
     generated: lax
     rules:

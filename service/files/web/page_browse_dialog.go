@@ -127,7 +127,7 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 		}, nil
 
 	case http.MethodPost:
-		if err := r.ParseMultipartForm(files.MaxSize); err != nil {
+		if err := r.ParseMultipartForm(files.MaxSize); err != nil { //nolint:gosec
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 

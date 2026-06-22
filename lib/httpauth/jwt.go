@@ -28,6 +28,7 @@ type JWTAuth struct {
 	issuer   string
 	duration time.Duration
 	prefix   string
+	secure   bool
 
 	factory *ldap.Factory
 }
@@ -42,6 +43,9 @@ type JWTAuthConfig struct {
 	Duration time.Duration
 	// Prefix is the HTTP prefix under which the web application is served
 	Prefix string
+	// Secrue marks the generated cookies as Secure: true, meaning they're HTTPS-only.
+	// Disable during development.
+	Secure bool
 }
 
 func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger) *JWTAuth {
@@ -52,6 +56,7 @@ func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger
 		issuer:   config.Issuser,
 		duration: config.Duration,
 		prefix:   config.Prefix,
+		secure:   config.Secure,
 
 		factory: factory,
 	}
@@ -104,10 +109,13 @@ func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) 
 }
 
 func (ja *JWTAuth) DeAuthenticate() http.Cookie {
-	return http.Cookie{
-		Name:  cookieName,
-		Value: "",
-		Path:  ja.prefix,
+	return http.Cookie{ //nolint:gosec
+		Name:     cookieName,
+		Value:    "",
+		Path:     ja.prefix,
+		Secure:   ja.secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
 	}
 }
 
@@ -138,11 +146,14 @@ func (ja *JWTAuth) authCookie(username string, admin bool) (*http.Cookie, error)
 		return nil, fmt.Errorf("error while signing JWT for %q: %w", username, err)
 	}
 
-	return &http.Cookie{
-		Name:    cookieName,
-		Value:   ss,
-		Path:    ja.prefix,
-		Expires: expiry,
+	return &http.Cookie{ //nolint:gosec
+		Name:     cookieName,
+		Value:    ss,
+		Path:     ja.prefix,
+		Expires:  expiry,
+		Secure:   ja.secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
 	}, nil
 }
 

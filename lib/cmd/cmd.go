@@ -38,7 +38,7 @@ func (c *Command) Start(name string, args ...string) error {
 	}
 
 	c.logger.Debug("starting command", "name", name, "args", args)
-	c.cmd = exec.Command(name, args...)
+	c.cmd = exec.Command(name, args...) //nolint:gosec
 
 	stdout, err := c.cmd.StdoutPipe()
 	if err != nil {

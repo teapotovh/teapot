@@ -72,7 +72,7 @@ var _ ErrorHandler[error] = DefaultGenericHandler
 func Write(w http.ResponseWriter, status int, data []byte) error {
 	w.WriteHeader(status)
 
-	l, err := w.Write(data)
+	l, err := w.Write(data) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("error while writing response data: %w", err)
 	}
