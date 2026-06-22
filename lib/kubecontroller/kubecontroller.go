@@ -28,7 +28,7 @@ var (
 // getResourceName returns the resource name from a type (without instance).
 func getResourceName[T runtime.Object](mapper meta.RESTMapper) (string, error) {
 	objType := reflect.TypeFor[T]()
-	if objType.Kind() == reflect.Ptr {
+	if objType.Kind() == reflect.Pointer {
 		objType = objType.Elem()
 	}
 

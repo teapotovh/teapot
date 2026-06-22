@@ -78,9 +78,17 @@ func (request *BindRequest) readComponents(bytes *Bytes) (err error) {
 func (request BindRequest) write(bytes *Bytes) (size int) {
 	switch request.authentication.(type) {
 	case OCTETSTRING:
-		size += request.authentication.(OCTETSTRING).writeTagged(bytes, classContextSpecific, TagAuthenticationChoiceSimple)
+		size += request.authentication.(OCTETSTRING).writeTagged(
+			bytes,
+			classContextSpecific,
+			TagAuthenticationChoiceSimple,
+		)
 	case SaslCredentials:
-		size += request.authentication.(SaslCredentials).writeTagged(bytes, classContextSpecific, TagAuthenticationChoiceSaslCredentials)
+		size += request.authentication.(SaslCredentials).writeTagged(
+			bytes,
+			classContextSpecific,
+			TagAuthenticationChoiceSaslCredentials,
+		)
 	default:
 		panic(fmt.Sprintf("Unknown authentication choice: %#v", request.authentication))
 	}

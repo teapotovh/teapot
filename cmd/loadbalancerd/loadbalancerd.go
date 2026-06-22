@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
@@ -15,28 +14,18 @@ import (
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/loadbalancer"
-	"github.com/teapotovh/teapot/service/loadbalancer/arp"
 )
 
 const (
 	CodeLog              = -1
 	CodeInitLoadBalancer = -2
-	CodeInitARP          = -3
-	CodeRun              = -4
+	CodeRun              = -3
 )
 
-var defaultComponents = []string{
-	"arp",
-}
-
 func main() {
-	components := flag.StringSliceP("components", "c", defaultComponents, "list of components to run")
-
 	fs, getLoadBalancerConfig := loadbalancer.LoadBalancerFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLogConfig := log.LogFlagSet()
-	flag.CommandLine.AddFlagSet(fs)
-	fs, getLoadBalancerARPConfig := arp.ARPFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 
@@ -60,17 +49,6 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-
-	if slices.Contains(*components, "arp") {
-		arp, err := arp.NewARP(lb, getLoadBalancerARPConfig(), logger.With("sub", "arp"))
-		if err != nil {
-			logger.Error("error while initializing arp component", "err", err)
-			os.Exit(CodeInitARP)
-		}
-
-		run.Add("arp/speaker", arp.Speaker(), nil)
-		run.Add("arp/listener", arp.Listener(), nil)
-	}
 
 	run.Add("loadbalancer", lb, nil)
 

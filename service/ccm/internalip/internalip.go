@@ -24,7 +24,6 @@ func nodeInternalIP(prefix netip.Prefix, nodeName string) (netip.Addr, error) {
 
 	bytes := prefix.Addr().AsSlice()
 	for i := range 2 {
-		//nolint:gosec // This operation is index-safe
 		bytes[2+i] = hash[i] ^ hash[2+i] ^ hash[4+i] ^ hash[6+i] ^ hash[8+i] ^ hash[10+i] ^ hash[12+i] ^ hash[14+i]
 	}
 

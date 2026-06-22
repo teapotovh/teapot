@@ -277,8 +277,8 @@ func writeInt64(bytes *Bytes, i int64) int {
 
 	for j := range n {
 		if j < len(buf) {
-			b := i >> uint((n-1-j)*8) //nolint:gosec
-			buf[j] = byte(b)
+			b := i >> uint((n-1-j)*8)
+			buf[j] = byte(b) //nolint:gosec
 		}
 	}
 
@@ -507,7 +507,7 @@ func sizeBase128Int(value int) (size int) {
 func writeBase128Int(bytes *Bytes, value int) (size int) {
 	for ; value > 0 || size == 0; value >>= 7 { // Write at least one byte even if the value is 0
 		// Get the 7 lowest bits
-		b := byte(value) & 0x7f
+		b := byte(value) & 0x7f //nolint:gosec
 		if value < 128 {
 			b |= 0x80
 		}

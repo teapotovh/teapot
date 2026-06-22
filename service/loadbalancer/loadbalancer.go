@@ -4,14 +4,19 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/netip"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/kubeclient"
-	"github.com/teapotovh/teapot/lib/kubecontroller"
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -22,54 +27,108 @@ type LoadBalancerConfig struct {
 type LoadBalancer struct {
 	logger *slog.Logger
 
-	client       *kubernetes.Clientset
-	broker       *broker.Broker[Event]
-	brokerCancel context.CancelFunc
-
-	controller *kubecontroller.Controller[*v1.Service]
-	state      map[string][]netip.Addr
-	prevEvent  Event
+	mgr    ctrl.Manager
+	client client.Client
 }
 
 func NewLoadBalancer(config LoadBalancerConfig, logger *slog.Logger) (*LoadBalancer, error) {
-	client, err := kubeclient.NewKubeClient(config.KubeClient, logger.With("component", "kubeclient"))
+	cfg, err := kubeclient.GetConfig(config.KubeClient, logger.With("component", "kubeclient"))
 	if err != nil {
-		return nil, fmt.Errorf("error while building kubernetes client: %w", err)
+		return nil, fmt.Errorf("error while getting kubeconfig: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	lb := LoadBalancer{
-		logger:       logger,
-		client:       client,
-		broker:       broker.NewBroker[Event](),
-		brokerCancel: cancel,
-		state:        map[string][]netip.Addr{},
-	}
-
-	controllerConfig := kubecontroller.ControllerConfig[*v1.Service]{
-		Client:  client,
-		Handler: lb.handle,
-	}
-
-	lb.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
+		return nil, fmt.Errorf("error while creating controller manager: %w", err)
 	}
 
-	go lb.broker.Run(ctx)
+	r := &LoadBalancer{
+		logger: logger,
+		client: mgr.GetClient(),
+		mgr:    mgr,
+	}
 
-	return &lb, nil
-}
+	// Watch Services with a LoadBalancer type predicate, and Pods that map back
+	// to Services via the podToService handler.
+	err = ctrl.NewControllerManagedBy(mgr).
+		For(&corev1.Service{}, builder.WithPredicates(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+			svc, ok := obj.(*corev1.Service)
+			return ok && svc.Spec.Type == corev1.ServiceTypeLoadBalancer
+		}))).
+		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(r.podToService)).
+		Watches(&corev1.Node{}, handler.EnqueueRequestsFromMapFunc(r.nodeToService)).
+		Complete(r)
+	if err != nil {
+		return nil, fmt.Errorf("error while setting up controller: %w", err)
+	}
 
-func (lb *LoadBalancer) Broker() *broker.Broker[Event] {
-	return lb.broker
+	return r, nil
 }
 
 // Run implements run.Runnable.
 func (lb *LoadBalancer) Run(ctx context.Context, notify run.Notify) error {
-	defer lb.brokerCancel()
-
 	notify.Notify()
 
-	return lb.controller.Run(ctx, 1)
+	return lb.mgr.Start(ctx)
+}
+
+// podToService maps a Pod event to the Services that select it.
+func (lb *LoadBalancer) podToService(ctx context.Context, obj client.Object) []reconcile.Request {
+	pod := obj.(*corev1.Pod)
+
+	svcList := &corev1.ServiceList{}
+	if err := lb.client.List(ctx, svcList, client.InNamespace(pod.Namespace)); err != nil {
+		return nil
+	}
+
+	var requests []reconcile.Request
+
+	for _, svc := range svcList.Items {
+		if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+			continue
+		}
+
+		selector := labels.SelectorFromSet(svc.Spec.Selector)
+
+		if selector.Matches(labels.Set(pod.Labels)) {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: svc.Namespace,
+					Name:      svc.Name,
+				},
+			})
+		}
+	}
+
+	return requests
+}
+
+// nodeToService maps a Node event to the Pods that are on it and then to the
+// Services that select them.
+func (lb *LoadBalancer) nodeToService(ctx context.Context, obj client.Object) []reconcile.Request {
+	node := obj.(*corev1.Node)
+
+	podList := &corev1.PodList{}
+	if err := lb.client.List(ctx, podList, client.MatchingFields{"spec.nodeName": node.Name}); err != nil {
+		return nil
+	}
+
+	seen := map[types.NamespacedName]struct{}{}
+
+	var requests []reconcile.Request
+
+	for _, pod := range podList.Items {
+		for _, req := range lb.podToService(ctx, &pod) {
+			if _, ok := seen[req.NamespacedName]; !ok {
+				seen[req.NamespacedName] = struct{}{}
+				requests = append(requests, req)
+			}
+		}
+	}
+
+	return requests
 }

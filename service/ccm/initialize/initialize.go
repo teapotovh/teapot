@@ -44,9 +44,9 @@ func (iip *Initialize) Run(ctx context.Context, notify run.Notify) error {
 				"node initialization complete",
 				"node",
 				event.Node,
-				"internalIP",
+				"internal_ip",
 				event.InternalIP,
-				"externalIP",
+				"external_ip",
 				event.ExternalIP,
 			)
 

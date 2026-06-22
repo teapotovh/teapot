@@ -3,6 +3,8 @@ package message
 //
 //        Controls ::= SEQUENCE OF control Control
 
+import "slices"
+
 func readTaggedControls(bytes *Bytes, class int, tag int) (controls Controls, err error) {
 	err = bytes.ReadSubBytes(class, tag, controls.readComponents)
 	if err != nil {
@@ -31,8 +33,8 @@ func (controls *Controls) readComponents(bytes *Bytes) (err error) {
 func (controls Controls) Pointer() *Controls { return &controls }
 
 func (controls Controls) writeTagged(bytes *Bytes, class int, tag int) (size int) {
-	for i := len(controls) - 1; i >= 0; i-- {
-		size += controls[i].write(bytes)
+	for _, v := range slices.Backward(controls) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(class, isCompound, tag, size)

@@ -5,5 +5,9 @@ go_library(
     srcs = ["kubelog.go"],
     importpath = "github.com/teapotovh/teapot/lib/kubelog",
     visibility = ["//visibility:public"],
-    deps = ["@io_k8s_klog_v2//:klog"],
+    deps = [
+        "@com_github_go_logr_logr//:logr",
+        "@io_k8s_klog_v2//:klog",
+        "@io_k8s_sigs_controller_runtime//pkg/log",
+    ],
 )

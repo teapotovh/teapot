@@ -3,6 +3,8 @@ package message
 //
 //        AttributeList ::= SEQUENCE OF attribute Attribute
 
+import "slices"
+
 func readAttributeList(bytes *Bytes) (ret AttributeList, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, ret.readComponents)
 	if err != nil {
@@ -40,8 +42,8 @@ func (list AttributeList) size() (size int) {
 }
 
 func (list AttributeList) write(bytes *Bytes) (size int) {
-	for i := len(list) - 1; i >= 0; i-- {
-		size += list[i].write(bytes)
+	for _, v := range slices.Backward(list) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)

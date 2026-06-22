@@ -1,6 +1,9 @@
 package message
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // or              [1] SET SIZE (1..MAX) OF filter Filter,.
 func readFilterOr(bytes *Bytes) (filteror FilterOr, err error) {
@@ -39,8 +42,8 @@ func (f *FilterOr) readComponents(bytes *Bytes) (err error) {
 
 // or              [1] SET SIZE (1..MAX) OF filter Filter,.
 func (f FilterOr) write(bytes *Bytes) (size int) {
-	for i := len(f) - 1; i >= 0; i-- {
-		size += f[i].write(bytes)
+	for _, v := range slices.Backward(f) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classContextSpecific, isCompound, TagFilterOr, size)

@@ -1,5 +1,7 @@
 package message
 
+import "slices"
+
 // SearchResultReference ::= [APPLICATION 19] SEQUENCE
 //
 //	SIZE (1..MAX) OF uri URI
@@ -38,8 +40,8 @@ func (s *SearchResultReference) readComponents(bytes *Bytes) (err error) {
 //
 //	SIZE (1..MAX) OF uri URI
 func (s SearchResultReference) write(bytes *Bytes) (size int) {
-	for i := len(s) - 1; i >= 0; i-- {
-		size += s[i].write(bytes)
+	for _, v := range slices.Backward(s) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classApplication, isCompound, TagSearchResultReference, size)

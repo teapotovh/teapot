@@ -17,7 +17,7 @@ type KubeClientConfig struct {
 }
 
 func NewKubeClient(config KubeClientConfig, logger *slog.Logger) (*kubernetes.Clientset, error) {
-	cfg, err := getConfig(config.KubeConfig, logger)
+	cfg, err := GetConfig(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error while loading kubernetes config: %w", err)
 	}
@@ -30,10 +30,10 @@ func NewKubeClient(config KubeClientConfig, logger *slog.Logger) (*kubernetes.Cl
 	return client, nil
 }
 
-func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
+func GetConfig(config KubeClientConfig, logger *slog.Logger) (*rest.Config, error) {
 	var path *string
 
-	if kubeconfig == "" {
+	if config.KubeConfig == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			err = fmt.Errorf("error while getting user home directory: %w", err)
@@ -51,7 +51,7 @@ func getConfig(kubeconfig string, logger *slog.Logger) (*rest.Config, error) {
 			}
 		}
 	} else {
-		path = &kubeconfig
+		path = &config.KubeConfig
 	}
 
 	if path == nil {

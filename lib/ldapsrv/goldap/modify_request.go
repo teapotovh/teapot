@@ -1,5 +1,7 @@
 package message
 
+import "slices"
+
 //	ModifyRequest ::= [APPLICATION 6] SEQUENCE {
 //	     object          LDAPDN,
 //	     changes         SEQUENCE OF change SEQUENCE {
@@ -57,8 +59,8 @@ func (m *ModifyRequest) readChanges(bytes *Bytes) (err error) {
 //	               ...  },
 //	          modification    PartialAttribute } }
 func (m ModifyRequest) write(bytes *Bytes) (size int) {
-	for i := len(m.changes) - 1; i >= 0; i-- {
-		size += m.changes[i].write(bytes)
+	for _, v := range slices.Backward(m.changes) {
+		size += v.write(bytes)
 	}
 
 	size += bytes.WriteTagAndLength(classUniversal, isCompound, tagSequence, size)

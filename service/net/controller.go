@@ -108,11 +108,11 @@ func (net *Net) handle(name string, n *v1.Node, exists bool) error {
 		node.Name,
 		"cidrs",
 		node.CIDRs,
-		"externalAddress",
+		"external_address",
 		node.ExternalAddress,
-		"internalAddress",
+		"internal_address",
 		node.InternalAddress,
-		"publicKey",
+		"public_key",
 		node.PublicKey,
 	)
 	net.broker.Publish(Event{Update: &node})
