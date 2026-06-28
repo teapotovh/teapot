@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
@@ -108,12 +109,12 @@ func fileInfoFromResponse(resp *internal.Response) (*FileInfo, error) {
 		}
 
 		var getType internal.GetContentType
-		if err := resp.DecodeProp(&getType); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&getType); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
 		var getETag internal.GetETag
-		if err := resp.DecodeProp(&getETag); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&getETag); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
@@ -123,7 +124,7 @@ func fileInfoFromResponse(resp *internal.Response) (*FileInfo, error) {
 	}
 
 	var getMod internal.GetLastModified
-	if err := resp.DecodeProp(&getMod); err != nil && !internal.IsNotFound(err) {
+	if err := resp.DecodeProp(&getMod); err != nil && !daverr.IsNotFound(err) {
 		return nil, err
 	}
 

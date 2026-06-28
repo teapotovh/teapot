@@ -13,6 +13,13 @@ import (
 
 var (
 	ErrInvalidBackend = errors.New("invalid backend")
+
+	ErrAlreadyExists               = errors.New("already exists")
+	ErrNotFound                    = errors.New("not found")
+	ErrCalendarAlreadyExists       = fmt.Errorf("calendar: %w", ErrAlreadyExists)
+	ErrCalendarNotFound            = fmt.Errorf("calendar: %w", ErrNotFound)
+	ErrCalendarObjectAlreadyExists = fmt.Errorf("calendar object: %w", ErrAlreadyExists)
+	ErrCalendarObjectNotFound      = fmt.Errorf("calendar object: %w", ErrNotFound)
 )
 
 // Store provides an interface implemented by all types of stores for LDAP entries.

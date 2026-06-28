@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -16,11 +15,6 @@ import (
 	"github.com/teapotovh/teapot/lib/run"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-)
-
-var (
-	ErrAlreadyExists = errors.New("already exists")
-	ErrNotFound      = errors.New("not found")
 )
 
 //go:embed migrations/*.sql

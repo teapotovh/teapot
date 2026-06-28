@@ -13,6 +13,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/webdav",
+        "//lib/webdav/error",
         "//lib/webdav/internal",
         "@com_github_emersion_go_ical//:go-ical",
     ],

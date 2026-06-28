@@ -55,19 +55,21 @@ func (o *Object) Size() int64 {
 	return int64(len(o.Data))
 }
 
-func (o *Object) CalAndETag() (*ical.Calendar, string, error) {
+func (o *Object) ETag() string {
+	sum := sha1.Sum(o.Data)
+	return base64.StdEncoding.EncodeToString(sum[:])
+}
+
+func (o *Object) Calendar() (*ical.Calendar, error) {
 	reader := bytes.NewReader(o.Data)
 	decoder := ical.NewDecoder(reader)
 
 	cal, err := decoder.Decode()
 	if err != nil {
-		return nil, "", fmt.Errorf("error while decoding ical: %w", err)
+		return nil, fmt.Errorf("error while decoding ical: %w", err)
 	}
 
-	sum := sha1.Sum(o.Data)
-	etag := base64.StdEncoding.EncodeToString(sum[:])
-
-	return cal, etag, nil
+	return cal, nil
 }
 
 func SerializeObject(obj caldav.CalendarObject) (*Object, error) {

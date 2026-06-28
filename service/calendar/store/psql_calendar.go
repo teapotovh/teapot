@@ -130,7 +130,7 @@ func (p *PSQL) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, er
 func (p *PSQL) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 	calendar, found := p.calendarTable.Get(path)
 	if !found {
-		return nil, ErrNotFound
+		return nil, ErrCalendarNotFound
 	}
 	return &calendar, nil
 }

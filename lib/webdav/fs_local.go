@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/teapotovh/teapot/lib/webdav/internal"
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
 
 // LocalFileSystem implements FileSystem for a local directory.
@@ -23,12 +23,12 @@ var _ FileSystem = LocalFileSystem("")
 
 func (fs LocalFileSystem) localPath(name string) (string, error) {
 	if (filepath.Separator != '/' && strings.ContainsRune(name, filepath.Separator)) || strings.Contains(name, "\x00") {
-		return "", internal.HTTPErrorf(http.StatusBadRequest, "webdav: invalid character in path")
+		return "", daverr.HTTPErrorf(http.StatusBadRequest, "webdav: invalid character in path")
 	}
 
 	name = path.Clean(name)
 	if !path.IsAbs(name) {
-		return "", internal.HTTPErrorf(http.StatusBadRequest, "webdav: expected absolute path, got %q", name)
+		return "", daverr.HTTPErrorf(http.StatusBadRequest, "webdav: expected absolute path, got %q", name)
 	}
 
 	return filepath.Join(string(fs), filepath.FromSlash(name)), nil

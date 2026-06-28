@@ -15,6 +15,7 @@ import (
 	"github.com/emersion/go-ical"
 
 	"github.com/teapotovh/teapot/lib/webdav"
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
@@ -92,17 +93,17 @@ func (c *Client) FindCalendars(ctx context.Context, calendarHomeSet string) ([]C
 		}
 
 		var desc calendarDescription
-		if err := resp.DecodeProp(&desc); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&desc); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
 		var dispName internal.DisplayName
-		if err := resp.DecodeProp(&dispName); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&dispName); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
 		var maxResSize maxResourceSize
-		if err := resp.DecodeProp(&maxResSize); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&maxResSize); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
@@ -111,7 +112,7 @@ func (c *Client) FindCalendars(ctx context.Context, calendarHomeSet string) ([]C
 		}
 
 		var supportedCompSet supportedCalendarComponentSet
-		if err := resp.DecodeProp(&supportedCompSet); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&supportedCompSet); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
@@ -261,17 +262,17 @@ func decodeCalendarObjectList(ms *internal.MultiStatus) ([]CalendarObject, error
 		}
 
 		var getLastMod internal.GetLastModified
-		if err := resp.DecodeProp(&getLastMod); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&getLastMod); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
 		var getETag internal.GetETag
-		if err := resp.DecodeProp(&getETag); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&getETag); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
 		var getContentLength internal.GetContentLength
-		if err := resp.DecodeProp(&getContentLength); err != nil && !internal.IsNotFound(err) {
+		if err := resp.DecodeProp(&getContentLength); err != nil && !daverr.IsNotFound(err) {
 			return nil, err
 		}
 
