@@ -11,4 +11,5 @@ go_library(
     ],
     importpath = "github.com/teapotovh/teapot/lib/webdav/internal",
     visibility = ["//lib/webdav:__subpackages__"],
+    deps = ["//lib/webdav/error"],
 )

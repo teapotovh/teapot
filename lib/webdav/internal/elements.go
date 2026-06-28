@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
 
 const Namespace = "DAV:"
@@ -70,7 +72,7 @@ func (s *Status) Err() error {
 
 	// TODO: handle 2xx, 3xx
 	if s.Code != http.StatusOK {
-		return &HTTPError{Code: s.Code}
+		return &daverr.HTTPError{Code: s.Code}
 	}
 
 	return nil
@@ -133,7 +135,7 @@ func NewOKResponse(path string) *Response {
 func NewErrorResponse(path string, err error) *Response {
 	code := http.StatusInternalServerError
 
-	var httpErr *HTTPError
+	var httpErr *daverr.HTTPError
 	if errors.As(err, &httpErr) {
 		code = httpErr.Code
 	}
@@ -169,7 +171,7 @@ func (resp *Response) Err() error {
 		}
 	}
 
-	return &HTTPError{
+	return &daverr.HTTPError{
 		Code: resp.Status.Code,
 		Err:  err,
 	}
@@ -217,7 +219,7 @@ func (resp *Response) DecodeProp(values ...any) error {
 			return nil
 		}
 
-		return newPropError(name, &HTTPError{
+		return newPropError(name, &daverr.HTTPError{
 			Code: http.StatusNotFound,
 			Err:  errors.New("missing property"),
 		})
@@ -306,7 +308,7 @@ func (p *Prop) Decode(v any) error {
 
 	raw := p.Get(name)
 	if raw == nil {
-		return HTTPErrorf(http.StatusNotFound, "missing property %s", name)
+		return daverr.HTTPErrorf(http.StatusNotFound, "missing property %s", name)
 	}
 
 	return raw.Decode(v)
@@ -405,9 +407,10 @@ type GetETag struct {
 type ETag string
 
 func (etag *ETag) UnmarshalText(b []byte) error {
-	s, err := strconv.Unquote(string(b))
+	str := string(b)
+	s, err := strconv.Unquote(str)
 	if err != nil {
-		return fmt.Errorf("webdav: failed to unquote ETag: %w", err)
+		return fmt.Errorf("webdav: failed to unquote ETag %q: %w", str, err)
 	}
 
 	*etag = ETag(s)

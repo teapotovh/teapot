@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
@@ -53,7 +54,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // denied, etc.) while also providing an (optional) arbitrary error context
 // (intended for humans).
 func NewHTTPError(statusCode int, cause error) error {
-	return &internal.HTTPError{Code: statusCode, Err: cause}
+	return &daverr.HTTPError{Code: statusCode, Err: cause}
 }
 
 type backend struct {
@@ -62,7 +63,7 @@ type backend struct {
 
 func (b *backend) Options(r *http.Request) (caps []string, allow []string, err error) {
 	fi, err := b.FileSystem.Stat(r.Context(), r.URL.Path)
-	if internal.IsNotFound(err) {
+	if daverr.IsNotFound(err) {
 		return nil, []string{http.MethodOptions, http.MethodPut, "MKCOL"}, nil
 	} else if err != nil {
 		return nil, nil, err
@@ -90,7 +91,7 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if fi.IsDir {
-		return &internal.HTTPError{Code: http.StatusMethodNotAllowed}
+		return &daverr.HTTPError{Code: http.StatusMethodNotAllowed}
 	}
 
 	f, err := b.FileSystem.Open(r.Context(), r.URL.Path)
@@ -243,7 +244,7 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 	}
 
 	if len(resp.PropStats) == 0 {
-		return nil, internal.HTTPErrorf(http.StatusBadRequest,
+		return nil, daverr.HTTPErrorf(http.StatusBadRequest,
 			"webdav: request missing properties to update")
 	}
 
@@ -299,15 +300,15 @@ func (b *backend) Delete(r *http.Request) error {
 
 func (b *backend) Mkcol(r *http.Request) error {
 	if r.Header.Get("Content-Type") != "" {
-		return internal.HTTPErrorf(
+		return daverr.HTTPErrorf(
 			http.StatusUnsupportedMediaType,
 			"webdav: request body not supported in MKCOL request",
 		)
 	}
 
 	err := b.FileSystem.Mkdir(r.Context(), r.URL.Path)
-	if internal.IsNotFound(err) {
-		return &internal.HTTPError{Code: http.StatusConflict, Err: err}
+	if daverr.IsNotFound(err) {
+		return &daverr.HTTPError{Code: http.StatusConflict, Err: err}
 	}
 
 	return err
@@ -321,7 +322,7 @@ func (b *backend) Copy(r *http.Request, dest *internal.Href, recursive, overwrit
 
 	created, err = b.FileSystem.Copy(r.Context(), r.URL.Path, dest.Path, &options)
 	if os.IsExist(err) {
-		return false, &internal.HTTPError{Code: http.StatusPreconditionFailed, Err: err}
+		return false, &daverr.HTTPError{Code: http.StatusPreconditionFailed, Err: err}
 	}
 
 	return created, err
@@ -334,7 +335,7 @@ func (b *backend) Move(r *http.Request, dest *internal.Href, overwrite bool) (cr
 
 	created, err = b.FileSystem.Move(r.Context(), r.URL.Path, dest.Path, &options)
 	if os.IsExist(err) {
-		return false, &internal.HTTPError{Code: http.StatusPreconditionFailed, Err: err}
+		return false, &daverr.HTTPError{Code: http.StatusPreconditionFailed, Err: err}
 	}
 
 	return created, err

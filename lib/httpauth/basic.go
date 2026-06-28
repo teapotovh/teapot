@@ -53,10 +53,10 @@ func NewBasicAuth(factory *ldap.Factory, errorHandler http.Handler, logger *slog
 func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if ok {
+		if ok && len(username) > 0 {
 			client, err := ba.factory.NewClient(r.Context())
 			if err != nil {
-				ba.logger.Error("error while creating LDAP client", "err", err)
+				ba.logger.ErrorContext(r.Context(), "error while creating LDAP client", "err", err)
 				ba.errorHandler.ServeHTTP(w, r)
 
 				return
@@ -66,7 +66,7 @@ func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 			user, err := client.Authenticate(username, password)
 			if err != nil {
 				if !errors.Is(err, ldap.ErrInvalidCredentials) {
-					ba.logger.Error("error while authenticating", "username", username, "err", err)
+					ba.logger.ErrorContext(r.Context(), "error while authenticating", "username", username, "err", err)
 					err = ldap.ErrInvalidCredentials
 				}
 

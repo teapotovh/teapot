@@ -14,6 +14,8 @@ import (
 	"path"
 	"strings"
 	"unicode"
+
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
 
 // DiscoverContextURL performs a DNS-based CardDAV/CalDAV service discovery as
@@ -192,7 +194,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 			}
 		}
 
-		return nil, &HTTPError{Code: resp.StatusCode, Err: wrappedErr}
+		return nil, &daverr.HTTPError{Code: resp.StatusCode, Err: wrappedErr}
 	}
 
 	return resp, nil

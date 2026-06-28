@@ -2,20 +2,12 @@ package store
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
-)
-
-var (
-	ErrCalendarAlreadyExists       = errors.New("calendar already exists")
-	ErrMissingCalendar             = errors.New("missing calendar")
-	ErrCalendarObjectAlreadyExists = errors.New("calendar object already exists")
-	ErrMissingCalendarObject       = errors.New("missing calendar object")
 )
 
 type Mem struct {
@@ -82,7 +74,7 @@ func (m *Mem) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 		return &calendar, nil
 	}
 
-	return nil, ErrMissingCalendar
+	return nil, ErrCalendarNotFound
 }
 
 // CreateCalendarObject implements Store.
@@ -123,7 +115,7 @@ func (m *Mem) GetCalendarObject(ctx context.Context, path Path) (*Object, error)
 		return &object, nil
 	}
 
-	return nil, ErrMissingCalendarObject
+	return nil, ErrCalendarObjectNotFound
 }
 
 // DeleteCalendarObject implements Store.
@@ -132,7 +124,7 @@ func (m *Mem) DeleteCalendarObject(ctx context.Context, path Path) error {
 	defer m.mu.Unlock()
 
 	if _, exists := m.objects[path]; !exists {
-		return ErrMissingCalendarObject
+		return ErrCalendarObjectNotFound
 	}
 
 	delete(m.objects, path)

@@ -127,7 +127,7 @@ func (p *PSQL) ListCalendarObjects(ctx context.Context, basePath Path) ([]Object
 func (p *PSQL) GetCalendarObject(ctx context.Context, path Path) (*Object, error) {
 	object, found := p.objectTable.Get(path)
 	if !found {
-		return nil, ErrNotFound
+		return nil, ErrCalendarObjectNotFound
 	}
 	return &object, nil
 }

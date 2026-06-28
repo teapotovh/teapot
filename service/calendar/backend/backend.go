@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,13 +13,15 @@ import (
 	"github.com/emersion/go-ical"
 
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/service/calendar/store"
 )
 
 var (
-	errUnimplemented         = errors.New("operation not implemented")
+	errNotImplemented        = errors.New("operation not implemented")
 	ErrUnexpectedNilCalendar = errors.New("unexpected nil calendar")
 	ErrUnexpectedNilObject   = errors.New("unexpected nil object")
+	ErrETagDidNotMatch       = errors.New("etag did not match")
 
 	MaxResourceSize       = int64(0)
 	SupportedComponentSet = []string{"VEVENT", "VTODO", "VJOURNAL", "VFREEBUSY"}
@@ -83,7 +86,7 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 
 	err := b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
 	if err != nil {
-		return fmt.Errorf("error while creating calendar under path %q in storage: %w", calendar.Path, err)
+		return fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
 	}
 
 	return nil
@@ -99,7 +102,7 @@ func (b *Backend) ListCalendars(ctx context.Context) ([]caldav.Calendar, error) 
 
 	cals, err := b.store.ListCalendars(ctx, normalizePath(path))
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching calendars under path %q from storage: %w", path, err)
+		return nil, fmt.Errorf("error while fetching calendars at path %q from storage: %w", path, err)
 	}
 
 	var calendars []caldav.Calendar
@@ -115,7 +118,7 @@ func (b *Backend) GetCalendar(ctx context.Context, path string) (*caldav.Calenda
 
 	cal, err := b.store.GetCalendar(ctx, normalizePath(path))
 	if err != nil {
-		return nil, fmt.Errorf("error while getting calendar under path %q in storage: %w", path, err)
+		return nil, fmt.Errorf("error while getting calendar at path %q in storage: %w", path, err)
 	}
 
 	calendar := storeCalendarToCaldavCalendar(*cal)
@@ -135,7 +138,8 @@ func caldavObjectToStoreObject(
 }
 
 func storeObjectToCaldavObject(obj store.Object) (*caldav.CalendarObject, error) {
-	cal, etag, err := obj.CalAndETag()
+	etag := obj.ETag()
+	cal, err := obj.Calendar()
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing ical object and generating etag: %w", err)
 	}
@@ -162,16 +166,43 @@ func (b *Backend) PutCalendarObject(
 		return nil, ErrUnexpectedNilObject
 	}
 
-	// TODO: handle opts
+	if opts != nil {
+		matchers := make([]ETagMatcher, 0, 2)
+		if opts.IfMatch.IsSet() {
+			matchers = append(matchers, ETagMatcher(opts.IfMatch.MatchETag))
+		}
+		if opts.IfNoneMatch.IsSet() {
+			matchers = append(matchers, NegateETagMatch(ETagMatcher(opts.IfNoneMatch.MatchETag)))
+		}
+		matcher := AndETagMatch(matchers...)
+
+		obj, err := b.store.GetCalendarObject(ctx, normalizePath(path))
+		if err != nil {
+			if !errors.Is(err, store.ErrNotFound) {
+				return nil, fmt.Errorf("error while checking for previous object at path %q: %w", path, err)
+			}
+			// We ignore NotFound errors, insertion is safe on the first insertion of an object
+		} else {
+			etag := obj.ETag()
+			match, err := matcher(etag)
+			if err != nil {
+				return nil, &daverr.HTTPError{Code: http.StatusPreconditionFailed, Err: fmt.Errorf("error while matching etag: %w", err)}
+			}
+			if !match {
+				b.logger.WarnContext(ctx, "mismatched etag", "options", opts, "etag", etag)
+				return nil, ErrETagDidNotMatch
+			}
+		}
+	}
 
 	objPtr, err := caldavObjectToStoreObject(path, calendar)
 	if err != nil {
-		return nil, fmt.Errorf("could not convert caldav Object into store Object for path %q: %w", path, err)
+		return nil, fmt.Errorf("could not convert caldav Object at path %q into store Object: %w", path, err)
 	}
 
 	obj := *objPtr
 	if err := b.store.CreateCalendarObject(ctx, obj); err != nil {
-		return nil, fmt.Errorf("error while creating calendar object under path %q in storage: %w", path, err)
+		return nil, fmt.Errorf("error while creating calendar object at path %q in storage: %w", path, err)
 	}
 
 	object, err := storeObjectToCaldavObject(obj)
@@ -189,8 +220,6 @@ func (b *Backend) GetCalendarObject(
 ) (*caldav.CalendarObject, error) {
 	b.logger.InfoContext(ctx, "called", "method", "GetCalendarObject", "path", path, "req", req)
 
-	// TODO: handle opts
-
 	obj, err := b.store.GetCalendarObject(ctx, normalizePath(path))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
@@ -199,6 +228,11 @@ func (b *Backend) GetCalendarObject(
 	object, err := storeObjectToCaldavObject(*obj)
 	if err != nil {
 		return nil, fmt.Errorf("error while converting object at path %q to a caldav CalendarObject: %w", obj.Path, err)
+	}
+
+	object, err = mapCalendarObject(object, req)
+	if err != nil {
+		return nil, fmt.Errorf("error while applying filters and maps to calendar object: %w", err)
 	}
 
 	return object, nil
@@ -213,7 +247,7 @@ func (b *Backend) ListCalendarObjects(
 
 	objs, err := b.store.ListCalendarObjects(ctx, normalizePath(path))
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching calendar objects under path %q from storage: %w", path, err)
+		return nil, fmt.Errorf("error while fetching calendar objects at path %q from storage: %w", path, err)
 	}
 
 	var objects []caldav.CalendarObject
@@ -221,6 +255,11 @@ func (b *Backend) ListCalendarObjects(
 		object, err := storeObjectToCaldavObject(obj)
 		if err != nil {
 			return nil, fmt.Errorf("error while converting object at path %q to a caldav CalendarObject: %w", obj.Path, err)
+		}
+
+		object, err = mapCalendarObject(object, req)
+		if err != nil {
+			return nil, fmt.Errorf("error while applying filters and maps to calendar object %q: %w", obj.Path, err)
 		}
 
 		objects = append(objects, *object)
@@ -236,11 +275,17 @@ func (b *Backend) QueryCalendarObjects(
 ) ([]caldav.CalendarObject, error) {
 	// caldav.Filter()
 
-	return nil, fmt.Errorf("query calendar objects: %w", errUnimplemented)
+	return nil, fmt.Errorf("query calendar objects: %w", errNotImplemented)
 }
 
 func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) error {
-	return fmt.Errorf("delete calendar object: %w", errUnimplemented)
+	b.logger.InfoContext(ctx, "called", "method", "DeleteCalendarObjects", "path", path)
+
+	if err := b.store.DeleteCalendarObject(ctx, normalizePath(path)); err != nil {
+		return fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
+	}
+
+	return nil
 }
 
 // Ensure Backend implements caldav.Backend.

@@ -15,6 +15,7 @@ import (
 	"github.com/emersion/go-ical"
 
 	"github.com/teapotovh/teapot/lib/webdav"
+	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
@@ -111,7 +112,7 @@ func (h *Handler) handleReport(w http.ResponseWriter, r *http.Request) error {
 		return h.handleMultiget(r.Context(), w, report.Multiget)
 	}
 
-	return internal.HTTPErrorf(
+	return daverr.HTTPErrorf(
 		http.StatusBadRequest,
 		"caldav: expected calendar-query or calendar-multiget element in REPORT request",
 	)
@@ -209,18 +210,18 @@ func decodeCompFilter(el *compFilter) (*CompFilter, error) {
 
 func decodeComp(comp *comp) (*CalendarCompRequest, error) {
 	if comp == nil {
-		return nil, internal.HTTPErrorf(http.StatusBadRequest, "caldav: unexpected empty calendar-data in request")
+		return nil, daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unexpected empty calendar-data in request")
 	}
 
 	if comp.Allprop != nil && len(comp.Prop) > 0 {
-		return nil, internal.HTTPErrorf(
+		return nil, daverr.HTTPErrorf(
 			http.StatusBadRequest,
 			"caldav: only one of allprop or prop can be specified in calendar-data",
 		)
 	}
 
 	if comp.Allcomp != nil && len(comp.Comp) > 0 {
-		return nil, internal.HTTPErrorf(
+		return nil, daverr.HTTPErrorf(
 			http.StatusBadRequest,
 			"caldav: only one of allcomp or comp can be specified in calendar-data",
 		)
@@ -303,7 +304,7 @@ func (h *Handler) handleMultiget(ctx context.Context, w http.ResponseWriter, mul
 
 	if multiget.Prop != nil {
 		var calendarData calendarDataReq
-		if err := multiget.Prop.Decode(&calendarData); err != nil && !internal.IsNotFound(err) {
+		if err := multiget.Prop.Decode(&calendarData); err != nil && !daverr.IsNotFound(err) {
 			return err
 		}
 
@@ -389,7 +390,7 @@ func (b *backend) Options(r *http.Request) (caps []string, allow []string, err e
 	var dataReq CalendarCompRequest
 
 	_, err = b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
-	httpErr := &internal.HTTPError{}
+	httpErr := &daverr.HTTPError{}
 	if errors.As(err, &httpErr) {
 		return caps, []string{http.MethodOptions, http.MethodPut}, nil
 	} else if err != nil {
@@ -798,7 +799,7 @@ func (b *backend) propFindAllCalendarObjects(
 }
 
 func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*internal.Response, error) {
-	return nil, internal.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
+	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
 }
 
 func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
@@ -812,19 +813,19 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
 
 	t, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
-		return internal.HTTPErrorf(http.StatusBadRequest, "caldav: malformed Content-Type: %v", err)
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: malformed Content-Type: %v", err)
 	}
 
 	if t != ical.MIMEType {
 		// TODO: send CALDAV:supported-calendar-data error
-		return internal.HTTPErrorf(http.StatusBadRequest, "caldav: unsupported Content-Type %q", t)
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unsupported Content-Type %q", t)
 	}
 
 	// TODO: check CALDAV:max-resource-size precondition
 	cal, err := ical.NewDecoder(r.Body).Decode()
 	if err != nil {
 		// TODO: send CALDAV:valid-calendar-data error
-		return internal.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
 	}
 
 	co, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
@@ -856,7 +857,7 @@ func (b *backend) Delete(r *http.Request) error {
 
 func (b *backend) Mkcol(r *http.Request) error {
 	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
-		return internal.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
+		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
 	}
 
 	ctx := r.Context()
@@ -867,11 +868,11 @@ func (b *backend) Mkcol(r *http.Request) error {
 	if !internal.IsRequestBodyEmpty(r) {
 		var m mkcolReq
 		if err := internal.DecodeXMLRequest(r, &m); err != nil {
-			return internal.HTTPErrorf(http.StatusBadRequest, "carddav: error parsing mkcol request: %s", err.Error())
+			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: error parsing mkcol request: %s", err.Error())
 		}
 
 		if !m.ResourceType.Is(internal.CollectionName) || !m.ResourceType.Is(calendarName) {
-			return internal.HTTPErrorf(http.StatusBadRequest, "carddav: unexpected resource type")
+			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: unexpected resource type")
 		}
 
 		cal.Name = m.DisplayName
@@ -894,7 +895,7 @@ func (b *backend) Mkcol(r *http.Request) error {
 
 func (b *backend) Mkcalendar(r *http.Request) error {
 	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
-		return internal.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
+		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
 	}
 
 	ctx := r.Context()
@@ -905,7 +906,7 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 	if !internal.IsRequestBodyEmpty(r) {
 		var m mkcalendarReq
 		if err := internal.DecodeXMLRequest(r, &m); err != nil {
-			return internal.HTTPErrorf(
+			return daverr.HTTPErrorf(
 				http.StatusBadRequest,
 				"carddav: error parsing mkcalendar request: %s",
 				err.Error(),
@@ -931,11 +932,11 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 }
 
 func (b *backend) Copy(r *http.Request, dest *internal.Href, recursive, overwrite bool) (created bool, err error) {
-	return false, internal.HTTPErrorf(http.StatusNotImplemented, "caldav: Copy not implemented")
+	return false, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: Copy not implemented")
 }
 
 func (b *backend) Move(r *http.Request, dest *internal.Href, overwrite bool) (created bool, err error) {
-	return false, internal.HTTPErrorf(http.StatusNotImplemented, "caldav: Move not implemented")
+	return false, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: Move not implemented")
 }
 
 // https://datatracker.ietf.org/doc/html/rfc4791#section-5.3.2.1
@@ -959,7 +960,7 @@ func NewPreconditionError(err PreconditionType) error {
 	name := xml.Name{Space: "urn:ietf:params:xml:ns:caldav", Local: string(err)}
 	elem := internal.NewRawXMLElement(name, nil, nil)
 
-	return &internal.HTTPError{
+	return &daverr.HTTPError{
 		Code: 409,
 		Err: &internal.Error{
 			Raw: []internal.RawXMLValue{*elem},
