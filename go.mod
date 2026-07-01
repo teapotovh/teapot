@@ -28,7 +28,7 @@ require (
 	github.com/sqids/sqids-go v0.4.1
 	github.com/vishvananda/netlink v1.3.1
 	golang.org/x/net v0.55.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	k8s.io/api v0.36.0
 	k8s.io/apimachinery v0.36.0
