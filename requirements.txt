@@ -28,7 +28,7 @@ h2==4.3.0
     # via grpclib
 hf-xet==1.5.0
     # via huggingface-hub
-hpack==4.1.0
+hpack==4.2.0
     # via h2
 httpcore==1.0.9
     # via httpx
