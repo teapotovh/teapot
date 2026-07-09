@@ -18,7 +18,6 @@ import (
 )
 
 var (
-	errNotImplemented        = errors.New("operation not implemented")
 	ErrUnexpectedNilCalendar = errors.New("unexpected nil calendar")
 	ErrUnexpectedNilObject   = errors.New("unexpected nil object")
 	ErrETagDidNotMatch       = errors.New("etag did not match")
@@ -43,8 +42,16 @@ func NewBackend(store store.Store, logger *slog.Logger) *Backend {
 	}
 }
 
-func (b *Backend) CalendarHomeSetPath(ctx context.Context) (string, error) {
-	b.logger.InfoContext(ctx, "called", "method", "CalendarHomeSetPath")
+func (b *Backend) logCall(ctx context.Context, method string, err error, start time.Time) {
+	if err != nil {
+		b.logger.ErrorContext(ctx, "called", "method", method, "err", err, "duration", time.Since(start))
+	} else {
+		b.logger.InfoContext(ctx, "called", "method", method, "duration", time.Since(start))
+	}
+}
+
+func (b *Backend) CalendarHomeSetPath(ctx context.Context) (path string, err error) {
+	defer b.logCall(ctx, "CalendarHomeSetPath", err, time.Now())
 
 	up, err := b.CurrentUserPrincipal(ctx)
 	if err != nil {
@@ -77,14 +84,14 @@ func normalizePath(path string) store.Path {
 	return store.Path(strings.TrimRight(filepath.Clean(path), "/"))
 }
 
-func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) error {
-	b.logger.InfoContext(ctx, "called", "method", "CreateCalendar", "calendar", calendar)
+func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) (err error) {
+	defer b.logCall(ctx, "CreateCalendar", err, time.Now())
 
 	if calendar == nil {
 		return ErrUnexpectedNilCalendar
 	}
 
-	err := b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
+	err = b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
 	if err != nil {
 		return fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
 	}
@@ -92,8 +99,8 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 	return nil
 }
 
-func (b *Backend) ListCalendars(ctx context.Context) ([]caldav.Calendar, error) {
-	b.logger.InfoContext(ctx, "called", "method", "ListCalendars")
+func (b *Backend) ListCalendars(ctx context.Context) (calendars []caldav.Calendar, err error) {
+	defer b.logCall(ctx, "ListCalendars", err, time.Now())
 
 	path, err := b.CalendarHomeSetPath(ctx)
 	if err != nil {
@@ -105,7 +112,6 @@ func (b *Backend) ListCalendars(ctx context.Context) ([]caldav.Calendar, error) 
 		return nil, fmt.Errorf("error while fetching calendars at path %q from storage: %w", path, err)
 	}
 
-	var calendars []caldav.Calendar
 	for _, cal := range cals {
 		calendars = append(calendars, storeCalendarToCaldavCalendar(cal))
 	}
@@ -113,17 +119,17 @@ func (b *Backend) ListCalendars(ctx context.Context) ([]caldav.Calendar, error) 
 	return calendars, nil
 }
 
-func (b *Backend) GetCalendar(ctx context.Context, path string) (*caldav.Calendar, error) {
-	b.logger.InfoContext(ctx, "called", "method", "GetCalendar", "path", path)
+func (b *Backend) GetCalendar(ctx context.Context, path string) (calendar *caldav.Calendar, err error) {
+	defer b.logCall(ctx, "GetCalendar", err, time.Now())
 
 	cal, err := b.store.GetCalendar(ctx, normalizePath(path))
 	if err != nil {
 		return nil, fmt.Errorf("error while getting calendar at path %q in storage: %w", path, err)
 	}
 
-	calendar := storeCalendarToCaldavCalendar(*cal)
+	c := storeCalendarToCaldavCalendar(*cal)
 
-	return &calendar, nil
+	return &c, nil
 }
 
 func caldavObjectToStoreObject(
@@ -159,8 +165,8 @@ func (b *Backend) PutCalendarObject(
 	path string,
 	calendar *ical.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
-) (*caldav.CalendarObject, error) {
-	b.logger.InfoContext(ctx, "called", "method", "PutCalendarObject", "path", path, "calendar", calendar, "opts", opts)
+) (object *caldav.CalendarObject, err error) {
+	defer b.logCall(ctx, "PutCalendarObject", err, time.Now())
 
 	if calendar == nil {
 		return nil, ErrUnexpectedNilObject
@@ -205,7 +211,7 @@ func (b *Backend) PutCalendarObject(
 		return nil, fmt.Errorf("error while creating calendar object at path %q in storage: %w", path, err)
 	}
 
-	object, err := storeObjectToCaldavObject(obj)
+	object, err = storeObjectToCaldavObject(obj)
 	if err != nil {
 		return nil, fmt.Errorf("error while converting stored object back to a caldav CalendarObject: %w", err)
 	}
@@ -217,15 +223,15 @@ func (b *Backend) GetCalendarObject(
 	ctx context.Context,
 	path string,
 	req *caldav.CalendarCompRequest,
-) (*caldav.CalendarObject, error) {
-	b.logger.InfoContext(ctx, "called", "method", "GetCalendarObject", "path", path, "req", req)
+) (object *caldav.CalendarObject, err error) {
+	defer b.logCall(ctx, "GetCalendarObject", err, time.Now())
 
 	obj, err := b.store.GetCalendarObject(ctx, normalizePath(path))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 	}
 
-	object, err := storeObjectToCaldavObject(*obj)
+	object, err = storeObjectToCaldavObject(*obj)
 	if err != nil {
 		return nil, fmt.Errorf("error while converting object at path %q to a caldav CalendarObject: %w", obj.Path, err)
 	}
@@ -238,19 +244,18 @@ func (b *Backend) GetCalendarObject(
 	return object, nil
 }
 
-func (b *Backend) ListCalendarObjects(
+// listCalendarObjects is extracted from the ListCalendarObjects impl so it
+// can be reused for QueryCalendarObjects.
+func (b *Backend) listCalendarObjects(
 	ctx context.Context,
 	path string,
 	req *caldav.CalendarCompRequest,
-) ([]caldav.CalendarObject, error) {
-	b.logger.InfoContext(ctx, "called", "method", "ListCalendarObjects", "path", path, "req", req)
-
+) (objects []caldav.CalendarObject, err error) {
 	objs, err := b.store.ListCalendarObjects(ctx, normalizePath(path))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching calendar objects at path %q from storage: %w", path, err)
 	}
 
-	var objects []caldav.CalendarObject
 	for _, obj := range objs {
 		object, err := storeObjectToCaldavObject(obj)
 		if err != nil {
@@ -268,18 +273,38 @@ func (b *Backend) ListCalendarObjects(
 	return objects, nil
 }
 
+func (b *Backend) ListCalendarObjects(
+	ctx context.Context,
+	path string,
+	req *caldav.CalendarCompRequest,
+) (objects []caldav.CalendarObject, err error) {
+	defer b.logCall(ctx, "ListCalendarObjects", err, time.Now())
+
+	return b.listCalendarObjects(ctx, path, req)
+}
+
 func (b *Backend) QueryCalendarObjects(
 	ctx context.Context,
 	path string,
 	query *caldav.CalendarQuery,
-) ([]caldav.CalendarObject, error) {
-	// caldav.Filter()
+) (objects []caldav.CalendarObject, err error) {
+	defer b.logCall(ctx, "QueryCalendarObjects", err, time.Now())
 
-	return nil, fmt.Errorf("query calendar objects: %w", errNotImplemented)
+	objects, err = b.listCalendarObjects(ctx, path, &query.CompRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error while listing all calendar objects for query: %w", err)
+	}
+
+	objects, err = caldav.Filter(&query.CompFilter, objects)
+	if err != nil {
+		return nil, fmt.Errorf("error while filtering down calendar objects: %w", err)
+	}
+
+	return objects, nil
 }
 
-func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) error {
-	b.logger.InfoContext(ctx, "called", "method", "DeleteCalendarObjects", "path", path)
+func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err error) {
+	defer b.logCall(ctx, "DeleteCalendarObject", err, time.Now())
 
 	if err := b.store.DeleteCalendarObject(ctx, normalizePath(path)); err != nil {
 		return fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
