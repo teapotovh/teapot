@@ -4,8 +4,6 @@ go_library(
     name = "webdav",
     srcs = [
         "client.go",
-        "elements.go",
-        "fs_local.go",
         "server.go",
         "webdav.go",
     ],
