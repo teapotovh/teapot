@@ -98,7 +98,7 @@ func (eip *ExternalIP) fetchPublicIP(ctx context.Context) (netip.Addr, error) {
 	f := func() (addr netip.Addr, err error) {
 		defer func() {
 			if err != nil {
-				eip.logger.Warn("failed to fetch public IP address", "error", err)
+				eip.logger.Warn("failed to fetch public IP address", "err", err)
 			}
 		}()
 

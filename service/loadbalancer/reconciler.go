@@ -55,7 +55,7 @@ func (lb *LoadBalancer) Reconcile(ctx context.Context, req reconcile.Request) (r
 	for nodeName := range nodeNames {
 		node := &corev1.Node{}
 		if err := lb.client.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
-			lb.logger.Error("failed to get node", "node", nodeName, "error", err)
+			lb.logger.Error("failed to get node", "node", nodeName, "err", err)
 			continue
 		}
 
