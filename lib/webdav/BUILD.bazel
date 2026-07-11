@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "webdav",
+    srcs = [
+        "client.go",
+        "server.go",
+        "webdav.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/webdav",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/webdav/error",
+        "//lib/webdav/internal",
+    ],
+)

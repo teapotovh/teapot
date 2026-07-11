@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "calendar",
+    srcs = [
+        "calendar.go",
+        "flags.go",
+        "metrics.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/calendar",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httpauth",
+        "//lib/httplog",
+        "//lib/ldap",
+        "//lib/observability",
+        "//lib/webdav/caldav",
+        "//service/calendar/backend",
+        "//service/calendar/store",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

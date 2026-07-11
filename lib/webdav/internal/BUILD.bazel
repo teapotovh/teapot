@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "internal",
+    srcs = [
+        "client.go",
+        "elements.go",
+        "internal.go",
+        "server.go",
+        "xml.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/webdav/internal",
+    visibility = ["//lib/webdav:__subpackages__"],
+    deps = ["//lib/webdav/error"],
+)
