@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+var (
+	ErrMissingComma = errors.New("expected a ',' in the XML tag, found none")
+
+	ErrNotStruct                  = errors.New("not a struct")
+	ErrMissingXMLNameStructField  = errors.New("missing an XMLName struct field")
+	ErrNotXMLName                 = errors.New("not an xml.Name")
+	ErrMissingXMLTag              = errors.New("missing \"xml\" tag")
+	ErrExpectedNamespaceLocalName = errors.New("expected a namespace and local name")
+)
+
 // RawXMLValue is a raw XML value. It implements xml.Unmarshaler and
 // xml.Marshaler and can be used to delay XML decoding or precompute an XML
 // encoding.
@@ -157,33 +167,36 @@ var _ xml.TokenReader = (*rawXMLValueReader)(nil)
 
 func valueXMLName(v any) (xml.Name, error) {
 	t := reflect.TypeOf(v)
-	for t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 
 	if t.Kind() != reflect.Struct {
-		return xml.Name{}, fmt.Errorf("webdav: %T is not a struct", v)
+		return xml.Name{}, fmt.Errorf("webdav: %w: %T", ErrNotStruct, v)
 	}
 
 	nameField, ok := t.FieldByName("XMLName")
 	if !ok {
-		return xml.Name{}, fmt.Errorf("webdav: %T is missing an XMLName struct field", v)
+		return xml.Name{}, fmt.Errorf("webdav: %w: in %T", ErrMissingXMLNameStructField, v)
 	}
 
 	if nameField.Type != reflect.TypeFor[xml.Name]() {
-		return xml.Name{}, fmt.Errorf("webdav: %T.XMLName isn't an xml.Name", v)
+		return xml.Name{}, fmt.Errorf("webdav: %w: %T.XMLName", ErrNotXMLName, v)
 	}
 
 	tag := nameField.Tag.Get("xml")
 	if tag == "" {
-		return xml.Name{}, fmt.Errorf(`webdav: %T.XMLName is missing an "xml" tag`, v)
+		return xml.Name{}, fmt.Errorf("webdav: %w: in %T.XMLName", ErrMissingXMLTag, v)
 	}
 
-	name := strings.Split(tag, ",")[0]
+	name, _, found := strings.Cut(tag, ",")
+	if !found {
+		return xml.Name{}, ErrMissingComma
+	}
 
 	nameParts := strings.Split(name, " ")
 	if len(nameParts) != 2 {
-		return xml.Name{}, fmt.Errorf("webdav: expected a namespace and local name in %T.XMLName's xml tag", v)
+		return xml.Name{}, fmt.Errorf("webdav: %w: in %T.XMLName's xml tag", ErrExpectedNamespaceLocalName, v)
 	}
 
 	return xml.Name{Space: nameParts[0], Local: nameParts[1]}, nil

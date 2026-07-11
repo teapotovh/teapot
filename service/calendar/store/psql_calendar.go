@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/teapotovh/teapot/lib/pgcache"
 )
 
@@ -116,6 +117,7 @@ func (p *PSQL) CreateCalendar(ctx context.Context, calendar Calendar) error {
 	_, err := runInTx(p.calendarTable, func(ctx context.Context, tx *pgcache.TableTx[Path, Calendar]) (unit, error) {
 		return unit{}, tx.Store(ctx, []Calendar{calendar})
 	})(ctx)
+
 	return err
 }
 
@@ -123,6 +125,7 @@ func (p *PSQL) CreateCalendar(ctx context.Context, calendar Calendar) error {
 func (p *PSQL) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error) {
 	endPath := Path(fmt.Sprintf("%s%c", basePath, utf8.MaxRune))
 	iter := p.calendarTable.Between(basePath, endPath)
+
 	return slices.Collect(iter), nil
 }
 
@@ -132,5 +135,6 @@ func (p *PSQL) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 	if !found {
 		return nil, ErrCalendarNotFound
 	}
+
 	return &calendar, nil
 }

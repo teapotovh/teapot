@@ -3,12 +3,17 @@ package webdav
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/webdav/internal"
+)
+
+var (
+	ErrUnauthenticated = errors.New("unauthenticated")
 )
 
 // HTTPClient performs HTTP requests. It's implemented by *http.Client.
@@ -73,7 +78,7 @@ func (c *Client) FindCurrentUserPrincipal(ctx context.Context) (string, error) {
 	}
 
 	if prop.Unauthenticated != nil {
-		return "", errors.New("webdav: unauthenticated")
+		return "", fmt.Errorf("webdav: %w", ErrUnauthenticated)
 	}
 
 	return prop.Href.Path, nil
@@ -206,7 +211,7 @@ func (c *Client) Create(ctx context.Context, name string) (io.WriteCloser, error
 
 	req, err := c.ic.NewRequest(http.MethodPut, name, pr)
 	if err != nil {
-		pw.Close()
+		_ = pw.Close()
 		return nil, err
 	}
 
@@ -219,7 +224,10 @@ func (c *Client) Create(ctx context.Context, name string) (io.WriteCloser, error
 			return
 		}
 
-		resp.Body.Close()
+		if err = resp.Body.Close(); err != nil {
+			done <- err
+			return
+		}
 
 		done <- nil
 	}()
@@ -240,7 +248,9 @@ func (c *Client) RemoveAll(ctx context.Context, name string) error {
 		return err
 	}
 
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return fmt.Errorf("error while closing response body: %w", err)
+	}
 
 	return nil
 }
@@ -257,7 +267,9 @@ func (c *Client) Mkdir(ctx context.Context, name string) error {
 		return err
 	}
 
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return fmt.Errorf("error while closing response body: %w", err)
+	}
 
 	return nil
 }
@@ -290,7 +302,9 @@ func (c *Client) Copy(ctx context.Context, name, dest string, options *CopyOptio
 		return err
 	}
 
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return fmt.Errorf("error while closing response body: %w", err)
+	}
 
 	return nil
 }
@@ -314,7 +328,9 @@ func (c *Client) Move(ctx context.Context, name, dest string, options *MoveOptio
 		return err
 	}
 
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return fmt.Errorf("error while closing response body: %w", err)
+	}
 
 	return nil
 }

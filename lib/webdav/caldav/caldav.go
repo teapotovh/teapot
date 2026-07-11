@@ -14,6 +14,12 @@ import (
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
+var (
+	ErrUnexpectedMethod      = errors.New("calendar resource must not specify METHOD property")
+	ErrConflictingEventTypes = errors.New("conflicting event types in calendar")
+	ErrConflictingUIDs       = errors.New("conflicting UID values in calendar")
+)
+
 var CapabilityCalendar = webdav.Capability("calendar-access")
 
 func NewCalendarHomeSet(path string) webdav.BackendSuppliedHomeSet {
@@ -28,7 +34,7 @@ func ValidateCalendarObject(cal *ical.Calendar) (eventType string, uid string, e
 	// Calendar object resources contained in calendar collections
 	// MUST NOT specify the iCalendar METHOD property.
 	if prop := cal.Props.Get(ical.PropMethod); prop != nil {
-		return "", "", errors.New("calendar resource must not specify METHOD property")
+		return "", "", ErrUnexpectedMethod
 	}
 
 	for _, comp := range cal.Children {
@@ -44,7 +50,7 @@ func ValidateCalendarObject(cal *ical.Calendar) (eventType string, uid string, e
 			}
 
 			if eventType != comp.Name {
-				return "", "", fmt.Errorf("conflicting event types in calendar: %s, %s", eventType, comp.Name)
+				return "", "", fmt.Errorf("%w: %s, %s", ErrConflictingEventTypes, eventType, comp.Name)
 			}
 			// TODO check VTIMEZONE for each TZID?
 		}
@@ -62,7 +68,7 @@ func ValidateCalendarObject(cal *ical.Calendar) (eventType string, uid string, e
 		}
 
 		if compUID != "" && uid != compUID {
-			return "", "", fmt.Errorf("conflicting UID values in calendar: %s, %s", uid, compUID)
+			return "", "", fmt.Errorf("%w: %s, %s", ErrConflictingUIDs, uid, compUID)
 		}
 	}
 

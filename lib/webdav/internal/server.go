@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -12,18 +13,32 @@ import (
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
 
+var ErrNoBackendAvailable = errors.New("webdav: no backend available")
+
+func xmlEncode[T any](w http.ResponseWriter, value T) error {
+	encoder, err := ServeXML(w)
+	if err != nil {
+		return fmt.Errorf("error while creating XML encoder: %w", err)
+	}
+
+	if err := encoder.Encode(value); err != nil {
+		return fmt.Errorf("error while XML encoding: %w", err)
+	}
+
+	return nil
+}
+
 func ServeError(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
 
-	var httpErr *daverr.HTTPError
-	if errors.As(err, &httpErr) {
+	if httpErr, ok := errors.AsType[*daverr.HTTPError](err); ok {
 		code = httpErr.Code
 	}
 
-	var errElt *Error
-	if errors.As(err, &errElt) {
+	if errElt, ok := errors.AsType[*Error](err); ok {
 		w.WriteHeader(code)
-		ServeXML(w).Encode(errElt)
+		// If we fail to report an error, we're explicitly discarding it
+		_ = xmlEncode(w, errElt)
 
 		return
 	}
@@ -42,7 +57,7 @@ func DecodeXMLRequest(r *http.Request, v any) error {
 	}
 
 	if err := xml.NewDecoder(r.Body).Decode(v); err != nil {
-		return &daverr.HTTPError{http.StatusBadRequest, err}
+		return &daverr.HTTPError{Code: http.StatusBadRequest, Err: err}
 	}
 
 	return nil
@@ -53,17 +68,20 @@ func IsRequestBodyEmpty(r *http.Request) bool {
 	return err == io.EOF
 }
 
-func ServeXML(w http.ResponseWriter) *xml.Encoder {
+func ServeXML(w http.ResponseWriter) (*xml.Encoder, error) {
 	w.Header().Add("Content-Type", "application/xml; charset=\"utf-8\"")
-	w.Write([]byte(xml.Header))
 
-	return xml.NewEncoder(w)
+	if _, err := w.Write([]byte(xml.Header)); err != nil {
+		return nil, fmt.Errorf("error while writing XML header: %w", err)
+	}
+
+	return xml.NewEncoder(w), nil
 }
 
 func ServeMultiStatus(w http.ResponseWriter, ms *MultiStatus) error {
 	// TODO: streaming
 	w.WriteHeader(http.StatusMultiStatus)
-	return ServeXML(w).Encode(ms)
+	return xmlEncode(w, ms)
 }
 
 type Backend interface {
@@ -86,10 +104,11 @@ type Handler struct {
 	Backend Backend
 }
 
+//nolint:gocyclo
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if h.Backend == nil {
-		err = errors.New("webdav: no backend available")
+		err = ErrNoBackendAvailable
 	} else {
 		switch r.Method {
 		case http.MethodOptions:
@@ -170,7 +189,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) error {
 
 		depth, err = ParseDepth(s)
 		if err != nil {
-			return &daverr.HTTPError{http.StatusBadRequest, err}
+			return &daverr.HTTPError{Code: http.StatusBadRequest, Err: err}
 		}
 	}
 
@@ -254,7 +273,10 @@ func NewPropFindResponse(path string, propfind *PropFind, props map[xml.Name]Pro
 			}
 		}
 	} else {
-		return nil, daverr.HTTPErrorf(http.StatusBadRequest, "webdav: request missing propname, allprop or prop element")
+		return nil, daverr.HTTPErrorf(
+			http.StatusBadRequest,
+			"webdav: request missing propname, allprop or prop element",
+		)
 	}
 
 	return resp, nil
@@ -284,7 +306,11 @@ func parseDestination(h http.Header) (*Href, error) {
 
 	dest, err := url.Parse(destHref)
 	if err != nil {
-		return nil, daverr.HTTPErrorf(http.StatusBadRequest, "webdav: marlformed Destination header in MOVE request: %v", err)
+		return nil, daverr.HTTPErrorf(
+			http.StatusBadRequest,
+			"webdav: marlformed Destination header in MOVE request: %v",
+			err,
+		)
 	}
 
 	return (*Href)(dest), nil
@@ -329,7 +355,10 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) error {
 		created, err = h.Backend.Copy(r, dest, recursive, overwrite)
 	} else {
 		if depth != DepthInfinity {
-			return daverr.HTTPErrorf(http.StatusBadRequest, `webdav: only "Depth: infinity" is accepted in MOVE request`)
+			return daverr.HTTPErrorf(
+				http.StatusBadRequest,
+				`webdav: only "Depth: infinity" is accepted in MOVE request`,
+			)
 		}
 
 		created, err = h.Backend.Move(r, dest, overwrite)

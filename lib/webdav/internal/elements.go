@@ -13,6 +13,13 @@ import (
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
 
+var (
+	ErrExpectedThreeFields = errors.New("expected 3 fields")
+	ErrUnknown             = errors.New("unknown error")
+	ErrMalformedResponse   = errors.New("malformed response")
+	ErrMissingProperty     = errors.New("missing property")
+)
+
 const Namespace = "DAV:"
 
 var (
@@ -51,12 +58,12 @@ func (s *Status) UnmarshalText(b []byte) error {
 
 	parts := strings.SplitN(string(b), " ", 3)
 	if len(parts) != 3 {
-		return fmt.Errorf("webdav: invalid HTTP status %q: expected 3 fields", s)
+		return fmt.Errorf("webdav: invalid response for HTTP status %q: %w", s.Text, ErrExpectedThreeFields)
 	}
 
 	code, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return fmt.Errorf("webdav: invalid HTTP status %q: failed to parse code: %w", s, err)
+		return fmt.Errorf("webdav: invalid HTTP status %q: failed to parse code: %w", s.Text, err)
 	}
 
 	s.Code = code
@@ -100,7 +107,7 @@ func (h *Href) UnmarshalText(b []byte) error {
 	return nil
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.16
+// MultiStatus implements https://tools.ietf.org/html/rfc4918#section-14.16
 type MultiStatus struct {
 	XMLName             xml.Name   `xml:"DAV: multistatus"`
 	Responses           []Response `xml:"response"`
@@ -112,7 +119,7 @@ func NewMultiStatus(resps ...Response) *MultiStatus {
 	return &MultiStatus{Responses: resps}
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.24
+// Response implements https://tools.ietf.org/html/rfc4918#section-14.24
 type Response struct {
 	XMLName             xml.Name   `xml:"DAV: response"`
 	Hrefs               []Href     `xml:"href"`
@@ -135,8 +142,7 @@ func NewOKResponse(path string) *Response {
 func NewErrorResponse(path string, err error) *Response {
 	code := http.StatusInternalServerError
 
-	var httpErr *daverr.HTTPError
-	if errors.As(err, &httpErr) {
+	if httpErr, ok := errors.AsType[*daverr.HTTPError](err); ok {
 		code = httpErr.Code
 	}
 
@@ -167,7 +173,7 @@ func (resp *Response) Err() error {
 		if err != nil {
 			err = fmt.Errorf("%v (%w)", resp.ResponseDescription, err)
 		} else {
-			err = fmt.Errorf("%v", resp.ResponseDescription)
+			err = fmt.Errorf("%w: %v", ErrUnknown, resp.ResponseDescription)
 		}
 	}
 
@@ -184,7 +190,7 @@ func (resp *Response) Path() (string, error) {
 	if len(resp.Hrefs) == 1 {
 		path = resp.Hrefs[0].Path
 	} else if err == nil {
-		err = fmt.Errorf("webdav: malformed response: expected exactly one href element, got %v", len(resp.Hrefs))
+		err = fmt.Errorf("webdav: %w: expected exactly one href element, got %v", ErrMalformedResponse, len(resp.Hrefs))
 	}
 
 	return path, err
@@ -221,7 +227,7 @@ func (resp *Response) DecodeProp(values ...any) error {
 
 		return newPropError(name, &daverr.HTTPError{
 			Code: http.StatusNotFound,
-			Err:  errors.New("missing property"),
+			Err:  ErrMissingProperty,
 		})
 	}
 
@@ -254,13 +260,13 @@ func (resp *Response) EncodeProp(code int, v any) error {
 	return nil
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.9
+// Location implements https://tools.ietf.org/html/rfc4918#section-14.9
 type Location struct {
 	XMLName xml.Name `xml:"DAV: location"`
 	Href    Href     `xml:"href"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.22
+// PropStat implements https://tools.ietf.org/html/rfc4918#section-14.22
 type PropStat struct {
 	XMLName             xml.Name `xml:"DAV: propstat"`
 	Prop                Prop     `xml:"prop"`
@@ -269,7 +275,7 @@ type PropStat struct {
 	Error               *Error   `xml:"error,omitempty"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.18
+// Prop implements https://tools.ietf.org/html/rfc4918#section-14.18
 type Prop struct {
 	XMLName xml.Name      `xml:"DAV: prop"`
 	Raw     []RawXMLValue `xml:",any"`
@@ -314,7 +320,7 @@ func (p *Prop) Decode(v any) error {
 	return raw.Decode(v)
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.20
+// PropFind implements https://tools.ietf.org/html/rfc4918#section-14.20
 type PropFind struct {
 	XMLName  xml.Name  `xml:"DAV: propfind"`
 	Prop     *Prop     `xml:"prop,omitempty"`
@@ -336,13 +342,13 @@ func NewPropNamePropFind(names ...xml.Name) *PropFind {
 	return &PropFind{Prop: &Prop{Raw: xmlNamesToRaw(names)}}
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.8
+// Include implements https://tools.ietf.org/html/rfc4918#section-14.8
 type Include struct {
 	XMLName xml.Name      `xml:"DAV: include"`
 	Raw     []RawXMLValue `xml:",any"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-15.9
+// ResourceType implements https://tools.ietf.org/html/rfc4918#section-15.9
 type ResourceType struct {
 	XMLName xml.Name      `xml:"DAV: resourcetype"`
 	Raw     []RawXMLValue `xml:",any"`
@@ -362,13 +368,13 @@ func (t *ResourceType) Is(name xml.Name) bool {
 	return false
 }
 
-// https://tools.ietf.org/html/rfc4918#section-15.4
+// GetContentLength implements https://tools.ietf.org/html/rfc4918#section-15.4
 type GetContentLength struct {
 	XMLName xml.Name `xml:"DAV: getcontentlength"`
 	Length  int64    `xml:",chardata"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-15.5
+// GetContentType implements https://tools.ietf.org/html/rfc4918#section-15.5
 type GetContentType struct {
 	XMLName xml.Name `xml:"DAV: getcontenttype"`
 	Type    string   `xml:",chardata"`
@@ -392,13 +398,13 @@ func (t *Time) MarshalText() ([]byte, error) {
 	return []byte(s), nil
 }
 
-// https://tools.ietf.org/html/rfc4918#section-15.7
+// GetLastModified implements https://tools.ietf.org/html/rfc4918#section-15.7
 type GetLastModified struct {
 	XMLName      xml.Name `xml:"DAV: getlastmodified"`
 	LastModified Time     `xml:",chardata"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-15.6
+// GetETag implements https://tools.ietf.org/html/rfc4918#section-15.6
 type GetETag struct {
 	XMLName xml.Name `xml:"DAV: getetag"`
 	ETag    ETag     `xml:",chardata"`
@@ -408,6 +414,7 @@ type ETag string
 
 func (etag *ETag) UnmarshalText(b []byte) error {
 	str := string(b)
+
 	s, err := strconv.Unquote(str)
 	if err != nil {
 		return fmt.Errorf("webdav: failed to unquote ETag %q: %w", str, err)
@@ -426,7 +433,7 @@ func (etag ETag) String() string {
 	return fmt.Sprintf("%q", string(etag))
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.5
+// Error implements https://tools.ietf.org/html/rfc4918#section-14.5
 type Error struct {
 	XMLName xml.Name      `xml:"DAV: error"`
 	Raw     []RawXMLValue `xml:",any"`
@@ -437,39 +444,39 @@ func (err *Error) Error() string {
 	return string(b)
 }
 
-// https://tools.ietf.org/html/rfc4918#section-15.2
+// DisplayName implements https://tools.ietf.org/html/rfc4918#section-15.2
 type DisplayName struct {
 	XMLName xml.Name `xml:"DAV: displayname"`
 	Name    string   `xml:",chardata"`
 }
 
-// https://tools.ietf.org/html/rfc5397#section-3
+// CurrentUserPrincipal implements https://tools.ietf.org/html/rfc5397#section-3
 type CurrentUserPrincipal struct {
 	XMLName         xml.Name  `xml:"DAV: current-user-principal"`
 	Href            Href      `xml:"href,omitempty"`
 	Unauthenticated *struct{} `xml:"unauthenticated,omitempty"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.19
+// PropertyUpdate implements https://tools.ietf.org/html/rfc4918#section-14.19
 type PropertyUpdate struct {
 	XMLName xml.Name `xml:"DAV: propertyupdate"`
 	Remove  []Remove `xml:"remove"`
 	Set     []Set    `xml:"set"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.23
+// Remove implements https://tools.ietf.org/html/rfc4918#section-14.23
 type Remove struct {
 	XMLName xml.Name `xml:"DAV: remove"`
 	Prop    Prop     `xml:"prop"`
 }
 
-// https://tools.ietf.org/html/rfc4918#section-14.26
+// Set implements https://tools.ietf.org/html/rfc4918#section-14.26
 type Set struct {
 	XMLName xml.Name `xml:"DAV: set"`
 	Prop    Prop     `xml:"prop"`
 }
 
-// https://tools.ietf.org/html/rfc6578#section-6.1
+// SyncCollectionQuery implements https://tools.ietf.org/html/rfc6578#section-6.1
 type SyncCollectionQuery struct {
 	XMLName   xml.Name `xml:"DAV: sync-collection"`
 	SyncToken string   `xml:"sync-token"`
@@ -478,19 +485,19 @@ type SyncCollectionQuery struct {
 	Prop      *Prop    `xml:"prop"`
 }
 
-// https://tools.ietf.org/html/rfc5323#section-5.17
+// Limit implements https://tools.ietf.org/html/rfc5323#section-5.17
 type Limit struct {
 	XMLName  xml.Name `xml:"DAV: limit"`
 	NResults uint     `xml:"nresults"`
 }
 
-// https://tools.ietf.org/html/rfc3744#section-5.4
+// CurrentUserPrivilegeSet implements https://tools.ietf.org/html/rfc3744#section-5.4
 type CurrentUserPrivilegeSet struct {
 	XMLName   xml.Name `xml:"DAV: current-user-privilege-set"`
 	Privilege []Privilege
 }
 
-// https://tools.ietf.org/html/rfc3744#section-5.4
+// Privilege implements https://tools.ietf.org/html/rfc3744#section-5.4
 type Privilege struct {
 	XMLName xml.Name  `xml:"DAV: privilege"`
 	Read    *struct{} `xml:"DAV: read,omitempty"`

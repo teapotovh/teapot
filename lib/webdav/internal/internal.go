@@ -5,6 +5,11 @@ import (
 	"errors"
 )
 
+var (
+	ErrInvalidDepthValue     = errors.New("webdav: invalid Depth value")
+	ErrInvalidOverwriteValue = errors.New("webdav: invalid Overwrite value")
+)
+
 // Depth indicates whether a request applies to the resource's members. It's
 // defined in RFC 4918 section 10.2.
 type Depth int
@@ -31,7 +36,7 @@ func ParseDepth(s string) (Depth, error) {
 		return DepthInfinity, nil
 	}
 
-	return 0, errors.New("webdav: invalid Depth value")
+	return 0, ErrInvalidDepthValue
 }
 
 // String formats the depth.
@@ -57,7 +62,7 @@ func ParseOverwrite(s string) (bool, error) {
 		return false, nil
 	}
 
-	return false, errors.New("webdav: invalid Overwrite value")
+	return false, ErrInvalidOverwriteValue
 }
 
 // FormatOverwrite formats an Overwrite header.

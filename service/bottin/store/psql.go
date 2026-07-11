@@ -30,6 +30,7 @@ func parseRows(rows pgx.Rows) ([]Entry, error) {
 	defer rows.Close()
 
 	var entries []Entry
+
 	for rows.Next() {
 		var (
 			rawPrefix     string

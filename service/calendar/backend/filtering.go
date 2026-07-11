@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-ical"
+
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 )
 
@@ -12,37 +13,46 @@ func mapCalendarObject(object *caldav.CalendarObject, req *caldav.CalendarCompRe
 	if req == nil {
 		return object, nil
 	}
+
 	if object.Data == nil {
 		return object, nil
 	}
+
 	if err := filterComponent(object.Data.Component, req); err != nil {
 		return nil, err
 	}
+
 	return object, nil
 }
 
+//nolint:gocyclo
 func filterComponent(comp *ical.Component, req *caldav.CalendarCompRequest) error {
-	// --- Filter properties ---
-	if req.AllProps {
-		// keep all
+	//
+	// Filter properties
+	//
+	if !req.AllProps {
+		// Keep all
 	} else if len(req.Props) > 0 {
 		wanted := make(map[string]struct{}, len(req.Props))
 		for _, p := range req.Props {
 			wanted[p] = struct{}{}
 		}
+
 		for name := range comp.Props {
 			if _, ok := wanted[name]; !ok {
 				delete(comp.Props, name)
 			}
 		}
 	} else {
-		// no props requested
+		// No props requested
 		for name := range comp.Props {
 			delete(comp.Props, name)
 		}
 	}
 
-	// --- Filter and recurse into sub-components ---
+	//
+	// Filter and recurse into sub-components
+	//
 	if req.AllComps {
 		snapshot := append([]*ical.Component{}, comp.Children...)
 		for _, child := range snapshot {
@@ -50,7 +60,7 @@ func filterComponent(comp *ical.Component, req *caldav.CalendarCompRequest) erro
 				return err
 			}
 		}
-		// recurse into each child with a permissive request
+		// Recurse into each child with a permissive request
 		passthroughReq := &caldav.CalendarCompRequest{AllProps: true, AllComps: true}
 		for _, child := range comp.Children {
 			if err := filterComponent(child, passthroughReq); err != nil {
@@ -63,27 +73,33 @@ func filterComponent(comp *ical.Component, req *caldav.CalendarCompRequest) erro
 			sr := req.Comps[i]
 			subReqs[sr.Name] = &sr
 		}
+
 		snapshot := append([]*ical.Component{}, comp.Children...)
 		for _, child := range snapshot {
 			sr, ok := subReqs[child.Name]
 			if !ok {
 				continue
 			}
+
 			if err := applyExpand(comp, child, sr.Expand); err != nil {
 				return err
 			}
 		}
+
 		filtered := comp.Children[:0]
 		for _, child := range comp.Children {
 			sr, ok := subReqs[child.Name]
 			if !ok {
 				continue
 			}
+
 			if err := filterComponent(child, sr); err != nil {
 				return err
 			}
+
 			filtered = append(filtered, child)
 		}
+
 		comp.Children = filtered
 	} else {
 		comp.Children = nil
@@ -108,7 +124,7 @@ func applyExpand(parent *ical.Component, comp *ical.Component, expand *caldav.Ca
 
 	set, err := comp.RecurrenceSet(time.UTC)
 	if err != nil || set == nil {
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	occurrences := set.Between(expand.Start, expand.End, true)
@@ -120,6 +136,7 @@ func applyExpand(parent *ical.Component, comp *ical.Component, expand *caldav.Ca
 			newChildren = append(newChildren, child)
 		}
 	}
+
 	for _, t := range occurrences {
 		instance := &ical.Component{
 			Name:     comp.Name,
@@ -127,12 +144,15 @@ func applyExpand(parent *ical.Component, comp *ical.Component, expand *caldav.Ca
 			Children: comp.Children,
 		}
 		maps.Copy(instance.Props, comp.Props)
+
 		dtProp := ical.NewProp(ical.PropDateTimeStart)
 		dtProp.SetDateTime(t)
 		instance.Props[ical.PropDateTimeStart] = []ical.Prop{*dtProp}
 		delete(instance.Props, ical.PropRecurrenceRule)
 		newChildren = append(newChildren, instance)
 	}
+
 	parent.Children = newChildren
+
 	return nil
 }

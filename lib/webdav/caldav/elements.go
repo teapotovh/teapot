@@ -2,10 +2,16 @@ package caldav
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/teapotovh/teapot/lib/webdav/internal"
+)
+
+var (
+	ErrInvalidNegateCondition = errors.New("invalid negate-condition value")
+	ErrUnsupportedREPORTRoot  = errors.New("unsupported REPORT root")
 )
 
 const namespace = "urn:ietf:params:xml:ns:caldav"
@@ -136,7 +142,7 @@ func (nc *negateCondition) UnmarshalText(b []byte) error {
 	case "no":
 		*nc = false
 	default:
-		return fmt.Errorf("caldav: invalid negate-condition value: %q", s)
+		return fmt.Errorf("caldav: %w: %q", ErrInvalidNegateCondition, s)
 	}
 
 	return nil
@@ -235,7 +241,7 @@ func (r *reportReq) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		r.Multiget = &calendarMultiget{}
 		v = r.Multiget
 	default:
-		return fmt.Errorf("caldav: unsupported REPORT root %q %q", start.Name.Space, start.Name.Local)
+		return fmt.Errorf("caldav: %w %q %q", ErrUnsupportedREPORTRoot, start.Name.Space, start.Name.Local)
 	}
 
 	return d.DecodeElement(v, &start)

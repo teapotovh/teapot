@@ -3,6 +3,7 @@ package webdav
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -84,7 +85,7 @@ func (b *backend) Options(r *http.Request) (caps []string, allow []string, err e
 	return nil, allow, nil
 }
 
-func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
+func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) (err error) {
 	fi, err := b.FileSystem.Stat(r.Context(), r.URL.Path)
 	if err != nil {
 		return err
@@ -98,7 +99,11 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if e := f.Close(); e != nil && err != nil {
+			err = fmt.Errorf("error while closing result: %w", e)
+		}
+	}()
 
 	w.Header().Set("Content-Length", strconv.FormatInt(fi.Size, 10))
 
@@ -119,7 +124,9 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 		http.ServeContent(w, r, r.URL.Path, fi.ModTime, rs)
 	} else {
 		if r.Method != http.MethodHead {
-			io.Copy(w, f)
+			if _, err := io.Copy(w, f); err != nil {
+				return fmt.Errorf("error while streaming output: %w", err)
+			}
 		}
 	}
 
@@ -164,45 +171,6 @@ func (b *backend) PropFind(
 	}
 
 	return internal.NewMultiStatus(resps...), nil
-}
-
-func (b *backend) propFindFile(propfind *internal.PropFind, fi *FileInfo) (*internal.Response, error) {
-	props := make(map[xml.Name]internal.PropFindFunc)
-
-	props[internal.ResourceTypeName] = func(*internal.RawXMLValue) (any, error) {
-		var types []xml.Name
-		if fi.IsDir {
-			types = append(types, internal.CollectionName)
-		}
-
-		return internal.NewResourceType(types...), nil
-	}
-
-	if !fi.IsDir {
-		props[internal.GetContentLengthName] = internal.PropFindValue(&internal.GetContentLength{
-			Length: fi.Size,
-		})
-
-		if !fi.ModTime.IsZero() {
-			props[internal.GetLastModifiedName] = internal.PropFindValue(&internal.GetLastModified{
-				LastModified: internal.Time(fi.ModTime),
-			})
-		}
-
-		if fi.MIMEType != "" {
-			props[internal.GetContentTypeName] = internal.PropFindValue(&internal.GetContentType{
-				Type: fi.MIMEType,
-			})
-		}
-
-		if fi.ETag != "" {
-			props[internal.GetETagName] = internal.PropFindValue(&internal.GetETag{
-				ETag: internal.ETag(fi.ETag),
-			})
-		}
-	}
-
-	return internal.NewPropFindResponse(fi.Path, propfind, props)
 }
 
 func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*internal.Response, error) {
@@ -339,6 +307,45 @@ func (b *backend) Move(r *http.Request, dest *internal.Href, overwrite bool) (cr
 	}
 
 	return created, err
+}
+
+func (b *backend) propFindFile(propfind *internal.PropFind, fi *FileInfo) (*internal.Response, error) {
+	props := make(map[xml.Name]internal.PropFindFunc)
+
+	props[internal.ResourceTypeName] = func(*internal.RawXMLValue) (any, error) {
+		var types []xml.Name
+		if fi.IsDir {
+			types = append(types, internal.CollectionName)
+		}
+
+		return internal.NewResourceType(types...), nil
+	}
+
+	if !fi.IsDir {
+		props[internal.GetContentLengthName] = internal.PropFindValue(&internal.GetContentLength{
+			Length: fi.Size,
+		})
+
+		if !fi.ModTime.IsZero() {
+			props[internal.GetLastModifiedName] = internal.PropFindValue(&internal.GetLastModified{
+				LastModified: internal.Time(fi.ModTime),
+			})
+		}
+
+		if fi.MIMEType != "" {
+			props[internal.GetContentTypeName] = internal.PropFindValue(&internal.GetContentType{
+				Type: fi.MIMEType,
+			})
+		}
+
+		if fi.ETag != "" {
+			props[internal.GetETagName] = internal.PropFindValue(&internal.GetETag{
+				ETag: internal.ETag(fi.ETag),
+			})
+		}
+	}
+
+	return internal.NewPropFindResponse(fi.Path, propfind, props)
 }
 
 // BackendSuppliedHomeSet represents either a CalDAV calendar-home-set or a

@@ -31,11 +31,12 @@ func Combine(runners ...Runnable) *CombinedRun {
 	return &CombinedRun{runnables: runners}
 }
 
-// Run implements Runnable
+// Run implements Runnable.
 func (c *CombinedRun) Run(ctx context.Context, notify Notify) error {
 	cn := &combinedNotify{lower: notify, total: uint64(len(c.runnables))}
 
 	eg := errgroup.Group{}
+
 	errCtx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 
@@ -53,5 +54,5 @@ func (c *CombinedRun) Run(ctx context.Context, notify Notify) error {
 	return eg.Wait()
 }
 
-// Ensure *CombinedRun implements Run
+// Ensure *CombinedRun implements Run.
 var _ Runnable = &CombinedRun{}

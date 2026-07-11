@@ -3,7 +3,7 @@ package store
 import (
 	"bufio"
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -56,7 +56,8 @@ func (o *Object) Size() int64 {
 }
 
 func (o *Object) ETag() string {
-	sum := sha1.Sum(o.Data)
+	// Sha1 is safe here for etag, only used for caching
+	sum := sha1.Sum(o.Data) //nolint:gosec
 	return base64.StdEncoding.EncodeToString(sum[:])
 }
 

@@ -1,4 +1,4 @@
-package error
+package error //nolint:predeclared
 
 import (
 	"errors"
@@ -25,8 +25,7 @@ func HTTPErrorFromError(err error) *HTTPError {
 }
 
 func IsNotFound(err error) bool {
-	var httpErr *HTTPError
-	if errors.As(err, &httpErr) {
+	if httpErr, ok := errors.AsType[*HTTPError](err); ok {
 		return httpErr.Code == http.StatusNotFound
 	}
 
@@ -34,7 +33,7 @@ func IsNotFound(err error) bool {
 }
 
 func HTTPErrorf(code int, format string, a ...any) *HTTPError {
-	return &HTTPError{code, fmt.Errorf(format, a...)}
+	return &HTTPError{code, fmt.Errorf(format, a...)} //nolint:err113
 }
 
 func (err *HTTPError) Error() string {

@@ -19,6 +19,11 @@ import (
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
+var (
+	ErrInvalidMaxResourceSize = errors.New("max-resource-size must be a positive integer")
+	ErrUnexpectedContentType  = errors.New("unexpected content type")
+)
+
 // DiscoverContextURL performs a DNS-based CardDAV service discovery as
 // described in RFC 6352 section 11. It returns the URL to the CardDAV server.
 func DiscoverContextURL(ctx context.Context, domain string) (string, error) {
@@ -62,6 +67,7 @@ func (c *Client) FindCalendarHomeSet(ctx context.Context, principal string) (str
 	return prop.Href.Path, nil
 }
 
+//nolint:gocyclo
 func (c *Client) FindCalendars(ctx context.Context, calendarHomeSet string) ([]Calendar, error) {
 	propfind := internal.NewPropNamePropFind(
 		internal.ResourceTypeName,
@@ -108,7 +114,7 @@ func (c *Client) FindCalendars(ctx context.Context, calendarHomeSet string) ([]C
 		}
 
 		if maxResSize.Size < 0 {
-			return nil, errors.New("carddav: max-resource-size must be a positive integer")
+			return nil, fmt.Errorf("webdav: %w", ErrInvalidMaxResourceSize)
 		}
 
 		var supportedCompSet supportedCalendarComponentSet
@@ -396,7 +402,7 @@ func populateCalendarObject(co *CalendarObject, h http.Header) error {
 	return nil
 }
 
-func (c *Client) GetCalendarObject(ctx context.Context, path string) (*CalendarObject, error) {
+func (c *Client) GetCalendarObject(ctx context.Context, path string) (co *CalendarObject, err error) {
 	req, err := c.ic.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -408,7 +414,11 @@ func (c *Client) GetCalendarObject(ctx context.Context, path string) (*CalendarO
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if e := resp.Body.Close(); e != nil && err != nil {
+			err = fmt.Errorf("error while closing response body: %w", err)
+		}
+	}()
 
 	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil {
@@ -416,7 +426,7 @@ func (c *Client) GetCalendarObject(ctx context.Context, path string) (*CalendarO
 	}
 
 	if !strings.EqualFold(mediaType, ical.MIMEType) {
-		return nil, fmt.Errorf("caldav: expected Content-Type %q, got %q", ical.MIMEType, mediaType)
+		return nil, fmt.Errorf("caldav: %w: expected %q, got %q", ErrUnexpectedContentType, ical.MIMEType, mediaType)
 	}
 
 	cal, err := ical.NewDecoder(resp.Body).Decode()
@@ -424,7 +434,7 @@ func (c *Client) GetCalendarObject(ctx context.Context, path string) (*CalendarO
 		return nil, err
 	}
 
-	co := &CalendarObject{
+	co = &CalendarObject{
 		Path: resp.Request.URL.Path,
 		Data: cal,
 	}
@@ -458,7 +468,9 @@ func (c *Client) PutCalendarObject(ctx context.Context, path string, cal *ical.C
 		return nil, err
 	}
 
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return nil, fmt.Errorf("error while closing response body: %w", err)
+	}
 
 	co := &CalendarObject{Path: path}
 	if err := populateCalendarObject(co, resp.Header); err != nil {

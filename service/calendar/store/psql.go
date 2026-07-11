@@ -10,6 +10,7 @@ import (
 	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/run"
@@ -60,12 +61,30 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 		return nil, fmt.Errorf("error while connecting to psql: %w", err)
 	}
 
-	calendarTable, err := pgcache.NewTable(pool, "calendars", PrefixFromString, listCalendarPSQL, getCalendarPSQL, storeCalendarPSQL, deleteCalendarPSQL, logger)
+	calendarTable, err := pgcache.NewTable(
+		pool,
+		"calendars",
+		PrefixFromString,
+		listCalendarPSQL,
+		getCalendarPSQL,
+		storeCalendarPSQL,
+		deleteCalendarPSQL,
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
 	}
 
-	objectTable, err := pgcache.NewTable(pool, "objects", PrefixFromString, listObjectPSQL, getObjectPSQL, storeObjectPSQL, deleteObjectPSQL, logger)
+	objectTable, err := pgcache.NewTable(
+		pool,
+		"objects",
+		PrefixFromString,
+		listObjectPSQL,
+		getObjectPSQL,
+		storeObjectPSQL,
+		deleteObjectPSQL,
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
 	}
@@ -80,11 +99,15 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 	return &p, nil
 }
 
-// unit may be used with runInTx when no result is expected
+// unit may be used with runInTx when no result is expected.
 type unit struct{}
 
-func runInTx[T pgcache.Object[Path], R any](table *pgcache.Table[Path, T], fn func(ctx context.Context, tx *pgcache.TableTx[Path, T]) (R, error)) func(context.Context) (R, error) {
+func runInTx[T pgcache.Object[Path], R any](
+	table *pgcache.Table[Path, T],
+	fn func(ctx context.Context, tx *pgcache.TableTx[Path, T]) (R, error),
+) func(context.Context) (R, error) {
 	var empty R
+
 	return func(ctx context.Context) (R, error) {
 		tx, err := table.Begin(ctx)
 		if err != nil {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"mime"
 	"net/http"
 	"path"
@@ -20,9 +21,17 @@ import (
 )
 
 var (
-	ErrInvalidCalendarPath = errors.New("invalid calendar path (must be under calendar home-set)")
+	ErrInvalidCalendarPath                   = errors.New("invalid calendar path (must be under calendar home-set)")
+	ErrTextMatchIncompatibleWithIfNotDefined = errors.New("if is-not-defined is provided, text-match can't be provided")
+	ErrMany1IncompatibleWithIfNotDefined     = errors.New(
+		"if is-not-defined is provided, text-match, time-range, or param-filter can't be provided",
+	)
+	ErrMany2IncompatibleWithIfNotDefined = errors.New(
+		"if is-not-defined is provided, time-range, prop-filter, or comp-filter can't be provided",
+	)
 )
 
+// PutCalendarObjectOptions represents the options for the PutCalendarObject call.
 // TODO if nothing more Caldav-specific needs to be added this should be merged with carddav.PutAddressObjectOptions.
 type PutCalendarObjectOptions struct {
 	// IfNoneMatch indicates that the client does not want to overwrite
@@ -122,9 +131,7 @@ func decodeParamFilter(el *paramFilter) (*ParamFilter, error) {
 	pf := &ParamFilter{Name: el.Name}
 	if el.IsNotDefined != nil {
 		if el.TextMatch != nil {
-			return nil, errors.New(
-				"caldav: failed to parse param-filter: if is-not-defined is provided, text-match can't be provided",
-			)
+			return nil, fmt.Errorf("caldav: failed to parse param-filter: %w", ErrTextMatchIncompatibleWithIfNotDefined)
 		}
 
 		pf.IsNotDefined = true
@@ -141,9 +148,7 @@ func decodePropFilter(el *propFilter) (*PropFilter, error) {
 	pf := &PropFilter{Name: el.Name}
 	if el.IsNotDefined != nil {
 		if el.TextMatch != nil || el.TimeRange != nil || len(el.ParamFilter) > 0 {
-			return nil, errors.New(
-				"caldav: failed to parse prop-filter: if is-not-defined is provided, text-match, time-range, or param-filter can't be provided",
-			)
+			return nil, fmt.Errorf("caldav: failed to parse prop-filter: %w", ErrMany1IncompatibleWithIfNotDefined)
 		}
 
 		pf.IsNotDefined = true
@@ -174,9 +179,7 @@ func decodeCompFilter(el *compFilter) (*CompFilter, error) {
 	cf := &CompFilter{Name: el.Name}
 	if el.IsNotDefined != nil {
 		if el.TimeRange != nil || len(el.PropFilters) > 0 || len(el.CompFilters) > 0 {
-			return nil, errors.New(
-				"caldav: failed to parse comp-filter: if is-not-defined is provided, time-range, prop-filter, or comp-filter can't be provided",
-			)
+			return nil, fmt.Errorf("caldav: failed to parse comp-filter: %w", ErrMany2IncompatibleWithIfNotDefined)
 		}
 
 		cf.IsNotDefined = true
@@ -365,21 +368,6 @@ const (
 	resourceTypeCalendarObject
 )
 
-func (b *backend) resourceTypeAtPath(reqPath string) resourceType {
-	p := path.Clean(reqPath)
-
-	p = strings.TrimPrefix(p, b.Prefix)
-	if !strings.HasPrefix(p, "/") {
-		p = "/" + p
-	}
-
-	if p == "/" {
-		return resourceTypeRoot
-	}
-
-	return resourceType(len(strings.Split(p, "/")) - 1)
-}
-
 func (b *backend) Options(r *http.Request) (caps []string, allow []string, err error) {
 	caps = []string{"calendar-access"}
 
@@ -390,6 +378,7 @@ func (b *backend) Options(r *http.Request) (caps []string, allow []string, err e
 	var dataReq CalendarCompRequest
 
 	_, err = b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
+
 	httpErr := &daverr.HTTPError{}
 	if errors.As(err, &httpErr) {
 		return caps, []string{http.MethodOptions, http.MethodPut}, nil
@@ -439,6 +428,7 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+//nolint:gocyclo
 func (b *backend) PropFind(
 	r *http.Request,
 	propfind *internal.PropFind,
@@ -551,6 +541,162 @@ func (b *backend) PropFind(
 	}
 
 	return internal.NewMultiStatus(resps...), nil
+}
+
+func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*internal.Response, error) {
+	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
+}
+
+func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
+	ifNoneMatch := webdav.ConditionalMatch(r.Header.Get("If-None-Match"))
+	ifMatch := webdav.ConditionalMatch(r.Header.Get("If-Match"))
+
+	opts := PutCalendarObjectOptions{
+		IfNoneMatch: ifNoneMatch,
+		IfMatch:     ifMatch,
+	}
+
+	t, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: malformed Content-Type: %v", err)
+	}
+
+	if t != ical.MIMEType {
+		// TODO: send CALDAV:supported-calendar-data error
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unsupported Content-Type %q", t)
+	}
+
+	// TODO: check CALDAV:max-resource-size precondition
+	cal, err := ical.NewDecoder(r.Body).Decode()
+	if err != nil {
+		// TODO: send CALDAV:valid-calendar-data error
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
+	}
+
+	co, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
+	if err != nil {
+		return err
+	}
+
+	if co.ETag != "" {
+		w.Header().Set("ETag", internal.ETag(co.ETag).String())
+	}
+
+	if !co.ModTime.IsZero() {
+		w.Header().Set("Last-Modified", co.ModTime.UTC().Format(http.TimeFormat))
+	}
+
+	if co.Path != "" {
+		w.Header().Set("Location", co.Path)
+	}
+
+	// TODO: http.StatusNoContent if the resource already existed
+	w.WriteHeader(http.StatusCreated)
+
+	return nil
+}
+
+func (b *backend) Delete(r *http.Request) error {
+	return b.Backend.DeleteCalendarObject(r.Context(), r.URL.Path)
+}
+
+func (b *backend) Mkcol(r *http.Request) error {
+	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
+		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
+	}
+
+	ctx := r.Context()
+	cal := Calendar{
+		Path: r.URL.Path,
+	}
+
+	if !internal.IsRequestBodyEmpty(r) {
+		var m mkcolReq
+		if err := internal.DecodeXMLRequest(r, &m); err != nil {
+			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: error parsing mkcol request: %s", err.Error())
+		}
+
+		if !m.ResourceType.Is(internal.CollectionName) || !m.ResourceType.Is(calendarName) {
+			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: unexpected resource type")
+		}
+
+		cal.Name = m.DisplayName
+		cal.Description = m.Description
+		cal.MaxResourceSize = m.MaxResourceSize
+		cal.SupportedComponentSet = m.SupportedComponents
+	}
+
+	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !strings.HasPrefix(cal.Path, homeSetPath) {
+		return ErrInvalidCalendarPath
+	}
+
+	return b.Backend.CreateCalendar(ctx, &cal)
+}
+
+func (b *backend) Mkcalendar(r *http.Request) error {
+	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
+		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
+	}
+
+	ctx := r.Context()
+	cal := Calendar{
+		Path: r.URL.Path,
+	}
+
+	if !internal.IsRequestBodyEmpty(r) {
+		var m mkcalendarReq
+		if err := internal.DecodeXMLRequest(r, &m); err != nil {
+			return daverr.HTTPErrorf(
+				http.StatusBadRequest,
+				"carddav: error parsing mkcalendar request: %s",
+				err.Error(),
+			)
+		}
+
+		cal.Name = m.DisplayName
+		cal.Description = m.Description
+		cal.MaxResourceSize = m.MaxResourceSize
+		cal.SupportedComponentSet = m.SupportedComponents
+	}
+
+	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !strings.HasPrefix(cal.Path, homeSetPath) {
+		return ErrInvalidCalendarPath
+	}
+
+	return b.Backend.CreateCalendar(ctx, &cal)
+}
+
+func (b *backend) Copy(r *http.Request, dest *internal.Href, recursive, overwrite bool) (created bool, err error) {
+	return false, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: Copy not implemented")
+}
+
+func (b *backend) Move(r *http.Request, dest *internal.Href, overwrite bool) (created bool, err error) {
+	return false, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: Move not implemented")
+}
+
+func (b *backend) resourceTypeAtPath(reqPath string) resourceType {
+	p := path.Clean(reqPath)
+
+	p = strings.TrimPrefix(p, b.Prefix)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+
+	if p == "/" {
+		return resourceTypeRoot
+	}
+
+	return resourceType(len(strings.Split(p, "/")) - 1)
 }
 
 func (b *backend) propFindRoot(ctx context.Context, propfind *internal.PropFind) (*internal.Response, error) {
@@ -798,148 +944,7 @@ func (b *backend) propFindAllCalendarObjects(
 	return resps, nil
 }
 
-func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*internal.Response, error) {
-	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
-}
-
-func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
-	ifNoneMatch := webdav.ConditionalMatch(r.Header.Get("If-None-Match"))
-	ifMatch := webdav.ConditionalMatch(r.Header.Get("If-Match"))
-
-	opts := PutCalendarObjectOptions{
-		IfNoneMatch: ifNoneMatch,
-		IfMatch:     ifMatch,
-	}
-
-	t, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil {
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: malformed Content-Type: %v", err)
-	}
-
-	if t != ical.MIMEType {
-		// TODO: send CALDAV:supported-calendar-data error
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unsupported Content-Type %q", t)
-	}
-
-	// TODO: check CALDAV:max-resource-size precondition
-	cal, err := ical.NewDecoder(r.Body).Decode()
-	if err != nil {
-		// TODO: send CALDAV:valid-calendar-data error
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
-	}
-
-	co, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
-	if err != nil {
-		return err
-	}
-
-	if co.ETag != "" {
-		w.Header().Set("ETag", internal.ETag(co.ETag).String())
-	}
-
-	if !co.ModTime.IsZero() {
-		w.Header().Set("Last-Modified", co.ModTime.UTC().Format(http.TimeFormat))
-	}
-
-	if co.Path != "" {
-		w.Header().Set("Location", co.Path)
-	}
-
-	// TODO: http.StatusNoContent if the resource already existed
-	w.WriteHeader(http.StatusCreated)
-
-	return nil
-}
-
-func (b *backend) Delete(r *http.Request) error {
-	return b.Backend.DeleteCalendarObject(r.Context(), r.URL.Path)
-}
-
-func (b *backend) Mkcol(r *http.Request) error {
-	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
-		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
-	}
-
-	ctx := r.Context()
-	cal := Calendar{
-		Path: r.URL.Path,
-	}
-
-	if !internal.IsRequestBodyEmpty(r) {
-		var m mkcolReq
-		if err := internal.DecodeXMLRequest(r, &m); err != nil {
-			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: error parsing mkcol request: %s", err.Error())
-		}
-
-		if !m.ResourceType.Is(internal.CollectionName) || !m.ResourceType.Is(calendarName) {
-			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: unexpected resource type")
-		}
-
-		cal.Name = m.DisplayName
-		cal.Description = m.Description
-		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = m.SupportedComponents
-	}
-
-	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
-	if err != nil {
-		return err
-	}
-
-	if !strings.HasPrefix(cal.Path, homeSetPath) {
-		return ErrInvalidCalendarPath
-	}
-
-	return b.Backend.CreateCalendar(ctx, &cal)
-}
-
-func (b *backend) Mkcalendar(r *http.Request) error {
-	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
-		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
-	}
-
-	ctx := r.Context()
-	cal := Calendar{
-		Path: r.URL.Path,
-	}
-
-	if !internal.IsRequestBodyEmpty(r) {
-		var m mkcalendarReq
-		if err := internal.DecodeXMLRequest(r, &m); err != nil {
-			return daverr.HTTPErrorf(
-				http.StatusBadRequest,
-				"carddav: error parsing mkcalendar request: %s",
-				err.Error(),
-			)
-		}
-
-		cal.Name = m.DisplayName
-		cal.Description = m.Description
-		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = m.SupportedComponents
-	}
-
-	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
-	if err != nil {
-		return err
-	}
-
-	if !strings.HasPrefix(cal.Path, homeSetPath) {
-		return ErrInvalidCalendarPath
-	}
-
-	return b.Backend.CreateCalendar(ctx, &cal)
-}
-
-func (b *backend) Copy(r *http.Request, dest *internal.Href, recursive, overwrite bool) (created bool, err error) {
-	return false, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: Copy not implemented")
-}
-
-func (b *backend) Move(r *http.Request, dest *internal.Href, overwrite bool) (created bool, err error) {
-	return false, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: Move not implemented")
-}
-
-// https://datatracker.ietf.org/doc/html/rfc4791#section-5.3.2.1
+// PreconditionType implements https://datatracker.ietf.org/doc/html/rfc4791#section-5.3.2.1
 type PreconditionType string
 
 const (

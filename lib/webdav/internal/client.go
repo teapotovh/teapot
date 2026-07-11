@@ -18,6 +18,18 @@ import (
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
 
+var (
+	ErrNoSRV                       = errors.New("domain doesn't have an SRV record")
+	ErrEmptySRV                    = errors.New("empty target in SRV record")
+	ErrMissingPathKey              = errors.New("missing path key")
+	ErrEmptyTXTEntries             = errors.New("empty TXT entries")
+	ErrTooManyTXTEntries           = errors.New("too many TXT entries")
+	ErrUntyped                     = errors.New("untyped error")
+	ErrMultiStatusFailed           = errors.New("HTTP multi-status request failed")
+	ErrUnexpectedNumberOfResponses = errors.New("unexpected number of responses")
+	ErrMismatchedServerVersion     = errors.New("webdav: server doesn't support DAV class 1")
+)
+
 // DiscoverContextURL performs a DNS-based CardDAV/CalDAV service discovery as
 // described in RFC 6764. It returns the URL to the CardDAV/CalDAV server.
 // Specifically it implements points 2 and 3 from the bootstrapping procedure
@@ -27,6 +39,7 @@ func DiscoverContextURL(ctx context.Context, service, domain string) (string, er
 
 	// Only lookup TLS records, plaintext connections are insecure
 	_, addrs, err := resolver.LookupSRV(ctx, service+"s", "tcp", domain)
+
 	dnsErr := &net.DNSError{}
 	if errors.As(err, &dnsErr) {
 		if dnsErr.IsTemporary {
@@ -37,19 +50,20 @@ func DiscoverContextURL(ctx context.Context, service, domain string) (string, er
 	}
 
 	if len(addrs) == 0 {
-		return "", errors.New("webdav: domain doesn't have an SRV record")
+		return "", fmt.Errorf("webdav: %w", ErrNoSRV)
 	}
 
 	addr := addrs[0]
 
 	target := strings.TrimSuffix(addr.Target, ".")
 	if target == "" {
-		return "", errors.New("webdav: empty target in SRV record")
+		return "", fmt.Errorf("webdav: %w", ErrEmptySRV)
 	}
 
 	txtName := fmt.Sprintf("_%ss._tcp.%s", service, domain)
 
 	txtRecords, err := resolver.LookupTXT(ctx, txtName)
+
 	dnsErr = &net.DNSError{}
 	if errors.As(err, &dnsErr) {
 		if dnsErr.IsTemporary {
@@ -67,15 +81,15 @@ func DiscoverContextURL(ctx context.Context, service, domain string) (string, er
 	case 1:
 		record := txtRecords[0]
 		if !strings.HasPrefix(record, "path=") {
-			return "", fmt.Errorf("webdav: TXT record for %s does not contain the path key", txtName)
+			return "", fmt.Errorf("webdav: invalid TXT record for %s: %w", txtName, ErrMissingPathKey)
 		}
 
 		path = strings.TrimPrefix(record, "path=")
 		if path == "" {
-			return "", fmt.Errorf("webdav: empty path for %s TXT record", txtName)
+			return "", fmt.Errorf("webdav: while doing discovery for %s: %w", txtName, ErrEmptyTXTEntries)
 		}
 	default: // more than 1
-		return "", fmt.Errorf("webdav: more than one entry found on %s discovery TXT record", txtName)
+		return "", fmt.Errorf("webdav: while doing discovery for %s: %w", txtName, ErrTooManyTXTEntries)
 	}
 
 	u := url.URL{
@@ -154,14 +168,18 @@ func (c *Client) NewXMLRequest(method string, path string, v any) (*http.Request
 	return req, nil
 }
 
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	resp, err := c.http.Do(req)
+func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
+	resp, err = c.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode/100 != 2 {
-		defer resp.Body.Close()
+		defer func() {
+			if e := resp.Body.Close(); e != nil && err != nil {
+				err = fmt.Errorf("error while closing response body: %w", err)
+			}
+		}()
 
 		contentType := resp.Header.Get("Content-Type")
 		if contentType == "" {
@@ -182,15 +200,20 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 			lr := io.LimitedReader{R: resp.Body, N: 1024}
 
 			var buf bytes.Buffer
-			io.Copy(&buf, &lr)
-			resp.Body.Close()
+			if _, err := io.Copy(&buf, &lr); err != nil {
+				return nil, fmt.Errorf("error while copying response into LimitedReader: %w", err)
+			}
+
+			if err := resp.Body.Close(); err != nil {
+				return nil, fmt.Errorf("error while closing response body: %w", err)
+			}
 
 			if s := strings.TrimSpace(buf.String()); s != "" {
 				if lr.N == 0 {
 					s += " […]"
 				}
 
-				wrappedErr = fmt.Errorf("%v", s)
+				wrappedErr = fmt.Errorf("%w: %q", ErrUntyped, s)
 			}
 		}
 
@@ -200,15 +223,19 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func (c *Client) DoMultiStatus(req *http.Request) (*MultiStatus, error) {
+func (c *Client) DoMultiStatus(req *http.Request) (msptr *MultiStatus, err error) {
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if e := resp.Body.Close(); e != nil && err != nil {
+			err = fmt.Errorf("error while closing response body: %w", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusMultiStatus {
-		return nil, fmt.Errorf("HTTP multi-status request failed: %v", resp.Status)
+		return nil, fmt.Errorf("%w: with status code %v", ErrMultiStatusFailed, resp.Status)
 	}
 
 	// TODO: the response can be quite large, support streaming Response elements
@@ -231,7 +258,7 @@ func (c *Client) PropFind(ctx context.Context, path string, depth Depth, propfin
 	return c.DoMultiStatus(req.WithContext(ctx))
 }
 
-// PropfindFlat performs a PROPFIND request with a zero depth.
+// PropFindFlat performs a PROPFIND request with a zero depth.
 func (c *Client) PropFindFlat(ctx context.Context, path string, propfind *PropFind) (*Response, error) {
 	ms, err := c.PropFind(ctx, path, DepthZero, propfind)
 	if err != nil {
@@ -240,7 +267,11 @@ func (c *Client) PropFindFlat(ctx context.Context, path string, propfind *PropFi
 
 	// If the client followed a redirect, the Href might be different from the request path
 	if len(ms.Responses) != 1 {
-		return nil, fmt.Errorf("PROPFIND with Depth: 0 returned %d responses", len(ms.Responses))
+		return nil, fmt.Errorf(
+			"PROPFIND with depth 0: received %d responses: %w",
+			len(ms.Responses),
+			ErrUnexpectedNumberOfResponses,
+		)
 	}
 
 	return &ms.Responses[0], nil
@@ -281,11 +312,13 @@ func (c *Client) Options(
 		return nil, nil, err
 	}
 
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return nil, nil, fmt.Errorf("error while closing response body: %w", err)
+	}
 
 	classes = parseCommaSeparatedSet(resp.Header["Dav"], false)
 	if !classes["1"] {
-		return nil, nil, errors.New("webdav: server doesn't support DAV class 1")
+		return nil, nil, ErrMismatchedServerVersion
 	}
 
 	methods = parseCommaSeparatedSet(resp.Header["Allow"], true)

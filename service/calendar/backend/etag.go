@@ -16,6 +16,7 @@ func AndETagMatch(matchers ...ETagMatcher) ETagMatcher {
 			if err != nil {
 				return false, err
 			}
+
 			if !match {
 				// Short cirtuit
 				return false, nil
