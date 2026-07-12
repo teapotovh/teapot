@@ -3,14 +3,13 @@ package store
 import (
 	"bufio"
 	"bytes"
-	"crypto/sha1" //nolint:gosec
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/emersion/go-ical"
 
+	"github.com/teapotovh/teapot/lib/s3cache"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 )
 
@@ -44,21 +43,11 @@ type Object struct {
 	Path    Path
 	ModTime time.Time
 	Data    []byte
-}
-
-// Key implements pgcache.Object.
-func (o Object) Key() Path {
-	return o.Path
+	ETag    string
 }
 
 func (o *Object) Size() int64 {
 	return int64(len(o.Data))
-}
-
-func (o *Object) ETag() string {
-	// Sha1 is safe here for etag, only used for caching
-	sum := sha1.Sum(o.Data) //nolint:gosec
-	return base64.StdEncoding.EncodeToString(sum[:])
 }
 
 func (o *Object) Calendar() (*ical.Calendar, error) {
@@ -86,11 +75,14 @@ func SerializeObject(obj caldav.CalendarObject) (*Object, error) {
 		return nil, fmt.Errorf("error while flushing encoder buffer: %w", err)
 	}
 
-	so := Object{
+	data := buf.Bytes()
+	etag := s3cache.HashBytes(data)
+	object := Object{
 		Path:    Path(obj.Path),
 		ModTime: obj.ModTime,
-		Data:    buf.Bytes(),
+		Data:    data,
+		ETag:    string(etag),
 	}
 
-	return &so, nil
+	return &object, nil
 }

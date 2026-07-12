@@ -201,7 +201,7 @@ func (resp *Response) DecodeProp(values ...any) error {
 		// TODO wrap errors with more context (XML name)
 		name, err := valueXMLName(v)
 		if err != nil {
-			return err
+			return fmt.Errorf("error while parsing value %+v: %w", v, err)
 		}
 
 		if err := resp.Err(); err != nil {
@@ -309,7 +309,7 @@ func (p *Prop) Get(name xml.Name) *RawXMLValue {
 func (p *Prop) Decode(v any) error {
 	name, err := valueXMLName(v)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while decoding prop: %w", err)
 	}
 
 	raw := p.Get(name)

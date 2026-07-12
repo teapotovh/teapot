@@ -13,8 +13,8 @@ import (
 // a rename with the desired file path. This prevents corrupted writes.
 func writeFileAtomic(path string, data []byte) error {
 	dir, pattern := filepath.Split(path)
-	file, err := os.CreateTemp(dir, pattern)
 
+	file, err := os.CreateTemp(dir, pattern)
 	if err != nil {
 		return fmt.Errorf("error while creating temporary file: %w", err)
 	}
@@ -27,7 +27,7 @@ func writeFileAtomic(path string, data []byte) error {
 		return fmt.Errorf("error while closing temporary file after write: %w", err)
 	}
 
-	return os.Rename(filepath.Join(dir, file.Name()), path)
+	return os.Rename(file.Name(), path)
 }
 
 // diskCapacity returns the total size, in bytes, of the filesystem that
@@ -37,5 +37,6 @@ func diskCapacity(path string) (uint64, error) {
 	if err := syscall.Statfs(path, &stat); err != nil {
 		return 0, err
 	}
+
 	return stat.Blocks * uint64(stat.Bsize), nil
 }

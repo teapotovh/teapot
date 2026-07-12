@@ -1,6 +1,7 @@
 package s3cache
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,8 +17,8 @@ import (
 )
 
 var (
-	S3CachePathRequired   = errors.New("path is requried to initialize an s3cache")
-	S3CacheBucketRequired = errors.New("bucket is requried to initialize an s3cache")
+	S3CachePathRequired   = errors.New("path is required to initialize an s3cache")
+	S3CacheBucketRequired = errors.New("bucket is required to initialize an s3cache")
 
 	DirFileMode = os.FileMode(0o0750)
 )
@@ -112,13 +113,59 @@ func (c *S3Cache) Get(ctx context.Context, key string, expected Hash) ([]byte, H
 
 		return result{data: data, hash: hash}, nil
 	})
-
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while fetching key from remote S3: %w", err)
 	}
 
 	r := v.(result)
+
 	return r.data, r.hash, nil
+}
+
+// Put uploads data to S3 under key, then caches it locally with the resulting
+// ETag, returning that Hash for the caller to use.
+func (c *S3Cache) Put(ctx context.Context, key string, data []byte) (Hash, error) {
+	info, err := c.client.PutObject(
+		ctx,
+		c.bucket,
+		key,
+		bytes.NewReader(data),
+		int64(len(data)),
+		minio.PutObjectOptions{},
+	)
+	if err != nil {
+		return ZeroHash, fmt.Errorf("error while putting object %q: %w", key, err)
+	}
+
+	hash := Hash(info.ETag)
+
+	if err := c.store(ctx, key, data, hash); err != nil {
+		c.logger.WarnContext(ctx, "failed to persist S3 cache entry", "key", key, "err", err)
+	}
+
+	return hash, nil
+}
+
+// Remove removes key from S3 and, if present, from the local cache.
+func (c *S3Cache) Remove(ctx context.Context, key string) error {
+	if err := c.client.RemoveObject(ctx, c.bucket, key, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("error while deleting object %q: %w", key, err)
+	}
+
+	if candidate := c.meta.get(key); candidate != nil {
+		c.meta.remove(key)
+
+		if err := c.meta.persistLocked(); err != nil {
+			return fmt.Errorf("error while removing s3 cache entry: %w", err)
+		}
+
+		dataPath := c.dataPath(candidate.ID)
+		if err := os.Remove(dataPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			c.logger.Warn("error while removing S3 cached file", "key", key, "err", err)
+		}
+	}
+
+	return nil
 }
 
 func (c *S3Cache) cap() int64 {
@@ -137,6 +184,7 @@ func (c *S3Cache) readCached(key string, expected Hash) ([]byte, bool, error) {
 	}
 
 	c.meta.touch(key)
+
 	return data, true, nil
 }
 
@@ -151,6 +199,7 @@ func (c *S3Cache) fetchAndStore(ctx context.Context, key string) ([]byte, Hash, 
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while statting on object %q: %w", key, err)
 	}
+
 	hash := Hash(info.ETag)
 
 	data, err := io.ReadAll(obj)
@@ -172,11 +221,20 @@ func (c *S3Cache) store(ctx context.Context, key string, data []byte, hash Hash)
 
 	// If this item is bigger than the whole cache, don't bother storing it
 	if newSize >= c.capacity {
-		c.logger.DebugContext(ctx, "not caching s3 object as it exceeds the total cache size", "key", key, "size", newSize, "capacity", c.capacity)
+		c.logger.DebugContext(
+			ctx,
+			"not caching s3 object as it exceeds the total cache size",
+			"key",
+			key,
+			"size",
+			newSize,
+			"capacity",
+			c.capacity,
+		)
 		return nil
 	}
 
-	// If we don't have enough space to accomodate the new entry, remove enough
+	// If we don't have enough space to accommodate the new entry, remove enough
 	// entries to satisfy this in LRU fashion.
 	if c.cap() < sizeDiff {
 		if err := c.reclaimSpace(ctx, sizeDiff); err != nil {
@@ -194,6 +252,7 @@ func (c *S3Cache) store(ctx context.Context, key string, data []byte, hash Hash)
 	}
 
 	c.meta.put(key, uid, hash, newSize)
+
 	if err := c.meta.persistLocked(); err != nil {
 		return fmt.Errorf("error while writing to s3 cache after adding new entry: %w", err)
 	}
@@ -224,6 +283,7 @@ func (c *S3Cache) reclaimSpace(ctx context.Context, diff int64) error {
 	freed := int64(0)
 
 	var drop []snapshot
+
 	for next < len(heap) && freed < diff {
 		candidate := heap[next]
 		drop = append(drop, candidate)

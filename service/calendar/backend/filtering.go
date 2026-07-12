@@ -27,6 +27,11 @@ func mapCalendarObject(object *caldav.CalendarObject, req *caldav.CalendarCompRe
 
 //nolint:gocyclo
 func filterComponent(comp *ical.Component, req *caldav.CalendarCompRequest) error {
+	// No filter specified at all means "return everything unfiltered".
+	if !req.AllProps && len(req.Props) == 0 && !req.AllComps && len(req.Comps) == 0 {
+		return nil
+	}
+
 	//
 	// Filter properties
 	//

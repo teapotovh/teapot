@@ -43,7 +43,7 @@ func NewBackend(store store.Store, logger *slog.Logger) *Backend {
 }
 
 func (b *Backend) CalendarHomeSetPath(ctx context.Context) (path string, err error) {
-	defer b.logCall(ctx, "CalendarHomeSetPath", err, time.Now())
+	defer func() { b.logCall(ctx, "CalendarHomeSetPath", "", err, time.Now()) }()
 
 	up, err := b.CurrentUserPrincipal(ctx)
 	if err != nil {
@@ -77,7 +77,7 @@ func normalizePath(path string) store.Path {
 }
 
 func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) (err error) {
-	defer b.logCall(ctx, "CreateCalendar", err, time.Now())
+	defer func() { b.logCall(ctx, "CreateCalendar", calendar.Path, err, time.Now()) }()
 
 	if calendar == nil {
 		return ErrUnexpectedNilCalendar
@@ -92,7 +92,7 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 }
 
 func (b *Backend) ListCalendars(ctx context.Context) (calendars []caldav.Calendar, err error) {
-	defer b.logCall(ctx, "ListCalendars", err, time.Now())
+	defer func() { b.logCall(ctx, "ListCalendars", "", err, time.Now(), "calendars", calendars) }()
 
 	path, err := b.CalendarHomeSetPath(ctx)
 	if err != nil {
@@ -112,7 +112,7 @@ func (b *Backend) ListCalendars(ctx context.Context) (calendars []caldav.Calenda
 }
 
 func (b *Backend) GetCalendar(ctx context.Context, path string) (calendar *caldav.Calendar, err error) {
-	defer b.logCall(ctx, "GetCalendar", err, time.Now())
+	defer func() { b.logCall(ctx, "GetCalendar", path, err, time.Now(), "calendar", calendar) }()
 
 	cal, err := b.store.GetCalendar(ctx, normalizePath(path))
 	if err != nil {
@@ -136,8 +136,6 @@ func caldavObjectToStoreObject(
 }
 
 func storeObjectToCaldavObject(obj store.Object) (*caldav.CalendarObject, error) {
-	etag := obj.ETag()
-
 	cal, err := obj.Calendar()
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing ical object and generating etag: %w", err)
@@ -147,7 +145,7 @@ func storeObjectToCaldavObject(obj store.Object) (*caldav.CalendarObject, error)
 		Path:          string(obj.Path),
 		ModTime:       obj.ModTime,
 		ContentLength: obj.Size(),
-		ETag:          etag,
+		ETag:          obj.ETag,
 		Data:          cal,
 	}
 
@@ -160,7 +158,7 @@ func (b *Backend) PutCalendarObject(
 	calendar *ical.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
 ) (object *caldav.CalendarObject, err error) {
-	defer b.logCall(ctx, "PutCalendarObject", err, time.Now())
+	defer func() { b.logCall(ctx, "PutCalendarObject", path, err, time.Now(), "opts", opts) }()
 
 	if calendar == nil {
 		return nil, ErrUnexpectedNilObject
@@ -185,7 +183,7 @@ func (b *Backend) PutCalendarObject(
 			}
 			// We ignore NotFound errors, insertion is safe on the first insertion of an object
 		} else {
-			etag := obj.ETag()
+			etag := obj.ETag
 
 			match, err := matcher(etag)
 			if err != nil {
@@ -196,7 +194,6 @@ func (b *Backend) PutCalendarObject(
 			}
 
 			if !match {
-				b.logger.WarnContext(ctx, "mismatched etag", "options", opts, "etag", etag)
 				return nil, ErrETagDidNotMatch
 			}
 		}
@@ -225,7 +222,14 @@ func (b *Backend) GetCalendarObject(
 	path string,
 	req *caldav.CalendarCompRequest,
 ) (object *caldav.CalendarObject, err error) {
-	defer b.logCall(ctx, "GetCalendarObject", err, time.Now())
+	defer func() {
+		var extra []any
+		if object != nil {
+			extra = append(extra, "etag", object.ETag)
+		}
+
+		b.logCall(ctx, "GetCalendarObject", path, err, time.Now(), extra...)
+	}()
 
 	obj, err := b.store.GetCalendarObject(ctx, normalizePath(path))
 	if err != nil {
@@ -237,12 +241,21 @@ func (b *Backend) GetCalendarObject(
 		return nil, fmt.Errorf("error while converting object at path %q to a caldav CalendarObject: %w", obj.Path, err)
 	}
 
-	object, err = mapCalendarObject(object, req)
-	if err != nil {
-		return nil, fmt.Errorf("error while applying filters and maps to calendar object: %w", err)
-	}
+	// object, err = mapCalendarObject(object, req)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error while applying filters and maps to calendar object: %w", err)
+	// }
 
 	return object, nil
+}
+
+func pathsAndEtags(objects []caldav.CalendarObject) (paths []string, etags []string) {
+	for _, object := range objects {
+		paths = append(paths, object.Path)
+		etags = append(etags, object.ETag)
+	}
+
+	return paths, etags
 }
 
 func (b *Backend) ListCalendarObjects(
@@ -250,7 +263,10 @@ func (b *Backend) ListCalendarObjects(
 	path string,
 	req *caldav.CalendarCompRequest,
 ) (objects []caldav.CalendarObject, err error) {
-	defer b.logCall(ctx, "ListCalendarObjects", err, time.Now())
+	defer func() {
+		paths, etags := pathsAndEtags(objects)
+		b.logCall(ctx, "ListCalendarObjects", path, err, time.Now(), "paths", paths, "etags", etags)
+	}()
 
 	return b.listCalendarObjects(ctx, path, req)
 }
@@ -260,7 +276,10 @@ func (b *Backend) QueryCalendarObjects(
 	path string,
 	query *caldav.CalendarQuery,
 ) (objects []caldav.CalendarObject, err error) {
-	defer b.logCall(ctx, "QueryCalendarObjects", err, time.Now())
+	defer func() {
+		paths, etags := pathsAndEtags(objects)
+		b.logCall(ctx, "QueryCalendarObjects", path, err, time.Now(), "paths", paths, "etags", etags)
+	}()
 
 	objects, err = b.listCalendarObjects(ctx, path, &query.CompRequest)
 	if err != nil {
@@ -276,7 +295,7 @@ func (b *Backend) QueryCalendarObjects(
 }
 
 func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err error) {
-	defer b.logCall(ctx, "DeleteCalendarObject", err, time.Now())
+	defer func() { b.logCall(ctx, "DeleteCalendarObject", path, err, time.Now()) }()
 
 	if err := b.store.DeleteCalendarObject(ctx, normalizePath(path)); err != nil {
 		return fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
@@ -285,11 +304,18 @@ func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err er
 	return nil
 }
 
-func (b *Backend) logCall(ctx context.Context, method string, err error, start time.Time) {
+func (b *Backend) logCall(ctx context.Context, method string, path string, err error, start time.Time, extra ...any) {
+	fields := []any{"method", method, "duration", time.Since(start)}
+	if len(path) > 0 {
+		fields = append(fields, "path", path)
+	}
+
+	fields = append(fields, extra...)
 	if err != nil {
-		b.logger.ErrorContext(ctx, "called", "method", method, "err", err, "duration", time.Since(start))
+		fields = append(fields, "err", err)
+		b.logger.ErrorContext(ctx, "called", fields...)
 	} else {
-		b.logger.InfoContext(ctx, "called", "method", method, "duration", time.Since(start))
+		b.logger.InfoContext(ctx, "called", fields...)
 	}
 }
 
@@ -315,10 +341,10 @@ func (b *Backend) listCalendarObjects(
 			)
 		}
 
-		object, err = mapCalendarObject(object, req)
-		if err != nil {
-			return nil, fmt.Errorf("error while applying filters and maps to calendar object %q: %w", obj.Path, err)
-		}
+		// object, err = mapCalendarObject(object, req)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error while applying filters and maps to calendar object %q: %w", obj.Path, err)
+		// }
 
 		objects = append(objects, *object)
 	}

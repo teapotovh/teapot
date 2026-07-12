@@ -9,6 +9,7 @@ import (
 
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
+	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
 var (
@@ -56,7 +57,14 @@ type Store interface {
 type StoreConfig struct {
 	Timeout time.Duration
 	Type    string
-	URL     string
+
+	URL string
+	S3  StoreS3Config
+}
+
+type StoreS3Config struct {
+	URL   string
+	Cache s3cache.S3CacheConfig
 }
 
 func NewStore(config StoreConfig, logger *slog.Logger) (Store, error) {
@@ -66,8 +74,8 @@ func NewStore(config StoreConfig, logger *slog.Logger) (Store, error) {
 	switch config.Type {
 	case "mem":
 		return NewMem(), nil
-	case "psql":
-		return NewPSQL(ctx, config.URL, logger)
+	case "online":
+		return NewOnline(ctx, config.URL, config.S3, logger)
 	default:
 		return nil, fmt.Errorf("error instantiating store of type %q: %w", config.Type, ErrInvalidBackend)
 	}

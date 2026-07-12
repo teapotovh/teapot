@@ -60,10 +60,11 @@ type metadataStore struct {
 func newMetadataStore(path string) (*metadataStore, error) {
 	metadataPath := filepath.Join(path, v1MetadataFileName)
 	ms := &metadataStore{
-		path: metadataPath,
+		path:  metadataPath,
+		byKey: map[string]*entry{},
 	}
 
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(metadataPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ms, nil
@@ -88,10 +89,12 @@ func newMetadataStore(path string) (*metadataStore, error) {
 // persistLocked writes the full metadata set to disk. Caller must hold mu.
 func (ms *metadataStore) persistLocked() error {
 	ms.mu.RLock()
+
 	entries := make([]*entry, 0, len(ms.byKey))
 	for _, e := range ms.byKey {
 		entries = append(entries, e)
 	}
+
 	ms.mu.RUnlock()
 
 	data, err := json.Marshal(entries)
@@ -100,6 +103,7 @@ func (ms *metadataStore) persistLocked() error {
 	}
 
 	ms.size.Store(int64(len(data)))
+
 	return writeFileAtomic(ms.path, data)
 }
 
@@ -108,6 +112,7 @@ func (ms *metadataStore) lockedGet(key string) (*entry, bool) {
 	defer ms.mu.RUnlock()
 
 	e, ok := ms.byKey[key]
+
 	return e, ok
 }
 
@@ -160,6 +165,7 @@ func (ms *metadataStore) put(key string, id uuid.UUID, hash Hash, size int64) {
 		e = &entry{ID: id, Key: key}
 		ms.byKey[key] = e
 	}
+
 	e.Hash = hash
 	e.Size = size
 	e.StoredAt = time.Now()
@@ -175,6 +181,7 @@ func (ms *metadataStore) remove(key string) {
 	if !ok {
 		return
 	}
+
 	delete(ms.byKey, key)
 }
 
@@ -192,20 +199,14 @@ func (ms *metadataStore) cacheSize() int64 {
 	for _, e := range ms.byKey {
 		total += e.Size
 	}
+
 	return total
-}
-
-// count returns the number of tracked entries.
-func (ms *metadataStore) count() int {
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
-
-	return len(ms.byKey)
 }
 
 // lruHeap returns all entries as eviction candidates, least-recently -used first.
 func (ms *metadataStore) lruHeap() []snapshot {
 	ms.mu.RLock()
+
 	out := make([]snapshot, 0, len(ms.byKey))
 	for _, e := range ms.byKey {
 		out = append(out, snapshot{
@@ -217,8 +218,10 @@ func (ms *metadataStore) lruHeap() []snapshot {
 			LastAccess: time.Unix(0, e.lastAccess.Load()),
 		})
 	}
+
 	ms.mu.RUnlock()
 
 	sort.Slice(out, func(i, j int) bool { return out[i].LastAccess.Before(out[j].LastAccess) })
+
 	return out
 }
