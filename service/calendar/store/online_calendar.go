@@ -109,12 +109,12 @@ func deleteCalendarPSQL(ctx context.Context, tx pgx.Tx, paths []Path) error {
 }
 
 // CreateCalendar implements Store.
-func (p *PSQL) CreateCalendar(ctx context.Context, calendar Calendar) error {
-	if _, exists := p.calendarTable.Get(calendar.Path); exists {
+func (o *Online) CreateCalendar(ctx context.Context, calendar Calendar) error {
+	if _, exists := o.calendarTable.Get(calendar.Path); exists {
 		return ErrAlreadyExists
 	}
 
-	_, err := runInTx(p.calendarTable, func(ctx context.Context, tx *pgcache.TableTx[Path, Calendar]) (unit, error) {
+	_, err := runInTx(o.calendarTable, func(ctx context.Context, tx *pgcache.TableTx[Path, Calendar]) (unit, error) {
 		return unit{}, tx.Store(ctx, []Calendar{calendar})
 	})(ctx)
 
@@ -122,16 +122,16 @@ func (p *PSQL) CreateCalendar(ctx context.Context, calendar Calendar) error {
 }
 
 // ListCalendars implements Store.
-func (p *PSQL) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error) {
+func (o *Online) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error) {
 	endPath := Path(fmt.Sprintf("%s%c", basePath, utf8.MaxRune))
-	iter := p.calendarTable.Between(basePath, endPath)
+	iter := o.calendarTable.Between(basePath, endPath)
 
 	return slices.Collect(iter), nil
 }
 
 // GetCalendar implements Store.
-func (p *PSQL) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
-	calendar, found := p.calendarTable.Get(path)
+func (o *Online) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
+	calendar, found := o.calendarTable.Get(path)
 	if !found {
 		return nil, ErrCalendarNotFound
 	}

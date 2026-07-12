@@ -176,7 +176,7 @@ func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
 
 	if resp.StatusCode/100 != 2 {
 		defer func() {
-			if e := resp.Body.Close(); e != nil && err != nil {
+			if e := resp.Body.Close(); e != nil && err == nil {
 				err = fmt.Errorf("error while closing response body: %w", err)
 			}
 		}()
@@ -229,7 +229,7 @@ func (c *Client) DoMultiStatus(req *http.Request) (msptr *MultiStatus, err error
 		return nil, err
 	}
 	defer func() {
-		if e := resp.Body.Close(); e != nil && err != nil {
+		if e := resp.Body.Close(); e != nil && err == nil {
 			err = fmt.Errorf("error while closing response body: %w", err)
 		}
 	}()

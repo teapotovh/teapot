@@ -10,8 +10,6 @@ import (
 )
 
 var (
-	ErrMissingComma = errors.New("expected a ',' in the XML tag, found none")
-
 	ErrNotStruct                  = errors.New("not a struct")
 	ErrMissingXMLNameStructField  = errors.New("missing an XMLName struct field")
 	ErrNotXMLName                 = errors.New("not an xml.Name")
@@ -189,10 +187,7 @@ func valueXMLName(v any) (xml.Name, error) {
 		return xml.Name{}, fmt.Errorf("webdav: %w: in %T.XMLName", ErrMissingXMLTag, v)
 	}
 
-	name, _, found := strings.Cut(tag, ",")
-	if !found {
-		return xml.Name{}, ErrMissingComma
-	}
+	name, _, _ := strings.Cut(tag, ",")
 
 	nameParts := strings.Split(name, " ")
 	if len(nameParts) != 2 {

@@ -5,15 +5,19 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/run"
+	"github.com/teapotovh/teapot/lib/s3cache"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -21,16 +25,20 @@ import (
 //go:embed migrations/*.sql
 var migraitions embed.FS
 
-type PSQL struct {
-	pool          *pgxpool.Pool
-	calendarTable *pgcache.Table[Path, Calendar]
-	objectTable   *pgcache.Table[Path, Object]
+type Online struct {
+	logger *slog.Logger
+
+	pool           *pgxpool.Pool
+	calendarTable  *pgcache.Table[Path, Calendar]
+	objectRefTable *pgcache.Table[Path, objectRef]
+
+	objectCache *s3cache.S3Cache
 
 	metrics metrics
 }
 
-func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error) {
-	options := brant.DefaultOptions().WithTableName("_version").WithFilesystem(migraitions).WithDataSourceName(url)
+func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.Logger) (*Online, error) {
+	options := brant.DefaultOptions().WithTableName("_version").WithFilesystem(migraitions).WithDataSourceName(psql)
 
 	provider, err := brant.NewProvider(logger, dialect.Postgres, options)
 	if err != nil {
@@ -52,7 +60,7 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 
 	// Use context.Background() here, as we want the pool to live for the lifetime
 	// of the program, while the provided context is only meant for databse initialization.
-	pool, err := pgxpool.New(context.Background(), url)
+	pool, err := pgxpool.New(context.Background(), psql)
 	if err != nil {
 		return nil, fmt.Errorf("error while opening connection pool to psql: %w", err)
 	}
@@ -79,20 +87,45 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 		pool,
 		"objects",
 		PrefixFromString,
-		listObjectPSQL,
-		getObjectPSQL,
-		storeObjectPSQL,
-		deleteObjectPSQL,
+		listObjectRefPSQL,
+		getObjectRefPSQL,
+		storeObjectRefPSQL,
+		deleteObjectRefPSQL,
 		logger,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
 	}
 
-	p := PSQL{
-		pool:          pool,
-		calendarTable: calendarTable,
-		objectTable:   objectTable,
+	u, err := url.Parse(s3.URL)
+	if err != nil {
+		return nil, fmt.Errorf("error while parsing the S3 connection string: %w", err)
+	}
+
+	key := u.User.Username()
+	secret, _ := u.User.Password()
+
+	client, err := minio.New(u.Host, &minio.Options{
+		Creds:  credentials.NewStaticV4(key, secret, ""),
+		Secure: u.Scheme == "https",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error while creating the S3 client: %w", err)
+	}
+
+	objectCache, err := s3cache.NewS3Cache(s3.Cache, client, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error while building s3 cache: %w", err)
+	}
+
+	p := Online{
+		logger: logger,
+
+		pool:           pool,
+		calendarTable:  calendarTable,
+		objectRefTable: objectTable,
+
+		objectCache: objectCache,
 	}
 	p.metrics.initMetrics("psql")
 
@@ -128,8 +161,8 @@ func runInTx[T pgcache.Object[Path], R any](
 }
 
 // Ping implements Store.
-func (p *PSQL) Ping(ctx context.Context) error {
-	if err := p.pool.Ping(ctx); err != nil {
+func (o *Online) Ping(ctx context.Context) error {
+	if err := o.pool.Ping(ctx); err != nil {
 		return fmt.Errorf("error while pinging psql: %w", err)
 	}
 
@@ -137,17 +170,17 @@ func (p *PSQL) Ping(ctx context.Context) error {
 }
 
 // Run implements run.Runnable.
-func (p *PSQL) Run(ctx context.Context, notify run.Notify) error {
-	cr := run.Combine(p.calendarTable, p.objectTable)
+func (o *Online) Run(ctx context.Context, notify run.Notify) error {
+	cr := run.Combine(o.calendarTable, o.objectRefTable)
 	return cr.Run(ctx, notify)
 }
 
 // Metrics implements observability.Metrics.
-func (p *PSQL) Metrics() []prometheus.Collector {
-	return append(p.calendarTable.Metrics(), p.metrics.backend)
+func (o *Online) Metrics() []prometheus.Collector {
+	return append(o.calendarTable.Metrics(), o.metrics.backend)
 }
 
 // ReadinessChecks implements run.ReadinessChecks.
-func (p *PSQL) ReadinessChecks() map[string]observability.Check {
-	return p.calendarTable.ReadinessChecks()
+func (o *Online) ReadinessChecks() map[string]observability.Check {
+	return o.calendarTable.ReadinessChecks()
 }
