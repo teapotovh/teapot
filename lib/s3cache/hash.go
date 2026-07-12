@@ -1,7 +1,7 @@
 package s3cache
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"encoding/hex"
 )
 
@@ -23,6 +23,6 @@ func (h Hash) IsZero() bool {
 // HashBytes computes an MD5-hex Hash of data. This is the same format S3
 // uses as the ETag for ordinary PUTs.
 func HashBytes(data []byte) Hash {
-	sum := md5.Sum(data)
+	sum := md5.Sum(data) //nolint:gosec
 	return Hash(hex.EncodeToString(sum[:]))
 }

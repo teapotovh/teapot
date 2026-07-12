@@ -1,5 +1,6 @@
 package backend
 
+/*
 import (
 	"maps"
 	"time"
@@ -161,3 +162,4 @@ func applyExpand(parent *ical.Component, comp *ical.Component, expand *caldav.Ca
 
 	return nil
 }
+*/

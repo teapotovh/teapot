@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	S3CachePathRequired   = errors.New("path is required to initialize an s3cache")
-	S3CacheBucketRequired = errors.New("bucket is required to initialize an s3cache")
+	ErrS3CachePathRequired   = errors.New("path is required to initialize an s3cache")
+	ErrS3CacheBucketRequired = errors.New("bucket is required to initialize an s3cache")
 
 	DirFileMode = os.FileMode(0o0750)
 )
@@ -52,11 +52,11 @@ type S3Cache struct {
 // NewS3Cache creates an S3Cache.
 func NewS3Cache(config S3CacheConfig, client *minio.Client, logger *slog.Logger) (*S3Cache, error) {
 	if len(config.Path) <= 0 {
-		return nil, S3CachePathRequired
+		return nil, ErrS3CachePathRequired
 	}
 
 	if len(config.Bucket) <= 0 {
-		return nil, S3CacheBucketRequired
+		return nil, ErrS3CacheBucketRequired
 	}
 
 	capacity, err := diskCapacity(config.Path)
@@ -78,7 +78,7 @@ func NewS3Cache(config S3CacheConfig, client *minio.Client, logger *slog.Logger)
 		client: client,
 		meta:   meta,
 
-		capacity: int64(capacity),
+		capacity: capacity,
 	}
 
 	return c, nil
@@ -188,21 +188,25 @@ func (c *S3Cache) readCached(key string, expected Hash) ([]byte, bool, error) {
 	return data, true, nil
 }
 
-func (c *S3Cache) fetchAndStore(ctx context.Context, key string) ([]byte, Hash, error) {
+func (c *S3Cache) fetchAndStore(ctx context.Context, key string) (data []byte, hash Hash, err error) {
 	obj, err := c.client.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while getting object %q: %w", key, err)
 	}
-	defer obj.Close()
+	defer func() {
+		if e := obj.Close(); e != nil && err == nil {
+			err = fmt.Errorf("error while closing S3 object: %w", err)
+		}
+	}()
 
 	info, err := obj.Stat()
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while statting on object %q: %w", key, err)
 	}
 
-	hash := Hash(info.ETag)
+	hash = Hash(info.ETag)
 
-	data, err := io.ReadAll(obj)
+	data, err = io.ReadAll(obj)
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while reading reading object %q: %w", key, err)
 	}
@@ -231,6 +235,7 @@ func (c *S3Cache) store(ctx context.Context, key string, data []byte, hash Hash)
 			"capacity",
 			c.capacity,
 		)
+
 		return nil
 	}
 

@@ -100,7 +100,7 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) (err error) {
 		return err
 	}
 	defer func() {
-		if e := f.Close(); e != nil && err != nil {
+		if e := f.Close(); e != nil && err == nil {
 			err = fmt.Errorf("error while closing result: %w", e)
 		}
 	}()

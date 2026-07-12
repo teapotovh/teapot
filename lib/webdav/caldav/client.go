@@ -415,7 +415,7 @@ func (c *Client) GetCalendarObject(ctx context.Context, path string) (co *Calend
 		return nil, err
 	}
 	defer func() {
-		if e := resp.Body.Close(); e != nil && err != nil {
+		if e := resp.Body.Close(); e != nil && err == nil {
 			err = fmt.Errorf("error while closing response body: %w", err)
 		}
 	}()

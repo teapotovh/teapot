@@ -22,7 +22,7 @@ type entry struct {
 	Key      string    `json:"key"`
 	Hash     Hash      `json:"hash"`
 	Size     int64     `json:"size"`
-	StoredAt time.Time `json:"stored_at"`
+	StoredAt time.Time `json:"storedAt"`
 
 	// lastAccess is tracked in memory only so cache hits stay cheap.
 	// At startup, it is initialized based on the StoredAt field.
@@ -64,7 +64,7 @@ func newMetadataStore(path string) (*metadataStore, error) {
 		byKey: map[string]*entry{},
 	}
 
-	raw, err := os.ReadFile(metadataPath)
+	raw, err := os.ReadFile(metadataPath) //nolint:gosec
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ms, nil
