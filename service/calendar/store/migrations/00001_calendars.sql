@@ -1,8 +1,7 @@
 -- +brant Up
 CREATE TABLE calendars (
   path TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT
+  metadata JSONB NOT NULL
 );
 
 -- +brant Down

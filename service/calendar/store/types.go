@@ -29,9 +29,18 @@ func (path Path) String() string {
 }
 
 type Calendar struct {
-	Path        Path
-	Name        string
-	Description string
+	Path     Path
+	Metadata CalendarMetadata
+}
+
+//nolint:tagliatelle
+type CalendarMetadata struct {
+	Name                  string   `json:"name,omitempty"`
+	Description           string   `json:"description,omitempty"`
+	SupportedComponentSet []string `json:"supported-calendar-component-set,omitempty"`
+	MaxResourceSize       int64    `json:"max-resource-size,omitempty"`
+	Color                 string   `json:"color,omitempty"`
+	Tag                   string   `json:"tag,omitempty"`
 }
 
 // Key implements pgcache.Object.

@@ -22,7 +22,6 @@ var (
 	ErrUnexpectedNilObject   = errors.New("unexpected nil object")
 	ErrETagDidNotMatch       = errors.New("etag did not match")
 
-	MaxResourceSize       = int64(0)
 	SupportedComponentSet = []string{"VEVENT", "VTODO", "VJOURNAL", "VFREEBUSY"}
 )
 
@@ -55,20 +54,22 @@ func (b *Backend) CalendarHomeSetPath(ctx context.Context) (path string, err err
 
 func caldavCalendarToStoreCalendar(cal *caldav.Calendar) store.Calendar {
 	return store.Calendar{
-		Path:        normalizePath(cal.Path),
-		Name:        cal.Name,
-		Description: cal.Description,
+		Path: normalizePath(cal.Path),
+		Metadata: store.CalendarMetadata{
+			Name:                  cal.Name,
+			Description:           cal.Description,
+			SupportedComponentSet: cal.SupportedComponentSet,
+			MaxResourceSize:       cal.MaxResourceSize,
+		},
 	}
 }
 
 func storeCalendarToCaldavCalendar(cal store.Calendar) caldav.Calendar {
 	return caldav.Calendar{
-		Path:        string(cal.Path),
-		Name:        cal.Name,
-		Description: cal.Description,
-
-		MaxResourceSize:       MaxResourceSize,
-		SupportedComponentSet: SupportedComponentSet,
+		Path:                  string(cal.Path),
+		Name:                  cal.Metadata.Name,
+		Description:           cal.Metadata.Description,
+		SupportedComponentSet: cal.Metadata.SupportedComponentSet,
 	}
 }
 
@@ -81,6 +82,10 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 
 	if calendar == nil {
 		return ErrUnexpectedNilCalendar
+	}
+
+	if len(calendar.SupportedComponentSet) <= 0 {
+		calendar.SupportedComponentSet = SupportedComponentSet
 	}
 
 	err = b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"unicode/utf8"
@@ -16,13 +17,24 @@ func parseCalendarRows(rows pgx.Rows) (calendars []Calendar, err error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var cal Calendar
+		var (
+			path        string
+			rawMetadata []byte
+		)
 
-		if err := rows.Scan(&cal.Path, &cal.Name, &cal.Description); err != nil {
-			return nil, fmt.Errorf("could not extract three columns from psql list: %w", err)
+		if err := rows.Scan(&path, &rawMetadata); err != nil {
+			return nil, fmt.Errorf("could not extract two columns from psql list: %w", err)
 		}
 
-		calendars = append(calendars, cal)
+		var metadata CalendarMetadata
+		if err := json.Unmarshal(rawMetadata, &metadata); err != nil {
+			return nil, fmt.Errorf("error while decoding JSON calendar metadata field: %w", err)
+		}
+
+		calendars = append(calendars, Calendar{
+			Path:     Path(path),
+			Metadata: metadata,
+		})
 	}
 
 	if err = rows.Err(); err != nil {
@@ -33,7 +45,7 @@ func parseCalendarRows(rows pgx.Rows) (calendars []Calendar, err error) {
 }
 
 var listCalendarQuery = `
-		SELECT path, name, description
+		SELECT path, metadata
 		FROM calendars;
 `
 
@@ -47,7 +59,7 @@ func listCalendarPSQL(ctx context.Context, conn *pgxpool.Pool) ([]Calendar, erro
 }
 
 var getCalendarQuery = `
-		SELECT path, name, description
+		SELECT path, metadata
 		FROM calendars
 		WHERE path = ANY($1);
 `
@@ -67,24 +79,27 @@ func getCalendarPSQL(ctx context.Context, conn *pgxpool.Pool, paths []Path) ([]C
 }
 
 var storeCalendarQuery = `
-		INSERT INTO calendars (path, name, description)
-		SELECT unnest($1::text[]), unnest($2::text[]), unnest($3::text[])
+		INSERT INTO calendars (path, metadata)
+		SELECT unnest($1::text[]), unnest($2::jsonb[])
 		ON CONFLICT (path) DO UPDATE
-		SET name = EXCLUDED.name, description = EXCLUDED.description;
+		SET metadata = EXCLUDED.metadata
 `
 
 func storeCalendarPSQL(ctx context.Context, tx pgx.Tx, calendars []Calendar) error {
 	paths := make([]string, 0, len(calendars))
-	names := make([]string, 0, len(calendars))
-	descriptions := make([]string, 0, len(calendars))
+	metadata := make([][]byte, 0, len(calendars))
 
-	for _, calendar := range calendars {
+	for i, calendar := range calendars {
+		rawMetadata, err := json.Marshal(calendar.Metadata)
+		if err != nil {
+			return fmt.Errorf("could not marshal metadata of calendar %d for psql: %w", i, err)
+		}
+
 		paths = append(paths, string(calendar.Path))
-		names = append(names, calendar.Name)
-		descriptions = append(descriptions, calendar.Description)
+		metadata = append(metadata, rawMetadata)
 	}
 
-	_, err := tx.Exec(ctx, storeCalendarQuery, paths, names, descriptions)
+	_, err := tx.Exec(ctx, storeCalendarQuery, paths, metadata)
 	if err != nil {
 		return fmt.Errorf("error while inserting calendars with psql: %w", err)
 	}
