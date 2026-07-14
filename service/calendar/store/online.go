@@ -108,6 +108,7 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 	client, err := minio.New(u.Host, &minio.Options{
 		Creds:  credentials.NewStaticV4(key, secret, ""),
 		Secure: u.Scheme == "https",
+		Region: s3.Region,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error while creating the S3 client: %w", err)

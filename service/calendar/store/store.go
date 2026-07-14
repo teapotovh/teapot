@@ -63,8 +63,9 @@ type StoreConfig struct {
 }
 
 type StoreS3Config struct {
-	URL   string
-	Cache s3cache.S3CacheConfig
+	URL    string
+	Region string
+	Cache  s3cache.S3CacheConfig
 }
 
 func NewStore(config StoreConfig, logger *slog.Logger) (Store, error) {

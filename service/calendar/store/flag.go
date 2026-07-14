@@ -27,6 +27,11 @@ func StoreFlagSet() (*flag.FlagSet, func() StoreConfig) {
 		"http://key:secret@localhost:3900",
 		"the URL connection string to connect to the S3 endpoint",
 	)
+	s3Region := fs.String(
+		"calendar-store-s3-region",
+		"garage",
+		"the S3 region to connect to",
+	)
 	s3CacheFS, getS3CacheConfig := s3cache.S3CacheFlagSet()
 	fs.AddFlagSet(s3CacheFS)
 
@@ -37,8 +42,9 @@ func StoreFlagSet() (*flag.FlagSet, func() StoreConfig) {
 
 			URL: *psqlURL,
 			S3: StoreS3Config{
-				URL:   *s3URL,
-				Cache: getS3CacheConfig(),
+				URL:    *s3URL,
+				Region: *s3Region,
+				Cache:  getS3CacheConfig(),
 			},
 		}
 	}
