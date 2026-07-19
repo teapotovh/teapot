@@ -236,7 +236,11 @@ func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (
 
 		err = server.membershipRemove(ctx, tx, AttrMember, gdn, dn)
 		if err != nil {
-			return state, fmt.Errorf("(%w) could not update attribute after removal: %w", ldapsrv.ErrOperationsError, err)
+			return state, fmt.Errorf(
+				"(%w) could not update attribute after removal: %w",
+				ldapsrv.ErrOperationsError,
+				err,
+			)
 		}
 	}
 
@@ -447,7 +451,11 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 		}
 
 		if !exists {
-			return state, fmt.Errorf("(%w) cannot add member %q, it does not exist", ldapsrv.ErrNoSuchObject, addMembers[i])
+			return state, fmt.Errorf(
+				"(%w) cannot add member %q, it does not exist",
+				ldapsrv.ErrNoSuchObject,
+				addMembers[i],
+			)
 		}
 	}
 

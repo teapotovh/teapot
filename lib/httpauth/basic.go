@@ -54,6 +54,7 @@ func NewBasicAuth(factory *ldap.Factory, errorHandler http.Handler, logger *slog
 func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
 		ctx, span := observability.TracerFromContext(ctx).Start(ctx, "BasicAuth.Middleware")
 		defer span.End()
 
@@ -65,6 +66,7 @@ func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 				ba.errorHandler.ServeHTTP(w, r)
 
 				observability.SpanErr(span, err)
+
 				return
 			}
 

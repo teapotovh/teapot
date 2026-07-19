@@ -64,14 +64,15 @@ func main() {
 		os.Exit(CodeBottin)
 	}
 
-	ldapsrv.Register(bottin)
-
 	observability.RegisterMetrics(bottin)
 	observability.RegisterReadyz(bottin)
 
 	observability.RegisterMetrics(ldapsrv)
 	observability.RegisterReadyz(ldapsrv)
 	observability.RegisterLivez(ldapsrv)
+
+	observability.RegisterTracing(ldapsrv)
+	ldapsrv.Register(bottin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

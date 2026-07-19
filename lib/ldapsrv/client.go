@@ -11,9 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/propagation"
+
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/lib/observability"
-	"go.opentelemetry.io/otel/propagation"
 )
 
 var (
@@ -72,7 +73,7 @@ func (c *client[T]) ReadPacket() (*messagePacket, error) {
 
 //nolint:all
 func (c *client[T]) serve(serveCtx context.Context) {
-	ctx, span := observability.TracerFromContext(serveCtx).Start(serveCtx, "client.serve")
+	ctx, span := c.srv.tracer.Start(serveCtx, "client.serve")
 	defer span.End()
 
 	c.srv.metrics.active.Inc()
@@ -130,7 +131,8 @@ func (c *client[T]) serve(serveCtx context.Context) {
 	state := c.srv.initialState
 
 	for {
-		ctx, span := observability.TracerFromContext(ctx).Start(ctx, "client.next")
+		ctx, span := c.srv.tracer.Start(ctx, "client.next")
+		ctx = observability.ContextWithTracer(ctx, c.srv.tracer)
 
 		if c.srv.readTimeout != 0 {
 			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.readTimeout)); err != nil {
@@ -147,7 +149,16 @@ func (c *client[T]) serve(serveCtx context.Context) {
 		messagePacket, err := c.ReadPacket()
 		if err != nil {
 			_, isTimeout := err.(*net.OpError)
-			c.logger.DebugContext(serveCtx, "error while receiving packet", "client", c.id, "timeout", isTimeout, "err", err)
+			c.logger.DebugContext(
+				serveCtx,
+				"error while receiving packet",
+				"client",
+				c.id,
+				"timeout",
+				isTimeout,
+				"err",
+				err,
+			)
 			span.End()
 			return
 		}

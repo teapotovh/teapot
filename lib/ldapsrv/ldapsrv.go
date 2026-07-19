@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -42,6 +43,7 @@ type LDAPSrv[T any] struct {
 	handler      Handler[T]
 	wg           sync.WaitGroup
 	metrics      metrics
+	tracer       trace.Tracer
 	running      atomic.Bool
 }
 
@@ -49,6 +51,8 @@ type LDAPSrv[T any] struct {
 func NewServer[T any](config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv[T], error) {
 	srv := LDAPSrv[T]{
 		logger: slog.New(NewContextHandler(logger.Handler())),
+
+		tracer: observability.NoopTracer,
 
 		address:       config.Address,
 		shutdownDelay: config.ShutdownDelay,
@@ -154,7 +158,8 @@ func (s *LDAPSrv[T]) Run(ctx context.Context, notify run.Notify) (err error) {
 }
 
 // WithTracing implements observability.Tracing.
-func (s *LDAPSrv[T]) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
+func (s *LDAPSrv[T]) WithTracing(_ trace.TracerProvider, tracer trace.Tracer) {
+	s.tracer = tracer
 }
 
 func (s *LDAPSrv[T]) setupConnection(ctx context.Context, conn net.Conn, id int) error {

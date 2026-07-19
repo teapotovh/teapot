@@ -53,7 +53,7 @@ func (k *Kontakte) User(w http.ResponseWriter, r *http.Request) (ui.Component, e
 		}
 		defer client.Close()
 
-		usr, err := client.User(username)
+		usr, err := client.User(r.Context(), username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(
 				fmt.Errorf("error while fetching user %q from LDAP: %w", username, err),

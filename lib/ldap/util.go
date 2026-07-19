@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/teapotovh/teapot/lib/observability"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 func bind(ctx context.Context, metrics *metrics, conn *ldap.Conn, username, password string) (err error) {
-	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.bind")
+	_, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.bind")
 	defer observability.SpanEnd(span, err)
 
 	span.SetAttributes(attribute.String("username", username))
@@ -30,8 +31,13 @@ func bind(ctx context.Context, metrics *metrics, conn *ldap.Conn, username, pass
 	return err
 }
 
-func search(ctx context.Context, metrics *metrics, conn *ldap.Conn, searchRequest *ldap.SearchRequest) (result *ldap.SearchResult, err error) {
-	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.search")
+func search(
+	ctx context.Context,
+	metrics *metrics,
+	conn *ldap.Conn,
+	searchRequest *ldap.SearchRequest,
+) (result *ldap.SearchResult, err error) {
+	_, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.search")
 	defer observability.SpanEnd(span, err)
 
 	start := time.Now()

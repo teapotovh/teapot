@@ -60,7 +60,12 @@ func authFromUser(user *ldap.User, expiresAt *time.Time) Auth {
 	}
 }
 
-func authenticate(ctx context.Context, factory *ldap.Factory, username, password string, logger *slog.Logger) (user *ldap.User, err error) {
+func authenticate(
+	ctx context.Context,
+	factory *ldap.Factory,
+	username, password string,
+	logger *slog.Logger,
+) (user *ldap.User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "BasicAuth.Middleware")
 	defer observability.SpanEnd(span, err)
 
@@ -78,6 +83,7 @@ func authenticate(ctx context.Context, factory *ldap.Factory, username, password
 		}
 
 		logger.ErrorContext(ctx, "unexpected error while authenticating", "username", username, "err", err)
+
 		return nil, err
 	}
 

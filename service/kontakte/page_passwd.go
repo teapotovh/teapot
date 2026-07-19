@@ -75,7 +75,7 @@ func (k *Kontakte) Passwd(w http.ResponseWriter, r *http.Request) (ui.Component,
 		}
 		defer client.Close()
 
-		if err := client.Passwd(username, password); err != nil {
+		if err := client.Passwd(r.Context(), username, password); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return dialogError{err: fmt.Errorf("error while performing LDAP passwd: %w", err)}, nil
 		}

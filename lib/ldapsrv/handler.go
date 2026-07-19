@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/lib/observability"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 type Handler[T any] interface {
@@ -27,7 +28,11 @@ func (u *UnimplementedHandler[T]) Bind(ctx context.Context, state T, _ ldap.Bind
 	return state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler[T]) Search(ctx context.Context, state T, r ldap.SearchRequest) ([]ldap.SearchResultEntry, T, error) {
+func (u *UnimplementedHandler[T]) Search(
+	ctx context.Context,
+	state T,
+	r ldap.SearchRequest,
+) ([]ldap.SearchResultEntry, T, error) {
 	return nil, state, ErrUnimplemented
 }
 
@@ -65,7 +70,6 @@ const (
 	operationExtended = "ExtendedRequest"
 )
 
-//nolint:gocyclo
 func (s *LDAPSrv[T]) handle(ctx context.Context, state T, w ResponseWriter, r *Message[T]) T {
 	// Catch a AbandonRequest not handled by user
 	switch v := r.ProtocolOp().(type) {
@@ -88,6 +92,7 @@ func (s *LDAPSrv[T]) handle(ctx context.Context, state T, w ResponseWriter, r *M
 	}()
 
 	state, code, err = s.runHandler(ctx, state, w, r)
+
 	res := NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
@@ -119,7 +124,12 @@ func (s *LDAPSrv[T]) handle(ctx context.Context, state T, w ResponseWriter, r *M
 	return state
 }
 
-func (s *LDAPSrv[T]) runHandler(ctx context.Context, is T, w ResponseWriter, r *Message[T]) (state T, code ldap.ENUMERATED, err error) {
+func (s *LDAPSrv[T]) runHandler(
+	ctx context.Context,
+	is T,
+	w ResponseWriter,
+	r *Message[T],
+) (state T, code ldap.ENUMERATED, err error) {
 	code = ldap.ResultCodeSuccess
 
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, r.ProtocolOpName())
@@ -175,5 +185,5 @@ func (s *LDAPSrv[T]) runHandler(ctx context.Context, is T, w ResponseWriter, r *
 
 	span.SetAttributes(attribute.Int("code", code.Int()))
 
-	return
+	return state, code, err
 }

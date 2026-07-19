@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/teapotovh/teapot/lib/observability"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 // User is an abstracted view over a user entry in LDAP.
@@ -111,6 +112,7 @@ func (c *Client) Users(ctx context.Context) (users []*User, err error) {
 func (c *Client) User(ctx context.Context, username string) (user *User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.User")
 	defer observability.SpanEnd(span, err)
+
 	span.SetAttributes(attribute.String("username", username))
 
 	defer func() {

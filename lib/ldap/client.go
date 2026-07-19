@@ -43,6 +43,7 @@ type Client struct {
 func (c *Client) Authenticate(ctx context.Context, username string, password string) (user *User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.Authenticate")
 	defer observability.SpanEnd(span, err)
+
 	span.SetAttributes(attribute.String("username", username))
 
 	entry, err := c.find(ctx, username)

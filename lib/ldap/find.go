@@ -6,9 +6,10 @@ import (
 	"fmt"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/teapotovh/teapot/lib/observability"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 var (
@@ -24,7 +25,10 @@ func (c *Client) list(ctx context.Context) (entries []*ldap.Entry, err error) {
 		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
 	}
 
-	span.AddEvent("rendered find filter template string for all users", trace.WithAttributes(attribute.String("filter", filter)))
+	span.AddEvent(
+		"rendered find filter template string for all users",
+		trace.WithAttributes(attribute.String("filter", filter)),
+	)
 
 	searchRequest := ldap.NewSearchRequest(
 		c.usersDN,
@@ -85,7 +89,7 @@ func (c *Client) find(ctx context.Context, username string) (entry *ldap.Entry, 
 		return nil, fmt.Errorf("error while performing search for user: %w", err)
 	}
 
-	span.AddEvent("searched for maching users", trace.WithAttributes(attribute.Int("results", len(search.Entries))))
+	span.AddEvent("searched for machine users", trace.WithAttributes(attribute.Int("results", len(search.Entries))))
 
 	if len(search.Entries) == 0 {
 		return nil, ErrUserNotFound
