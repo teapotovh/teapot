@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/run"
 )
@@ -28,7 +29,7 @@ type LDAPSrvConfig struct {
 }
 
 // LDAPSrv is an LDAP server.
-type LDAPSrv struct {
+type LDAPSrv[T any] struct {
 	logger *slog.Logger
 
 	address       string
@@ -36,16 +37,17 @@ type LDAPSrv struct {
 	readTimeout   time.Duration
 	writeTimeout  time.Duration
 
-	listener net.Listener
-	handler  Handler
-	wg       sync.WaitGroup
-	metrics  metrics
-	running  atomic.Bool
+	initialState T
+	listener     net.Listener
+	handler      Handler[T]
+	wg           sync.WaitGroup
+	metrics      metrics
+	running      atomic.Bool
 }
 
 // NewServer return a LDAP Server.
-func NewServer(config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv, error) {
-	srv := LDAPSrv{
+func NewServer[T any](config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv[T], error) {
+	srv := LDAPSrv[T]{
 		logger: slog.New(NewContextHandler(logger.Handler())),
 
 		address:       config.Address,
@@ -60,7 +62,7 @@ func NewServer(config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv, error) {
 }
 
 // Register registers the handler for the server.
-func (s *LDAPSrv) Register(h Handler) {
+func (s *LDAPSrv[T]) Register(h Handler[T]) {
 	if s.handler != nil {
 		s.logger.Warn("overwriting ldap handler", "old", s.handler, "new", h)
 	}
@@ -69,7 +71,7 @@ func (s *LDAPSrv) Register(h Handler) {
 }
 
 // Run implements run.Runnable.
-func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
+func (s *LDAPSrv[T]) Run(ctx context.Context, notify run.Notify) (err error) {
 	if s.handler == nil {
 		return ErrMissingHandler
 	}
@@ -151,7 +153,11 @@ func (s *LDAPSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 	}
 }
 
-func (s *LDAPSrv) setupConnection(ctx context.Context, conn net.Conn, id int) error {
+// WithTracing implements observability.Tracing.
+func (s *LDAPSrv[T]) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
+}
+
+func (s *LDAPSrv[T]) setupConnection(ctx context.Context, conn net.Conn, id int) error {
 	if s.readTimeout > 0 {
 		if err := conn.SetReadDeadline(time.Now().Add(s.readTimeout)); err != nil {
 			return fmt.Errorf("error while setting read deadline: %w", err)
@@ -165,7 +171,7 @@ func (s *LDAPSrv) setupConnection(ctx context.Context, conn net.Conn, id int) er
 	}
 
 	s.logger.DebugContext(ctx, "accepted connection")
-	client := &client{
+	client := &client[T]{
 		logger: s.logger,
 		srv:    s,
 		id:     id,

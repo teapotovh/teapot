@@ -20,12 +20,10 @@ var (
 )
 
 //nolint:gocyclo
-func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
-	user := ldapsrv.GetUser[User](ctx, EmptyUser)
-
+func (server *Bottin) Add(ctx context.Context, state State, r ldap.AddRequest) (State, error) {
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check permissions
@@ -34,8 +32,8 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 		attrList = append(attrList, store.NewAttributeKey(string(attribute.Type_())))
 	}
 
-	if !server.acl.Check(user, "add", dn, attrList) {
-		return fmt.Errorf(
+	if !server.acl.Check(state.User(), "add", dn, attrList) {
+		return state, fmt.Errorf(
 			"could not add %q: %w",
 			dn,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -47,11 +45,11 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 	// Check that object does not already exist
 	exists, err := server.existsEntry(ctx, dn)
 	if err != nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	if exists {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrEntryAlreadyExists, ErrAlreadyExists)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrEntryAlreadyExists, ErrAlreadyExists)
 	}
 
 	// Check that parent object exists
@@ -59,11 +57,11 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 
 	parentExists, err := server.existsEntry(ctx, parentDN)
 	if err != nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	if !parentExists {
-		return fmt.Errorf(
+		return state, fmt.Errorf(
 			"(%w) parent object with DN %q does not exist",
 			ldapsrv.ErrNoSuchObject,
 			parentDN)
@@ -86,7 +84,7 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 		// Fail if they are trying to write memberOf, we manage this ourselves
 		err = canUpdateAttribute(key)
 		if err != nil {
-			return fmt.Errorf("(%w) %w", ldapsrv.ErrObjectClassViolation, err)
+			return state, fmt.Errorf("(%w) %w", ldapsrv.ErrObjectClassViolation, err)
 		}
 
 		if key.EqualFold(AttrMember) {
@@ -95,16 +93,16 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 			for _, member := range vals {
 				memberCanonical, err := server.parseDN(member, false)
 				if err != nil {
-					return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+					return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 				}
 
 				exists, err = server.existsEntry(ctx, memberCanonical)
 				if err != nil {
-					return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
+					return state, fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 				}
 
 				if !exists {
-					return fmt.Errorf(
+					return state, fmt.Errorf(
 						"(%w) cannot add %q to members, it does not exist",
 						ldapsrv.ErrNoSuchObject,
 						memberCanonical)
@@ -130,29 +128,29 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 
 	uuid, err := uuid.NewRandom()
 	if err != nil {
-		return fmt.Errorf("(%w) error while generating random uuid: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while generating random uuid: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Write system attributes
-	attrs[AttrCreatorsName] = []string{user.user}
+	attrs[AttrCreatorsName] = []string{state.User().user}
 	attrs[AttrCreateTimestamp] = []string{genTimestamp()}
 	attrs[AttrEntryUUID] = []string{uuid.String()}
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// This ensures the dn[].Type attribute is set to the appropriate value
 	entry := store.NewEntry(dn, attrs)
 	if err = tx.Store(ctx, entry); err != nil {
-		return fmt.Errorf("(%w) error while storing entry: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while storing entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// If our item has a member list, add it to all of its member's memberOf attribute
 	for _, member := range members {
 		if err := server.membershipAdd(ctx, tx, AttrMemberOf, member, dn); err != nil {
-			return fmt.Errorf(
+			return state, fmt.Errorf(
 				"(%w) error while adding %q to group %q: %w",
 				ldapsrv.ErrOperationsError,
 				member,
@@ -163,24 +161,22 @@ func (server *Bottin) Add(ctx context.Context, r ldap.AddRequest) error {
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return nil
+	return state, nil
 }
 
 //nolint:gocyclo
-func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
-	user := ldapsrv.GetUser[User](ctx, EmptyUser)
-
+func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (State, error) {
 	dn, err := server.parseDN(string(r), false)
 	if err != nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check for delete permission
-	if !server.acl.Check(user, "delete", dn, []store.AttributeKey{}) {
-		return fmt.Errorf(
+	if !server.acl.Check(state.User(), "delete", dn, []store.AttributeKey{}) {
+		return state, fmt.Errorf(
 			"could not delete %q: %w",
 			dn,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -192,7 +188,7 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 	// Check that this LDAP entry exists and has no children
 	entries, err := server.store.List(ctx, dn.Prefix(), false)
 	if err != nil {
-		return fmt.Errorf(
+		return state, fmt.Errorf(
 			"(%w) error while fetching entry with DN %q from store: %w",
 			ldapsrv.ErrOperationsError,
 			dn.String(),
@@ -201,12 +197,12 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 	}
 
 	if len(entries) == 0 {
-		return fmt.Errorf("(%w) error fetching entry: %w", ldapsrv.ErrNoSuchObject, ErrNotFound)
+		return state, fmt.Errorf("(%w) error fetching entry: %w", ldapsrv.ErrNoSuchObject, ErrNotFound)
 	}
 
 	for _, entry := range entries {
 		if !entry.DN.Equal(dn) {
-			return fmt.Errorf(
+			return state, fmt.Errorf(
 				"(%w) cannot delete %q: %w", ldapsrv.ErrNotAllowedOnNonLeaf, dn, ErrHasChildren)
 		}
 	}
@@ -219,19 +215,19 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Delete the LDAP entry
 	if err = tx.Delete(ctx, dn); err != nil {
-		return fmt.Errorf("(%w) error while deleting entry: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while deleting entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Delete it from the member list of all the groups it was a member of
 	for _, group := range memberOf {
 		gdn, err := server.parseDN(group, false)
 		if err != nil {
-			return fmt.Errorf(
+			return state, fmt.Errorf(
 				"(%w) error while parsing DN from group members attribute: %w",
 				ldapsrv.ErrInvalidDNSyntax,
 				err,
@@ -240,7 +236,7 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 
 		err = server.membershipRemove(ctx, tx, AttrMember, gdn, dn)
 		if err != nil {
-			return fmt.Errorf("(%w) could not update attribute after removal: %w", ldapsrv.ErrOperationsError, err)
+			return state, fmt.Errorf("(%w) could not update attribute after removal: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
@@ -248,7 +244,7 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 	for _, member := range memberList {
 		mdn, err := server.parseDN(member, false)
 		if err != nil {
-			return fmt.Errorf(
+			return state, fmt.Errorf(
 				"(%w) error while parsing DN from memberOf attribute: %w",
 				ldapsrv.ErrInvalidDNSyntax,
 				err,
@@ -256,29 +252,27 @@ func (server *Bottin) Del(ctx context.Context, r ldap.DelRequest) error {
 		}
 
 		if err := server.membershipRemove(ctx, tx, AttrMemberOf, mdn, dn); err != nil {
-			return fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
+			return state, fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return nil
+	return state, nil
 }
 
 //nolint:gocyclo
-func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
-	user := ldapsrv.GetUser[User](ctx, EmptyUser)
-
+func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequest) (State, error) {
 	dn, err := server.parseDN(string(r.Object()), false)
 	if err != nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// First permission check with no particular attributes
-	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{}) {
-		return fmt.Errorf(
+	if !server.acl.Check(state.User(), "modify", dn, []store.AttributeKey{}) {
+		return state, fmt.Errorf(
 			"cannot not modify %q: %w",
 			dn,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -289,7 +283,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 
 	prevEntry, err := server.getEntry(ctx, dn)
 	if err != nil {
-		return err
+		return state, err
 	}
 
 	dnFirstComponent := prevEntry.DN[0]
@@ -322,11 +316,11 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 		// Check that this attribute is not system-managed thus restricted
 		err = canUpdateAttribute(attr)
 		if err != nil {
-			return fmt.Errorf("(%w) %w", ldapsrv.ErrObjectClassViolation, err)
+			return state, fmt.Errorf("(%w) %w", ldapsrv.ErrObjectClassViolation, err)
 		}
 
 		if attr.EqualFold(store.NewAttributeKey(dnFirstComponent.Type)) {
-			return fmt.Errorf(
+			return state, fmt.Errorf(
 				"(%w) %q may not be changed as it is part of object path",
 				ldapsrv.ErrObjectClassViolation,
 				attr,
@@ -334,8 +328,8 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 		}
 
 		// Check for permission to modify this attribute
-		if !server.acl.Check(user, "modify", dn, []store.AttributeKey{attr}) {
-			return fmt.Errorf(
+		if !server.acl.Check(state.User(), "modify", dn, []store.AttributeKey{attr}) {
+			return state, fmt.Errorf(
 				"cannot not modify attribute %q on %q: %w",
 				attr,
 				dn,
@@ -348,7 +342,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 			for i := range changeValues {
 				canonicalVal, err := server.parseDN(changeValues[i], false)
 				if err != nil {
-					return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+					return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 				}
 
 				changeValues[i] = canonicalVal.String()
@@ -373,7 +367,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 					if attr.EqualFold(AttrMember) {
 						valDN, err := server.parseDN(val, false)
 						if err != nil {
-							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
 
 						addMembers = append(addMembers, valDN)
@@ -387,7 +381,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 					for _, val := range attrs[attr] {
 						valDN, err := server.parseDN(val, false)
 						if err != nil {
-							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
 
 						delMembers = append(delMembers, valDN)
@@ -406,7 +400,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 						if attr.EqualFold(AttrMember) {
 							valDN, err := server.parseDN(prevVal, false)
 							if err != nil {
-								return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+								return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 							}
 
 							delMembers = append(delMembers, valDN)
@@ -422,7 +416,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 					if !slices.Contains(attrs[attr], newMem) {
 						valDN, err := server.parseDN(newMem, false)
 						if err != nil {
-							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
 
 						addMembers = append(addMembers, valDN)
@@ -433,7 +427,7 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 					if !slices.Contains(changeValues, prevMem) {
 						valDN, err := server.parseDN(prevMem, false)
 						if err != nil {
-							return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 						}
 
 						delMembers = append(delMembers, valDN)
@@ -449,52 +443,52 @@ func (server *Bottin) Modify(ctx context.Context, r ldap.ModifyRequest) error {
 	for i := range addMembers {
 		exists, err := server.existsEntry(ctx, addMembers[i])
 		if err != nil {
-			return fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
+			return state, fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
 		}
 
 		if !exists {
-			return fmt.Errorf("(%w) cannot add member %q, it does not exist", ldapsrv.ErrNoSuchObject, addMembers[i])
+			return state, fmt.Errorf("(%w) cannot add member %q, it does not exist", ldapsrv.ErrNoSuchObject, addMembers[i])
 		}
 	}
 
 	for k, v := range attrs {
 		if k.EqualFold(AttrObjectClass) && len(v) == 0 {
-			return fmt.Errorf(
+			return state, fmt.Errorf(
 				"(%w) cannot remove all objectclass values", ldapsrv.ErrInsufficientAccessRights)
 		}
 	}
 
 	// Now, the modification has been processed and accepted and we want to commit it
-	attrs[AttrModifiersName] = []string{user.user}
+	attrs[AttrModifiersName] = []string{state.User().user}
 	attrs[AttrModifyTimestamp] = []string{genTimestamp()}
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Save the edited values
 	entry := store.NewEntry(prevEntry.DN, attrs)
 	if err = tx.Store(ctx, entry); err != nil {
-		return fmt.Errorf("(%w) error while storing updated entry: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while storing updated entry: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	// Update memberOf for added members and deleted members
 	for _, addMem := range addMembers {
 		if err := server.membershipAdd(ctx, tx, AttrMemberOf, addMem, dn); err != nil {
-			return fmt.Errorf("(%w) error while adding memberOf: %w", ldapsrv.ErrOperationsError, err)
+			return state, fmt.Errorf("(%w) error while adding memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	for _, delMem := range delMembers {
 		if err := server.membershipRemove(ctx, tx, AttrMemberOf, delMem, dn); err != nil {
-			return fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
+			return state, fmt.Errorf("(%w) error while removing memberOf: %w", ldapsrv.ErrOperationsError, err)
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return nil
+	return state, nil
 }

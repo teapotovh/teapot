@@ -6,51 +6,53 @@ import (
 	"time"
 
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
+	"github.com/teapotovh/teapot/lib/observability"
+	"go.opentelemetry.io/otel/attribute"
 )
 
-type Handler interface {
-	Bind(ctx context.Context, r ldap.BindRequest) (context.Context, error)
-	Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.SearchResultEntry, error)
-	Add(ctx context.Context, r ldap.AddRequest) error
-	Del(ctx context.Context, r ldap.DelRequest) error
-	Modify(ctx context.Context, r ldap.ModifyRequest) error
-	Compare(ctx context.Context, r ldap.CompareRequest) (bool, error)
-	Extended(ctx context.Context, r ldap.ExtendedRequest) error
+type Handler[T any] interface {
+	Bind(ctx context.Context, state T, r ldap.BindRequest) (T, error)
+	Search(ctx context.Context, state T, r ldap.SearchRequest) ([]ldap.SearchResultEntry, T, error)
+	Add(ctx context.Context, state T, r ldap.AddRequest) (T, error)
+	Del(ctx context.Context, state T, r ldap.DelRequest) (T, error)
+	Modify(ctx context.Context, state T, r ldap.ModifyRequest) (T, error)
+	Compare(ctx context.Context, state T, r ldap.CompareRequest) (bool, T, error)
+	Extended(ctx context.Context, state T, r ldap.ExtendedRequest) (T, error)
 }
 
-type UnimplementedHandler struct {
+type UnimplementedHandler[T any] struct {
 }
 
-func (u *UnimplementedHandler) Bind(ctx context.Context, _ ldap.BindRequest) (context.Context, error) {
-	return ctx, ErrUnimplemented
+func (u *UnimplementedHandler[T]) Bind(ctx context.Context, state T, _ ldap.BindRequest) (T, error) {
+	return state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.SearchResultEntry, error) {
-	return nil, ErrUnimplemented
+func (u *UnimplementedHandler[T]) Search(ctx context.Context, state T, r ldap.SearchRequest) ([]ldap.SearchResultEntry, T, error) {
+	return nil, state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler) Add(ctx context.Context, r ldap.AddRequest) error {
-	return ErrUnimplemented
+func (u *UnimplementedHandler[T]) Add(ctx context.Context, state T, r ldap.AddRequest) (T, error) {
+	return state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler) Del(ctx context.Context, r ldap.DelRequest) error {
-	return ErrUnimplemented
+func (u *UnimplementedHandler[T]) Del(ctx context.Context, state T, r ldap.DelRequest) (T, error) {
+	return state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler) Modify(ctx context.Context, r ldap.ModifyRequest) error {
-	return ErrUnimplemented
+func (u *UnimplementedHandler[T]) Modify(ctx context.Context, state T, r ldap.ModifyRequest) (T, error) {
+	return state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler) Compare(ctx context.Context, r ldap.CompareRequest) (bool, error) {
-	return false, ErrUnimplemented
+func (u *UnimplementedHandler[T]) Compare(ctx context.Context, state T, r ldap.CompareRequest) (bool, T, error) {
+	return false, state, ErrUnimplemented
 }
 
-func (u *UnimplementedHandler) Extended(ctx context.Context, r ldap.ExtendedRequest) error {
-	return ErrUnimplemented
+func (u *UnimplementedHandler[T]) Extended(ctx context.Context, state T, r ldap.ExtendedRequest) (T, error) {
+	return state, ErrUnimplemented
 }
 
 // Ensure UnimplementedHandler implements Handler.
-var _ Handler = &UnimplementedHandler{}
+var _ Handler[any] = &UnimplementedHandler[any]{}
 
 // Constant to LDAP Request protocol Type names.
 const (
@@ -64,7 +66,7 @@ const (
 )
 
 //nolint:gocyclo
-func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) context.Context {
+func (s *LDAPSrv[T]) handle(ctx context.Context, state T, w ResponseWriter, r *Message[T]) T {
 	// Catch a AbandonRequest not handled by user
 	switch v := r.ProtocolOp().(type) {
 	case ldap.AbandonRequest:
@@ -85,54 +87,7 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 			Observe(time.Since(start).Seconds())
 	}()
 
-	switch r.ProtocolOpName() {
-	case operationBind:
-		ctx, err = s.handler.Bind(ctx, r.GetBindRequest())
-	case operationSearch:
-		var results []ldap.SearchResultEntry
-
-		results, err = s.handler.Search(ctx, r.GetSearchRequest())
-
-		for _, result := range results {
-			w.Write(result)
-		}
-	case operationAdd:
-		err = s.handler.Add(ctx, r.GetAddRequest())
-	case operationDel:
-		err = s.handler.Del(ctx, r.GetDeleteRequest())
-	case operationModify:
-		err = s.handler.Modify(ctx, r.GetModifyRequest())
-	case operationCompare:
-		var matched bool
-
-		matched, err = s.handler.Compare(ctx, r.GetCompareRequest())
-
-		if matched {
-			code = ldap.ResultCodeCompareTrue
-		} else {
-			code = ldap.ResultCodeCompareFalse
-		}
-	case operationExtended:
-		err = s.handler.Extended(ctx, r.GetExtendedRequest())
-	default:
-		err = ErrUnsupported
-	}
-
-	// If the error is not nil, extract the status code from the error type, if available,
-	// let's use the unknown error code 'Other'.
-	if err != nil {
-		s.logger.ErrorContext(ctx, "error while handling operation", "operation", r.ProtocolOpName(), "err", err)
-
-		type withErrorCode interface{ LDAPCode() ldap.ENUMERATED }
-
-		var ec withErrorCode
-		if errors.As(err, &ec) {
-			code = ec.LDAPCode()
-		} else {
-			code = ldap.ResultCodeOther
-		}
-	}
-
+	state, code, err = s.runHandler(ctx, state, w, r)
 	res := NewResponse(code)
 	if err != nil {
 		res.SetDiagnosticMessage(err.Error())
@@ -161,5 +116,64 @@ func (s *LDAPSrv) handle(ctx context.Context, w ResponseWriter, r *Message) cont
 		w.Write(res)
 	}
 
-	return ctx
+	return state
+}
+
+func (s *LDAPSrv[T]) runHandler(ctx context.Context, is T, w ResponseWriter, r *Message[T]) (state T, code ldap.ENUMERATED, err error) {
+	code = ldap.ResultCodeSuccess
+
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, r.ProtocolOpName())
+	defer observability.SpanEnd(span, err)
+
+	switch r.ProtocolOpName() {
+	case operationBind:
+		state, err = s.handler.Bind(ctx, is, r.GetBindRequest())
+	case operationSearch:
+		var results []ldap.SearchResultEntry
+
+		results, state, err = s.handler.Search(ctx, is, r.GetSearchRequest())
+
+		for _, result := range results {
+			w.Write(result)
+		}
+	case operationAdd:
+		state, err = s.handler.Add(ctx, is, r.GetAddRequest())
+	case operationDel:
+		state, err = s.handler.Del(ctx, is, r.GetDeleteRequest())
+	case operationModify:
+		state, err = s.handler.Modify(ctx, is, r.GetModifyRequest())
+	case operationCompare:
+		var matched bool
+
+		matched, state, err = s.handler.Compare(ctx, is, r.GetCompareRequest())
+
+		if matched {
+			code = ldap.ResultCodeCompareTrue
+		} else {
+			code = ldap.ResultCodeCompareFalse
+		}
+	case operationExtended:
+		state, err = s.handler.Extended(ctx, is, r.GetExtendedRequest())
+	default:
+		err = ErrUnsupported
+	}
+
+	// If the error is not nil, extract the status code from the error type, if available,
+	// let's use the unknown error code 'Other'.
+	if err != nil {
+		s.logger.ErrorContext(ctx, "error while handling operation", "operation", r.ProtocolOpName(), "err", err)
+
+		type withErrorCode interface{ LDAPCode() ldap.ENUMERATED }
+
+		var ec withErrorCode
+		if errors.As(err, &ec) {
+			code = ec.LDAPCode()
+		} else {
+			code = ldap.ResultCodeOther
+		}
+	}
+
+	span.SetAttributes(attribute.Int("code", code.Int()))
+
+	return
 }

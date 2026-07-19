@@ -52,7 +52,7 @@ func main() {
 		os.Exit(CodeObservability)
 	}
 
-	ldapsrv, err := ldapsrv.NewServer(getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
+	ldapsrv, err := ldapsrv.NewServer[bottin.State](getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
 	if err != nil {
 		logger.Error("error while initiating the ldapsrv subsystem", "err", err)
 		os.Exit(CodeLDAP)

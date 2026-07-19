@@ -12,7 +12,7 @@ var (
 	ErrNotRunning    = errors.New("server is not running")
 )
 
-func (s *LDAPSrv) hasServerStarted(ctx context.Context) error {
+func (s *LDAPSrv[T]) hasServerStarted(ctx context.Context) error {
 	if !s.running.Load() {
 		return ErrNotStartedYet
 	}
@@ -21,13 +21,13 @@ func (s *LDAPSrv) hasServerStarted(ctx context.Context) error {
 }
 
 // ReadinessChecks implements observability.ReadinessChecks.
-func (s *LDAPSrv) ReadinessChecks() map[string]observability.Check {
+func (s *LDAPSrv[T]) ReadinessChecks() map[string]observability.Check {
 	return map[string]observability.Check{
 		"ldapsrv/started": observability.CheckFunc(s.hasServerStarted),
 	}
 }
 
-func (s *LDAPSrv) isServerRunning(ctx context.Context) (err error) {
+func (s *LDAPSrv[T]) isServerRunning(ctx context.Context) (err error) {
 	if !s.running.Load() {
 		return ErrNotRunning
 	}
@@ -36,7 +36,7 @@ func (s *LDAPSrv) isServerRunning(ctx context.Context) (err error) {
 }
 
 // LivenessChecks implements observability.LivenessChecks.
-func (s *LDAPSrv) LivenessChecks() map[string]observability.Check {
+func (s *LDAPSrv[T]) LivenessChecks() map[string]observability.Check {
 	return map[string]observability.Check{
 		"ldapsrv/running": observability.CheckFunc(s.isServerRunning),
 	}

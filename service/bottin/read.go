@@ -56,19 +56,18 @@ func (server *Bottin) existsEntry(ctx context.Context, dn store.DN) (bool, error
 	return len(entries) == 1, nil
 }
 
-func (server *Bottin) Compare(ctx context.Context, r ldap.CompareRequest) (bool, error) {
-	user := ldapsrv.GetUser[User](ctx, EmptyUser)
+func (server *Bottin) Compare(ctx context.Context, state State, r ldap.CompareRequest) (bool, State, error) {
 	attr := store.NewAttributeKey(string(r.Ava().AttributeDesc()))
 	expected := string(r.Ava().AssertionValue())
 
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
-		return false, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return false, state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check permissions
-	if !server.acl.Check(user, "read", dn, []store.AttributeKey{attr}) {
-		return false, fmt.Errorf(
+	if !server.acl.Check(state.User(), "read", dn, []store.AttributeKey{attr}) {
+		return false, state, fmt.Errorf(
 			"could not read %q: %w",
 			dn,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -79,25 +78,24 @@ func (server *Bottin) Compare(ctx context.Context, r ldap.CompareRequest) (bool,
 
 	entry, err := server.getEntry(ctx, dn)
 	if err != nil {
-		return false, err
+		return false, state, err
 	}
 
 	values := entry.Get(attr)
 	for _, v := range values {
 		if valueMatch(attr, v, expected) {
-			return true, nil
+			return true, state, nil
 		}
 	}
 
-	return false, nil
+	return false, state, nil
 }
 
 //nolint:all
-func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.SearchResultEntry, error) {
-	user := ldapsrv.GetUser[User](ctx, EmptyUser)
+func (server *Bottin) Search(ctx context.Context, state State, r ldap.SearchRequest) ([]ldap.SearchResultEntry, State, error) {
 	baseObject, err := server.parseDN(string(r.BaseObject()), true)
 	if err != nil {
-		return nil, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return nil, state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	server.logger.InfoContext(
@@ -113,8 +111,8 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 		r.TimeLimit(),
 	)
 
-	if !server.acl.Check(user, "read", baseObject, []store.AttributeKey{}) {
-		return nil, fmt.Errorf(
+	if !server.acl.Check(state.User(), "read", baseObject, []store.AttributeKey{}) {
+		return nil, state, fmt.Errorf(
 			"could not read %q: %w",
 			baseObject,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -125,7 +123,7 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 	exact := r.Scope() == ldap.SearchRequestScopeBaseObject
 	entries, err := server.store.List(ctx, baseObject.Prefix(), exact)
 	if err != nil {
-		return nil, fmt.Errorf("(%w), error while listing objects: %w", ldapsrv.ErrOperationsError, err)
+		return nil, state, fmt.Errorf("(%w), error while listing objects: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	server.logger.DebugContext(ctx, "retrieved entries", "entries", entries, "base", baseObject)
@@ -144,7 +142,7 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 		// Filter out if we don't match requested filter
 		matched, err := applyFilter(entry, r.Filter())
 		if err != nil {
-			return nil, fmt.Errorf(
+			return nil, state, fmt.Errorf(
 				"(%w), error while applying filter %q on %q: %w",
 				ldapsrv.ErrUnwillingToPerform,
 				r.Filter(),
@@ -157,7 +155,7 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 		}
 
 		// Filter out if user is not allowed to read this
-		if !server.acl.Check(user, "read", entry.DN, []store.AttributeKey{}) {
+		if !server.acl.Check(state.User(), "read", entry.DN, []store.AttributeKey{}) {
 			continue
 		}
 
@@ -184,7 +182,7 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 			}
 
 			// If we are not allowed to read attribute, exclude it from returned entry
-			if !server.acl.Check(user, "read", entry.DN, []store.AttributeKey{attr}) {
+			if !server.acl.Check(state.User(), "read", entry.DN, []store.AttributeKey{attr}) {
 				continue
 			}
 
@@ -199,7 +197,7 @@ func (server *Bottin) Search(ctx context.Context, r ldap.SearchRequest) ([]ldap.
 		results = append(results, e)
 	}
 
-	return results, nil
+	return results, state, nil
 }
 
 //nolint:gocyclo

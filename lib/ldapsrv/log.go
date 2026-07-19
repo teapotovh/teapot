@@ -26,10 +26,6 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 		r.AddAttrs(slog.String("requestid", requestID.(uuid.UUID).String()))
 	}
 
-	if user := ctx.Value(ContextKeyUser); user != nil {
-		r.AddAttrs(slog.Any("user", user))
-	}
-
 	return h.handler.Handle(ctx, r)
 }
 
