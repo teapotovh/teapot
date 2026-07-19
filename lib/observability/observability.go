@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/run"
 )
@@ -18,6 +19,7 @@ const shutdownDelay = time.Second * 5
 
 type ObservabilityConfig struct {
 	Address string
+	Tracing ObservabilityTracingConfig
 }
 
 type Observability struct {
@@ -33,6 +35,7 @@ type Observability struct {
 	pprof      *httpServicePProf
 	readyz     *httpServiceZ
 	livez      *httpServiceZ
+	tracing    *tracing
 }
 
 func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observability, error) {
@@ -75,6 +78,12 @@ func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observa
 	mux.Handle("/ready/{name}", obs.readyz.Handler("/readyz"))
 	mux.Handle("/livez", obs.livez.Handler("/livez"))
 	mux.Handle("/live/{name}", obs.livez.Handler("/livez"))
+
+	tracing, err := newTracing(config.Tracing, logger.With("component", "tracing"))
+	if err != nil {
+		return nil, fmt.Errorf("error while configuring tracing: %w", err)
+	}
+	obs.tracing = tracing
 
 	return &obs, nil
 }
@@ -139,6 +148,18 @@ func (obs *Observability) RegisterLivez(liveness LivenessChecks) {
 	}
 }
 
+type Tracing interface {
+	// WithTracing provides the Tracer to a component
+	WithTracing(trace.TracerProvider, trace.Tracer)
+}
+
+// RegisterTracing registers a component to be traced
+func (obs *Observability) RegisterTracing(traceable Tracing) {
+	if obs.tracing != nil {
+		traceable.WithTracing(obs.tracing.tp, obs.tracing.tracer)
+	}
+}
+
 // Run implements run.Runnable.
 func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
 	if err := obs.registerMetrics(); err != nil {
@@ -164,11 +185,23 @@ func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
 	for {
 		select {
 		case <-ctx.Done():
-			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(shutdownDelay))
-			defer cancel()
+			type shutdown interface{ Shutdown(context.Context) error }
+			type svc struct {
+				shutdown
+				name string
+			}
 
-			if err := obs.inner.Shutdown(ctx); err != nil {
-				return fmt.Errorf("error while shutting down the observability server: %w", err)
+			for _, svc := range []svc{{obs.inner, "observability"}, {obs.tracing, "tracing"}} {
+				if svc.shutdown == nil {
+					continue
+				}
+
+				ctx, cancel := context.WithTimeout(context.Background(), shutdownDelay)
+				defer cancel()
+
+				if err := svc.Shutdown(ctx); err != nil {
+					return fmt.Errorf("error while shutting down observability %q: %w", svc.name, err)
+				}
 			}
 
 			return <-ch

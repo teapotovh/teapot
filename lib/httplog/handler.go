@@ -5,12 +5,16 @@ import (
 	"log/slog"
 )
 
-type contextKey string
+type (
+	requestID     struct{}
+	requestMethod struct{}
+	requestURI    struct{}
+)
 
-const (
-	RequestID     contextKey = "requestID"
-	RequestMethod contextKey = "requestMethod"
-	RequestURI    contextKey = "requestURI"
+var (
+	RequestID     = requestID{}
+	RequestMethod = requestMethod{}
+	RequestURI    = requestURI{}
 )
 
 type Handler struct {

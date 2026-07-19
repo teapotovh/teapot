@@ -11,7 +11,10 @@ import (
 	"time"
 
 	"github.com/emersion/go-ical"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/service/calendar/store"
@@ -42,7 +45,8 @@ func NewBackend(store store.Store, logger *slog.Logger) *Backend {
 }
 
 func (b *Backend) CalendarHomeSetPath(ctx context.Context) (path string, err error) {
-	defer func() { b.logCall(ctx, "CalendarHomeSetPath", "", err, time.Now()) }()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "CalendarHomeSetPath")
+	defer observability.SpanEnd(span, err)
 
 	up, err := b.CurrentUserPrincipal(ctx)
 	if err != nil {
@@ -78,7 +82,8 @@ func normalizePath(path string) store.Path {
 }
 
 func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) (err error) {
-	defer func() { b.logCall(ctx, "CreateCalendar", calendar.Path, err, time.Now()) }()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "CreateCalendars")
+	defer observability.SpanEnd(span, err)
 
 	if calendar == nil {
 		return ErrUnexpectedNilCalendar
@@ -97,7 +102,8 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 }
 
 func (b *Backend) ListCalendars(ctx context.Context) (calendars []caldav.Calendar, err error) {
-	defer func() { b.logCall(ctx, "ListCalendars", "", err, time.Now(), "calendars", calendars) }()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ListCalendars")
+	defer observability.SpanEnd(span, err)
 
 	path, err := b.CalendarHomeSetPath(ctx)
 	if err != nil {
@@ -117,7 +123,8 @@ func (b *Backend) ListCalendars(ctx context.Context) (calendars []caldav.Calenda
 }
 
 func (b *Backend) GetCalendar(ctx context.Context, path string) (calendar *caldav.Calendar, err error) {
-	defer func() { b.logCall(ctx, "GetCalendar", path, err, time.Now(), "calendar", calendar) }()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "GetCalendar")
+	defer observability.SpanEnd(span, err)
 
 	cal, err := b.store.GetCalendar(ctx, normalizePath(path))
 	if err != nil {
@@ -163,7 +170,8 @@ func (b *Backend) PutCalendarObject(
 	calendar *ical.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
 ) (object *caldav.CalendarObject, err error) {
-	defer func() { b.logCall(ctx, "PutCalendarObject", path, err, time.Now(), "opts", opts) }()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "PutCalendarObject")
+	defer observability.SpanEnd(span, err)
 
 	if calendar == nil {
 		return nil, ErrUnexpectedNilObject
@@ -227,19 +235,14 @@ func (b *Backend) GetCalendarObject(
 	path string,
 	req *caldav.CalendarCompRequest,
 ) (object *caldav.CalendarObject, err error) {
-	defer func() {
-		var extra []any
-		if object != nil {
-			extra = append(extra, "etag", object.ETag)
-		}
-
-		b.logCall(ctx, "GetCalendarObject", path, err, time.Now(), extra...)
-	}()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "GetCalendarObject")
+	defer observability.SpanEnd(span, err)
 
 	obj, err := b.store.GetCalendarObject(ctx, normalizePath(path))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 	}
+	span.SetAttributes(attribute.String("etag", obj.ETag))
 
 	object, err = storeObjectToCaldavObject(*obj)
 	if err != nil {
@@ -254,24 +257,13 @@ func (b *Backend) GetCalendarObject(
 	return object, nil
 }
 
-func pathsAndEtags(objects []caldav.CalendarObject) (paths []string, etags []string) {
-	for _, object := range objects {
-		paths = append(paths, object.Path)
-		etags = append(etags, object.ETag)
-	}
-
-	return paths, etags
-}
-
 func (b *Backend) ListCalendarObjects(
 	ctx context.Context,
 	path string,
 	req *caldav.CalendarCompRequest,
 ) (objects []caldav.CalendarObject, err error) {
-	defer func() {
-		paths, etags := pathsAndEtags(objects)
-		b.logCall(ctx, "ListCalendarObjects", path, err, time.Now(), "paths", paths, "etags", etags)
-	}()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ListCalendarObjects")
+	defer observability.SpanEnd(span, err)
 
 	return b.listCalendarObjects(ctx, path, req)
 }
@@ -281,10 +273,8 @@ func (b *Backend) QueryCalendarObjects(
 	path string,
 	query *caldav.CalendarQuery,
 ) (objects []caldav.CalendarObject, err error) {
-	defer func() {
-		paths, etags := pathsAndEtags(objects)
-		b.logCall(ctx, "QueryCalendarObjects", path, err, time.Now(), "paths", paths, "etags", etags)
-	}()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "QueryCalendarObjects")
+	defer observability.SpanEnd(span, err)
 
 	objects, err = b.listCalendarObjects(ctx, path, &query.CompRequest)
 	if err != nil {
@@ -300,7 +290,8 @@ func (b *Backend) QueryCalendarObjects(
 }
 
 func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err error) {
-	defer func() { b.logCall(ctx, "DeleteCalendarObject", path, err, time.Now()) }()
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "DeleteCalendarObject")
+	defer observability.SpanEnd(span, err)
 
 	if err := b.store.DeleteCalendarObject(ctx, normalizePath(path)); err != nil {
 		return fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
@@ -309,34 +300,27 @@ func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err er
 	return nil
 }
 
-func (b *Backend) logCall(ctx context.Context, method string, path string, err error, start time.Time, extra ...any) {
-	fields := []any{"method", method, "duration", time.Since(start)}
-	if len(path) > 0 {
-		fields = append(fields, "path", path)
-	}
-
-	fields = append(fields, extra...)
-	if err != nil {
-		fields = append(fields, "err", err)
-		b.logger.ErrorContext(ctx, "called", fields...)
-	} else {
-		b.logger.InfoContext(ctx, "called", fields...)
-	}
-}
-
 // listCalendarObjects is extracted from the ListCalendarObjects impl so it
 // can be reused for QueryCalendarObjects.
 func (b *Backend) listCalendarObjects(
 	ctx context.Context,
 	path string,
-	req *caldav.CalendarCompRequest,
+	_ *caldav.CalendarCompRequest,
 ) (objects []caldav.CalendarObject, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "listCalendarObjects")
+	defer observability.SpanEnd(span, err)
+
 	objs, err := b.store.ListCalendarObjects(ctx, normalizePath(path))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching calendar objects at path %q from storage: %w", path, err)
 	}
 
 	for _, obj := range objs {
+		span.AddEvent("retrieved calendar object", trace.WithAttributes(
+			attribute.String("path", obj.Path.String()),
+			attribute.String("etag", obj.ETag),
+		))
+
 		object, err := storeObjectToCaldavObject(obj)
 		if err != nil {
 			return nil, fmt.Errorf(
