@@ -134,6 +134,10 @@ func (s *LDAPSrv[T]) runHandler(
 
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, r.ProtocolOpName())
 	defer observability.SpanEnd(span, err)
+	span.SetAttributes(
+		attribute.String("operation", r.ProtocolOpName()),
+		attribute.String("x-request-id", RequestID(ctx)),
+	)
 
 	switch r.ProtocolOpName() {
 	case operationBind:
