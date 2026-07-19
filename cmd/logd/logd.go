@@ -31,7 +31,7 @@ func main() {
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getObservabilityConfig := observability.ObservabilityFlagSet()
+	fs, getObservabilityConfig := observability.ObservabilityFlagSet("log")
 	flag.CommandLine.AddFlagSet(fs)
 	flag.Parse()
 

@@ -28,7 +28,7 @@ const (
 func main() {
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getObservabilityConfig := observability.ObservabilityFlagSet()
+	fs, getObservabilityConfig := observability.ObservabilityFlagSet("bottin")
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getLDAPSrvConfig := ldapsrv.LDAPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)

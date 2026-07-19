@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "httptrace",
+    srcs = ["httptrace.go"],
+    importpath = "github.com/teapotovh/teapot/lib/httptrace",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "@io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp//:otelhttp",
+        "@io_opentelemetry_go_otel//propagation",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)

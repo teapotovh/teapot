@@ -13,6 +13,7 @@ go_library(
     deps = [
         "//lib/httpauth",
         "//lib/httplog",
+        "//lib/httptrace",
         "//lib/ldap",
         "//lib/observability",
         "//lib/webdav/caldav",
@@ -20,5 +21,6 @@ go_library(
         "//service/calendar/store",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
+        "@io_opentelemetry_go_otel_trace//:trace",
     ],
 )

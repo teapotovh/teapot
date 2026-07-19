@@ -12,10 +12,13 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/httpauth",
+        "//lib/observability",
         "//lib/webdav",
         "//lib/webdav/caldav",
         "//lib/webdav/error",
         "//service/calendar/store",
         "@com_github_emersion_go_ical//:go-ical",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel_trace//:trace",
     ],
 )

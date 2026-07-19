@@ -32,7 +32,7 @@ const (
 func main() {
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getObservabilityConfig := observability.ObservabilityFlagSet()
+	fs, getObservabilityConfig := observability.ObservabilityFlagSet("calendar")
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -68,13 +68,15 @@ func main() {
 		os.Exit(CodeCalendar)
 	}
 
-	httpsrv.Register("calendar", calendar, HTTPCalendarPrefix)
 	observability.RegisterMetrics(calendar)
 	observability.RegisterReadyz(calendar)
+	observability.RegisterTracing(calendar)
 
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
 	observability.RegisterLivez(httpsrv)
+
+	httpsrv.Register("calendar", calendar, HTTPCalendarPrefix)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
