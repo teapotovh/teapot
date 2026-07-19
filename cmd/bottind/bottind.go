@@ -52,7 +52,7 @@ func main() {
 		os.Exit(CodeObservability)
 	}
 
-	ldapsrv, err := ldapsrv.NewServer(getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
+	ldapsrv, err := ldapsrv.NewServer[bottin.State](getLDAPSrvConfig(), logger.With("sub", "ldapsrv"))
 	if err != nil {
 		logger.Error("error while initiating the ldapsrv subsystem", "err", err)
 		os.Exit(CodeLDAP)
@@ -64,14 +64,15 @@ func main() {
 		os.Exit(CodeBottin)
 	}
 
-	ldapsrv.Register(bottin)
-
 	observability.RegisterMetrics(bottin)
 	observability.RegisterReadyz(bottin)
 
 	observability.RegisterMetrics(ldapsrv)
 	observability.RegisterReadyz(ldapsrv)
 	observability.RegisterLivez(ldapsrv)
+
+	observability.RegisterTracing(ldapsrv)
+	ldapsrv.Register(bottin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

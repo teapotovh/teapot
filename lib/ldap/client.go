@@ -7,7 +7,9 @@ import (
 	"log/slog"
 
 	"github.com/go-ldap/ldap/v3"
+	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
@@ -38,14 +40,19 @@ type Client struct {
 	accessesDN   string
 }
 
-func (c *Client) Authenticate(username string, password string) (user *User, err error) {
-	entry, err := c.find(username)
+func (c *Client) Authenticate(ctx context.Context, username string, password string) (user *User, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.Authenticate")
+	defer observability.SpanEnd(span, err)
+
+	span.SetAttributes(attribute.String("username", username))
+
+	entry, err := c.find(ctx, username)
 	if err != nil {
 		c.errored = true
 		return nil, fmt.Errorf("error while looking up user for bind: %w", err)
 	}
 
-	if err := bind(c.metrics, c.conn, entry.DN, password); err != nil {
+	if err := bind(ctx, c.metrics, c.conn, entry.DN, password); err != nil {
 		// NOTE: we don't consider a bind error an error on the connection, so we don't set errored here.
 		return nil, fmt.Errorf("error while binding as %q: %w, likely %w", entry.DN, err, ErrInvalidCredentials)
 	}

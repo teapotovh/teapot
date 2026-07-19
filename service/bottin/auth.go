@@ -13,19 +13,17 @@ import (
 
 var ErrUnsupportedExtendedRequest = errors.New("unsupported extended request, we only support PasswordModify")
 
-func (server *Bottin) Bind(ctx context.Context, r ldap.BindRequest) (context.Context, error) {
-	user := ldapsrv.GetUser(ctx, EmptyUser)
-
+func (server *Bottin) Bind(ctx context.Context, state State, r ldap.BindRequest) (State, error) {
 	dn, err := server.parseDN(string(r.Name()), false)
 	if err != nil {
-		return ctx, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
-	server.logger.InfoContext(ctx, "bind attempt", "dn", dn, "user", user)
+	server.logger.InfoContext(ctx, "bind attempt", "dn", dn, "user", state.User())
 
 	// Check permissions
-	if !server.acl.Check(user, "bind", dn, []store.AttributeKey{}) {
-		return ctx, fmt.Errorf(
+	if !server.acl.Check(state.User(), "bind", dn, []store.AttributeKey{}) {
+		return state, fmt.Errorf(
 			"could not authentiate as %q: %w",
 			dn,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -34,7 +32,7 @@ func (server *Bottin) Bind(ctx context.Context, r ldap.BindRequest) (context.Con
 
 	entry, err := server.getEntry(ctx, dn)
 	if err != nil {
-		return ctx, err
+		return state, err
 	}
 
 	passwd := string(r.AuthenticationSimple())
@@ -58,54 +56,53 @@ func (server *Bottin) Bind(ctx context.Context, r ldap.BindRequest) (context.Con
 
 		if valid {
 			groups := entry.Get(AttrMemberOf)
-			ctx = ldapsrv.WithUser(ctx, User{
+			state.user = &User{
 				user:   string(r.Name()),
 				groups: groups,
-			})
+			}
 
-			return ctx, nil
+			return state, nil
 		}
 	}
 
-	return ctx, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidCredentials, errors.Join(errs...))
+	return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidCredentials, errors.Join(errs...))
 }
 
-func (server *Bottin) Extended(ctx context.Context, r ldap.ExtendedRequest) error {
+func (server *Bottin) Extended(ctx context.Context, state State, r ldap.ExtendedRequest) (State, error) {
 	if r.RequestName() != ldapsrv.NoticeOfPasswordModify {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrUnwillingToPerform, ErrUnsupportedExtendedRequest)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrUnwillingToPerform, ErrUnsupportedExtendedRequest)
 	}
 
 	passwordModifyRequest, err := r.PasswordModifyRequest()
 	if err != nil {
-		return fmt.Errorf("(%w) error while parsing PasswordModify: %w", ldapsrv.ErrInvalidAttributeSyntax, err)
+		return state, fmt.Errorf("(%w) error while parsing PasswordModify: %w", ldapsrv.ErrInvalidAttributeSyntax, err)
 	}
 
 	if passwordModifyRequest.NewPassword() == nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrAuthMethodNotSupported, ErrMissingNewPassword)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrAuthMethodNotSupported, ErrMissingNewPassword)
 	}
 
 	passwd := passwordModifyRequest.NewPassword()
 
-	user := ldapsrv.GetUser(ctx, EmptyUser)
-	if user.user == AnonymousUser {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrInsufficientAccessRights, ErrNotAuthenticated)
+	if state.User().user == AnonymousUser {
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInsufficientAccessRights, ErrNotAuthenticated)
 	}
 	// By default we assume a user is trying to change his own password.
 	// If a different subject is specified in the request, then we pivot to changing
 	// the password for that subject instead.
-	rawDN := user.user
+	rawDN := state.User().user
 	if passwordModifyRequest.UserIdentity() != nil {
 		rawDN = string(*passwordModifyRequest.UserIdentity())
 	}
 
 	dn, err := server.parseDN(rawDN, false)
 	if err != nil {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
 	// Check permissions
-	if !server.acl.Check(user, "modify", dn, []store.AttributeKey{AttrUserPassword}) {
-		return fmt.Errorf(
+	if !server.acl.Check(state.User(), "modify", dn, []store.AttributeKey{AttrUserPassword}) {
+		return state, fmt.Errorf(
 			"could not modify password for %q: %w",
 			dn,
 			ldapsrv.ErrInsufficientAccessRights,
@@ -113,17 +110,17 @@ func (server *Bottin) Extended(ctx context.Context, r ldap.ExtendedRequest) erro
 	}
 
 	if dn.Equal(server.baseDN) {
-		return fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, ErrSetRootPasswd)
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, ErrSetRootPasswd)
 	}
 
 	entry, err := server.getEntry(ctx, dn)
 	if err != nil {
-		return err
+		return state, err
 	}
 
 	hash, err := ssha512Encode(string(*passwd))
 	if err != nil {
-		return fmt.Errorf("(%w) error while hashing passwd: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while hashing passwd: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	server.logger.InfoContext(ctx, "updating passwd", "dn", dn, "hash", hash)
@@ -133,16 +130,16 @@ func (server *Bottin) Extended(ctx context.Context, r ldap.ExtendedRequest) erro
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	if err = tx.Store(ctx, store.NewEntry(dn, attrs)); err != nil {
-		return fmt.Errorf("(%w) error while updating password: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) error while updating password: %w", ldapsrv.ErrOperationsError, err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
+		return state, fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
-	return nil
+	return state, nil
 }

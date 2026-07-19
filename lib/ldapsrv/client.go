@@ -2,6 +2,7 @@ package ldapsrv
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,22 +11,25 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/propagation"
+
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 var (
 	ErrMessageNotFullyWritten = errors.New("message bytes were not fully written")
 )
 
-type client struct {
+type client[T any] struct {
 	rwc         net.Conn
 	chanOut     chan *ldap.LDAPMessage
-	srv         *LDAPSrv
+	srv         *LDAPSrv[T]
 	br          *bufio.Reader
 	bw          *bufio.Writer
 	logger      *slog.Logger
 	closing     chan bool
-	requestList map[int]*Message
+	requestList map[int]*Message[T]
 	writeDone   chan bool
 	rawData     []byte
 	wg          sync.WaitGroup
@@ -33,21 +37,21 @@ type client struct {
 	mutex       sync.Mutex
 }
 
-func (c *client) GetConn() net.Conn {
+func (c *client[T]) GetConn() net.Conn {
 	return c.rwc
 }
 
-func (c *client) GetRaw() []byte {
+func (c *client[T]) GetRaw() []byte {
 	return c.rawData
 }
 
-func (c *client) SetConn(conn net.Conn) {
+func (c *client[T]) SetConn(conn net.Conn) {
 	c.rwc = conn
 	c.br = bufio.NewReader(c.rwc)
 	c.bw = bufio.NewWriter(c.rwc)
 }
 
-func (c *client) GetMessageByID(messageID int) (*Message, bool) {
+func (c *client[T]) GetMessageByID(messageID int) (*Message[T], bool) {
 	if requestToAbandon, ok := c.requestList[messageID]; ok {
 		return requestToAbandon, true
 	}
@@ -55,11 +59,11 @@ func (c *client) GetMessageByID(messageID int) (*Message, bool) {
 	return nil, false
 }
 
-func (c *client) Addr() net.Addr {
+func (c *client[T]) Addr() net.Addr {
 	return c.rwc.RemoteAddr()
 }
 
-func (c *client) ReadPacket() (*messagePacket, error) {
+func (c *client[T]) ReadPacket() (*messagePacket, error) {
 	mP, err := readMessagePacket(c.br)
 	c.rawData = make([]byte, len(mP.bytes))
 	copy(c.rawData, mP.bytes)
@@ -68,15 +72,18 @@ func (c *client) ReadPacket() (*messagePacket, error) {
 }
 
 //nolint:all
-func (c *client) serve(ctx context.Context) {
+func (c *client[T]) serve(serveCtx context.Context) {
+	ctx, span := c.srv.tracer.Start(serveCtx, "client.serve")
+	defer span.End()
+
 	c.srv.metrics.active.Inc()
 	c.srv.metrics.total.Add(1)
 	c.srv.wg.Add(1)
 	defer func() {
 		c.srv.metrics.active.Dec()
 		c.srv.wg.Done()
-		if err := c.close(ctx); err != nil {
-			c.logger.DebugContext(ctx, "error while closing client", "err", err)
+		if err := c.close(serveCtx); err != nil {
+			c.logger.DebugContext(serveCtx, "error while closing client", "err", err)
 		}
 	}()
 
@@ -89,8 +96,8 @@ func (c *client) serve(ctx context.Context) {
 	// for each message in c.chanOut send it to client
 	go func() {
 		for msg := range c.chanOut {
-			if err := c.writeMessage(ctx, msg); err != nil {
-				c.logger.ErrorContext(ctx, "error while marshaling response", "err", err, "msg", msg)
+			if err := c.writeMessage(serveCtx, msg); err != nil {
+				c.logger.ErrorContext(serveCtx, "error while marshaling response", "err", err, "msg", msg)
 			}
 		}
 		close(c.writeDone)
@@ -100,7 +107,7 @@ func (c *client) serve(ctx context.Context) {
 	go func() {
 		for {
 			select {
-			case <-ctx.Done(): // server signals shutdown process
+			case <-serveCtx.Done(): // server signals shutdown process
 				c.wg.Add(1)
 				r := NewExtendedResponse(ldap.ResultCodeUnwillingToPerform)
 				r.SetDiagnosticMessage("server is about to stop")
@@ -111,7 +118,7 @@ func (c *client) serve(ctx context.Context) {
 				c.chanOut <- m
 				c.wg.Done()
 				if err := c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond)); err != nil {
-					c.logger.WarnContext(ctx, "error while setting read deadline when shutting down", "err", err)
+					c.logger.WarnContext(serveCtx, "error while setting read deadline when shutting down", "err", err)
 				}
 				return
 			case <-c.closing:
@@ -120,17 +127,21 @@ func (c *client) serve(ctx context.Context) {
 		}
 	}()
 
-	c.requestList = make(map[int]*Message)
+	c.requestList = make(map[int]*Message[T])
+	state := c.srv.initialState
 
 	for {
+		ctx, span := c.srv.tracer.Start(ctx, "client.next")
+		ctx = observability.ContextWithTracer(ctx, c.srv.tracer)
+
 		if c.srv.readTimeout != 0 {
 			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.readTimeout)); err != nil {
-				c.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
+				c.logger.WarnContext(serveCtx, "error while setting read deadline", "err", err)
 			}
 		}
 		if c.srv.writeTimeout != 0 {
 			if err := c.rwc.SetWriteDeadline(time.Now().Add(c.srv.writeTimeout)); err != nil {
-				c.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
+				c.logger.WarnContext(serveCtx, "error while setting write deadline", "err", err)
 			}
 		}
 
@@ -138,16 +149,53 @@ func (c *client) serve(ctx context.Context) {
 		messagePacket, err := c.ReadPacket()
 		if err != nil {
 			_, isTimeout := err.(*net.OpError)
-			c.logger.DebugContext(ctx, "error while receiving packet", "client", c.id, "timeout", isTimeout, "err", err)
+			c.logger.DebugContext(
+				serveCtx,
+				"error while receiving packet",
+				"client",
+				c.id,
+				"timeout",
+				isTimeout,
+				"err",
+				err,
+			)
+			span.End()
 			return
 		}
 
 		// Convert ASN1 binaryMessage to a ldap Message
 		message, err := messagePacket.readMessage()
 		if err != nil {
-			c.logger.DebugContext(ctx, "error while reading packet", "err", err)
+			c.logger.DebugContext(serveCtx, "error while reading packet", "err", err)
+			span.End()
 			continue
 		}
+		span.End()
+
+		// Extract tracing information if provided
+		var traceparent, tracestate string
+		if controls := message.Controls(); controls != nil {
+			for _, control := range *controls {
+				if control.ControlType() == "1.3.6.1.4.1.1337.1" &&
+					control.ControlValue() != nil {
+					parts := bytes.SplitN(control.ControlType().Bytes(), []byte{0}, 2)
+
+					traceparent = string(parts[0])
+					tracestate = ""
+					if len(parts) == 2 {
+						tracestate = string(parts[1])
+					}
+
+					break
+				}
+			}
+		}
+
+		carrier := propagation.MapCarrier{
+			"traceparent": traceparent,
+			"tracestate":  tracestate,
+		}
+		ctx = propagation.TraceContext{}.Extract(serveCtx, carrier)
 
 		if br, ok := message.ProtocolOp().(ldap.BindRequest); ok {
 			c.logger.DebugContext(ctx, "got bind request", "user", br.Name())
@@ -165,23 +213,7 @@ func (c *client) serve(ctx context.Context) {
 			return
 		}
 
-		// If client requests a startTls, do not handle it in a
-		// goroutine, connection has to remain free until TLS is OK
-		// @see RFC https://tools.ietf.org/html/rfc4511#section-4.14.1
-		if req, ok := message.ProtocolOp().(ldap.ExtendedRequest); ok {
-			if req.RequestName() == NoticeOfStartTLS {
-				res := NewResponse(ldap.ResultCodeUnwillingToPerform)
-				res.SetDiagnosticMessage("StartTLS is not supported")
-
-				m := ldap.NewLDAPMessageWithProtocolOp(res)
-				m.SetMessageID(message.MessageID())
-
-				c.chanOut <- m
-				continue
-			}
-		}
-
-		ctx = c.ProcessRequestMessage(ctx, &message)
+		state = c.ProcessRequestMessage(ctx, state, &message)
 	}
 }
 
@@ -204,25 +236,11 @@ func (w responseWriterImpl) Write(po ldap.ProtocolOp) {
 	w.chanOut <- m
 }
 
-type DefaultUser[T any] func() T
-
-func GetUser[T any](ctx context.Context, def DefaultUser[T]) T {
-	if user := ctx.Value(ContextKeyUser); user != nil {
-		return user.(T)
-	}
-
-	return def()
-}
-
-func WithUser[T any](ctx context.Context, user T) context.Context {
-	return context.WithValue(ctx, ContextKeyUser, user)
-}
-
-func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMessage) context.Context {
+func (c *client[T]) ProcessRequestMessage(ctx context.Context, state T, message *ldap.LDAPMessage) T {
 	c.wg.Add(1)
 	defer c.wg.Done()
 
-	m := Message{
+	m := Message[T]{
 		LDAPMessage: message,
 		Done:        make(chan bool, 2),
 		Client:      c,
@@ -236,22 +254,22 @@ func (c *client) ProcessRequestMessage(ctx context.Context, message *ldap.LDAPMe
 	w.chanOut = c.chanOut
 	w.messageID = m.MessageID()
 
-	return c.srv.handle(ctx, w, &m)
+	return c.srv.handle(ctx, state, w, &m)
 }
 
-func (c *client) registerRequest(m *Message) {
+func (c *client[T]) registerRequest(m *Message[T]) {
 	c.mutex.Lock()
 	c.requestList[m.MessageID().Int()] = m
 	c.mutex.Unlock()
 }
 
-func (c *client) unregisterRequest(m *Message) {
+func (c *client[T]) unregisterRequest(m *Message[T]) {
 	c.mutex.Lock()
 	delete(c.requestList, m.MessageID().Int())
 	c.mutex.Unlock()
 }
 
-func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error {
+func (c *client[T]) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error {
 	data, err := msg.Write()
 	if err != nil {
 		return fmt.Errorf("error while encoding message: %w", err)
@@ -281,7 +299,7 @@ func (c *client) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) error 
 // * wait for all request processor to end
 // * close client connection
 // * signal to server that client shutdown is ok.
-func (c *client) close(ctx context.Context) error {
+func (c *client[T]) close(ctx context.Context) error {
 	c.logger.DebugContext(ctx, "closing connection")
 	close(c.closing)
 

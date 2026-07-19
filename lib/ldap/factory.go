@@ -7,7 +7,10 @@ import (
 	"sync/atomic"
 
 	"github.com/go-ldap/ldap/v3"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
@@ -69,6 +72,9 @@ func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
 }
 
 func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Factory.NewClient")
+	defer observability.SpanEnd(span, err)
+
 	defer func() {
 		f.clients.Add(1)
 
@@ -79,6 +85,8 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 		}
 	}()
 
+	span.AddEvent("connecting to LDAP", trace.WithAttributes(attribute.String("url", f.url)))
+
 	conn, err := ldap.DialURL(f.url)
 	if err != nil {
 		return nil, fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
@@ -86,7 +94,7 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 
 	// We always bind as root user, so we can perofrm all operations,
 	// including, possibly, a second bind as a lower-privilege user to test auth.
-	if err := bind(&f.metrics, conn, f.rootDN, f.rootPasswd); err != nil {
+	if err := bind(ctx, &f.metrics, conn, f.rootDN, f.rootPasswd); err != nil {
 		return nil, fmt.Errorf("error while binding as root: %w", err)
 	}
 

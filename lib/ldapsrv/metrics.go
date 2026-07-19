@@ -10,7 +10,7 @@ type metrics struct {
 	duration *prometheus.HistogramVec
 }
 
-func (s *LDAPSrv) initMetrics() {
+func (s *LDAPSrv[T]) initMetrics() {
 	s.metrics.active = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "ldapsrv_connections_active",
@@ -37,7 +37,7 @@ func (s *LDAPSrv) initMetrics() {
 }
 
 // Metrics implements observability.Metrics.
-func (s *LDAPSrv) Metrics() []prometheus.Collector {
+func (s *LDAPSrv[T]) Metrics() []prometheus.Collector {
 	return []prometheus.Collector{
 		s.metrics.active,
 		s.metrics.total,

@@ -1,21 +1,34 @@
 package ldap
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/go-ldap/ldap/v3"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 var (
 	ErrNotMatchingUsername = errors.New("username doesn't match")
 )
 
-func (c *Client) list() ([]*ldap.Entry, error) {
+func (c *Client) list(ctx context.Context) (entries []*ldap.Entry, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.list")
+	defer observability.SpanEnd(span, err)
+
 	filter, err := c.usersFilter.Render(filterTemplateValues{Username: "*"})
 	if err != nil {
 		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
 	}
+
+	span.AddEvent(
+		"rendered find filter template string for all users",
+		trace.WithAttributes(attribute.String("filter", filter)),
+	)
 
 	searchRequest := ldap.NewSearchRequest(
 		c.usersDN,
@@ -29,7 +42,7 @@ func (c *Client) list() ([]*ldap.Entry, error) {
 		nil,
 	)
 
-	search, err := search(c.metrics, c.conn, searchRequest)
+	search, err := search(ctx, c.metrics, c.conn, searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error while performing search for user: %w", err)
 	}
@@ -44,13 +57,20 @@ func (c *Client) list() ([]*ldap.Entry, error) {
 	return search.Entries, nil
 }
 
-func (c *Client) find(username string) (entry *ldap.Entry, err error) {
+func (c *Client) find(ctx context.Context, username string) (entry *ldap.Entry, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.find")
+	defer observability.SpanEnd(span, err)
+
+	span.SetAttributes(attribute.String("username", username))
+
 	filter, err := c.usersFilter.Render(filterTemplateValues{
 		Username: username,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
 	}
+
+	span.AddEvent("rendered find filter template string", trace.WithAttributes(attribute.String("filter", filter)))
 
 	searchRequest := ldap.NewSearchRequest(
 		c.usersDN,
@@ -64,10 +84,12 @@ func (c *Client) find(username string) (entry *ldap.Entry, err error) {
 		nil,
 	)
 
-	search, err := search(c.metrics, c.conn, searchRequest)
+	search, err := search(ctx, c.metrics, c.conn, searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error while performing search for user: %w", err)
 	}
+
+	span.AddEvent("searched for machine users", trace.WithAttributes(attribute.Int("results", len(search.Entries))))
 
 	if len(search.Entries) == 0 {
 		return nil, ErrUserNotFound

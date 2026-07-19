@@ -1,16 +1,25 @@
 package ldap
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/go-ldap/ldap/v3"
+	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 var ErrUnexpectedGeneratedPassword = errors.New("LDAP server unexpectedly returned a generated password")
 
-func (c *Client) Passwd(username, password string) error {
-	entry, err := c.find(username)
+func (c *Client) Passwd(ctx context.Context, username, password string) (err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.Passwd")
+	defer observability.SpanEnd(span, err)
+
+	span.SetAttributes(attribute.String("username", username))
+
+	entry, err := c.find(ctx, username)
 	if err != nil {
 		return fmt.Errorf("error while looking up user: %w", err)
 	}

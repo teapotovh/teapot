@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 const (
@@ -52,32 +53,25 @@ func NewBasicAuth(factory *ldap.Factory, errorHandler http.Handler, logger *slog
 
 func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		ctx, span := observability.TracerFromContext(ctx).Start(ctx, "BasicAuth.Middleware")
+		defer span.End()
+
 		username, password, ok := r.BasicAuth()
 		if ok && len(username) > 0 {
-			client, err := ba.factory.NewClient(r.Context())
+			user, err := authenticate(ctx, ba.factory, username, password, ba.logger)
 			if err != nil {
-				ba.logger.ErrorContext(r.Context(), "error while creating LDAP client", "err", err)
+				r := r.WithContext(context.WithValue(ctx, basicAuthErrContextKey, err))
 				ba.errorHandler.ServeHTTP(w, r)
 
-				return
-			}
-			defer client.Close()
-
-			user, err := client.Authenticate(username, password)
-			if err != nil {
-				if !errors.Is(err, ldap.ErrInvalidCredentials) {
-					ba.logger.ErrorContext(r.Context(), "error while authenticating", "username", username, "err", err)
-					err = ldap.ErrInvalidCredentials
-				}
-
-				r := r.WithContext(context.WithValue(r.Context(), basicAuthErrContextKey, err))
-				ba.errorHandler.ServeHTTP(w, r)
+				observability.SpanErr(span, err)
 
 				return
 			}
 
 			auth := authFromUser(user, nil)
-			r = r.WithContext(context.WithValue(r.Context(), authContextKey, &auth))
+			r = r.WithContext(context.WithValue(ctx, authContextKey, &auth))
 		}
 
 		next.ServeHTTP(w, r)

@@ -30,7 +30,7 @@ func (k *Kontakte) Users(w http.ResponseWriter, r *http.Request) (ui.Component, 
 		}
 		defer client.Close()
 
-		usrs, err := client.Users()
+		usrs, err := client.Users(r.Context())
 		if err != nil {
 			return nil, webhandler.NewInternalError(fmt.Errorf("error while enumerating users from LDAP: %w", err), nil)
 		}

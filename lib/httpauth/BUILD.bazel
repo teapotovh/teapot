@@ -13,6 +13,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/ldap",
+        "//lib/observability",
         "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",

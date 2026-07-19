@@ -106,9 +106,17 @@ func (server *Bottin) Store() store.Store {
 	return server.store
 }
 
+type State struct {
+	user *User
+}
+
 const AnonymousUser = "ANONYMOUS"
 
-func EmptyUser() User {
+func (s State) User() User {
+	if s.user != nil {
+		return *s.user
+	}
+
 	return User{
 		user:   AnonymousUser,
 		groups: []string{},
