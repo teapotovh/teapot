@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
 	"github.com/teapotovh/teapot/lib/observability"
@@ -73,8 +74,13 @@ func (c *client[T]) ReadPacket() (*messagePacket, error) {
 
 //nolint:all
 func (c *client[T]) serve(serveCtx context.Context) {
-	ctx, span := c.srv.tracer.Start(serveCtx, "client.serve")
+	ctx, span := c.srv.tracer.Start(
+		serveCtx,
+		"client.serve",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
 	defer span.End()
+	ctx = observability.ContextWithTracer(ctx, c.srv.tracer)
 
 	c.srv.metrics.active.Inc()
 	c.srv.metrics.total.Add(1)
@@ -132,16 +138,15 @@ func (c *client[T]) serve(serveCtx context.Context) {
 
 	for {
 		ctx, span := c.srv.tracer.Start(ctx, "client.next")
-		ctx = observability.ContextWithTracer(ctx, c.srv.tracer)
 
 		if c.srv.readTimeout != 0 {
 			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.readTimeout)); err != nil {
-				c.logger.WarnContext(serveCtx, "error while setting read deadline", "err", err)
+				c.logger.WarnContext(ctx, "error while setting read deadline", "err", err)
 			}
 		}
 		if c.srv.writeTimeout != 0 {
 			if err := c.rwc.SetWriteDeadline(time.Now().Add(c.srv.writeTimeout)); err != nil {
-				c.logger.WarnContext(serveCtx, "error while setting write deadline", "err", err)
+				c.logger.WarnContext(ctx, "error while setting write deadline", "err", err)
 			}
 		}
 
@@ -150,7 +155,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 		if err != nil {
 			_, isTimeout := err.(*net.OpError)
 			c.logger.DebugContext(
-				serveCtx,
+				ctx,
 				"error while receiving packet",
 				"client",
 				c.id,
@@ -166,11 +171,10 @@ func (c *client[T]) serve(serveCtx context.Context) {
 		// Convert ASN1 binaryMessage to a ldap Message
 		message, err := messagePacket.readMessage()
 		if err != nil {
-			c.logger.DebugContext(serveCtx, "error while reading packet", "err", err)
+			c.logger.DebugContext(ctx, "error while reading packet", "err", err)
 			span.End()
 			continue
 		}
-		span.End()
 
 		// Extract tracing information if provided
 		var traceparent, tracestate string
@@ -195,7 +199,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 			"traceparent": traceparent,
 			"tracestate":  tracestate,
 		}
-		ctx = propagation.TraceContext{}.Extract(serveCtx, carrier)
+		ctx = propagation.TraceContext{}.Extract(ctx, carrier)
 
 		if br, ok := message.ProtocolOp().(ldap.BindRequest); ok {
 			c.logger.DebugContext(ctx, "got bind request", "user", br.Name())
