@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 
 	"git.sr.ht/~bitfehler/brant"
@@ -13,7 +14,9 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/teapotovh/teapot/lib/httptrace"
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/run"
@@ -32,7 +35,13 @@ type Online struct {
 	calendarTable  *pgcache.Table[Path, Calendar]
 	objectRefTable *pgcache.Table[Path, objectRef]
 
-	objectCache *s3cache.S3Cache
+	httpTrace     *httptrace.HTTPTrace
+	s3endpoint    string
+	s3credentials *credentials.Credentials
+	s3Secure      bool
+	s3Region      string
+	s3CacheConfig s3cache.S3CacheConfig
+	objectCache   *s3cache.S3Cache
 
 	metrics metrics
 }
@@ -102,22 +111,11 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 		return nil, fmt.Errorf("error while parsing the S3 connection string: %w", err)
 	}
 
+	httpTrace := httptrace.NewHTTPTrace()
+
 	key := u.User.Username()
 	secret, _ := u.User.Password()
-
-	client, err := minio.New(u.Host, &minio.Options{
-		Creds:  credentials.NewStaticV4(key, secret, ""),
-		Secure: u.Scheme == "https",
-		Region: s3.Region,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error while creating the S3 client: %w", err)
-	}
-
-	objectCache, err := s3cache.NewS3Cache(s3.Cache, client, logger)
-	if err != nil {
-		return nil, fmt.Errorf("error while building s3 cache: %w", err)
-	}
+	credentials := credentials.NewStaticV4(key, secret, "")
 
 	p := Online{
 		logger: logger,
@@ -126,7 +124,12 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 		calendarTable:  calendarTable,
 		objectRefTable: objectTable,
 
-		objectCache: objectCache,
+		httpTrace:     httpTrace,
+		s3endpoint:    u.Host,
+		s3credentials: credentials,
+		s3Secure:      u.Scheme == "https",
+		s3Region:      s3.Region,
+		s3CacheConfig: s3.Cache,
 	}
 	p.metrics.initMetrics("psql")
 
@@ -171,9 +174,28 @@ func (o *Online) Ping(ctx context.Context) error {
 }
 
 // Run implements run.Runnable.
-func (o *Online) Run(ctx context.Context, notify run.Notify) error {
-	cr := run.Combine(o.calendarTable, o.objectRefTable)
-	return cr.Run(ctx, notify)
+func (o *Online) Run(ctx context.Context, notify run.Notify) (err error) {
+	client, err := minio.New(o.s3endpoint, &minio.Options{
+		Creds:     o.s3credentials,
+		Secure:    o.s3Secure,
+		Region:    o.s3Region,
+		Transport: o.httpTrace.Transport(http.DefaultTransport),
+	})
+	if err != nil {
+		return fmt.Errorf("error while creating the S3 client: %w", err)
+	}
+
+	o.objectCache, err = s3cache.NewS3Cache(o.s3CacheConfig, client, o.logger)
+	if err != nil {
+		return fmt.Errorf("error while building s3 cache: %w", err)
+	}
+
+	return run.Combine(o.calendarTable, o.objectRefTable).Run(ctx, notify)
+}
+
+// WithTracing implements observability.Tracing.
+func (o *Online) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
+	o.httpTrace.WithTracing(tp, tracer)
 }
 
 // Metrics implements observability.Metrics.

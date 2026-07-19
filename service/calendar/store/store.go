@@ -28,6 +28,7 @@ type Store interface {
 	run.Runnable
 	observability.Metrics
 	observability.ReadinessChecks
+	observability.Tracing
 
 	// Ping allows pinging the store to verify that it is ready to accept requests.
 	Ping(ctx context.Context) error

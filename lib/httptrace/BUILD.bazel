@@ -7,6 +7,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/observability",
+        "@io_opentelemetry_go_contrib_instrumentation_net_http_httptrace_otelhttptrace//:otelhttptrace",
         "@io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp//:otelhttp",
         "@io_opentelemetry_go_otel//propagation",
         "@io_opentelemetry_go_otel_trace//:trace",

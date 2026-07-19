@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
@@ -140,6 +141,9 @@ func (m *Mem) Run(ctx context.Context, notify run.Notify) error {
 	notify.Notify()
 	return nil
 }
+
+// WithTracing implements observability.Tracing.
+func (m *Mem) WithTracing(_ trace.TracerProvider, _ trace.Tracer) {}
 
 // Metrics implements observability.Metrics.
 func (m *Mem) Metrics() []prometheus.Collector {

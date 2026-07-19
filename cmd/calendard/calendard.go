@@ -72,6 +72,8 @@ func main() {
 	observability.RegisterReadyz(calendar)
 	observability.RegisterTracing(calendar)
 
+	observability.RegisterTracing(calendar.Store())
+
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
 	observability.RegisterLivez(httpsrv)

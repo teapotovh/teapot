@@ -1,8 +1,11 @@
 package httptrace
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptrace"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -40,4 +43,15 @@ func (ht *HTTPTrace) TracerMiddleware(next http.Handler) (handler http.Handler) 
 func (ht *HTTPTrace) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
 	ht.tp = tp
 	ht.tracer = tracer
+}
+
+func (ht *HTTPTrace) Transport(base http.RoundTripper) http.RoundTripper {
+	return otelhttp.NewTransport(
+		base,
+		otelhttp.WithTracerProvider(ht.tp),
+		otelhttp.WithPropagators(propagation.TraceContext{}),
+		otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+			return otelhttptrace.NewClientTrace(ctx)
+		}),
+	)
 }
