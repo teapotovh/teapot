@@ -2,10 +2,17 @@ package httpauth
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/observability"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
 type contextKey string
@@ -51,4 +58,28 @@ func authFromUser(user *ldap.User, expiresAt *time.Time) Auth {
 		Username:  user.Username,
 		Admin:     user.Admin,
 	}
+}
+
+func authenticate(ctx context.Context, factory *ldap.Factory, username, password string, logger *slog.Logger) (user *ldap.User, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "BasicAuth.Middleware")
+	defer observability.SpanEnd(span, err)
+
+	client, err := factory.NewClient(ctx)
+	if err != nil {
+		logger.ErrorContext(ctx, "error while creating LDAP client", "err", err)
+		return nil, err
+	}
+	defer client.Close()
+
+	user, err = client.Authenticate(ctx, username, password)
+	if err != nil {
+		if errors.Is(err, ldap.ErrInvalidCredentials) {
+			return nil, ErrInvalidCredentials
+		}
+
+		logger.ErrorContext(ctx, "unexpected error while authenticating", "username", username, "err", err)
+		return nil, err
+	}
+
+	return user, nil
 }

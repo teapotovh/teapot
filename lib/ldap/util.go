@@ -1,15 +1,23 @@
 package ldap
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/teapotovh/teapot/lib/observability"
+	"go.opentelemetry.io/otel/attribute"
 )
 
-func bind(metrics *metrics, conn *ldap.Conn, username, password string) error {
+func bind(ctx context.Context, metrics *metrics, conn *ldap.Conn, username, password string) (err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.bind")
+	defer observability.SpanEnd(span, err)
+
+	span.SetAttributes(attribute.String("username", username))
+
 	start := time.Now()
 
-	err := conn.Bind(username, password)
+	err = conn.Bind(username, password)
 
 	status := metricsStatusSuccess
 	if err != nil {
@@ -22,7 +30,10 @@ func bind(metrics *metrics, conn *ldap.Conn, username, password string) error {
 	return err
 }
 
-func search(metrics *metrics, conn *ldap.Conn, searchRequest *ldap.SearchRequest) (*ldap.SearchResult, error) {
+func search(ctx context.Context, metrics *metrics, conn *ldap.Conn, searchRequest *ldap.SearchRequest) (result *ldap.SearchResult, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.search")
+	defer observability.SpanEnd(span, err)
+
 	start := time.Now()
 
 	res, err := conn.Search(searchRequest)
@@ -42,10 +53,10 @@ func passwd(
 	metrics *metrics,
 	conn *ldap.Conn,
 	passwordModifyRequest *ldap.PasswordModifyRequest,
-) (*ldap.PasswordModifyResult, error) {
+) (res *ldap.PasswordModifyResult, err error) {
 	start := time.Now()
 
-	res, err := conn.PasswordModify(passwordModifyRequest)
+	res, err = conn.PasswordModify(passwordModifyRequest)
 
 	status := metricsStatusSuccess
 	if err != nil {

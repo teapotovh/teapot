@@ -98,11 +98,14 @@ func TracerFromContext(ctx context.Context) trace.Tracer {
 	return NoopTracer
 }
 
-func SpanEnd(span trace.Span, err error) {
+func SpanErr(span trace.Span, err error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
+}
 
+func SpanEnd(span trace.Span, err error) {
+	SpanErr(span, err)
 	span.End()
 }

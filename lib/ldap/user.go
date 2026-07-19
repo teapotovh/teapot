@@ -1,12 +1,15 @@
 package ldap
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/teapotovh/teapot/lib/observability"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // User is an abstracted view over a user entry in LDAP.
@@ -77,14 +80,17 @@ func (c *Client) mapUser(entry *ldap.Entry) (*User, error) {
 	}, nil
 }
 
-func (c *Client) Users() (users []*User, err error) {
+func (c *Client) Users(ctx context.Context) (users []*User, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.User")
+	defer observability.SpanEnd(span, err)
+
 	defer func() {
 		if err != nil {
 			c.errored = true
 		}
 	}()
 
-	entries, err := c.list()
+	entries, err := c.list(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error while listing all users: %w", err)
 	}
@@ -102,14 +108,18 @@ func (c *Client) Users() (users []*User, err error) {
 	return users, nil
 }
 
-func (c *Client) User(username string) (user *User, err error) {
+func (c *Client) User(ctx context.Context, username string) (user *User, err error) {
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.User")
+	defer observability.SpanEnd(span, err)
+	span.SetAttributes(attribute.String("username", username))
+
 	defer func() {
 		if err != nil {
 			c.errored = true
 		}
 	}()
 
-	entry, err := c.find(username)
+	entry, err := c.find(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("error while looking up user: %w", err)
 	}
