@@ -42,10 +42,14 @@ func deleteInterface(link netlink.Link) error {
 	return netlink.LinkDel(link)
 }
 
+type plugin interface {
+	plugin()
+}
+
 type cniConfigList struct {
-	CNIVersion string         `json:"cniVersion"`
-	Name       string         `json:"name"`
-	Plugins    []bridgePlugin `json:"plugins"`
+	CNIVersion string   `json:"cniVersion"`
+	Name       string   `json:"name"`
+	Plugins    []plugin `json:"plugins"`
 }
 
 type bridgePlugin struct {
@@ -72,9 +76,23 @@ type hostLocalIPAMRoute struct {
 	Dst string `json:"dst"`
 }
 
+func (bp bridgePlugin) plugin() {}
+
+type portmapPlugin struct {
+	Type         string              `json:"type"`
+	Backend      string              `json:"backend,omitempty"`
+	Capabilities portmapCapabilities `json:"capabilities"`
+}
+
+type portmapCapabilities struct {
+	PortMappings bool `json:"portMappings,omitempty"`
+}
+
+func (pp portmapPlugin) plugin() {}
+
 func cniConfig(device string, cidrs []netip.Prefix) cniConfigList {
 	config := cniConfigList{
-		CNIVersion: "0.4.0",
+		CNIVersion: "1.1.0",
 		Name:       "teapotnet",
 	}
 
@@ -100,6 +118,17 @@ func cniConfig(device string, cidrs []netip.Prefix) cniConfigList {
 	bridgePlugin.IPAM.Routes = []hostLocalIPAMRoute{{Dst: allRoutes.String()}}
 
 	config.Plugins = append(config.Plugins, bridgePlugin)
+
+	portmapPlugin := portmapPlugin{
+		Type: "portmap",
+		// TODO: move to nftables (nft cli tool needs to be installed on all machines)
+		// Backend: "nftables",
+		Capabilities: portmapCapabilities{
+			PortMappings: true,
+		},
+	}
+
+	config.Plugins = append(config.Plugins, portmapPlugin)
 
 	return config
 }
