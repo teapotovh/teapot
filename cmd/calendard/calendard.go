@@ -67,6 +67,7 @@ func main() {
 		logger.Error("error while initiating the calendar subsystem", "err", err)
 		os.Exit(CodeCalendar)
 	}
+
 	observability.RegisterMetrics(calendar)
 	observability.RegisterReadyz(calendar)
 	observability.RegisterTracing(calendar)

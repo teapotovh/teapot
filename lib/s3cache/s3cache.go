@@ -190,10 +190,12 @@ func (c *S3Cache) readCached(key string, expected Hash) ([]byte, bool, error) {
 
 func (c *S3Cache) fetchAndStore(ctx context.Context, key string) (data []byte, hash Hash, err error) {
 	c.logger.DebugContext(ctx, "fetching from remote S3 store", "key", key)
+
 	obj, err := c.client.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while getting object %q: %w", key, err)
 	}
+
 	defer func() {
 		if e := obj.Close(); e != nil && err == nil {
 			err = fmt.Errorf("error while closing S3 object: %w", err)

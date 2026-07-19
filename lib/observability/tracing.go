@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -29,13 +30,16 @@ type tracing struct {
 	tracer trace.Tracer
 }
 
+var ErrTracingDisabled = errors.New("tracing is disabled")
+
 func newTracing(config ObservabilityTracingConfig, logger *slog.Logger) (*tracing, error) {
 	if len(config.Endpoint) <= 0 {
-		return nil, nil
+		return nil, ErrTracingDisabled
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.ConnectTimeout)
 	defer cancel()
+
 	conn, err := grpc.NewClient(config.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("error while creating grpc client for tracing: %w", err)
@@ -70,6 +74,7 @@ func (t tracing) Shutdown(ctx context.Context) error {
 	if err := t.tp.Shutdown(ctx); err != nil {
 		return fmt.Errorf("error while flushing otel traces: %w", err)
 	}
+
 	return nil
 }
 
@@ -93,11 +98,11 @@ func TracerFromContext(ctx context.Context) trace.Tracer {
 	return NoopTracer
 }
 
-func SpanEnd(span trace.Span, err error) error {
+func SpanEnd(span trace.Span, err error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
+
 	span.End()
-	return err
 }

@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/httptrace"
@@ -12,7 +14,6 @@ import (
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type Calendar struct {
@@ -40,6 +41,7 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
+
 	httpTrace := httptrace.NewHTTPTrace()
 
 	ldapFactory, err := ldap.NewFactory(config.LDAP, logger.With("component", "ldap"))

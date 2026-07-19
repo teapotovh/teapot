@@ -242,6 +242,7 @@ func (b *Backend) GetCalendarObject(
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 	}
+
 	span.SetAttributes(attribute.String("etag", obj.ETag))
 
 	object, err = storeObjectToCaldavObject(*obj)

@@ -30,7 +30,7 @@ const HTTPKontaktePrefix = "/"
 func main() {
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
-	fs, getObservabilityConfig := observability.ObservabilityFlagSet()
+	fs, getObservabilityConfig := observability.ObservabilityFlagSet("kontakte")
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)

@@ -80,9 +80,10 @@ func NewObservability(config ObservabilityConfig, logger *slog.Logger) (*Observa
 	mux.Handle("/live/{name}", obs.livez.Handler("/livez"))
 
 	tracing, err := newTracing(config.Tracing, logger.With("component", "tracing"))
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrTracingDisabled) {
 		return nil, fmt.Errorf("error while configuring tracing: %w", err)
 	}
+
 	obs.tracing = tracing
 
 	return &obs, nil
@@ -150,10 +151,10 @@ func (obs *Observability) RegisterLivez(liveness LivenessChecks) {
 
 type Tracing interface {
 	// WithTracing provides the Tracer to a component
-	WithTracing(trace.TracerProvider, trace.Tracer)
+	WithTracing(tp trace.TracerProvider, tracer trace.Tracer)
 }
 
-// RegisterTracing registers a component to be traced
+// RegisterTracing registers a component to be traced.
 func (obs *Observability) RegisterTracing(traceable Tracing) {
 	if obs.tracing != nil {
 		traceable.WithTracing(obs.tracing.tp, obs.tracing.tracer)
@@ -185,9 +186,13 @@ func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
 	for {
 		select {
 		case <-ctx.Done():
-			type shutdown interface{ Shutdown(context.Context) error }
+			type shutdown interface {
+				Shutdown(ctx context.Context) error
+			}
+
 			type svc struct {
 				shutdown
+
 				name string
 			}
 

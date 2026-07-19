@@ -3,10 +3,11 @@ package httptrace
 import (
 	"net/http"
 
-	"github.com/teapotovh/teapot/lib/observability"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 type HTTPTrace struct {
@@ -28,6 +29,7 @@ func (ht *HTTPTrace) TracerMiddleware(next http.Handler) (handler http.Handler) 
 			otelhttp.WithTracerProvider(ht.tp),
 			otelhttp.WithPropagators(propagation.TraceContext{}),
 		)
+
 		return handler
 	}
 
