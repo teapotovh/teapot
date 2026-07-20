@@ -3,16 +3,20 @@ package store
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/s3cache"
 )
+
+const MaxRequestsInParallel = 8
 
 type objectRef struct {
 	Path    Path
@@ -162,17 +166,28 @@ func (o *Online) CreateCalendarObject(ctx context.Context, object Object) error 
 // ListCalendarObjects implements Store.
 func (o *Online) ListCalendarObjects(ctx context.Context, basePath Path) ([]Object, error) {
 	endPath := Path(fmt.Sprintf("%s%c", basePath, utf8.MaxRune))
-	refs := o.objectRefTable.Between(basePath, endPath)
+	iter := o.objectRefTable.Between(basePath, endPath)
+	refs := slices.Collect(iter)
 
-	var objects []Object
+	objects := make([]Object, len(refs))
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(MaxRequestsInParallel)
 
-	for ref := range refs {
-		object, err := o.getObjectFromRef(ctx, ref)
-		if err != nil {
-			return nil, fmt.Errorf("error while fetching object from ref at path %q: %w", ref.Path, err)
-		}
+	for i, ref := range refs {
+		eg.Go(func() error {
+			object, err := o.getObjectFromRef(ctx, ref)
+			if err != nil {
+				return fmt.Errorf("error while fetching object #%d from ref at path %q: %w", i, ref.Path, err)
+			}
 
-		objects = append(objects, object)
+			objects[i] = object
+
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
 
 	return objects, nil
