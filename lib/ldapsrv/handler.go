@@ -134,9 +134,10 @@ func (s *LDAPSrv[T]) runHandler(
 
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, r.ProtocolOpName())
 	defer observability.SpanEnd(span, err)
+
 	span.SetAttributes(
 		attribute.String("operation", r.ProtocolOpName()),
-		attribute.String("x-request-id", RequestID(ctx)),
+		attribute.String("x-request-id", RequestID(ctx).String()),
 	)
 
 	switch r.ProtocolOpName() {
@@ -177,10 +178,12 @@ func (s *LDAPSrv[T]) runHandler(
 	if err != nil {
 		s.logger.ErrorContext(ctx, "error while handling operation", "operation", r.ProtocolOpName(), "err", err)
 
-		type withErrorCode interface{ LDAPCode() ldap.ENUMERATED }
+		type withErrorCode interface {
+			error
+			LDAPCode() ldap.ENUMERATED
+		}
 
-		var ec withErrorCode
-		if errors.As(err, &ec) {
+		if ec, ok := errors.AsType[withErrorCode](err); ok {
 			code = ec.LDAPCode()
 		} else {
 			code = ldap.ResultCodeOther

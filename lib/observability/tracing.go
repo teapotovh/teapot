@@ -58,7 +58,7 @@ func newTracing(config ObservabilityTracingConfig, logger *slog.Logger) (*tracin
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
 		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.AlwaysSample())),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.NeverSample())),
 	)
 	tracer := tp.Tracer(config.ServiceName)
 

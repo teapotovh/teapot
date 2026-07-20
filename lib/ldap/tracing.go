@@ -1,6 +1,12 @@
 package ldap
 
-import ber "github.com/go-asn1-ber/asn1-ber"
+import (
+	"context"
+
+	ber "github.com/go-asn1-ber/asn1-ber"
+	"github.com/go-ldap/ldap/v3"
+	"go.opentelemetry.io/otel/propagation"
+)
 
 type ControlTraceContext struct {
 	Traceparent string
@@ -49,4 +55,21 @@ func (c *ControlTraceContext) Encode() *ber.Packet {
 	)
 
 	return control
+}
+
+func TraceControlsFromContext(ctx context.Context) (controls []ldap.Control) {
+	carrier := propagation.MapCarrier{}
+	propagation.TraceContext{}.Inject(ctx, carrier)
+
+	traceparent := carrier.Get("traceparent")
+	tracestate := carrier.Get("tracestate")
+
+	if len(traceparent) >= 0 && len(tracestate) >= 0 {
+		controls = append(controls, &ControlTraceContext{
+			Traceparent: traceparent,
+			Tracestate:  tracestate,
+		})
+	}
+
+	return controls
 }

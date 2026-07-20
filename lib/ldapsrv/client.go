@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
@@ -74,13 +75,13 @@ func (c *client[T]) ReadPacket() (*messagePacket, error) {
 
 //nolint:all
 func (c *client[T]) serve(serveCtx context.Context) {
-	ctx, span := c.srv.tracer.Start(
+	serveCtx, span := c.srv.tracer.Start(
 		serveCtx,
 		"client.serve",
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
-	ctx = observability.ContextWithTracer(ctx, c.srv.tracer)
+	serveCtx = observability.ContextWithTracer(serveCtx, c.srv.tracer)
 
 	c.srv.metrics.active.Inc()
 	c.srv.metrics.total.Add(1)
@@ -137,7 +138,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 	state := c.srv.initialState
 
 	for {
-		ctx, span := c.srv.tracer.Start(ctx, "client.next")
+		ctx, span := c.srv.tracer.Start(serveCtx, "client.next")
 
 		if c.srv.readTimeout != 0 {
 			if err := c.rwc.SetReadDeadline(time.Now().Add(c.srv.readTimeout)); err != nil {
@@ -164,7 +165,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 				"err",
 				err,
 			)
-			span.End()
+			observability.SpanEnd(span, err)
 			return
 		}
 
@@ -172,7 +173,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 		message, err := messagePacket.readMessage()
 		if err != nil {
 			c.logger.DebugContext(ctx, "error while reading packet", "err", err)
-			span.End()
+			observability.SpanEnd(span, err)
 			continue
 		}
 
@@ -182,7 +183,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 			for _, control := range *controls {
 				if control.ControlType() == "1.3.6.1.4.1.1337.1" &&
 					control.ControlValue() != nil {
-					parts := bytes.SplitN(control.ControlType().Bytes(), []byte{0}, 2)
+					parts := bytes.SplitN(control.ControlValue().Bytes(), []byte{0}, 2)
 
 					traceparent = string(parts[0])
 					tracestate = ""
@@ -194,12 +195,13 @@ func (c *client[T]) serve(serveCtx context.Context) {
 				}
 			}
 		}
-
 		carrier := propagation.MapCarrier{
 			"traceparent": traceparent,
 			"tracestate":  tracestate,
 		}
 		ctx = propagation.TraceContext{}.Extract(ctx, carrier)
+		ctx, reqSpan := c.srv.tracer.Start(ctx, "Request", trace.WithSpanKind(trace.SpanKindServer))
+		reqSpan.SetAttributes(attribute.String("method", message.ProtocolOpName()))
 
 		if br, ok := message.ProtocolOp().(ldap.BindRequest); ok {
 			c.logger.DebugContext(ctx, "got bind request", "user", br.Name())
@@ -218,6 +220,9 @@ func (c *client[T]) serve(serveCtx context.Context) {
 		}
 
 		state = c.ProcessRequestMessage(ctx, state, &message)
+		reqSpan.End()
+
+		span.End()
 	}
 }
 

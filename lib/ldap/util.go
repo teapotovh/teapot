@@ -18,7 +18,13 @@ func bind(ctx context.Context, metrics *metrics, conn *ldap.Conn, username, pass
 
 	start := time.Now()
 
-	err = conn.Bind(username, password)
+	req := &ldap.SimpleBindRequest{
+		Username:           username,
+		Password:           password,
+		AllowEmptyPassword: false,
+		Controls:           TraceControlsFromContext(ctx),
+	}
+	_, err = conn.SimpleBind(req)
 
 	status := metricsStatusSuccess
 	if err != nil {
@@ -42,6 +48,7 @@ func search(
 
 	start := time.Now()
 
+	searchRequest.Controls = append(searchRequest.Controls, TraceControlsFromContext(ctx)...)
 	res, err := conn.Search(searchRequest)
 
 	status := metricsStatusSuccess

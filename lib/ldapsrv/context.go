@@ -1,6 +1,10 @@
 package ldapsrv
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type ContextKey string
 
@@ -9,10 +13,10 @@ const (
 	ContextKeyAddr      ContextKey = "addr"
 )
 
-func RequestID(ctx context.Context) string {
+func RequestID(ctx context.Context) uuid.UUID {
 	if v := ctx.Value(ContextKeyRequestID); v != nil {
-		return v.(string)
+		return v.(uuid.UUID)
 	}
 
-	return ""
+	return uuid.New()
 }

@@ -24,6 +24,7 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
         "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel//propagation",
         "@io_opentelemetry_go_otel_trace//:trace",
     ],
 )
