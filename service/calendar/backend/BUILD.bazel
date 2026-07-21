@@ -19,6 +19,6 @@ go_library(
         "//service/calendar/store",
         "@com_github_emersion_go_ical//:go-ical",
         "@io_opentelemetry_go_otel//attribute",
-        "@io_opentelemetry_go_otel_trace//:trace",
+        "@org_golang_x_sync//errgroup",
     ],
 )

@@ -12,13 +12,15 @@ import (
 
 	"github.com/emersion/go-ical"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/service/calendar/store"
 )
+
+const MaxDecodesInParallel = 32
 
 var (
 	ErrUnexpectedNilCalendar = errors.New("unexpected nil calendar")
@@ -147,7 +149,15 @@ func caldavObjectToStoreObject(
 	})
 }
 
-func storeObjectToCaldavObject(obj store.Object) (*caldav.CalendarObject, error) {
+func storeObjectToCaldavObject(ctx context.Context, obj store.Object) (co *caldav.CalendarObject, err error) {
+	_, span := observability.TracerFromContext(ctx).Start(ctx, "storeObjectToCaldavObject")
+	defer observability.SpanEnd(span, err)
+
+	span.SetAttributes(
+		attribute.String("path", obj.Path.String()),
+		attribute.String("etag", obj.ETag),
+	)
+
 	cal, err := obj.Calendar()
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing ical object and generating etag: %w", err)
@@ -222,7 +232,7 @@ func (b *Backend) PutCalendarObject(
 		return nil, fmt.Errorf("error while creating calendar object at path %q in storage: %w", path, err)
 	}
 
-	object, err = storeObjectToCaldavObject(obj)
+	object, err = storeObjectToCaldavObject(ctx, obj)
 	if err != nil {
 		return nil, fmt.Errorf("error while converting stored object back to a caldav CalendarObject: %w", err)
 	}
@@ -245,7 +255,7 @@ func (b *Backend) GetCalendarObject(
 
 	span.SetAttributes(attribute.String("etag", obj.ETag))
 
-	object, err = storeObjectToCaldavObject(*obj)
+	object, err = storeObjectToCaldavObject(ctx, *obj)
 	if err != nil {
 		return nil, fmt.Errorf("error while converting object at path %q to a caldav CalendarObject: %w", obj.Path, err)
 	}
@@ -316,27 +326,35 @@ func (b *Backend) listCalendarObjects(
 		return nil, fmt.Errorf("error while fetching calendar objects at path %q from storage: %w", path, err)
 	}
 
-	for _, obj := range objs {
-		span.AddEvent("retrieved calendar object", trace.WithAttributes(
-			attribute.String("path", obj.Path.String()),
-			attribute.String("etag", obj.ETag),
-		))
+	objects = make([]caldav.CalendarObject, len(objs))
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(MaxDecodesInParallel)
 
-		object, err := storeObjectToCaldavObject(obj)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"error while converting object at path %q to a caldav CalendarObject: %w",
-				obj.Path,
-				err,
-			)
-		}
+	for i, obj := range objs {
+		eg.Go(func() error {
+			object, err := storeObjectToCaldavObject(ctx, obj)
+			if err != nil {
+				return fmt.Errorf(
+					"error while converting object #%d at path %q to a caldav CalendarObject: %w",
+					i,
+					obj.Path,
+					err,
+				)
+			}
 
-		// object, err = mapCalendarObject(object, req)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error while applying filters and maps to calendar object %q: %w", obj.Path, err)
-		// }
+			// object, err = mapCalendarObject(object, req)
+			// if err != nil {
+			// 	return nil, fmt.Errorf("error while applying filters and maps to calendar object %q: %w", obj.Path, err)
+			// }
 
-		objects = append(objects, *object)
+			objects[i] = *object
+
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
 
 	return objects, nil
