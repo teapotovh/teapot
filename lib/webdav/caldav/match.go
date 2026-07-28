@@ -1,10 +1,16 @@
 package caldav
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/emersion/go-ical"
+)
+
+var (
+	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -20,7 +26,7 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 	for _, co := range cos {
 		ok, err := Match(*query, &co)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error while matching object at %q: %w", co.Path, err)
 		}
 
 		if !ok {
@@ -35,9 +41,9 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 }
 
 // Match reports whether the provided CalendarObject matches the query.
-func Match(query CompFilter, co *CalendarObject) (matched bool, err error) {
+func Match(query CompFilter, co *CalendarObject) (bool, error) {
 	if co.Data == nil || co.Data.Component == nil {
-		panic("request to process empty calendar object")
+		return false, ErrMatchEmptyObject
 	}
 
 	return match(query, co.Data.Component)
@@ -52,7 +58,7 @@ func match(filter CompFilter, comp *ical.Component) (bool, error) {
 	if filter.Start != zeroDate {
 		match, err := matchCompTimeRange(filter.Start, filter.End, comp)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("error while matching time: %w", err)
 		}
 
 		if !match {
@@ -63,7 +69,7 @@ func match(filter CompFilter, comp *ical.Component) (bool, error) {
 	for _, compFilter := range filter.Comps {
 		match, err := matchCompFilter(compFilter, comp)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("error while matching component filter: %w", err)
 		}
 
 		if !match {
@@ -74,7 +80,7 @@ func match(filter CompFilter, comp *ical.Component) (bool, error) {
 	for _, propFilter := range filter.Props {
 		match, err := matchPropFilter(propFilter, comp)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("error while matching filter props: %w", err)
 		}
 
 		if !match {
@@ -144,7 +150,7 @@ func matchCompTimeRange(start, end time.Time, comp *ical.Component) (bool, error
 	// evaluate recurring components
 	rset, err := comp.RecurrenceSet(start.Location())
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error while parsing recurrence set: %w", err)
 	}
 
 	if rset != nil {
@@ -162,12 +168,12 @@ func matchCompTimeRange(start, end time.Time, comp *ical.Component) (bool, error
 
 	eventStart, err := event.DateTimeStart(start.Location())
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("while parsing event start time: %w", err)
 	}
 
 	eventEnd, err := event.DateTimeEnd(end.Location())
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("while parsing event end time: %w", err)
 	}
 
 	// Event starts in time range
