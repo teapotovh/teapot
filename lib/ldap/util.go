@@ -12,7 +12,7 @@ import (
 
 func bind(ctx context.Context, metrics *metrics, conn *ldap.Conn, username, password string) (err error) {
 	_, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.bind")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	span.SetAttributes(attribute.String("username", username))
 
@@ -44,7 +44,7 @@ func search(
 	searchRequest *ldap.SearchRequest,
 ) (result *ldap.SearchResult, err error) {
 	_, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.search")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	start := time.Now()
 

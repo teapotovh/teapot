@@ -18,7 +18,7 @@ var (
 
 func (c *Client) list(ctx context.Context) (entries []*ldap.Entry, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.list")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	filter, err := c.usersFilter.Render(filterTemplateValues{Username: "*"})
 	if err != nil {
@@ -59,7 +59,7 @@ func (c *Client) list(ctx context.Context) (entries []*ldap.Entry, err error) {
 
 func (c *Client) find(ctx context.Context, username string) (entry *ldap.Entry, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.find")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	span.SetAttributes(attribute.String("username", username))
 

@@ -67,7 +67,7 @@ func authenticate(
 	logger *slog.Logger,
 ) (user *ldap.User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "BasicAuth.Middleware")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	client, err := factory.NewClient(ctx)
 	if err != nil {

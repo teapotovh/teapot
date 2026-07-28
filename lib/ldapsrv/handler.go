@@ -133,7 +133,7 @@ func (s *LDAPSrv[T]) runHandler(
 	code = ldap.ResultCodeSuccess
 
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, r.ProtocolOpName())
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	span.SetAttributes(
 		attribute.String("operation", r.ProtocolOpName()),

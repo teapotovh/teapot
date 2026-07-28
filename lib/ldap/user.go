@@ -83,7 +83,7 @@ func (c *Client) mapUser(entry *ldap.Entry) (*User, error) {
 
 func (c *Client) Users(ctx context.Context) (users []*User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.User")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	defer func() {
 		if err != nil {
@@ -111,7 +111,7 @@ func (c *Client) Users(ctx context.Context) (users []*User, err error) {
 
 func (c *Client) User(ctx context.Context, username string) (user *User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.User")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	span.SetAttributes(attribute.String("username", username))
 

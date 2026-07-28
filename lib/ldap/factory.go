@@ -73,7 +73,7 @@ func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
 
 func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Factory.NewClient")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	defer func() {
 		f.clients.Add(1)

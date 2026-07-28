@@ -15,7 +15,7 @@ var ErrUnexpectedGeneratedPassword = errors.New("LDAP server unexpectedly return
 
 func (c *Client) Passwd(ctx context.Context, username, password string) (err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.Passwd")
-	defer observability.SpanEnd(span, err)
+	defer func() { observability.SpanEnd(span, err) }()
 
 	span.SetAttributes(attribute.String("username", username))
 
