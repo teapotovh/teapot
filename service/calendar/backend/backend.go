@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emersion/go-ical"
+	ics "github.com/arran4/golang-ical"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
 
@@ -140,7 +140,7 @@ func (b *Backend) GetCalendar(ctx context.Context, path string) (calendar *calda
 
 func caldavObjectToStoreObject(
 	path string,
-	calendar *ical.Calendar,
+	calendar *ics.Calendar,
 ) (*store.Object, error) {
 	return store.SerializeObject(caldav.CalendarObject{
 		Path:    path,
@@ -160,7 +160,7 @@ func storeObjectToCaldavObject(ctx context.Context, obj store.Object) (co *calda
 
 	cal, err := obj.Calendar()
 	if err != nil {
-		return nil, fmt.Errorf("error while parsing ical object and generating etag: %w", err)
+		return nil, fmt.Errorf("error while parsing ics object and generating etag: %w", err)
 	}
 
 	calendarObject := caldav.CalendarObject{
@@ -177,7 +177,7 @@ func storeObjectToCaldavObject(ctx context.Context, obj store.Object) (co *calda
 func (b *Backend) PutCalendarObject(
 	ctx context.Context,
 	path string,
-	calendar *ical.Calendar,
+	calendar *ics.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
 ) (object *caldav.CalendarObject, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "PutCalendarObject")

@@ -68,7 +68,6 @@ func match(filter CompFilter, comp *ics.VEvent) (bool, error) {
 	// if comp.Name != filter.Name {
 	// 	return filter.IsNotDefined, nil
 	// }
-
 	if filter.Start != zeroDate {
 		match, err := matchCompTimeRange(filter.Start, filter.End, comp)
 		if err != nil {
@@ -153,11 +152,14 @@ func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
 			dates []time.Time
 			err   error
 		)
-		switch prop {
+
+		switch prop { //nolint:exhaustive
 		case ics.ComponentPropertyRdate:
 			dates, err = comp.GetRDates()
+
 		case ics.ComponentPropertyExdate:
 			dates, err = comp.GetExDates()
+
 		default:
 			// Matching a date against a non-date prop, invalid
 			return false, nil
@@ -191,11 +193,9 @@ func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
 	return true, nil
 }
 
+//nolint:gocyclo
 func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 	// See https://datatracker.ietf.org/doc/html/rfc4791#section-9.9
-	switch {
-	}
-
 	eventStart, err := comp.GetStartAt()
 	if err != nil {
 		return false, fmt.Errorf("while parsing event start time: %w", err)
@@ -221,6 +221,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("while parsing event recurrence dates: %w", err)
 		}
+
 		for _, rd := range rDates {
 			rset.RDate(rd)
 		}
@@ -229,6 +230,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("while parsing event exclude dates: %w", err)
 		}
+
 		for _, exd := range exDates {
 			rset.ExDate(exd)
 		}
@@ -264,6 +266,7 @@ func matchPropTimeRange(start, end, ptime time.Time) bool {
 	if ptime.After(start) && (end.IsZero() || ptime.Before(end)) {
 		return true
 	}
+
 	return false
 }
 

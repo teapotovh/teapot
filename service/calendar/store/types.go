@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emersion/go-ical"
+	ics "github.com/arran4/golang-ical"
 
 	"github.com/teapotovh/teapot/lib/s3cache"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
@@ -59,13 +59,12 @@ func (o *Object) Size() int64 {
 	return int64(len(o.Data))
 }
 
-func (o *Object) Calendar() (*ical.Calendar, error) {
+func (o *Object) Calendar() (*ics.Calendar, error) {
 	reader := bytes.NewReader(o.Data)
-	decoder := ical.NewDecoder(reader)
 
-	cal, err := decoder.Decode()
+	cal, err := ics.ParseCalendar(reader)
 	if err != nil {
-		return nil, fmt.Errorf("error while decoding ical: %w", err)
+		return nil, fmt.Errorf("error while parsing ics: %w", err)
 	}
 
 	return cal, nil
@@ -74,9 +73,8 @@ func (o *Object) Calendar() (*ical.Calendar, error) {
 func SerializeObject(obj caldav.CalendarObject) (*Object, error) {
 	buf := bytes.Buffer{}
 	writer := bufio.NewWriter(&buf)
-	encoder := ical.NewEncoder(writer)
 
-	if err := encoder.Encode(obj.Data); err != nil {
+	if err := obj.Data.SerializeTo(writer); err != nil {
 		return nil, fmt.Errorf("error while encoding ical: %w", err)
 	}
 
