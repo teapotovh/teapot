@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/bazel-contrib/rules_multitool/main/lockfile.schema.json",
+  "buildifier": {
+    "binaries": [
+      {
+        "kind": "file",
+        "url": "https://github.com/bazelbuild/buildtools/releases/download/v8.5.1/buildifier-linux-amd64",
+        "sha256": "887377fc64d23a850f4d18a077b5db05b19913f4b99b270d193f3c7334b5a9a7",
+        "os": "linux",
+        "cpu": "x86_64"
+      }
+    ]
+  },
+  "golangci-lint": {
+    "binaries": [
+      {
+        "kind": "archive",
+        "url": "https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz",
+        "sha256": "8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553",
+        "file": "golangci-lint-2.12.2-linux-amd64/golangci-lint",
+        "os": "linux",
+        "cpu": "x86_64"
+      }
+    ]
+  }
+}

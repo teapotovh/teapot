@@ -1,0 +1,14 @@
+alias(
+    name = "release",
+    actual = "//tools/release",
+)
+
+alias(
+    name = "lint",
+    actual = "@multitool//tools/golangci-lint:workspace_root",
+)
+
+alias(
+    name = "buildifier",
+    actual = "@multitool//tools/buildifier:workspace_root",
+)
