@@ -46,7 +46,7 @@ func NewLogger(config LogConfig) (*slog.Logger, error) {
 	case "text":
 		handler = slog.NewTextHandler(os.Stdout, opts)
 	case "tint":
-		handler = tint.NewHandler(os.Stdout, &tint.Options{Level: level})
+		handler = tint.NewTextHandler(os.Stdout, &tint.Options{Level: level})
 	default:
 		return nil, fmt.Errorf("could not parse log format %q: %w", config.Format, ErrInvalidFormat)
 	}
