@@ -19,11 +19,13 @@ import (
 var (
 	ErrNothingToRelease    = errors.New("nothing to release")
 	ErrWorkingTreeNotClean = errors.New("working tree is not clean")
+	ErrFirstRelease        = errors.New("first release")
 )
 
 var (
 	remoteName = flag.String("remote", "origin", "git remote to push the tag to")
 	dryRun     = flag.Bool("dry-run", false, "run all checks and print the planned tag, but don't tag or push")
+	dirty      = flag.Bool("dirty", false, "allow pushing a release with a dirty try - skips the clean check")
 	verbose    = flag.Bool("verbose", false, "print all executed commands")
 )
 
@@ -40,10 +42,6 @@ var (
 // unrelated tags in the repo are never picked up as "the last release".
 var tagPattern = regexp.MustCompile(`^v0\.0\.0-\d{14}-[0-9a-f]{12}$`)
 
-var (
-	ErrFirstRelease = errors.New("first release")
-)
-
 func main() {
 	flag.Parse()
 
@@ -56,8 +54,8 @@ func main() {
 var phaseN uint32
 
 func phase(name string) {
-	phaseN += 1
 	fmt.Fprintf(os.Stderr, "%02d %s\n", phaseN, name)
+	phaseN += 1
 }
 
 //nolint:gocyclo
@@ -82,6 +80,14 @@ func release() (err error) {
 		return err
 	}
 
+	headShort, err := gitRun(nil, "rev-parse", "--short=12", "HEAD")
+	if err != nil {
+		return fmt.Errorf("resolving short HEAD: %w", err)
+	}
+
+	newTag := fmt.Sprintf("v0.0.0-%s-%s", time.Now().UTC().Format("20060102150405"), headShort)
+	phase("(info) minting release: " + newTag)
+
 	phase("(check) gazelle")
 
 	if _, _, err := run(nil, gazellePath, "-mode=diff"); err != nil {
@@ -103,14 +109,14 @@ func release() (err error) {
 		return fmt.Errorf("golangci-lint failed: %w", err)
 	}
 
-	phase("(check) git clean")
+	phase("(check) clean working tree")
 
 	out, err := gitRun(nil, "status", "--porcelain")
 	if err != nil {
 		return fmt.Errorf("checking status: %w", err)
 	}
 
-	if out != "" {
+	if out != "" && !*dirty {
 		fmt.Fprintf(os.Stderr, "%s", out)
 		return ErrWorkingTreeNotClean
 	}
@@ -126,11 +132,6 @@ func release() (err error) {
 		return fmt.Errorf("resolving HEAD: %w", err)
 	}
 
-	headShort, err := gitRun(nil, "rev-parse", "--short=12", "HEAD")
-	if err != nil {
-		return fmt.Errorf("resolving short HEAD: %w", err)
-	}
-
 	lastTag, err := lastRelease()
 	if err != nil {
 		return fmt.Errorf("finding last release tag: %w", err)
@@ -142,10 +143,9 @@ func release() (err error) {
 	}
 
 	if len(subjects) == 0 {
-		return fmt.Errorf("no new commits since %s; %w", displayTag(lastTag), ErrNothingToRelease)
+		return fmt.Errorf("no new commits since %s: %w", displayTag(lastTag), ErrNothingToRelease)
 	}
 
-	newTag := fmt.Sprintf("v0.0.0-%s-%s", time.Now().UTC().Format("20060102150405"), headShort)
 	message := changelog(newTag, lastTag, subjects)
 
 	fmt.Println("==> Release plan")
@@ -267,7 +267,7 @@ func commitsSince(lastTag string) ([]string, error) {
 
 func displayTag(tag string) string {
 	if tag == "" {
-		return "(none — first release)"
+		return "(none - first release)"
 	}
 
 	return tag
