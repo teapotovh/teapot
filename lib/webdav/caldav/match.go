@@ -6,11 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emersion/go-ical"
+	ics "github.com/arran4/golang-ical"
+	"github.com/teambition/rrule-go"
 )
 
 var (
 	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
+	zeroDate            time.Time
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -42,19 +44,30 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 
 // Match reports whether the provided CalendarObject matches the query.
 func Match(query CompFilter, co *CalendarObject) (bool, error) {
-	if co.Data == nil || co.Data.Component == nil {
+	if co.Data == nil || len(co.Data.Components) <= 0 {
 		return false, ErrMatchEmptyObject
 	}
 
-	return match(query, co.Data.Component)
-}
+	// TODO handle more than just events
+	for i, event := range co.Data.Events() {
+		matches, err := match(query, event)
+		if err != nil {
+			return false, fmt.Errorf("parsing component %d: %w", i, err)
+		}
 
-func match(filter CompFilter, comp *ical.Component) (bool, error) {
-	if comp.Name != filter.Name {
-		return filter.IsNotDefined, nil
+		if matches {
+			return true, nil
+		}
 	}
 
-	var zeroDate time.Time
+	return false, nil
+}
+
+func match(filter CompFilter, comp *ics.VEvent) (bool, error) {
+	// TODO: can we support this? doesn't look like Components have a NAME property
+	// if comp.Name != filter.Name {
+	// 	return filter.IsNotDefined, nil
+	// }
 	if filter.Start != zeroDate {
 		match, err := matchCompTimeRange(filter.Start, filter.End, comp)
 		if err != nil {
@@ -91,132 +104,184 @@ func match(filter CompFilter, comp *ical.Component) (bool, error) {
 	return true, nil
 }
 
-func matchCompFilter(filter CompFilter, comp *ical.Component) (bool, error) {
-	var matches []*ical.Component
+func matchCompFilter(filter CompFilter, comp *ics.VEvent) (bool, error) {
+	matches := false
 
-	for _, child := range comp.Children {
-		match, err := match(filter, child)
-		if err != nil {
-			return false, err
-		} else if match {
-			matches = append(matches, child)
+	for _, child := range comp.Components {
+		switch event := child.(type) {
+		case *ics.VEvent:
+			match, err := match(filter, event)
+			if err != nil {
+				return false, err
+			} else {
+				matches = matches || match
+			}
 		}
 	}
 
-	if len(matches) == 0 {
+	if !matches {
 		return filter.IsNotDefined, nil
 	}
 
 	return true, nil
 }
 
-func matchPropFilter(filter PropFilter, comp *ical.Component) (bool, error) {
-	// TODO: this only matches first field, there can be multiple
-	field := comp.Props.Get(filter.Name)
-	if field == nil {
-		return filter.IsNotDefined, nil
-	}
-
-	for _, paramFilter := range filter.ParamFilter {
-		if !matchParamFilter(paramFilter, field) {
-			return false, nil
+func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
+	prop := ics.ComponentProperty(filter.Name)
+	if prop.Singular(comp) {
+		field := comp.GetProperty(prop)
+		if field == nil {
+			return filter.IsNotDefined, nil
 		}
 	}
 
-	var zeroDate time.Time
-	if filter.Start != zeroDate {
-		match, err := matchPropTimeRange(filter.Start, filter.End, field)
+	for _, field := range comp.GetProperties(prop) {
+		for _, paramFilter := range filter.ParamFilter {
+			if !matchParamFilter(paramFilter, field) {
+				return false, nil
+			}
+		}
+	}
+
+	// We support two types of matches:
+	// 1. Date matching
+	// 2. Text matching
+	switch {
+	case filter.Start != zeroDate:
+		var (
+			dates []time.Time
+			err   error
+		)
+
+		switch prop { //nolint:exhaustive
+		case ics.ComponentPropertyRdate:
+			dates, err = comp.GetRDates()
+
+		case ics.ComponentPropertyExdate:
+			dates, err = comp.GetExDates()
+
+		default:
+			// Matching a date against a non-date prop, invalid
+			return false, nil
+		}
+
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("error while getting dates for property %q: %w", string(prop), err)
 		}
 
-		if !match {
-			return false, nil
-		}
-	} else if filter.TextMatch != nil {
-		if !matchTextMatch(*filter.TextMatch, field.Value) {
-			return false, nil
+		for _, date := range dates {
+			if !matchPropTimeRange(filter.Start, filter.End, date) {
+				return false, nil
+			}
 		}
 
+		// All dates match
+		return true, nil
+
+	case filter.TextMatch != nil:
+		for _, field := range comp.GetProperties(prop) {
+			if !matchTextMatch(*filter.TextMatch, field.Value) {
+				return false, nil
+			}
+		}
+
+		// All texts match
 		return true, nil
 	}
-	// empty prop-filter, property exists
+
+	// empty (or unsupported) prop-filter, property exists
 	return true, nil
 }
 
-func matchCompTimeRange(start, end time.Time, comp *ical.Component) (bool, error) {
+//nolint:gocyclo
+func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 	// See https://datatracker.ietf.org/doc/html/rfc4791#section-9.9
-
-	// evaluate recurring components
-	rset, err := comp.RecurrenceSet(start.Location())
-	if err != nil {
-		return false, fmt.Errorf("error while parsing recurrence set: %w", err)
-	}
-
-	if rset != nil {
-		// TODO we can only set inclusive to true or false, but really the
-		// start time is inclusive while the end time is not :/
-		return len(rset.Between(start, end, true)) > 0, nil
-	}
-
-	// TODO handle more than just events
-	if comp.Name != ical.CompEvent {
-		return false, nil
-	}
-
-	event := ical.Event{Component: comp}
-
-	eventStart, err := event.DateTimeStart(start.Location())
+	eventStart, err := comp.GetStartAt()
 	if err != nil {
 		return false, fmt.Errorf("while parsing event start time: %w", err)
 	}
 
-	eventEnd, err := event.DateTimeEnd(end.Location())
+	rules, err := comp.GetRRules()
 	if err != nil {
-		return false, fmt.Errorf("while parsing event end time: %w", err)
+		return false, fmt.Errorf("while parsing event recurrence rules: %w", err)
 	}
 
-	// Event starts in time range
-	if eventStart.After(start) && (end.IsZero() || eventStart.Before(end)) {
-		return true, nil
-	}
-	// Event ends in time range
-	if eventEnd.After(start) && (end.IsZero() || eventEnd.Before(end)) {
-		return true, nil
-	}
-	// Event covers entire time range plus some
-	if eventStart.Before(start) && (!end.IsZero() && eventEnd.After(end)) {
-		return true, nil
-	}
+	switch {
+	case len(rules) > 0:
+		// Build an RRuleSet from the event's recurrence properties
+		rset := &rrule.Set{}
 
-	return false, nil
+		for _, r := range rules {
+			rr, _ := rrule.StrToRRule(r.String())
+			rr.DTStart(eventStart)
+			rset.RRule(rr)
+		}
+
+		rDates, err := comp.GetRDates()
+		if err != nil {
+			return false, fmt.Errorf("while parsing event recurrence dates: %w", err)
+		}
+
+		for _, rd := range rDates {
+			rset.RDate(rd)
+		}
+
+		exDates, err := comp.GetExDates()
+		if err != nil {
+			return false, fmt.Errorf("while parsing event exclude dates: %w", err)
+		}
+
+		for _, exd := range exDates {
+			rset.ExDate(exd)
+		}
+
+		// TODO we can only set inclusive to true or false, but really the
+		// start time is inclusive while the end time is not :/
+		return len(rset.Between(start, end, true)) > 0, nil
+
+	default:
+		eventEnd, err := comp.GetEndAt()
+		if err != nil {
+			return false, fmt.Errorf("while parsing event end time: %w", err)
+		}
+
+		// Event starts in time range
+		if eventStart.After(start) && (end.IsZero() || eventStart.Before(end)) {
+			return true, nil
+		}
+		// Event ends in time range
+		if eventEnd.After(start) && (end.IsZero() || eventEnd.Before(end)) {
+			return true, nil
+		}
+		// Event covers entire time range plus some
+		if eventStart.Before(start) && (!end.IsZero() && eventEnd.After(end)) {
+			return true, nil
+		}
+
+		return false, nil
+	}
 }
 
-func matchPropTimeRange(start, end time.Time, field *ical.Prop) (bool, error) {
-	// See https://datatracker.ietf.org/doc/html/rfc4791#section-9.9
-	ptime, err := field.DateTime(start.Location())
-	if err != nil {
-		return false, err
-	}
-
+func matchPropTimeRange(start, end, ptime time.Time) bool {
 	if ptime.After(start) && (end.IsZero() || ptime.Before(end)) {
-		return true, nil
+		return true
 	}
 
-	return false, nil
+	return false
 }
 
-func matchParamFilter(filter ParamFilter, field *ical.Prop) bool {
-	// TODO there can be multiple values
-	value := field.Params.Get(filter.Name)
-	if value == "" {
+func matchParamFilter(filter ParamFilter, field *ics.IANAProperty) bool {
+	values, exists := field.ICalParameters[filter.Name]
+	if !exists {
 		return filter.IsNotDefined
-	} else if filter.IsNotDefined {
+	} else if len(values) > 0 && filter.IsNotDefined {
 		return false
 	}
 
-	if filter.TextMatch != nil {
-		return matchTextMatch(*filter.TextMatch, value)
+	for _, value := range values {
+		if filter.TextMatch != nil {
+			return matchTextMatch(*filter.TextMatch, value)
+		}
 	}
 
 	return true

@@ -175,9 +175,17 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 		return nil, fmt.Errorf("error while closing migration connection: %w", err)
 	}
 
+	config, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("error while parsing psql connection URL: %w", err)
+	}
+
+	config.MaxConns = 2
+	config.MinConns = 1
+
 	// Use context.Background() here, as we want the pool to live for the lifetime
 	// of the program, while the provided context is only meant for databse initialization.
-	pool, err := pgxpool.New(context.Background(), url)
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return nil, fmt.Errorf("error while opening connection pool to psql: %w", err)
 	}

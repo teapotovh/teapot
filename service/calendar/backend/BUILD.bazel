@@ -17,7 +17,7 @@ go_library(
         "//lib/webdav/caldav",
         "//lib/webdav/error",
         "//service/calendar/store",
-        "@com_github_emersion_go_ical//:go-ical",
+        "@com_github_arran4_golang_ical//:golang-ical",
         "@io_opentelemetry_go_otel//attribute",
         "@org_golang_x_sync//errgroup",
     ],

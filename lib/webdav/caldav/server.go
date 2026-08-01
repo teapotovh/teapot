@@ -13,12 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emersion/go-ical"
+	ics "github.com/arran4/golang-ical"
 
 	"github.com/teapotovh/teapot/lib/webdav"
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
+
+const MIMEType = "text/calendar"
 
 var (
 	ErrInvalidCalendarPath                   = errors.New("invalid calendar path (must be under calendar home-set)")
@@ -56,7 +58,7 @@ type Backend interface {
 	PutCalendarObject(
 		ctx context.Context,
 		path string,
-		calendar *ical.Calendar,
+		calendar *ics.Calendar,
 		opts *PutCalendarObjectOptions,
 	) (*CalendarObject, error)
 	DeleteCalendarObject(ctx context.Context, path string) error
@@ -407,7 +409,7 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	w.Header().Set("Content-Type", ical.MIMEType)
+	w.Header().Set("Content-Type", MIMEType)
 
 	if co.ContentLength > 0 {
 		w.Header().Set("Content-Length", strconv.FormatInt(co.ContentLength, 10))
@@ -422,7 +424,7 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if r.Method != http.MethodHead {
-		return ical.NewEncoder(w).Encode(co.Data)
+		return co.Data.SerializeTo(w)
 	}
 
 	return nil
@@ -547,7 +549,7 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
 }
 
-func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
+func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 	ifNoneMatch := webdav.ConditionalMatch(r.Header.Get("If-None-Match"))
 	ifMatch := webdav.ConditionalMatch(r.Header.Get("If-Match"))
 
@@ -561,17 +563,22 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
 		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: malformed Content-Type: %v", err)
 	}
 
-	if t != ical.MIMEType {
+	if t != MIMEType {
 		// TODO: send CALDAV:supported-calendar-data error
 		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unsupported Content-Type %q", t)
 	}
 
 	// TODO: check CALDAV:max-resource-size precondition
-	cal, err := ical.NewDecoder(r.Body).Decode()
+	cal, err := ics.ParseCalendar(r.Body)
 	if err != nil {
 		// TODO: send CALDAV:valid-calendar-data error
 		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
 	}
+	defer func() {
+		if e := r.Body.Close(); e != nil {
+			err = errors.Join(err, fmt.Errorf("error while closing request body: %w", err))
+		}
+	}()
 
 	co, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
 	if err != nil {
@@ -780,12 +787,9 @@ func (b *backend) propFindCalendar(
 		internal.ResourceTypeName: internal.PropFindValue(
 			internal.NewResourceType(internal.CollectionName, calendarName),
 		),
-		calendarDescriptionName: internal.PropFindValue(&calendarDescription{
-			Description: cal.Description,
-		}),
 		supportedCalendarDataName: internal.PropFindValue(&supportedCalendarData{
 			Types: []calendarDataType{
-				{ContentType: ical.MIMEType, Version: "2.0"},
+				{ContentType: MIMEType, Version: "2.0"},
 			},
 		}),
 		supportedCalendarComponentSetName: func(*internal.RawXMLValue) (any, error) {
@@ -796,7 +800,7 @@ func (b *backend) propFindCalendar(
 					components = append(components, comp{Name: name})
 				}
 			} else {
-				components = append(components, comp{Name: ical.CompEvent})
+				components = append(components, comp{Name: string(ics.ComponentVEvent)})
 			}
 
 			return &supportedCalendarComponentSet{
@@ -827,6 +831,12 @@ func (b *backend) propFindCalendar(
 	if cal.MaxResourceSize > 0 {
 		props[maxResourceSizeName] = internal.PropFindValue(&maxResourceSize{
 			Size: cal.MaxResourceSize,
+		})
+	}
+
+	if cal.Color != "" {
+		props[calendarColorName] = internal.PropFindValue(&calendarColor{
+			Color: cal.Color,
 		})
 	}
 
@@ -884,12 +894,12 @@ func (b *backend) propFindCalendarObject(
 			return &internal.CurrentUserPrincipal{Href: internal.Href{Path: path}}, nil
 		},
 		internal.GetContentTypeName: internal.PropFindValue(&internal.GetContentType{
-			Type: ical.MIMEType,
+			Type: MIMEType,
 		}),
 		// TODO: calendar-data can only be used in REPORT requests
 		calendarDataName: func(*internal.RawXMLValue) (any, error) {
 			var buf bytes.Buffer
-			if err := ical.NewEncoder(&buf).Encode(co.Data); err != nil {
+			if err := co.Data.SerializeTo(&buf); err != nil {
 				return nil, err
 			}
 
