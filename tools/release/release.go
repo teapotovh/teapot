@@ -20,6 +20,7 @@ var (
 	ErrNothingToRelease    = errors.New("nothing to release")
 	ErrWorkingTreeNotClean = errors.New("working tree is not clean")
 	ErrFirstRelease        = errors.New("first release")
+	ErrDryRun              = errors.New("-dry-run set, aborting")
 )
 
 var (
@@ -44,6 +45,13 @@ var tagPattern = regexp.MustCompile(`^v0\.0\.0-\d{14}-[0-9a-f]{12}$`)
 
 func main() {
 	flag.Parse()
+
+	if *dirty {
+		// To prevent from tagging releases with dirty worktrees
+		fmt.Fprintln(os.Stderr, "! -dirty automatically enables -dry-run")
+
+		*dryRun = true
+	}
 
 	if err := release(); err != nil {
 		fmt.Fprintln(os.Stderr, "release: "+err.Error())
@@ -88,6 +96,12 @@ func release() (err error) {
 	newTag := fmt.Sprintf("v0.0.0-%s-%s", time.Now().UTC().Format("20060102150405"), headShort)
 	phase("(info) minting release: " + newTag)
 
+	phase("(check) bazel mod tidy")
+
+	if stdout, stderr, err := run(nil, "bazel", "mod", "tidy"); err != nil {
+		return fmt.Errorf("bazel mod tidy failed: %w, %s, %s", err, stdout.String(), stderr.String())
+	}
+
 	phase("(check) gazelle")
 
 	if _, _, err := run(nil, gazellePath, "-mode=diff"); err != nil {
@@ -121,11 +135,7 @@ func release() (err error) {
 		return ErrWorkingTreeNotClean
 	}
 
-	phase("(check) golangci-lint")
-
-	if _, _, err := run(nil, golangciLintPath, "run"); err != nil {
-		return fmt.Errorf("lint failed: %w", err)
-	}
+	phase("(release) planning")
 
 	headSHA, err := gitRun(nil, "rev-parse", "HEAD")
 	if err != nil {
@@ -139,41 +149,46 @@ func release() (err error) {
 
 	subjects, err := commitsSince(lastTag)
 	if err != nil {
-		return fmt.Errorf("listing commits since %s: %w", displayTag(lastTag), err)
+		return fmt.Errorf("listing commits since %s: %w", lastTag, err)
 	}
 
 	if len(subjects) == 0 {
-		return fmt.Errorf("no new commits since %s: %w", displayTag(lastTag), ErrNothingToRelease)
+		return fmt.Errorf("no new commits since %s: %w", lastTag, ErrNothingToRelease)
 	}
 
 	message := changelog(newTag, lastTag, subjects)
 
-	fmt.Println("==> Release plan")
-	fmt.Printf("    previous tag: %s\n", displayTag(lastTag))
-	fmt.Printf("    new tag:      %s\n", newTag)
-	fmt.Printf("    head:         %s\n", headSHA)
-	fmt.Printf("    commits:      %d\n", len(subjects))
 	fmt.Println()
-	fmt.Println(message)
+	fmt.Printf("\tprevious tag: %s\n", lastTag)
+	fmt.Printf("\tnew tag:      %s\n", newTag)
+	fmt.Printf("\thead:         %s\n", headSHA)
+	fmt.Printf("\tcommits:      %d\n", len(subjects))
+	fmt.Println()
 
-	if *dryRun {
-		fmt.Println("==> --dry-run set, not tagging or pushing")
-		return nil
+	phase("(release) overview")
+	fmt.Println()
+
+	for line := range strings.SplitSeq(message, "\n") {
+		fmt.Fprintln(os.Stderr, "\t"+line)
 	}
 
-	fmt.Println("==> Creating annotated tag")
+	phase("(release) tagging")
 
-	if err := createTag(newTag, message); err != nil {
+	if *dryRun {
+		return ErrDryRun
+	}
+
+	if _, err := gitRun(strings.NewReader(message), "tag", "-a", newTag, "-F", "-"); err != nil {
 		return fmt.Errorf("creating tag: %w", err)
 	}
 
-	fmt.Printf("==> Pushing %s to %s\n", newTag, *remoteName)
+	phase("(release) pushing")
 
-	if err := pushTag(*remoteName, newTag); err != nil {
+	if _, err := gitRun(nil, "push", *remoteName, newTag); err != nil {
 		return fmt.Errorf("pushing tag: %w", err)
 	}
 
-	fmt.Printf("Released %s\n", newTag)
+	phase("(release) successfully released")
 
 	return nil
 }
@@ -265,14 +280,6 @@ func commitsSince(lastTag string) ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
-func displayTag(tag string) string {
-	if tag == "" {
-		return "(none - first release)"
-	}
-
-	return tag
-}
-
 func changelog(newTag, lastTag string, subjects []string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n\n", newTag)
@@ -283,14 +290,4 @@ func changelog(newTag, lastTag string, subjects []string) string {
 	}
 
 	return b.String()
-}
-
-func createTag(name, message string) error {
-	_, err := gitRun(strings.NewReader(message), "tag", "-a", name, "-F", "-")
-	return err
-}
-
-func pushTag(remote, tag string) error {
-	_, err := gitRun(nil, "push", remote, tag)
-	return err
 }
