@@ -70,7 +70,7 @@ image_push(
 image_push(
     name = "push_ttl",
     image = ":image",
-    registry = "ttl.sh",
+    registry = "ocihub.com",
     repository = "teapotovh_alertd",
     tag = "1h",
 )
