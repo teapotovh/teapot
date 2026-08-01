@@ -74,7 +74,7 @@ tqdm==4.70.0
     # via huggingface-hub
 typer-slim==0.24.0
     # via huggingface-hub
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   huggingface-hub
     #   typer-slim
