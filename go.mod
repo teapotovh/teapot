@@ -1,11 +1,12 @@
 module github.com/teapotovh/teapot
 
-go 1.26.0
+go 1.26.5
 
 require (
 	git.sr.ht/~bitfehler/brant v0.5.1
 	github.com/ammario/tlru v0.4.0
 	github.com/arran4/golang-ical v0.3.5
+	github.com/bazelbuild/rules_go v0.62.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/coreos/go-iptables v0.8.0
 	github.com/dustin/go-humanize v1.0.1

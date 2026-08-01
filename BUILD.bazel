@@ -27,4 +27,5 @@ gazelle_python_manifest(
 gazelle(
     name = "gazelle",
     gazelle = ":gazelle_multilang",
+    visibility = ["//visibility:public"],
 )
