@@ -156,6 +156,7 @@ func storeObjectToCaldavObject(ctx context.Context, obj store.Object) (co *calda
 	span.SetAttributes(
 		attribute.String("path", obj.Path.String()),
 		attribute.String("etag", obj.ETag),
+		attribute.Int("size", len(obj.Data)),
 	)
 
 	cal, err := obj.Calendar()
