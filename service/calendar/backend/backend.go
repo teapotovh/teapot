@@ -64,6 +64,7 @@ func caldavCalendarToStoreCalendar(cal *caldav.Calendar) store.Calendar {
 		Metadata: store.CalendarMetadata{
 			Name:                  cal.Name,
 			Description:           cal.Description,
+			Color:                 cal.Color,
 			SupportedComponentSet: cal.SupportedComponentSet,
 			MaxResourceSize:       cal.MaxResourceSize,
 		},
@@ -75,6 +76,7 @@ func storeCalendarToCaldavCalendar(cal store.Calendar) caldav.Calendar {
 		Path:                  string(cal.Path),
 		Name:                  cal.Metadata.Name,
 		Description:           cal.Metadata.Description,
+		Color:                 cal.Metadata.Color,
 		SupportedComponentSet: cal.Metadata.SupportedComponentSet,
 	}
 }

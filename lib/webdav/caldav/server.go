@@ -787,9 +787,6 @@ func (b *backend) propFindCalendar(
 		internal.ResourceTypeName: internal.PropFindValue(
 			internal.NewResourceType(internal.CollectionName, calendarName),
 		),
-		calendarDescriptionName: internal.PropFindValue(&calendarDescription{
-			Description: cal.Description,
-		}),
 		supportedCalendarDataName: internal.PropFindValue(&supportedCalendarData{
 			Types: []calendarDataType{
 				{ContentType: MIMEType, Version: "2.0"},
@@ -834,6 +831,12 @@ func (b *backend) propFindCalendar(
 	if cal.MaxResourceSize > 0 {
 		props[maxResourceSizeName] = internal.PropFindValue(&maxResourceSize{
 			Size: cal.MaxResourceSize,
+		})
+	}
+
+	if cal.Color != "" {
+		props[calendarColorName] = internal.PropFindValue(&calendarColor{
+			Color: cal.Color,
 		})
 	}
 

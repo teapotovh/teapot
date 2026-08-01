@@ -31,6 +31,7 @@ type Calendar struct {
 	Description           string
 	MaxResourceSize       int64
 	SupportedComponentSet []string
+	Color                 string
 }
 
 type CalendarCompRequest struct {

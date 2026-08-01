@@ -14,21 +14,25 @@ var (
 	ErrUnsupportedREPORTRoot  = errors.New("unsupported REPORT root")
 )
 
-const namespace = "urn:ietf:params:xml:ns:caldav"
+const (
+	caldavNS = "urn:ietf:params:xml:ns:caldav"
+	appleNS  = "http://apple.com/ns/ical/"
+)
 
 var (
-	calendarHomeSetName = xml.Name{Space: namespace, Local: "calendar-home-set"}
+	calendarHomeSetName = xml.Name{Space: caldavNS, Local: "calendar-home-set"}
 
-	calendarDescriptionName           = xml.Name{Space: namespace, Local: "calendar-description"}
-	supportedCalendarDataName         = xml.Name{Space: namespace, Local: "supported-calendar-data"}
-	supportedCalendarComponentSetName = xml.Name{Space: namespace, Local: "supported-calendar-component-set"}
-	maxResourceSizeName               = xml.Name{Space: namespace, Local: "max-resource-size"}
+	calendarDescriptionName           = xml.Name{Space: caldavNS, Local: "calendar-description"}
+	supportedCalendarDataName         = xml.Name{Space: caldavNS, Local: "supported-calendar-data"}
+	supportedCalendarComponentSetName = xml.Name{Space: caldavNS, Local: "supported-calendar-component-set"}
+	maxResourceSizeName               = xml.Name{Space: caldavNS, Local: "max-resource-size"}
+	calendarColorName                 = xml.Name{Space: appleNS, Local: "calendar-color"}
 
-	calendarQueryName    = xml.Name{Space: namespace, Local: "calendar-query"}
-	calendarMultigetName = xml.Name{Space: namespace, Local: "calendar-multiget"}
+	calendarQueryName    = xml.Name{Space: caldavNS, Local: "calendar-query"}
+	calendarMultigetName = xml.Name{Space: caldavNS, Local: "calendar-multiget"}
 
-	calendarName     = xml.Name{Space: namespace, Local: "calendar"}
-	calendarDataName = xml.Name{Space: namespace, Local: "calendar-data"}
+	calendarName     = xml.Name{Space: caldavNS, Local: "calendar"}
+	calendarDataName = xml.Name{Space: caldavNS, Local: "calendar-data"}
 )
 
 // https://tools.ietf.org/html/rfc4791#section-6.2.1
@@ -45,6 +49,12 @@ func (a *calendarHomeSet) GetXMLName() xml.Name {
 type calendarDescription struct {
 	XMLName     xml.Name `xml:"urn:ietf:params:xml:ns:caldav calendar-description"`
 	Description string   `xml:",chardata"`
+}
+
+// https://github.com/apple/ccs-calendarserver/blob/master/doc/Extensions/caldav-calendar-color.txt
+type calendarColor struct {
+	XMLName xml.Name `xml:"http://apple.com/ns/ical/ calendar-color"`
+	Color   string   `xml:",chardata"`
 }
 
 // https://tools.ietf.org/html/rfc4791#section-5.2.4

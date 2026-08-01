@@ -195,7 +195,7 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, events []Event[K])
 		return fmt.Errorf("error while encoding notification events: %w", err)
 	}
 
-	_, err = nm.notifyConn.Exec(ctx, "SELECT pg_notify($1, $2); ", nm.channel, payload)
+	_, err = nm.notifyConn.Exec(ctx, "SELECT pg_notify($1, $2);", nm.channel, payload)
 	if err != nil {
 		return fmt.Errorf("error while sending notification: %w", err)
 	}
