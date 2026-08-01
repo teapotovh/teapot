@@ -24,10 +24,9 @@ var (
 )
 
 var (
-	remoteName = flag.String("remote", "origin", "git remote to push the tag to")
-	dryRun     = flag.Bool("dry-run", false, "run all checks and print the planned tag, but don't tag or push")
-	dirty      = flag.Bool("dirty", false, "allow pushing a release with a dirty try - skips the clean check")
-	verbose    = flag.Bool("verbose", false, "print all executed commands")
+	dryRun  = flag.Bool("dry-run", false, "run all checks and print the planned tag, but don't tag")
+	dirty   = flag.Bool("dirty", false, "skips the clean check, but does not allow tagging")
+	verbose = flag.Bool("verbose", false, "print all executed commands")
 )
 
 var (
@@ -182,15 +181,11 @@ func release() (err error) {
 		return fmt.Errorf("creating tag: %w", err)
 	}
 
-	phase("(release) pushing")
+	phase("(release) tagged, please run")
 
-	if _, err := gitRun(nil, "push", *remoteName, newTag); err != nil {
-		return fmt.Errorf("pushing tag: %w", err)
-	}
+	_, err = fmt.Fprintln(os.Stderr, "git push origin "+newTag)
 
-	phase("(release) successfully released")
-
-	return nil
+	return err
 }
 
 // workspaceRoot returns the real checkout directory. When launched via
