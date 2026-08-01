@@ -10,7 +10,11 @@ go_library(
 
 go_binary(
     name = "release",
-    data = ["@multitool//tools/buildifier:workspace_root"],
+    data = [
+        "//:gazelle",
+        "@multitool//tools/buildifier",
+        "@multitool//tools/golangci-lint",
+    ],
     embed = [":release_lib"],
     visibility = ["//visibility:public"],
 )

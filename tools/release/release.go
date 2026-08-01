@@ -17,12 +17,23 @@ import (
 )
 
 var (
+	ErrNothingToRelease    = errors.New("nothing to release")
+	ErrWorkingTreeNotClean = errors.New("working tree is not clean")
+)
+
+var (
 	remoteName = flag.String("remote", "origin", "git remote to push the tag to")
 	dryRun     = flag.Bool("dry-run", false, "run all checks and print the planned tag, but don't tag or push")
 	verbose    = flag.Bool("verbose", false, "print all executed commands")
 )
 
-var root string
+var (
+	root        string
+	directories = []string{
+		"cmd", "lib", "service",
+		"proto", "tools",
+	}
+)
 
 // tagPattern matches tags produced by this tool: v0.0.0-<14 digit UTC
 // timestamp>-<12 hex char short sha>. Kept intentionally narrow so that
@@ -49,13 +60,22 @@ func phase(name string) {
 	fmt.Fprintf(os.Stderr, "%02d %s\n", phaseN, name)
 }
 
+//nolint:gocyclo
 func release() (err error) {
-	buildifierPath, err := runfiles.Rlocation("multitool/tools/buildifier/workspace_root")
+	gazellePath, err := runfiles.Rlocation("teapot/gazelle")
+	if err != nil {
+		return fmt.Errorf("could not fetch gazelle path: %w", err)
+	}
+
+	buildifierPath, err := runfiles.Rlocation("multitool/tools/buildifier/buildifier")
 	if err != nil {
 		return fmt.Errorf("could not fetch buildifier path: %w", err)
 	}
 
-	fmt.Println(buildifierPath)
+	golangciLintPath, err := runfiles.Rlocation("multitool/tools/golangci-lint/golangci-lint")
+	if err != nil {
+		return fmt.Errorf("could not fetch golangci-lint path: %w", err)
+	}
 
 	root, err = workspaceRoot()
 	if err != nil {
@@ -64,19 +84,40 @@ func release() (err error) {
 
 	phase("(check) gazelle")
 
-	if err := checkGazelle(); err != nil {
+	if _, _, err := run(nil, gazellePath, "-mode=diff"); err != nil {
 		return fmt.Errorf("gazelle check failed: %w", err)
 	}
 
-	phase("(check) git clean")
+	phase("(check) buildifier")
 
-	if err := checkClean(); err != nil {
-		return err
+	for _, dir := range directories {
+		if stdout, stderr, err := run(nil, buildifierPath, "-mode=diff", "-r", dir); err != nil {
+			return fmt.Errorf("buildifier failed: %w, %s, %s", err, stdout.String(), stderr.String())
+		}
 	}
 
 	phase("(check) golangci-lint")
 
-	if err := runLint(); err != nil {
+	if stdout, _, err := run(nil, golangciLintPath, "run"); err != nil {
+		fmt.Fprintf(os.Stderr, "%s", stdout.String())
+		return fmt.Errorf("golangci-lint failed: %w", err)
+	}
+
+	phase("(check) git clean")
+
+	out, err := gitRun(nil, "status", "--porcelain")
+	if err != nil {
+		return fmt.Errorf("checking status: %w", err)
+	}
+
+	if out != "" {
+		fmt.Fprintf(os.Stderr, "%s", out)
+		return ErrWorkingTreeNotClean
+	}
+
+	phase("(check) golangci-lint")
+
+	if _, _, err := run(nil, golangciLintPath, "run"); err != nil {
 		return fmt.Errorf("lint failed: %w", err)
 	}
 
@@ -101,7 +142,7 @@ func release() (err error) {
 	}
 
 	if len(subjects) == 0 {
-		return fmt.Errorf("no new commits since %s; nothing to release", displayTag(lastTag))
+		return fmt.Errorf("no new commits since %s; %w", displayTag(lastTag), ErrNothingToRelease)
 	}
 
 	newTag := fmt.Sprintf("v0.0.0-%s-%s", time.Now().UTC().Format("20060102150405"), headShort)
@@ -160,34 +201,8 @@ func gitRun(in io.Reader, args ...string) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// checkGazelle shells out to bazel to verify generated BUILD files match
-// what gazelle would produce, without writing anything. `-mode=diff`
-// prints a diff and exits non-zero if the tree is stale.
-func checkGazelle() error {
-	_, _, err := run(nil, "bazel", "run", "//:gazelle", "--", "-mode=diff")
-	return err
-}
-
-func runLint() error {
-	_, _, err := run(nil, "golangci-lint", "run", "./...")
-	return err
-}
-
-func checkClean() error {
-	out, err := gitRun(nil, "status", "--porcelain")
-	if err != nil {
-		return fmt.Errorf("checking status: %w", err)
-	}
-
-	if out != "" {
-		return fmt.Errorf("working tree is not clean:\n%s", out)
-	}
-
-	return nil
-}
-
 func run(stding io.Reader, command string, args ...string) (*bytes.Buffer, *bytes.Buffer, error) {
-	cmd := exec.Command(command, args...)
+	cmd := exec.Command(command, args...) //nolint:gosec
 	cmd.Dir = root
 
 	var stdout, stderr bytes.Buffer
