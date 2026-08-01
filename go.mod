@@ -24,7 +24,7 @@ require (
 	github.com/lmittmann/tint v1.1.3
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/nrdcg/desec v0.11.2
-	github.com/prometheus/alertmanager v0.33.0
+	github.com/prometheus/alertmanager v0.33.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/cors v1.11.1
 	github.com/spf13/pflag v1.0.10
