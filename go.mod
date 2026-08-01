@@ -42,7 +42,7 @@ require (
 	google.golang.org/grpc v1.81.1
 	k8s.io/api v0.36.3
 	k8s.io/apimachinery v0.36.3
-	k8s.io/client-go v0.36.2
+	k8s.io/client-go v0.36.3
 	k8s.io/klog/v2 v2.140.0
 	maragu.dev/gomponents v1.3.0
 	maragu.dev/gomponents-htmx v0.6.1
