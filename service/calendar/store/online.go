@@ -71,6 +71,7 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing psql connection URL: %w", err)
 	}
+
 	config.MaxConns = 2
 	config.MinConns = 1
 

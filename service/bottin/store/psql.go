@@ -179,6 +179,7 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing psql connection URL: %w", err)
 	}
+
 	config.MaxConns = 2
 	config.MinConns = 1
 
