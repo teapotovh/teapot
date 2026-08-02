@@ -12,17 +12,10 @@ in pkgs.mkShell {
   buildInputs = with pkgs; [
     go
     gopls
-    golangci-lint
-    golangci-lint-langserver
-
-    python313
-    python313Packages.ruff
 
     grpcurl
 
     bazelisk
     steam-run
-    bazel
-    python313Packages.pip-tools
   ];
 }
