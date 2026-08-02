@@ -20,10 +20,11 @@ import (
 )
 
 var (
-	ErrNotLoaded        = errors.New("not loaded yet")
-	ErrNotListening     = errors.New("not listening yet")
-	ErrInvalidUpdate    = errors.New("invalid update")
-	ErrAlreadyCommitted = errors.New("already committed")
+	ErrNotLoaded                 = errors.New("not loaded yet")
+	ErrNotListening              = errors.New("not listening yet")
+	ErrInvalidUpdate             = errors.New("invalid update")
+	ErrAlreadyCommitted          = errors.New("already committed")
+	ErrUnexpectedAmountOfObjects = errors.New("unexpected about of objects")
 )
 
 const (
@@ -334,44 +335,40 @@ func (t *Table[K, T]) handleEvents(ctx context.Context, events []Event[K]) (err 
 	}
 
 	if len(refresh) > 0 {
-		f := func() (int, error) {
+		f := func() ([]T, error) {
 			objects, err := t.getFunc(ctx, t.pool, refresh)
 			if err != nil {
-				return 0, fmt.Errorf("error while fetching %d objects to refresh: %w", len(refresh), err)
+				return nil, fmt.Errorf("fetching %d objects to refresh: %w", len(refresh), err)
 			}
 
-			for _, object := range objects {
-				t.store(object.Key(), object)
+			if len(objects) != len(refresh) {
+				return nil, fmt.Errorf(
+					"%w: expected %d, got %d",
+					ErrUnexpectedAmountOfObjects,
+					len(refresh),
+					len(objects),
+				)
 			}
 
-			return len(objects), nil
+			return objects, nil
 		}
 
 		expoBackoff := backoff.NewExponentialBackOff()
 		expoBackoff.InitialInterval = BackoffInitialInterval
 		expoBackoff.Multiplier = BackoffMultiplier
 
-		n, err := backoff.Retry(ctx, f, backoff.WithMaxTries(BackoffMaxRetriess), backoff.WithBackOff(expoBackoff))
+		objects, err := backoff.Retry(
+			ctx,
+			f,
+			backoff.WithMaxTries(BackoffMaxRetriess),
+			backoff.WithBackOff(expoBackoff),
+		)
 		if err != nil {
 			return fmt.Errorf("error while handling notification: %w", err)
 		}
 
-		if n != len(refresh) {
-			// We culd run into this if we have concurrent update/delete operations
-			// coming from different database connections, meaning that an object
-			// that was just updated is immediately deleted by another connection.
-			//
-			// This is fine, as the cache will eventually receive the delete event
-			// and become consistent again. Until then the data is retained in the
-			// cache for correctness.
-			t.logger.WarnContext(
-				ctx,
-				"received an unexpected amount of objects when refreshing the cache",
-				"expected",
-				len(refresh),
-				"retrieved",
-				n,
-			)
+		for _, object := range objects {
+			t.store(object.Key(), object)
 		}
 	}
 
