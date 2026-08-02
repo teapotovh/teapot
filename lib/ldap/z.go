@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-ldap/ldap/v3"
-
 	"github.com/teapotovh/teapot/lib/observability"
 )
 
 func (f *Factory) canDialServer(ctx context.Context) (err error) {
-	conn, err := ldap.DialURL(f.url)
+	conn, err := f.pool.get(ctx)
 	if err != nil {
 		return fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
 	}
@@ -32,7 +30,7 @@ func (f *Factory) ReadinessChecks() map[string]observability.Check {
 }
 
 func (f *Factory) canBindAsRoot(ctx context.Context) (err error) {
-	conn, err := ldap.DialURL(f.url)
+	conn, err := f.pool.get(ctx)
 	if err != nil {
 		return fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
 	}

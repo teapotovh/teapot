@@ -4,18 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
-
-	"github.com/go-ldap/ldap/v3"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	"time"
 
 	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/tmplstring"
 )
 
 type LDAPConfig struct {
-	URL        string
+	URL            string
+	Timeout        time.Duration
+	MaxConnections uint32
+	Workers        uint32
+
 	RootDN     string
 	RootPasswd string
 
@@ -32,7 +35,8 @@ type LDAPConfig struct {
 type Factory struct {
 	logger *slog.Logger
 
-	url        string
+	pool       *pool
+	workers    uint32
 	rootDN     string
 	rootPasswd string
 
@@ -52,10 +56,13 @@ func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
 		return nil, fmt.Errorf("error while parsing user filter template: %w", err)
 	}
 
+	pool := newPool(config.URL, config.RootDN, config.Timeout, config.MaxConnections, logger)
+
 	fact := Factory{
 		logger: logger,
 
-		url:        config.URL,
+		pool:       pool,
+		workers:    config.Workers,
 		rootDN:     config.RootDN,
 		rootPasswd: config.RootPasswd,
 
@@ -85,14 +92,12 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 		}
 	}()
 
-	span.AddEvent("connecting to LDAP", trace.WithAttributes(attribute.String("url", f.url)))
-
-	conn, err := ldap.DialURL(f.url)
+	conn, err := f.pool.get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not enstablish a connection to the LDAP server: %w", err)
 	}
 
-	// We always bind as root user, so we can perofrm all operations,
+	// We always bind as root user, so we can perform all operations,
 	// including, possibly, a second bind as a lower-privilege user to test auth.
 	if err := bind(ctx, &f.metrics, conn, f.rootDN, f.rootPasswd); err != nil {
 		return nil, fmt.Errorf("error while binding as root: %w", err)
@@ -111,4 +116,22 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 		adminGroupDN: f.adminGroupDN,
 		accessesDN:   f.accessesDN,
 	}, nil
+}
+
+// Run implements run.Runnable.
+func (f *Factory) Run(ctx context.Context, notify run.Notify) (err error) {
+	var wg sync.WaitGroup
+	for i := range f.workers {
+		wg.Add(1)
+		wg.Go(func() {
+			f.pool.fill(ctx, i, f.metrics.dial)
+			wg.Done()
+		})
+	}
+
+	notify.Notify()
+
+	wg.Done()
+
+	return nil
 }

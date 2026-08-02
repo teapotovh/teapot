@@ -19,9 +19,10 @@ import (
 type Calendar struct {
 	logger *slog.Logger
 
-	httpLog   *httplog.HTTPLog
-	httpTrace *httptrace.HTTPTrace
-	httpAuth  *httpauth.BasicAuth
+	httpLog     *httplog.HTTPLog
+	httpTrace   *httptrace.HTTPTrace
+	ldapFactory *ldap.Factory
+	httpAuth    *httpauth.BasicAuth
 
 	store   store.Store
 	backend *backend.Backend
@@ -65,9 +66,10 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 	calendar := Calendar{
 		logger: logger,
 
-		httpLog:   httpLog,
-		httpTrace: httpTrace,
-		httpAuth:  httpAuth,
+		httpLog:     httpLog,
+		httpTrace:   httpTrace,
+		ldapFactory: ldapFactory,
+		httpAuth:    httpAuth,
 
 		store:   store,
 		backend: backend,
@@ -78,6 +80,10 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 
 func (c *Calendar) Store() store.Store {
 	return c.store
+}
+
+func (c *Calendar) LDAPFactory() *ldap.Factory {
+	return c.ldapFactory
 }
 
 func (c *Calendar) Handler(prefix string) http.Handler {

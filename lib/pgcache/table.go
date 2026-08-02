@@ -30,7 +30,7 @@ var (
 const (
 	BackoffInitialInterval = 100 * time.Millisecond
 	BackoffMultiplier      = 1.5
-	BackoffMaxRetriess     = 3
+	BackoffMaxRetries      = 3
 )
 
 type (
@@ -360,7 +360,7 @@ func (t *Table[K, T]) handleEvents(ctx context.Context, events []Event[K]) (err 
 		objects, err := backoff.Retry(
 			ctx,
 			f,
-			backoff.WithMaxTries(BackoffMaxRetriess),
+			backoff.WithMaxTries(BackoffMaxRetries),
 			backoff.WithBackOff(expoBackoff),
 		)
 		if err != nil {

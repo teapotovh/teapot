@@ -56,6 +56,7 @@ func (l *Log) handleLogs(w http.ResponseWriter, r *http.Request) error {
 
 	logErrors := make([]error, len(events))
 	for i, event := range events {
+		wg.Add(1)
 		wg.Go(func() {
 			level := tryExtractLevel(event.Data)
 			if err := l.manager.process(event, level); err != nil {
