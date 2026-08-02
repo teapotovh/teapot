@@ -274,7 +274,7 @@ func (ttx *TableTx[K, T]) Commit(ctx context.Context) error {
 		case update.store != nil:
 			events = append(events, Event[K]{Type: EventTypeStore, Key: (*update.store).Key()})
 		case update.delete != nil:
-			events = append(events, Event[K]{Type: EventTypeStore, Key: *update.delete})
+			events = append(events, Event[K]{Type: EventTypeDelete, Key: *update.delete})
 		default:
 			return ErrInvalidUpdate
 		}
