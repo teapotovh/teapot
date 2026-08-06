@@ -1,0 +1,19 @@
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "embed_proto",
+    srcs = ["embed.proto"],
+    visibility = ["//visibility:private"],
+)
+
+go_proto_library(
+    name = "embed_go_proto",
+    compilers = [
+        "@rules_go//proto:go_grpc",
+        "//proto:go_vtproto",
+    ],
+    importpath = "github.com/teapotovh/teapot/proto/embed",
+    protos = [":embed_proto"],
+    visibility = ["//visibility:public"],
+)
