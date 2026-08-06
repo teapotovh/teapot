@@ -1,20 +1,19 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc_python//:defs.bzl", "python_grpclib_library", "python_proto_library")
+load("@rules_go//proto:compiler.bzl", "go_proto_compiler")
+load("@rules_go//go:def.bzl", "go_binary")
 
-proto_library(
-    name = "embed_proto",
-    srcs = ["embed.proto"],
+alias(
+    name = "protoc-gen-go-vtproto",
+    actual = "@com_github_planetscale_vtprotobuf//cmd/protoc-gen-go-vtproto",
+    visibility = ["//visibility:private"],
+)
+
+go_proto_compiler(
+    name = "go_vtproto",
+    plugin = "//proto:protoc-gen-go-vtproto",
+    suffix = ".vt.pb.go",
+    options = [
+        "features=marshal+unmarshal+size+equal+clone+grpc",
+    ],
     visibility = ["//visibility:public"],
 )
 
-python_proto_library(
-    name = "embed_proto_py",
-    protos = [":embed_proto"],
-    visibility = ["//visibility:public"],
-)
-
-python_grpclib_library(
-    name = "embed_proto_grpc_py",
-    protos = [":embed_proto"],
-    visibility = ["//visibility:public"],
-)

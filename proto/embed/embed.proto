@@ -1,6 +1,7 @@
 syntax = "proto3";
 package embed;
-option go_package = "/embed";
+
+option go_package = "github.com/teapotovh/teapot/proto/embed;embed";
 
 // Embedder provides RPC calls to generate embeddings from text input.
 service Embedder {

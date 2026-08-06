@@ -25,6 +25,7 @@ require (
 	github.com/lmittmann/tint v1.2.0
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/nrdcg/desec v0.11.2
+	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 	github.com/prometheus/alertmanager v0.33.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/rs/cors v1.11.1
