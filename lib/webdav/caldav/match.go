@@ -321,7 +321,6 @@ func matchPropTimeRange(start, end, ptime time.Time) bool {
 	return false
 }
 
-//nolint:gocyclo
 func matchParamFilter(filter ParamFilter, field *ics.IANAProperty) bool {
 	values, exists := field.ICalParameters[filter.Name]
 	if !exists {
