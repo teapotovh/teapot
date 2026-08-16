@@ -1,3 +1,9 @@
+# gazelle:exclude embed.pb.go
+# gazelle:exclude embed_vtproto.pb.go
+# gazelle:go_generate_proto false
+
+load("@aspect_bazel_lib//lib:diff_test.bzl", "diff_test")
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_files")
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 
@@ -16,4 +22,33 @@ go_proto_library(
     importpath = "github.com/teapotovh/teapot/proto/embed",
     protos = [":embed_proto"],
     visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "embed_pb_go",
+    srcs = [":embed_go_proto"],
+    output_group = "go_generated_srcs",
+)
+
+# isolate individual files by filtering on filename
+genrule(
+    name = "embed_pb_go_only",
+    srcs = [":embed_pb_go"],
+    outs = ["embed.pb.go"],
+    cmd = "for f in $(SRCS); do case $$f in *_vtproto.pb.go) ;; *.pb.go) cp $$f $@ ;; esac; done",
+)
+
+genrule(
+    name = "embed_vt_pb_go_only",
+    srcs = [":embed_pb_go"],
+    outs = ["embed_vtproto.pb.go"],
+    cmd = "for f in $(SRCS); do case $$f in *_vtproto.pb.go) cp $$f $@ ;; esac; done",
+)
+
+write_source_files(
+    name = "generate",
+    files = {
+        "embed.pb.go": ":embed_pb_go_only",
+        "embed_vtproto.pb.go": ":embed_vt_pb_go_only",
+    },
 )

@@ -11,10 +11,12 @@ go_library(
     importpath = "github.com/teapotovh/teapot/lib/httpsrv",
     visibility = ["//visibility:public"],
     deps = [
+        "//lib/httptrace",
         "//lib/observability",
         "//lib/run",
         "@com_github_kataras_requestid//:requestid",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
+        "@io_opentelemetry_go_otel_trace//:trace",
     ],
 )

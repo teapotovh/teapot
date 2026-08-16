@@ -1,0 +1,39 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 69fafbf..aae2698 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -1,22 +1,5 @@
+-load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+ load("@rules_go//go:def.bzl", "go_library", "go_test")
+ 
+-# gazelle:exclude release
+-# gazelle:prefix github.com/daulet/tokenizers
+-gazelle(
+-    name = "gazelle",
+-)
+-
+-gazelle(
+-    name = "gazelle-update-repos",
+-    args = [
+-        "-from_file=go.mod",
+-        "-to_macro=deps.bzl%go_dependencies",
+-        "-prune",
+-    ],
+-    command = "update-repos",
+-)
+-
+ go_test(
+     name = "tokenizers_test",
+     srcs = ["tokenizer_test.go"],
+diff --git a/MODULE.bazel b/MODULE.bazel
+index 145526f..ce4b28a 100644
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -1,6 +1,6 @@
+ module(
+     name = "com_github_daulet_tokenizers",
+-    version = "1.26.0",
++    version = "1.27.0",
+ )
+ 
+ bazel_dep(name = "platforms", version = "1.0.0")

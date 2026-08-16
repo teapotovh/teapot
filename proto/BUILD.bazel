@@ -1,5 +1,4 @@
 load("@rules_go//proto:compiler.bzl", "go_proto_compiler")
-load("@rules_go//go:def.bzl", "go_binary")
 
 alias(
     name = "protoc-gen-go-vtproto",
@@ -9,11 +8,13 @@ alias(
 
 go_proto_compiler(
     name = "go_vtproto",
-    plugin = "//proto:protoc-gen-go-vtproto",
-    suffix = ".vt.pb.go",
     options = [
-        "features=marshal+unmarshal+size+equal+clone+grpc",
+        "features=size+equal+marshal+unmarshal+unmarshal_unsafe+clone",
     ],
+    plugin = "//proto:protoc-gen-go-vtproto",
+    suffix = "_vtproto.pb.go",
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_planetscale_vtprotobuf//protohelpers",
+    ],
 )
-

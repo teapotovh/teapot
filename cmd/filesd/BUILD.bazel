@@ -75,3 +75,20 @@ image_push(
     repository = "teapotovh_filesd",
     tag = "1h",
 )
+
+go_library(
+    name = "lib",
+    srcs = ["filesd.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/httpsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/files",
+        "//service/files/web",
+        "//service/files/webdav",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

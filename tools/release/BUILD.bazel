@@ -18,3 +18,11 @@ go_binary(
     embed = [":release_lib"],
     visibility = ["//visibility:public"],
 )
+
+go_library(
+    name = "lib",
+    srcs = ["release.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = ["@rules_go//go/runfiles"],
+)

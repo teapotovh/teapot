@@ -62,6 +62,11 @@ func main() {
 		os.Exit(CodeHTTP)
 	}
 
+	observability.RegisterMetrics(httpsrv)
+	observability.RegisterReadyz(httpsrv)
+	observability.RegisterLivez(httpsrv)
+	observability.RegisterTracing(httpsrv)
+
 	calendar, err := calendar.NewCalendar(getCalendarConfig(), logger.With("sub", "calendar"))
 	if err != nil {
 		logger.Error("error while initiating the calendar subsystem", "err", err)
@@ -73,10 +78,6 @@ func main() {
 	observability.RegisterTracing(calendar)
 
 	observability.RegisterTracing(calendar.Store())
-
-	observability.RegisterMetrics(httpsrv)
-	observability.RegisterReadyz(httpsrv)
-	observability.RegisterLivez(httpsrv)
 
 	httpsrv.Register("calendar", calendar, HTTPCalendarPrefix)
 

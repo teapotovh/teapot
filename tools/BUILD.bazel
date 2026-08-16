@@ -1,3 +1,19 @@
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+
+gazelle_binary(
+    name = "gazelle_multilang",
+    languages = [
+        "@gazelle//language/go",
+        "@gazelle//language/proto",
+    ],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_multilang",
+    visibility = ["//visibility:public"],
+)
+
 alias(
     name = "release",
     actual = "//tools/release",

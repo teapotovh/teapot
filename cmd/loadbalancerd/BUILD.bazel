@@ -72,3 +72,17 @@ image_push(
     repository = "teapotovh_loadbalancerd",
     tag = "1h",
 )
+
+go_library(
+    name = "lib",
+    srcs = ["loadbalancerd.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/kubelog",
+        "//lib/log",
+        "//lib/run",
+        "//service/loadbalancer",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

@@ -33,6 +33,21 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
+go_library(
+    name = "lib",
+    srcs = ["calendard.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/httpsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/calendar",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
 # OCI Image building
 image_layer(
     name = "binary_layer",

@@ -1,15 +1,19 @@
 syntax = "proto3";
-package embed;
 
+package embed;
 option go_package = "github.com/teapotovh/teapot/proto/embed;embed";
 
 // Embedder provides RPC calls to generate embeddings from text input.
 service Embedder {
-  // Embed takes a sentence and returns its embedding computed according to
-  // the selected model.
-  rpc Embed (EmbedRequest) returns (EmbedReply) {}
+  // Embed takes a long set of sentences and returns its embedding computed 
+  // according to the model.
+  // The input shall be passages from the corpus where search is meant to be performed.
+  rpc EmbedPassage (EmbedPassageRequest) returns (EmbedPassageResponse) {}
 
-  rpc EmbedSingle (EmbedSingleRequest) returns (EmbedSingleReply) {}
+  // Embed takes a short (set of) sentence(s) and returns its embedding computed 
+  // according to the selected model.
+  // The input shall be the query to run on the corpus.
+  rpc EmbedQuery (EmbedQueryRequest) returns (EmbedQueryResponse) {}
 }
 
 // Embedding represents an embedding vector for a chunk of text
@@ -18,26 +22,24 @@ message Embedding {
   string text = 2;
 }
 
-// EmbedRequest carries the request to run the embedding model on a long corpus,
-// creating n embeddings based on chunking, with the configured overlap
-// (hardcoded on the server side).
-message EmbedRequest {
+// EmbedPassageRequest carries the request to run the embedding model on a long passage 
+// corpus, creating n embeddings based on the configured chunking (with overlap).
+message EmbedPassageRequest {
   string text = 1;
 }
 
-// EmbedReply contains the generated embedding and relative metadata.
-message EmbedReply {
+// EmbedPassageResponse contains the generated embeddings.
+message EmbedPassageResponse {
   repeated Embedding embeddings = 1;
 }
 
-// EmbedSingleRequest carries the request required to generate a single embedding
-// from the model.
-message EmbedSingleRequest {
+// EmbedQueryRequest carries the request to run the embedding model on a short
+// retrieval query to generate a single embedding.
+message EmbedQueryRequest {
   string text = 1;
 }
 
-// EmbedSingleReply carries the request required to generate a single embedding
-// from the model.
-message EmbedSingleReply {
+// EmbedQueryResponse contains the generated embedding for the query text.
+message EmbedQueryResponse {
   Embedding embedding = 1;
 }

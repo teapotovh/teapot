@@ -73,3 +73,18 @@ image_push(
     repository = "teapotovh_kontakted",
     tag = "1h",
 )
+
+go_library(
+    name = "lib",
+    srcs = ["kontakted.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/httpsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/kontakte",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

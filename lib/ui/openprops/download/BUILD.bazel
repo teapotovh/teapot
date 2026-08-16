@@ -13,3 +13,11 @@ go_binary(
     embed = [":download_lib"],
     visibility = ["//visibility:public"],
 )
+
+go_library(
+    name = "lib",
+    srcs = ["download.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = ["//lib/ui/openprops"],
+)

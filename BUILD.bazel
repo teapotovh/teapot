@@ -1,15 +1,4 @@
-load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+# gazelle:exclude bazel
+# gazelle:prefix github.com/teapotovh/teapot
 
-gazelle_binary(
-    name = "gazelle_multilang",
-    languages = [
-        "@gazelle//language/go",
-        "@gazelle//language/proto",
-    ],
-)
-
-gazelle(
-    name = "gazelle",
-    gazelle = ":gazelle_multilang",
-    visibility = ["//visibility:public"],
-)
+# gazelle:resolve go github.com/daulet/tokenizers @com_github_daulet_tokenizers//:tokenizers

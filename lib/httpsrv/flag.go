@@ -13,7 +13,7 @@ func HTTPSrvFlagSet() (*flag.FlagSet, func() HTTPSrvConfig) {
 
 	ip := fs.IP("httpsrv-ip", net.IPv4zero, "the address on which to open the HTTP server")
 	port := fs.Int16("httpsrv-port", 8145, "the port on which to open the HTTP server")
-	shutdownDelay := fs.Duration("httpsrv-shutdown-delay", time.Second, "allowed wait time for graceful shutdown")
+	shutdownDelay := fs.Duration("httpsrv-shutdown-delay", time.Second, "allowed wait time for graceful shutdown of the HTTP server")
 
 	return fs, func() HTTPSrvConfig {
 		return HTTPSrvConfig{

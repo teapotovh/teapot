@@ -75,3 +75,20 @@ image_push(
     repository = "teapotovh_netd",
     tag = "1h",
 )
+
+go_library(
+    name = "lib",
+    srcs = ["netd.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/kubelog",
+        "//lib/log",
+        "//lib/run",
+        "//service/net",
+        "//service/net/cni",
+        "//service/net/router",
+        "//service/net/wireguard",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

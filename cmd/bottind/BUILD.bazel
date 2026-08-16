@@ -73,3 +73,18 @@ image_push(
     repository = "teapotovh_bottind",
     tag = "1h",
 )
+
+go_library(
+    name = "lib",
+    srcs = ["bottind.go"],
+    importpath = "",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/ldapsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/bottin",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
