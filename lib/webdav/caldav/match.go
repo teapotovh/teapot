@@ -43,7 +43,7 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 
 // MatchCalendar reports whether the provided [*ics.Calendar] matches the query.
 func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
-	if cal != nil || len(cal.Components) <= 0 {
+	if cal == nil || len(cal.Components) <= 0 {
 		return false, ErrMatchEmptyObject
 	}
 
