@@ -24,7 +24,7 @@ grpclib==0.4.9
     # via -r requirements.txt.raw
 h11==0.16.0
     # via httpcore
-h2==4.4.0
+h2==4.4.1
     # via grpclib
 hf-xet==1.5.2
     # via huggingface-hub
