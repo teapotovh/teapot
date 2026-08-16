@@ -41,9 +41,9 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 	return out, nil
 }
 
-// MatchCalendar reports whether the provided CalendarObject matches the query.
+// MatchCalendar reports whether the provided [*ics.Calendar] matches the query.
 func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
-	if len(cal.Components) == 0 {
+	if cal != nil || len(cal.Components) <= 0 {
 		return false, ErrMatchEmptyObject
 	}
 
@@ -55,15 +55,12 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 	// TODO checks components != VEVENT too
 
 	for _, child := range cal.Events() {
-		childMatches := false
-
 		for _, childFilter := range query.Comps {
-			m, err := matchEvent(childFilter, child)
+			childMatches, err := matchEvent(childFilter, child)
 			if err != nil {
 				return false, fmt.Errorf("matching children component: %w", err)
 			}
 
-			childMatches = childMatches || m
 			if childMatches {
 				return true, nil // early exit if one of the children matches
 			}
@@ -89,7 +86,6 @@ func matchEvent(filter CompFilter, comp *ics.VEvent) (bool, error) {
 		if !match {
 			return false, nil
 		}
-
 	}
 
 	for _, compFilter := range filter.Comps {
@@ -220,6 +216,7 @@ func intervalsOverlap(
 	return rangeEnd.IsZero() || eventStart.Before(rangeEnd)
 }
 
+//nolint:gocyclo
 func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 	eventStart, err := comp.GetStartAt()
 	if err != nil {
@@ -280,6 +277,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 	searchStart := start.Add(-duration)
 
 	var occurrences []time.Time
+
 	if end.IsZero() {
 		next := rset.Iterator()
 
@@ -288,6 +286,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 			if !ok {
 				break
 			}
+
 			if !t.Before(searchStart) {
 				occurrences = append(occurrences, t)
 				break
