@@ -12,7 +12,6 @@ import (
 
 var (
 	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
-	zeroDate            time.Time
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -26,7 +25,7 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 	var out []CalendarObject
 
 	for _, co := range cos {
-		ok, err := Match(*query, &co)
+		ok, err := MatchCalendar(*query, co.Data)
 		if err != nil {
 			return nil, fmt.Errorf("error while matching object at %q: %w", co.Path, err)
 		}
@@ -42,33 +41,43 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 	return out, nil
 }
 
-// Match reports whether the provided CalendarObject matches the query.
-func Match(query CompFilter, co *CalendarObject) (bool, error) {
-	if co.Data == nil || len(co.Data.Components) <= 0 {
+// MatchCalendar reports whether the provided [*ics.Calendar] matches the query.
+func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
+	if cal != nil || len(cal.Components) <= 0 {
 		return false, ErrMatchEmptyObject
 	}
 
-	// TODO handle more than just events
-	for i, event := range co.Data.Events() {
-		matches, err := match(query, event)
-		if err != nil {
-			return false, fmt.Errorf("parsing component %d: %w", i, err)
-		}
+	if query.Name != string(ics.ComponentVCalendar) {
+		return false, nil
+	}
 
-		if matches {
-			return true, nil
+	// TODO checks other properties of VCALENDAR component
+	// TODO checks components != VEVENT too
+
+	for _, child := range cal.Events() {
+		for _, childFilter := range query.Comps {
+			childMatches, err := matchEvent(childFilter, child)
+			if err != nil {
+				return false, fmt.Errorf("matching children component: %w", err)
+			}
+
+			if childMatches {
+				return true, nil // early exit if one of the children matches
+			}
 		}
 	}
 
 	return false, nil
 }
 
-func match(filter CompFilter, comp *ics.VEvent) (bool, error) {
-	// TODO: can we support this? doesn't look like Components have a NAME property
-	// if comp.Name != filter.Name {
-	// 	return filter.IsNotDefined, nil
-	// }
-	if filter.Start != zeroDate {
+// matchEvent matches a CompFilter against a VEvent component. It returns true if the component matches the filter,
+// false otherwise.
+func matchEvent(filter CompFilter, comp *ics.VEvent) (bool, error) {
+	if !strings.EqualFold(string(ics.ComponentVEvent), filter.Name) {
+		return false, nil
+	}
+
+	if !filter.Start.IsZero() {
 		match, err := matchCompTimeRange(filter.Start, filter.End, comp)
 		if err != nil {
 			return false, fmt.Errorf("error while matching time: %w", err)
@@ -110,11 +119,14 @@ func matchCompFilter(filter CompFilter, comp *ics.VEvent) (bool, error) {
 	for _, child := range comp.Components {
 		switch event := child.(type) {
 		case *ics.VEvent:
-			match, err := match(filter, event)
+			match, err := matchEvent(filter, event)
 			if err != nil {
 				return false, err
-			} else {
-				matches = matches || match
+			}
+
+			matches = matches || match
+			if matches {
+				break // early exit
 			}
 		}
 	}
@@ -147,7 +159,7 @@ func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
 	// 1. Date matching
 	// 2. Text matching
 	switch {
-	case filter.Start != zeroDate:
+	case !filter.Start.IsZero():
 		var (
 			dates []time.Time
 			err   error
@@ -193,12 +205,27 @@ func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
 	return true, nil
 }
 
+func intervalsOverlap(
+	eventStart, eventEnd,
+	rangeStart, rangeEnd time.Time,
+) bool {
+	if !eventEnd.After(rangeStart) {
+		return false
+	}
+
+	return rangeEnd.IsZero() || eventStart.Before(rangeEnd)
+}
+
 //nolint:gocyclo
 func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
-	// See https://datatracker.ietf.org/doc/html/rfc4791#section-9.9
 	eventStart, err := comp.GetStartAt()
 	if err != nil {
 		return false, fmt.Errorf("while parsing event start time: %w", err)
+	}
+
+	eventEnd, err := comp.GetEndAt()
+	if err != nil {
+		return false, fmt.Errorf("while parsing event end time: %w", err)
 	}
 
 	rules, err := comp.GetRRules()
@@ -206,60 +233,83 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 		return false, fmt.Errorf("while parsing event recurrence rules: %w", err)
 	}
 
-	switch {
-	case len(rules) > 0:
-		// Build an RRuleSet from the event's recurrence properties
-		rset := &rrule.Set{}
-
-		for _, r := range rules {
-			rr, _ := rrule.StrToRRule(r.String())
-			rr.DTStart(eventStart)
-			rset.RRule(rr)
-		}
-
-		rDates, err := comp.GetRDates()
-		if err != nil {
-			return false, fmt.Errorf("while parsing event recurrence dates: %w", err)
-		}
-
-		for _, rd := range rDates {
-			rset.RDate(rd)
-		}
-
-		exDates, err := comp.GetExDates()
-		if err != nil {
-			return false, fmt.Errorf("while parsing event exclude dates: %w", err)
-		}
-
-		for _, exd := range exDates {
-			rset.ExDate(exd)
-		}
-
-		// TODO we can only set inclusive to true or false, but really the
-		// start time is inclusive while the end time is not :/
-		return len(rset.Between(start, end, true)) > 0, nil
-
-	default:
-		eventEnd, err := comp.GetEndAt()
-		if err != nil {
-			return false, fmt.Errorf("while parsing event end time: %w", err)
-		}
-
-		// Event starts in time range
-		if eventStart.After(start) && (end.IsZero() || eventStart.Before(end)) {
-			return true, nil
-		}
-		// Event ends in time range
-		if eventEnd.After(start) && (end.IsZero() || eventEnd.Before(end)) {
-			return true, nil
-		}
-		// Event covers entire time range plus some
-		if eventStart.Before(start) && (!end.IsZero() && eventEnd.After(end)) {
-			return true, nil
-		}
-
-		return false, nil
+	rDates, err := comp.GetRDates()
+	if err != nil {
+		return false, fmt.Errorf("while parsing event recurrence dates: %w", err)
 	}
+
+	exDates, err := comp.GetExDates()
+	if err != nil {
+		return false, fmt.Errorf("while parsing event exclude dates: %w", err)
+	}
+
+	hasRecurrence := len(rules) > 0 || len(rDates) > 0 || len(exDates) > 0
+
+	if !hasRecurrence {
+		return intervalsOverlap(eventStart, eventEnd, start, end), nil
+	}
+
+	rset := &rrule.Set{}
+
+	for _, r := range rules {
+		rr, err := rrule.StrToRRule(r.String())
+		if err != nil {
+			return false, fmt.Errorf("while parsing event recurrence rule: %w", err)
+		}
+
+		rr.DTStart(eventStart)
+		rset.RRule(rr)
+	}
+
+	for _, rd := range rDates {
+		rset.RDate(rd)
+	}
+
+	for _, exd := range exDates {
+		rset.ExDate(exd)
+	}
+
+	duration := eventEnd.Sub(eventStart)
+
+	// An occurrence can overlap the range even if its start is before
+	// the range start, so expand the search backwards by the event
+	// duration.
+	searchStart := start.Add(-duration)
+
+	var occurrences []time.Time
+
+	if end.IsZero() {
+		next := rset.Iterator()
+
+		for {
+			t, ok := next()
+			if !ok {
+				break
+			}
+
+			if !t.Before(searchStart) {
+				occurrences = append(occurrences, t)
+				break
+			}
+		}
+	} else {
+		occurrences = rset.Between(searchStart, end, true)
+	}
+
+	for _, occurrenceStart := range occurrences {
+		occurrenceEnd := occurrenceStart.Add(duration)
+
+		if intervalsOverlap(
+			occurrenceStart,
+			occurrenceEnd,
+			start,
+			end,
+		) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func matchPropTimeRange(start, end, ptime time.Time) bool {
