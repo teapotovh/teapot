@@ -45,11 +45,4 @@ Bazel usage:
 
 To generate basically all build files with gazelle:
 
-$ bazel run //:gazelle
-
-When you want to add a Python dependency, add it to requirements.txt.raw, then:
-
-$ bazel run //:gazelle_python_manifest.update
-
-Then just re-run gazelle as normal and all imports should be recognized and
-added as dependencies.
+$ bazel run //tools:gazelle
