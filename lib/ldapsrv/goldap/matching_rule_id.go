@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // MatchingRuleId ::= LDAPString.
 func readTaggedMatchingRuleID(bytes *Bytes, class int, tag int) (matchingruleid MatchingRuleID, err error) {

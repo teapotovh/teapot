@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        DelResponse ::= [APPLICATION 11] LDAPResult

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // approxMatch     [8] AttributeValueAssertion,.
 func readFilterApproxMatch(bytes *Bytes) (ret FilterApproxMatch, err error) {

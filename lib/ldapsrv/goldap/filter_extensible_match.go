@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // extensibleMatch [9] MatchingRuleAssertion,.
 func readFilterExtensibleMatch(bytes *Bytes) (filterextensiblematch FilterExtensibleMatch, err error) {

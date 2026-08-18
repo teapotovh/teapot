@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // lessOrEqual     [6] AttributeValueAssertion,.
 func readFilterLessOrEqual(bytes *Bytes) (ret FilterLessOrEqual, err error) {

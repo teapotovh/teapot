@@ -1,4 +1,4 @@
-package message
+package goldap
 
 func readTaggedMessageID(bytes *Bytes, class int, tag int) (ret MessageID, err error) {
 	var integer INTEGER

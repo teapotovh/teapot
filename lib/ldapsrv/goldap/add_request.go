@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AddRequest ::= [APPLICATION 8] SEQUENCE {

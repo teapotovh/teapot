@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        Controls ::= SEQUENCE OF control Control

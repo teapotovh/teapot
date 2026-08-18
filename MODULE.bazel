@@ -2,21 +2,28 @@
 # Defines the Bazel module and its dependencies.
 
 module(
-    name = "teapot",
+    name = "com_github_teapotovh_teapot",
     version = "0.0.1",
 )
 
 # --- Core Dependencies ---
-bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")  # bump dependency of gazelle
-bazel_dep(name = "rules_foreign_cc", version = "0.15.1")  # bump dependency of rules_proto_grpc_python
-bazel_dep(name = "gazelle", version = "0.47.0")
+bazel_dep(name = "gazelle", version = "0.52.2")
 bazel_dep(name = "rules_go", version = "0.62.0")
 bazel_dep(name = "rules_python", version = "1.8.3")
 bazel_dep(name = "rules_python_gazelle_plugin", version = "1.8.3")
-bazel_dep(name = "rules_proto", version = "7.1.0")
-bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
 bazel_dep(name = "rules_img", version = "0.3.8")
 bazel_dep(name = "rules_multitool", version = "1.11.1")
+bazel_dep(name = "protobuf", version = "35.1")
+bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
+bazel_dep(name = "hermetic_cc_toolchain", version = "4.3.0")
+
+# --- CC Configuration ---
+hermetic_cc = use_extension("@hermetic_cc_toolchain//toolchain:ext.bzl", "toolchains")
+use_repo(hermetic_cc, "zig_sdk")
+
+register_toolchains(
+    "@zig_sdk//libc_aware/toolchain:linux_amd64_gnu.2.28",
+)
 
 # --- Go Configuration ---
 # Sets up the Go SDK and dependencies from go.mod
@@ -25,42 +32,68 @@ go_sdk.download(version = "1.26.5")
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
-use_repo(go_deps, "com_github_ammario_tlru", "com_github_arran4_golang_ical", "com_github_cenkalti_backoff_v5", "com_github_coreos_go_iptables", "com_github_dustin_go_humanize", "com_github_go_asn1_ber_asn1_ber", "com_github_go_ldap_ldap_v3", "com_github_go_logr_logr", "com_github_golang_jwt_jwt_v5", "com_github_google_btree", "com_github_google_go_github_v81", "com_github_google_uuid", "com_github_hack_pad_hackpadfs", "com_github_hashicorp_go_retryablehttp", "com_github_jackc_pgx_v5", "com_github_jsimonetti_pwscheme", "com_github_kataras_requestid", "com_github_lmittmann_tint", "com_github_minio_minio_go_v7", "com_github_nrdcg_desec", "com_github_prometheus_alertmanager", "com_github_prometheus_client_golang", "com_github_rs_cors", "com_github_spf13_pflag", "com_github_sqids_sqids_go", "com_github_teambition_rrule_go", "com_github_vishvananda_netlink", "com_zx2c4_golang_wireguard_wgctrl", "dev_maragu_gomponents", "dev_maragu_gomponents_htmx", "ht_sr_git__bitfehler_brant", "io_k8s_api", "io_k8s_apimachinery", "io_k8s_client_go", "io_k8s_klog_v2", "io_k8s_sigs_controller_runtime", "io_k8s_sigs_external_dns", "io_opentelemetry_go_contrib_instrumentation_net_http_httptrace_otelhttptrace", "io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp", "io_opentelemetry_go_otel", "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc", "io_opentelemetry_go_otel_sdk", "io_opentelemetry_go_otel_trace", "org_golang_google_grpc", "org_golang_x_net", "org_golang_x_sync")
+use_repo(go_deps, "com_github_ammario_tlru", "com_github_arran4_golang_ical", "com_github_cenkalti_backoff_v5", "com_github_coreos_go_iptables", "com_github_dustin_go_humanize", "com_github_go_asn1_ber_asn1_ber", "com_github_go_ldap_ldap_v3", "com_github_go_logr_logr", "com_github_golang_jwt_jwt_v5", "com_github_google_btree", "com_github_google_go_github_v81", "com_github_google_uuid", "com_github_grpc_ecosystem_go_grpc_middleware_providers_prometheus", "com_github_hack_pad_hackpadfs", "com_github_hashicorp_go_retryablehttp", "com_github_jackc_pgx_v5", "com_github_jsimonetti_pwscheme", "com_github_kataras_requestid", "com_github_lmittmann_tint", "com_github_minio_minio_go_v7", "com_github_nrdcg_desec", "com_github_planetscale_vtprotobuf", "com_github_prometheus_alertmanager", "com_github_prometheus_client_golang", "com_github_rs_cors", "com_github_spf13_pflag", "com_github_sqids_sqids_go", "com_github_teambition_rrule_go", "com_github_vishvananda_netlink", "com_github_yalue_onnxruntime_go", "com_zx2c4_golang_wireguard_wgctrl", "dev_maragu_gomponents", "dev_maragu_gomponents_htmx", "ht_sr_git__bitfehler_brant", "io_k8s_api", "io_k8s_apimachinery", "io_k8s_client_go", "io_k8s_klog_v2", "io_k8s_sigs_controller_runtime", "io_k8s_sigs_external_dns", "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc", "io_opentelemetry_go_contrib_instrumentation_net_http_httptrace_otelhttptrace", "io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp", "io_opentelemetry_go_otel", "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc", "io_opentelemetry_go_otel_sdk", "io_opentelemetry_go_otel_trace", "org_golang_google_grpc", "org_golang_google_protobuf", "org_golang_x_net", "org_golang_x_sync")
 
-# --- Python Configuration ---
-# Sets up the Python toolchain and dependencies from requirements.txt
-python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.defaults(python_version = "3.12")
-python.toolchain(python_version = "3.12")
-
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-pip.parse(
-    hub_name = "pypi",
-    python_version = "3.12",
-    requirements_lock = "//:requirements.txt",
-)
-use_repo(pip, "pypi")
-
-# --- OCI image configuration ---
-pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
-
-pull(
-    name = "distroless_static_debian13",
-    digest = "sha256:227aa7b4f3d89833db58676eacdbe9a49b5d5e4748e0ec3f05005335fa73aaf9",
-    registry = "gcr.io",
-    repository = "distroless/static-debian13",
-    tag = "latest",
-)
-
-pull(
-    name = "netbase_static_debian13",
-    digest = "sha256:7dbbc26a6b1bddebf087ba3515ce4701ed97a50bcd6a87971aca45eca459d06f",
-    registry = "ghcr.io",
-    repository = "teapotovh/netbase",
-    tag = "latest",
+# --- Go package: github.com/daulet/tokenizers ---
+bazel_dep(name = "com_github_daulet_tokenizers", version = "1.27.0")
+git_override(
+    module_name = "com_github_daulet_tokenizers",
+    commit = "f678a7768d5479d9d5a5161c4fc45c8a5ba46146",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:tokenizers.patch",
+    ],
+    remote = "https://github.com/daulet/tokenizers.git",
 )
 
 # --- Multitool Configuration ---
 multitool = use_extension("@rules_multitool//multitool:extension.bzl", "multitool")
 multitool.hub(lockfile = "//bazel:multitool.lock.json")
 use_repo(multitool, "multitool")
+
+# --- OCI Image Configuration ---
+pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
+
+pull(
+    name = "distroless_static_debian13",
+    digest = "sha256:227aa7b4f3d89833db58676eacdbe9a49b5d5e4748e0ec3f05005335fa73aaf9",
+    layer_handling = "lazy",
+    registry = "gcr.io",
+    repository = "distroless/static-debian13",
+    tag = "latest",
+)
+
+pull(
+    name = "distroless_cc_debian13",
+    digest = "sha256:ed7c407fd64eb0af9dddb9456b94cee188a40a7f53cf38c9836e1e9ae14fca02",
+    layer_handling = "lazy",
+    registry = "gcr.io",
+    repository = "distroless/cc-debian13",
+    tag = "latest",
+)
+
+pull(
+    name = "netbase_static_debian13",
+    digest = "sha256:7dbbc26a6b1bddebf087ba3515ce4701ed97a50bcd6a87971aca45eca459d06f",
+    layer_handling = "lazy",
+    registry = "ghcr.io",
+    repository = "teapotovh/netbase",
+    tag = "latest",
+)
+
+# --- Embed: ONNX Runtime ---
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "onnxruntime_prebuilt",
+    build_file_content = """
+filegroup(
+    name = "lib",
+    srcs = ["lib/libonnxruntime.so"],
+    visibility = ["//visibility:public"],
+)
+    """,
+    sha256 = "c3fddc4f139a045b0c4902c57410f0694f1c2fdf9b6939fbe38b1aeae7cd14ba",
+    strip_prefix = "onnxruntime-linux-x64-1.29.0",
+    url = "https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz",
+)

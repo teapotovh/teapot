@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AddResponse ::= [APPLICATION 9] LDAPResult

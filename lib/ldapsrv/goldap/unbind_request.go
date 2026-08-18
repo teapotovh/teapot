@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // UnbindRequest ::= [APPLICATION 2] NULL.
 func readUnbindRequest(bytes *Bytes) (unbindrequest UnbindRequest, err error) {

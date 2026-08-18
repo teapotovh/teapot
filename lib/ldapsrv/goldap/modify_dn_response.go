@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // ModifyDNResponse ::= [APPLICATION 13] LDAPResult.
 func readModifyDNResponse(bytes *Bytes) (ret ModifyDNResponse, err error) {

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //	MatchingRuleAssertion ::= SEQUENCE {
 //	     matchingRule    [1] MatchingRuleId OPTIONAL,

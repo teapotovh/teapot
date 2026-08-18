@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // SearchResultDone ::= [APPLICATION 5] LDAPResult.
 func readSearchResultDone(bytes *Bytes) (ret SearchResultDone, err error) {

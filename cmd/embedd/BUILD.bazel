@@ -1,27 +1,76 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:load.bzl", "image_load")
+load("@rules_img//img:push.bzl", "image_push")
 
-# gazelle:resolve py proto.embed_pb2 //proto:embed_proto_py
-# gazelle:resolve py proto.embed_grpc //proto:embed_proto_grpc_py
-
-py_binary(
-    name = "main",
-    srcs = ["main.py"],
-    visibility = ["//:__subpackages__"],
-    deps = [":embedd"],
+go_library(
+    name = "embedd_lib",
+    srcs = ["embedd.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/embedd",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/grpcsrv",
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/embed",
+        "@com_github_spf13_pflag//:pflag",
+    ],
 )
 
-py_library(
+go_binary(
     name = "embedd",
-    srcs = [
-        "__init__.py",
-        "main.py",
-        "server.py",
+    embed = [":embedd_lib"],
+    visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/embedd": ":embedd",
+    },
+    compress = "zstd",
+)
+
+image_layer(
+    name = "onnx_layer",
+    srcs = {
+        "/lib/libonnxruntime.so": "@onnxruntime_prebuilt//:lib",
+    },
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_cc_debian13",
+    entrypoint = ["/embedd"],
+    layers = [
+        ":binary_layer",
+        ":onnx_layer",
     ],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "//proto:embed_proto_grpc_py",
-        "//proto:embed_proto_py",
-        "//service/embed",
-        "@pypi//grpclib",
-    ],
+    platform = "@zig_sdk//libc_aware/platform:linux_amd64_gnu.2.28",
+)
+
+image_load(
+    name = "load",
+    image = ":image",
+    tag = "ghcr.io/teapotovh/embedd:latest",
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/embedd",
+    stamp = "disabled",
+    tag_file = "//bazel:version_file_latest",
+)
+
+image_push(
+    name = "push_ttl",
+    image = ":image",
+    registry = "ocihub.com",
+    repository = "teapotovh_embedd",
+    tag = "1h",
 )

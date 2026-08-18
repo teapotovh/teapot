@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // Below code is largely inspired from the standard golang library encoding/asn
 // If put BEGIN / END tags in the comments to give the original library name.

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
 //	     entry           LDAPDN,

@@ -1,19 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/bazelbuild/rules_go/go/runfiles"
+
+	"github.com/teapotovh/teapot/tools/util"
 )
 
 var (
@@ -30,7 +29,6 @@ var (
 )
 
 var (
-	root        string
 	directories = []string{
 		"cmd", "lib", "service",
 		"proto", "tools",
@@ -67,7 +65,7 @@ func phase(name string) {
 
 //nolint:gocyclo
 func release() (err error) {
-	gazellePath, err := runfiles.Rlocation("teapot/gazelle")
+	gazellePath, err := runfiles.Rlocation("com_github_teapotovh_teapot/tools/gazelle")
 	if err != nil {
 		return fmt.Errorf("could not fetch gazelle path: %w", err)
 	}
@@ -82,12 +80,16 @@ func release() (err error) {
 		return fmt.Errorf("could not fetch golangci-lint path: %w", err)
 	}
 
-	root, err = workspaceRoot()
+	util.SetVerbose(*verbose)
+
+	root, err := util.WorkspaceRoot()
 	if err != nil {
 		return err
 	}
 
-	headShort, err := gitRun(nil, "rev-parse", "--short=12", "HEAD")
+	util.SetRoot(root)
+
+	headShort, err := util.GitRun(nil, "rev-parse", "--short=12", "HEAD")
 	if err != nil {
 		return fmt.Errorf("resolving short HEAD: %w", err)
 	}
@@ -97,34 +99,34 @@ func release() (err error) {
 
 	phase("(check) bazel mod tidy")
 
-	if stdout, stderr, err := run(nil, "bazel", "mod", "tidy"); err != nil {
+	if stdout, stderr, err := util.Run(nil, "bazel", "mod", "tidy"); err != nil {
 		return fmt.Errorf("bazel mod tidy failed: %w, %s, %s", err, stdout.String(), stderr.String())
 	}
 
 	phase("(check) gazelle")
 
-	if _, _, err := run(nil, gazellePath, "-mode=diff"); err != nil {
+	if _, _, err := util.Run(nil, gazellePath, "-mode=diff"); err != nil {
 		return fmt.Errorf("gazelle check failed: %w", err)
 	}
 
 	phase("(check) buildifier")
 
 	for _, dir := range directories {
-		if stdout, stderr, err := run(nil, buildifierPath, "-mode=diff", "-r", dir); err != nil {
+		if stdout, stderr, err := util.Run(nil, buildifierPath, "-mode=diff", "-r", dir); err != nil {
 			return fmt.Errorf("buildifier failed: %w, %s, %s", err, stdout.String(), stderr.String())
 		}
 	}
 
 	phase("(check) golangci-lint")
 
-	if stdout, _, err := run(nil, golangciLintPath, "run"); err != nil {
+	if stdout, _, err := util.Run(nil, golangciLintPath, "run"); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", stdout.String())
 		return fmt.Errorf("golangci-lint failed: %w", err)
 	}
 
 	phase("(check) clean working tree")
 
-	out, err := gitRun(nil, "status", "--porcelain")
+	out, err := util.GitRun(nil, "status", "--porcelain")
 	if err != nil {
 		return fmt.Errorf("checking status: %w", err)
 	}
@@ -136,7 +138,7 @@ func release() (err error) {
 
 	phase("(release) planning")
 
-	headSHA, err := gitRun(nil, "rev-parse", "HEAD")
+	headSHA, err := util.GitRun(nil, "rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("resolving HEAD: %w", err)
 	}
@@ -177,7 +179,7 @@ func release() (err error) {
 		return ErrDryRun
 	}
 
-	if _, err := gitRun(strings.NewReader(message), "tag", "-a", newTag, "-F", "-"); err != nil {
+	if _, err := util.GitRun(strings.NewReader(message), "tag", "-a", newTag, "-F", "-"); err != nil {
 		return fmt.Errorf("creating tag: %w", err)
 	}
 
@@ -188,51 +190,12 @@ func release() (err error) {
 	return err
 }
 
-// workspaceRoot returns the real checkout directory. When launched via
-// `bazel run`, Bazel sets BUILD_WORKSPACE_DIRECTORY to it; the binary
-// itself starts out in a runfiles directory, not the checkout.
-func workspaceRoot() (string, error) {
-	if dir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); dir != "" {
-		return dir, nil
-	}
-
-	return os.Getwd()
-}
-
-// run executes git with args and returns trimmed stdout. On failure the
-// error includes stderr, since git's error messages are usually the most
-// useful part.
-func gitRun(in io.Reader, args ...string) (string, error) {
-	stdout, stderr, err := run(in, "git", args...)
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, stderr.String())
-	}
-
-	return strings.TrimSpace(stdout.String()), nil
-}
-
-func run(stding io.Reader, command string, args ...string) (*bytes.Buffer, *bytes.Buffer, error) {
-	cmd := exec.Command(command, args...) //nolint:gosec
-	cmd.Dir = root
-
-	var stdout, stderr bytes.Buffer
-
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if *verbose {
-		fmt.Printf("+ %s %s\n", command, strings.Join(args, " "))
-	}
-
-	return &stdout, &stderr, cmd.Run()
-}
-
 // lastRelease finds the most recent tag matching tagPattern. Because the
 // pattern is a zero-padded, fixed-width timestamp, lexicographic sort order
 // matches chronological order, so no extra commit-date lookups are needed.
 // Returns "" if this is the first release.
 func lastRelease() (string, error) {
-	out, err := gitRun(nil, "tag", "--list")
+	out, err := util.GitRun(nil, "tag", "--list")
 	if err != nil {
 		return "", err
 	}
@@ -263,7 +226,7 @@ func commitsSince(lastTag string) ([]string, error) {
 		rangeArg = lastTag + "..HEAD"
 	}
 
-	out, err := gitRun(nil, "log", "--pretty=format:%s", rangeArg)
+	out, err := util.GitRun(nil, "log", "--pretty=format:%s", rangeArg)
 	if err != nil {
 		return nil, err
 	}

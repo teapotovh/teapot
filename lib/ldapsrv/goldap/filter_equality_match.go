@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // equalityMatch   [3] AttributeValueAssertion,.
 func readFilterEqualityMatch(bytes *Bytes) (ret FilterEqualityMatch, err error) {

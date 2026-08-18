@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //	IntermediateResponse ::= [APPLICATION 25] SEQUENCE {
 //	     responseName     [0] LDAPOID OPTIONAL,

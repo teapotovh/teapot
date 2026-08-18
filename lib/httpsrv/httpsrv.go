@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/kataras/requestid"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/teapotovh/teapot/lib/httptrace"
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -24,10 +26,11 @@ type HTTPSrvConfig struct {
 type HTTPSrv struct {
 	logger *slog.Logger
 
-	inner   *http.Server
-	running atomic.Bool
-	mux     *http.ServeMux
-	metrics metrics
+	inner     *http.Server
+	running   atomic.Bool
+	mux       *http.ServeMux
+	httpTrace *httptrace.HTTPTrace
+	metrics   metrics
 
 	shutdownDelay time.Duration
 }
@@ -42,12 +45,15 @@ func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 		Addr:              config.Address,
 	}
 
+	httpTrace := httptrace.NewHTTPTrace()
+
 	srv := HTTPSrv{
 		logger: logger,
 
 		shutdownDelay: config.ShutdownDelay,
 		inner:         &inner,
 		mux:           mux,
+		httpTrace:     httpTrace,
 	}
 
 	srv.initMetrics()
@@ -63,6 +69,7 @@ type HTTPService interface {
 func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler := service.Handler(prefix)
 	handler = h.metricsMiddleware(handler)
+	handler = h.httpTrace.TracerMiddleware(handler)
 
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
 
@@ -115,4 +122,9 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 			return nil
 		}
 	}
+}
+
+// WithTracing implements observability.Tracing.
+func (h *HTTPSrv) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
+	h.httpTrace.WithTracing(tp, tracer)
 }

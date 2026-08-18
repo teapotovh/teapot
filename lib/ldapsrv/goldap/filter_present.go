@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // present         [7] AttributeDescription,.
 func readFilterPresent(bytes *Bytes) (ret FilterPresent, err error) {

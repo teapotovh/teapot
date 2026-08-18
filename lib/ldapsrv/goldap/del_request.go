@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // DelRequest ::= [APPLICATION 10] LDAPDN.
 func readDelRequest(bytes *Bytes) (ret DelRequest, err error) {

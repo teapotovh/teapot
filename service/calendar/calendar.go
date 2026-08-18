@@ -96,7 +96,6 @@ func (c *Calendar) Handler(prefix string) http.Handler {
 	handler = c.httpAuth.Middleware(handler)
 	handler = c.httpLog.LogMiddleware(handler)
 	handler = c.httpLog.ExtractMiddleware(handler)
-	handler = c.httpTrace.TracerMiddleware(handler)
 
 	return handler
 }

@@ -1,1 +1,5 @@
 build --workspace_status_command=bazel/status.sh
+common --enable_platform_specific_config
+
+build:linux --sandbox_add_mount_pair=/home
+build:macos --sandbox_add_mount_pair=/Users

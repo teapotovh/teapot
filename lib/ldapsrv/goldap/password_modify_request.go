@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //	PasswdModifyRequestValue ::= SEQUENCE {
 //	  userIdentity    [0]  OCTET STRING OPTIONAL

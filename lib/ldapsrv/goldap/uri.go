@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // URI ::= LDAPString     -- limited to characters permitted in
 //

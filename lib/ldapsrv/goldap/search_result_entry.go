@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //	SearchResultEntry ::= [APPLICATION 4] SEQUENCE {
 //	     objectName      LDAPDN,

@@ -1,13 +1,22 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_go//go:def.bzl", "go_library")
 
-py_library(
+go_library(
     name = "embed",
-    srcs = ["__init__.py"],
-    visibility = ["//:__subpackages__"],
+    srcs = [
+        "embed.go",
+        "flag.go",
+        "server.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/embed",
+    visibility = ["//visibility:public"],
     deps = [
-        "@pypi//numpy",
-        "@pypi//onnxruntime",
-        "@pypi//semantic_text_splitter",
-        "@pypi//tokenizers",
+        "//lib/grpcerror",
+        "//lib/run",
+        "//proto/embed:embed_go_proto",
+        "@com_github_daulet_tokenizers//:tokenizers",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_github_yalue_onnxruntime_go//:onnxruntime_go",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
     ],
 )

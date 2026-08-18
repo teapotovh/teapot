@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        Attribute ::= PartialAttribute(WITH COMPONENTS {

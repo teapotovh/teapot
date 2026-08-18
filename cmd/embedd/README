@@ -1,0 +1,10 @@
+We are running this model:
+
+https://huggingface.co/intfloat/multilingual-e5-small
+
+The model shipped here is designed for avx512, which out machines don't support.
+Thankfully, it has also been distilled for avx2, here:
+
+https://huggingface.co/deepfile/multilingual-e5-small-onnx-qint8
+
+Both the model and tokenizer come from this repository.
