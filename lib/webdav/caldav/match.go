@@ -48,7 +48,8 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 	}
 
 	if query.Name != string(ics.ComponentVCalendar) {
-		return false, nil
+		// Filter-in unsupported component types
+		return true, nil
 	}
 
 	// TODO checks other properties of VCALENDAR component
