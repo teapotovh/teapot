@@ -3,9 +3,10 @@ package grpcsrv
 import (
 	"context"
 
-	"github.com/teapotovh/teapot/lib/observability"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 func tracerUnaryServerInterceptor(tracer trace.Tracer) grpc.UnaryServerInterceptor {
@@ -24,6 +25,7 @@ func tracerStreamServerInterceptor(tracer trace.Tracer) grpc.StreamServerInterce
 
 type wrappedStream struct {
 	grpc.ServerStream
+
 	ctx context.Context
 }
 

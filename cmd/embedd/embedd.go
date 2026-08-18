@@ -39,13 +39,16 @@ func main() {
 	if err != nil {
 		// This is the only place where we use the default sembed embedger,
 		// as our internal one has not been setup yet.
-		slog.Error("error while configuring the logger", "err", err) //nolint:sembedlint
+		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
 
 	run := run.NewRun(run.RunConfig{Timeout: 30 * time.Second}, embedger.With("sub", "run"))
 
-	observability, err := observability.NewObservability(getObservabilityConfig(), embedger.With("sub", "observability"))
+	observability, err := observability.NewObservability(
+		getObservabilityConfig(),
+		embedger.With("sub", "observability"),
+	)
 	if err != nil {
 		embedger.Error("error while initiating the observability subsystem", "err", err)
 		os.Exit(CodeObservability)

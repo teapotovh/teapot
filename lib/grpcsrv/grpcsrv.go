@@ -11,13 +11,15 @@ import (
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	vtcodec "github.com/planetscale/vtprotobuf/codec/grpc"
-	"github.com/teapotovh/teapot/lib/run"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding"
-	_ "google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/grpclog"
+
+	"github.com/teapotovh/teapot/lib/run"
+
+	_ "google.golang.org/grpc/encoding/proto"
 )
 
 type GRPCSrvConfig struct {
@@ -71,13 +73,14 @@ func (g *GRPCSrv) Register(name string, service GRPCService) {
 }
 
 // runWithTimeout runs a function with the provided timeout, and
-// returns true if the timeout was triggered
+// returns true if the timeout was triggered.
 func runWithTimeout(timeout time.Duration, fn func()) bool {
 	done := make(chan struct{}, 1)
 	defer close(done)
 
 	go func() {
 		fn()
+
 		done <- struct{}{}
 	}()
 
@@ -107,7 +110,7 @@ func (g *GRPCSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 
 	lis, err := net.Listen("tcp", g.address)
 	if err != nil {
-		return fmt.Errorf("failed to listen on %q: %v", g.address, err)
+		return fmt.Errorf("failed to listen on %q: %w", g.address, err)
 	}
 	defer func() {
 		if e := lis.Close(); e != nil {

@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc/codes"
+
 	"github.com/teapotovh/teapot/lib/grpcerror"
 	"github.com/teapotovh/teapot/proto/embed"
-	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -17,11 +18,11 @@ var (
 )
 
 type embedServer struct {
+	embed.UnimplementedEmbedderServer
+
 	logger *slog.Logger
 
 	embed *Embed
-
-	embed.UnimplementedEmbedderServer
 }
 
 func newEmbedServer(embed *Embed, logger *slog.Logger) *embedServer {
@@ -33,14 +34,6 @@ func newEmbedServer(embed *Embed, logger *slog.Logger) *embedServer {
 	return &es
 }
 
-func (es *embedServer) validate(text string) error {
-	if len(text) <= 0 {
-		return ErrEmbedEmpty
-	}
-
-	return nil
-}
-
 func toGRPCEmbedding(e *Embedding) *embed.Embedding {
 	return &embed.Embedding{
 		Vector: e.Vector,
@@ -48,8 +41,11 @@ func toGRPCEmbedding(e *Embedding) *embed.Embedding {
 	}
 }
 
-// EmbedPassage implements embed.EmbedderServer
-func (es *embedServer) EmbedPassage(ctx context.Context, req *embed.EmbedPassageRequest) (*embed.EmbedPassageResponse, error) {
+// EmbedPassage implements embed.EmbedderServer.
+func (es *embedServer) EmbedPassage(
+	ctx context.Context,
+	req *embed.EmbedPassageRequest,
+) (*embed.EmbedPassageResponse, error) {
 	text := req.GetText()
 	if err := es.validate(text); err != nil {
 		return nil, grpcerror.Wrap(codes.InvalidArgument, err)
@@ -73,11 +69,15 @@ func (es *embedServer) EmbedPassage(ctx context.Context, req *embed.EmbedPassage
 	res := embed.EmbedPassageResponse{
 		Embeddings: embs,
 	}
+
 	return &res, nil
 }
 
-// EmbedQuery implements embed.EmbedderServer
-func (es *embedServer) EmbedQuery(ctx context.Context, req *embed.EmbedQueryRequest) (*embed.EmbedQueryResponse, error) {
+// EmbedQuery implements embed.EmbedderServer.
+func (es *embedServer) EmbedQuery(
+	ctx context.Context,
+	req *embed.EmbedQueryRequest,
+) (*embed.EmbedQueryResponse, error) {
 	text := req.GetText()
 	if err := es.validate(text); err != nil {
 		return nil, grpcerror.Wrap(codes.InvalidArgument, err)
@@ -95,11 +95,27 @@ func (es *embedServer) EmbedQuery(ctx context.Context, req *embed.EmbedQueryRequ
 	}
 
 	embedding := embeddings[0]
-	es.logger.InfoContext(ctx, "embedded into single vector", "text_length", len(embedding.Text), "vector_length", len(embedding.Vector))
+	es.logger.InfoContext(
+		ctx,
+		"embedded into single vector",
+		"text_length",
+		len(embedding.Text),
+		"vector_length",
+		len(embedding.Vector),
+	)
 	emb := toGRPCEmbedding(&embedding)
 
 	res := embed.EmbedQueryResponse{
 		Embedding: emb,
 	}
+
 	return &res, nil
+}
+
+func (es *embedServer) validate(text string) error {
+	if len(text) <= 0 {
+		return ErrEmbedEmpty
+	}
+
+	return nil
 }

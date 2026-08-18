@@ -23,5 +23,5 @@ func (e *grpcError) GRPCStatus() *status.Status { return status.New(e.code, e.er
 // grpcstatus is lifted from the grpc's status package.
 type grpcstatus interface{ GRPCStatus() *status.Status }
 
-// Ensure *grpcError implements grpcstatus
+// Ensure *grpcError implements grpcstatus.
 var _ grpcstatus = (*grpcError)(nil)

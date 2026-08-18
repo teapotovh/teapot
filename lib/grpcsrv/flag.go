@@ -13,7 +13,11 @@ func GRPCSrvFlagSet() (*flag.FlagSet, func() GRPCSrvConfig) {
 
 	ip := fs.IP("grpcsrv-ip", net.IPv4zero, "the address on which to open the gRPC server")
 	port := fs.Int16("grpcsrv-port", 8147, "the port on which to open the gRPC server")
-	shutdownDelay := fs.Duration("grpcsrv-shutdown-delay", time.Second, "allowed wait time for graceful shutdown of the gRPC server")
+	shutdownDelay := fs.Duration(
+		"grpcsrv-shutdown-delay",
+		time.Second,
+		"allowed wait time for graceful shutdown of the gRPC server",
+	)
 
 	return fs, func() GRPCSrvConfig {
 		return GRPCSrvConfig{
