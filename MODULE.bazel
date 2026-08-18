@@ -15,11 +15,15 @@ bazel_dep(name = "rules_img", version = "0.3.8")
 bazel_dep(name = "rules_multitool", version = "1.11.1")
 bazel_dep(name = "protobuf", version = "35.1")
 bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
+bazel_dep(name = "hermetic_cc_toolchain", version = "4.3.0")
 
-# --- Multitool Configuration ---
-multitool = use_extension("@rules_multitool//multitool:extension.bzl", "multitool")
-multitool.hub(lockfile = "//bazel:multitool.lock.json")
-use_repo(multitool, "multitool")
+# --- CC Configuration ---
+hermetic_cc = use_extension("@hermetic_cc_toolchain//toolchain:ext.bzl", "toolchains")
+use_repo(hermetic_cc, "zig_sdk")
+
+register_toolchains(
+    "@zig_sdk//libc_aware/toolchain:linux_amd64_gnu.2.28",
+)
 
 # --- Go Configuration ---
 # Sets up the Go SDK and dependencies from go.mod
@@ -42,7 +46,12 @@ git_override(
     remote = "https://github.com/daulet/tokenizers.git",
 )
 
-# --- OCI image configuration ---
+# --- Multitool Configuration ---
+multitool = use_extension("@rules_multitool//multitool:extension.bzl", "multitool")
+multitool.hub(lockfile = "//bazel:multitool.lock.json")
+use_repo(multitool, "multitool")
+
+# --- OCI Image Configuration ---
 pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
 
 pull(
@@ -72,7 +81,7 @@ pull(
     layer_handling = "lazy",
 )
 
-# --- Embed: onnx runtime ---
+# --- Embed: ONNX Runtime ---
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "onnxruntime_prebuilt",
