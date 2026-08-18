@@ -49,6 +49,7 @@ image_manifest(
     layers = [
         ":binary_layer",
     ],
+    platform = "@zig_sdk//libc_aware/platform:linux_amd64_gnu.2.28",
 )
 
 image_load(

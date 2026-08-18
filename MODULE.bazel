@@ -57,37 +57,35 @@ pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
 pull(
     name = "distroless_static_debian13",
     digest = "sha256:227aa7b4f3d89833db58676eacdbe9a49b5d5e4748e0ec3f05005335fa73aaf9",
+    layer_handling = "lazy",
     registry = "gcr.io",
     repository = "distroless/static-debian13",
     tag = "latest",
-    layer_handling = "lazy",
 )
 
 pull(
     name = "distroless_cc_debian13",
     digest = "sha256:ed7c407fd64eb0af9dddb9456b94cee188a40a7f53cf38c9836e1e9ae14fca02",
+    layer_handling = "lazy",
     registry = "gcr.io",
     repository = "distroless/cc-debian13",
     tag = "latest",
-    layer_handling = "lazy",
 )
 
 pull(
     name = "netbase_static_debian13",
     digest = "sha256:7dbbc26a6b1bddebf087ba3515ce4701ed97a50bcd6a87971aca45eca459d06f",
+    layer_handling = "lazy",
     registry = "ghcr.io",
     repository = "teapotovh/netbase",
     tag = "latest",
-    layer_handling = "lazy",
 )
 
 # --- Embed: ONNX Runtime ---
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "onnxruntime_prebuilt",
-    sha256 = "c3fddc4f139a045b0c4902c57410f0694f1c2fdf9b6939fbe38b1aeae7cd14ba",
-    strip_prefix = "onnxruntime-linux-x64-1.29.0",
-    url = "https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz",
     build_file_content = """
 filegroup(
     name = "lib",
@@ -95,4 +93,7 @@ filegroup(
     visibility = ["//visibility:public"],
 )
     """,
+    sha256 = "c3fddc4f139a045b0c4902c57410f0694f1c2fdf9b6939fbe38b1aeae7cd14ba",
+    strip_prefix = "onnxruntime-linux-x64-1.29.0",
+    url = "https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz",
 )
