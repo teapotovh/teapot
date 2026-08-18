@@ -67,7 +67,7 @@ func phase(name string) {
 
 //nolint:gocyclo
 func release() (err error) {
-	gazellePath, err := runfiles.Rlocation("teapot/gazelle")
+	gazellePath, err := runfiles.Rlocation("com_github_teapotovh_teapot/tools/gazelle")
 	if err != nil {
 		return fmt.Errorf("could not fetch gazelle path: %w", err)
 	}
