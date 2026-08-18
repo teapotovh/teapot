@@ -1,4 +1,4 @@
-package message
+package goldap
 
 func readTaggedLDAPString(bytes *Bytes, class int, tag int) (ldapstring LDAPString, err error) {
 	var octetstring OCTETSTRING

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AttributeList ::= SEQUENCE OF attribute Attribute

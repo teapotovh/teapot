@@ -74,18 +74,3 @@ image_push(
     repository = "teapotovh_desecd",
     tag = "1h",
 )
-
-go_library(
-    name = "lib",
-    srcs = ["desecd.go"],
-    importpath = "",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//lib/httpsrv",
-        "//lib/log",
-        "//lib/observability",
-        "//lib/run",
-        "//service/desec",
-        "@com_github_spf13_pflag//:pflag",
-    ],
-)

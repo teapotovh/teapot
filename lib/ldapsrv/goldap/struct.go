@@ -2,7 +2,7 @@
 // from the go-ldap library.
 //
 //nolint:staticcheck,unused
-package message
+package goldap
 
 type (
 	OCTETSTRING string

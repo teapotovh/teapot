@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AttributeSelection ::= SEQUENCE OF selector LDAPString

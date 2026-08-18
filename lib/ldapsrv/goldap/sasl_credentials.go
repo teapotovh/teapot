@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //	SaslCredentials ::= SEQUENCE {
 //	     mechanism               LDAPString,

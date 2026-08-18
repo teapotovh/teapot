@@ -49,7 +49,6 @@ image_manifest(
     layers = [
         ":binary_layer",
     ],
-    platform = "@zig_sdk//libc_aware/platform:linux_amd64_gnu.2.28",
 )
 
 image_load(
@@ -73,19 +72,4 @@ image_push(
     registry = "ocihub.com",
     repository = "teapotovh_bottind",
     tag = "1h",
-)
-
-go_library(
-    name = "lib",
-    srcs = ["bottind.go"],
-    importpath = "",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//lib/ldapsrv",
-        "//lib/log",
-        "//lib/observability",
-        "//lib/run",
-        "//service/bottin",
-        "@com_github_spf13_pflag//:pflag",
-    ],
 )

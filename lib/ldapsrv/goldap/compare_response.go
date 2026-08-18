@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        CompareResponse ::= [APPLICATION 15] LDAPResult

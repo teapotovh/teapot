@@ -1,4 +1,4 @@
-package message
+package goldap
 
 type LdapError struct {
 	Msg string

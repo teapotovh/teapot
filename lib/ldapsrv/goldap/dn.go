@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        LDAPDN ::= LDAPString -- Constrained to <distinguishedName>

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // RelativeLDAPDN ::= LDAPString -- Constrained to <name-component>
 //

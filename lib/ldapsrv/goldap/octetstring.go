@@ -1,4 +1,4 @@
-package message
+package goldap
 
 func readOCTETSTRING(bytes *Bytes) (ret OCTETSTRING, err error) {
 	var value any

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        CompareRequest ::= [APPLICATION 14] SEQUENCE {

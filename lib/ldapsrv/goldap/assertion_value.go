@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AssertionValue ::= OCTET STRING

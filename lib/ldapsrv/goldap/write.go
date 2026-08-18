@@ -1,4 +1,4 @@
-package message
+package goldap
 
 type Writable interface {
 	write(bytes *Bytes) int

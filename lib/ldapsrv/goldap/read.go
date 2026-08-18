@@ -1,4 +1,4 @@
-package message
+package goldap
 
 func ReadLDAPMessage(bytes *Bytes) (message LDAPMessage, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, message.readComponents)

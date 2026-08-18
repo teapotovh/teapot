@@ -1,4 +1,4 @@
-package message
+package goldap
 
 func NewLDAPMessageWithProtocolOp(po ProtocolOp) *LDAPMessage {
 	m := NewLDAPMessage()

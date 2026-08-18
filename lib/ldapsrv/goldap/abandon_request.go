@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AbandonRequest ::= [APPLICATION 16] MessageID

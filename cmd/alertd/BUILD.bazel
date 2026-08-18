@@ -75,19 +75,3 @@ image_push(
     repository = "teapotovh_alertd",
     tag = "1h",
 )
-
-go_library(
-    name = "lib",
-    srcs = ["alertd.go"],
-    importpath = "",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//lib/httpsrv",
-        "//lib/log",
-        "//lib/observability",
-        "//lib/run",
-        "//service/alert",
-        "//service/alert/alertmanager",
-        "@com_github_spf13_pflag//:pflag",
-    ],
-)

@@ -76,20 +76,3 @@ image_push(
     repository = "teapotovh_ccmd",
     tag = "1h",
 )
-
-go_library(
-    name = "lib",
-    srcs = ["ccmd.go"],
-    importpath = "",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//lib/kubelog",
-        "//lib/log",
-        "//lib/run",
-        "//service/ccm",
-        "//service/ccm/externalip",
-        "//service/ccm/initialize",
-        "//service/ccm/internalip",
-        "@com_github_spf13_pflag//:pflag",
-    ],
-)

@@ -1,4 +1,4 @@
-package message
+package goldap
 
 // ModifyResponse ::= [APPLICATION 7] LDAPResult.
 func readModifyResponse(bytes *Bytes) (ret ModifyResponse, err error) {

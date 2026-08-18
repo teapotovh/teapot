@@ -1,4 +1,4 @@
-package message
+package goldap
 
 func readModifyRequestChange(bytes *Bytes) (ret ModifyRequestChange, err error) {
 	err = bytes.ReadSubBytes(classUniversal, tagSequence, ret.readComponents)

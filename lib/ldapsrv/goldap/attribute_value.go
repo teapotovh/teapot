@@ -1,4 +1,4 @@
-package message
+package goldap
 
 //
 //        AttributeValue ::= OCTET STRING
