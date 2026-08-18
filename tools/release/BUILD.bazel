@@ -5,7 +5,10 @@ go_library(
     srcs = ["release.go"],
     importpath = "github.com/teapotovh/teapot/tools/release",
     visibility = ["//visibility:private"],
-    deps = ["@rules_go//go/runfiles"],
+    deps = [
+        "//tools/util",
+        "@rules_go//go/runfiles",
+    ],
 )
 
 go_binary(
