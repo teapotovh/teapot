@@ -71,8 +71,8 @@ func release() (err error) {
 
 	phase("(check) gazelle")
 
-	if _, _, err := run(gazellePath, "-mode=diff"); err != nil {
-		return fmt.Errorf("gazelle check failed: %w", err)
+	if stdout, stderr, err := run(gazellePath, "-mode=diff"); err != nil {
+		return fmt.Errorf("gazelle check failed: %w, %s, %s", err, stdout.String(), stderr.String())
 	}
 
 	phase("(check) buildifier")
