@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "buildcheck_lib",
+    srcs = ["buildcheck.go"],
+    importpath = "github.com/teapotovh/teapot/tools/buildcheck",
+    visibility = ["//visibility:private"],
+    deps = ["@rules_go//go/runfiles"],
+)
+
+go_binary(
+    name = "buildcheck",
+    embed = [":buildcheck_lib"],
+    visibility = ["//visibility:public"],
+)

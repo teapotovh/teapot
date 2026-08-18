@@ -211,12 +211,13 @@ func gitRun(in io.Reader, args ...string) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-func run(stding io.Reader, command string, args ...string) (*bytes.Buffer, *bytes.Buffer, error) {
+func run(stdin io.Reader, command string, args ...string) (*bytes.Buffer, *bytes.Buffer, error) {
 	cmd := exec.Command(command, args...) //nolint:gosec
 	cmd.Dir = root
 
 	var stdout, stderr bytes.Buffer
 
+	cmd.Stdin = stdin
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
