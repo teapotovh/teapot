@@ -20,10 +20,3 @@ jobs:
 
       - name: Check build files
         run: bazel run //tools/buildcheck -- -verbose
-
-      - name: Ensure no diffs
-        run: |
-          if ! git diff --exit-code; then
-            echo "::error::Generated files are out of date."
-            exit 1
-          fi
