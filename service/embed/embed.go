@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/daulet/tokenizers"
@@ -196,15 +197,15 @@ func (e *Embed) inference(shape ort.Shape, ids, attention []uint32) (*ort.Tensor
 
 func meanPoolAndNormalize(data []float32, attentionMask []uint32, n, seqLen, hidden int) [][]float32 {
 	embeddings := make([][]float32, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		vec := make([]float32, hidden)
 		var count float32
-		for j := 0; j < seqLen; j++ {
+		for j := range seqLen {
 			if attentionMask[i*seqLen+j] == 0 {
 				continue
 			}
 			base := (i*seqLen + j) * hidden
-			for k := 0; k < hidden; k++ {
+			for k := range hidden {
 				vec[k] += data[base+k]
 			}
 			count++
@@ -244,7 +245,7 @@ func (e *Embed) batchInference(chunks [][]uint32) ([][]float32, error) {
 	for i, c := range chunks {
 		base := i * maxLen
 		copy(inputIDs[base:base+len(c)], c)
-		for j := 0; j < len(c); j++ {
+		for j := range len(c) {
 			attentionMask[base+j] = 1
 		}
 		if len(c) < maxLen {
@@ -259,6 +260,8 @@ func (e *Embed) batchInference(chunks [][]uint32) ([][]float32, error) {
 	if err != nil {
 		return nil, fmt.Errorf("inference: %w", err)
 	}
+	defer outTensor.Destroy()
+
 	outputShape := outTensor.GetShape() // [n, maxLen, hidden]
 	N := int(outputShape[0])
 	if n != N {
@@ -320,8 +323,25 @@ func (e *Embed) Embed(ctx context.Context, kind EmbeddingKind, text string) ([]E
 			return nil, fmt.Errorf("%w: expected exactly one chunk, got %d", ErrQueryTooLong, len(chunks))
 		}
 
-		// TODO
-		return nil, nil
+		chunk := chunks[0]
+		n := len(chunk)
+		attention := slices.Repeat([]uint32{1}, n)
+		inputShape := ort.NewShape(int64(1), int64(n))
+		outTensor, err := e.inference(inputShape, chunk, attention)
+		if err != nil {
+			return nil, fmt.Errorf("inference: %w", err)
+		}
+
+		outputShape := outTensor.GetShape() // [1, n, hidden]
+		if outputShape[0] != 1 {
+			return nil, fmt.Errorf("%w: expected 1, got %d", ErrMismatchedBatchSize, outputShape[0])
+		}
+		hidden := int(outputShape[2])
+		data := outTensor.GetData()
+
+		embeddings := meanPoolAndNormalize(data, attention, 1, n, hidden)
+		text := e.tokenizer.Decode(tokens, false)
+		return []Embedding{{Vector: embeddings[0], Text: text}}, nil
 	default:
 		return nil, fmt.Errorf("%w: %d", ErrUnexpectedEmbeddingKind, kind)
 	}
