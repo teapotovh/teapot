@@ -8,7 +8,7 @@ on:
 
 jobs:
   verify:
-    name: Verify that generated files are up-to-date
+    name: Build Files
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

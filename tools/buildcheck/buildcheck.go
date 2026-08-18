@@ -47,7 +47,6 @@ func phase(name string) {
 	phaseN += 1
 }
 
-//nolint:gocyclo
 func release() (err error) {
 	gazellePath, err := runfiles.Rlocation("com_github_teapotovh_teapot/tools/gazelle")
 	if err != nil {
