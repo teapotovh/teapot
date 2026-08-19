@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 )
 
@@ -21,12 +22,17 @@ type Notify interface {
 
 type notify struct {
 	ch   chan error
-	sent bool
+	sent atomic.Bool
 }
 
 // Notify implements Notify.
 func (n *notify) Notify() {
-	n.sent = true
+	if !n.sent.CompareAndSwap(false, true) {
+		// If the compare failed, the value was not false (we had already sent the
+		// notify). Let's be idempotent and just do nothing here.
+		return
+	}
+
 	// don't wait for the receiving end to receive the notify
 	select {
 	case n.ch <- nil:
@@ -79,7 +85,7 @@ func (r runnable) watch(ctx context.Context, ntfy *notify) {
 	if err != nil {
 		// the outer service is still waiting for timeout (since no notification
 		// was fired), thus send a notification error.
-		if !ntfy.sent {
+		if !ntfy.sent.Load() {
 			ntfy.notifyError(err)
 		} else {
 			r.errors <- err

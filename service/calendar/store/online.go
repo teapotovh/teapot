@@ -183,6 +183,8 @@ func (o *Online) Ping(ctx context.Context) error {
 
 // Run implements run.Runnable.
 func (o *Online) Run(ctx context.Context, notify run.Notify) (err error) {
+	defer o.pool.Close()
+
 	client, err := minio.New(o.s3endpoint, &minio.Options{
 		Creds:     o.s3credentials,
 		Secure:    o.s3Secure,

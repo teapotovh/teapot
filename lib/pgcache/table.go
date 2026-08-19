@@ -25,12 +25,16 @@ var (
 	ErrInvalidUpdate             = errors.New("invalid update")
 	ErrAlreadyCommitted          = errors.New("already committed")
 	ErrUnexpectedAmountOfObjects = errors.New("unexpected about of objects")
+	ErrRetriedTooFast            = errors.New("retried too fast")
 )
 
 const (
 	BackoffInitialInterval = 100 * time.Millisecond
 	BackoffMultiplier      = 1.5
 	BackoffMaxRetries      = 3
+
+	ShutdownDelay    = 2 * time.Second
+	MinimumRetryTime = 10 * time.Minute
 )
 
 type (
@@ -41,7 +45,8 @@ type (
 		// pool is used to perform dataplane operations with a connection pool
 		pool *pgxpool.Pool
 		// nm encapsulates the notification logic
-		nm *notificationManager[K]
+		nm       *notificationManager[K]
+		parseKey func(str string) (*K, error)
 		// cache stores the whole table view and gets updated upon invalidations.
 		// the updates are eventually consistent, thus stale data may be read.
 		cache  *SortedMap[K, T]
@@ -117,25 +122,18 @@ func trackDurationDelete[K Key[K], T Object[K]](table string, del Delete[K, T]) 
 
 func NewTable[K Key[K], T Object[K]](pool *pgxpool.Pool,
 	table string,
-	fromString func(str string) (*K, error),
+	parseKey func(str string) (*K, error),
 	list List[K, T],
 	get Get[K, T],
 	store Store[K, T],
 	del Delete[K, T],
 	logger *slog.Logger) (*Table[K, T], error) {
-	poolcfg := pool.Config()
-
-	nm, err := newNotificationManager(poolcfg.ConnConfig, table, fromString)
-	if err != nil {
-		return nil, fmt.Errorf("error while building the notification manager: %w", err)
-	}
-
 	t := Table[K, T]{
 		logger: logger,
 
-		table: table,
-		pool:  pool,
-		nm:    nm,
+		table:    table,
+		pool:     pool,
+		parseKey: parseKey,
 
 		cache: NewSortedMap[K, T](),
 
@@ -377,6 +375,36 @@ func (t *Table[K, T]) handleEvents(ctx context.Context, events []Event[K]) (err 
 
 // Run implements run.Runnable.
 func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
+	lastStartup := time.Unix(0, 0)
+	lastErr := error(nil)
+
+	for {
+		if ctx.Err() != nil {
+			// If the context was canceled, stop here.
+			return nil //nolint:nilerr
+		}
+
+		if time.Since(lastStartup) < MinimumRetryTime {
+			return fmt.Errorf(
+				"could not retry notification processing: %w, last error was: %w",
+				ErrRetriedTooFast,
+				lastErr,
+			)
+		}
+
+		lastStartup = time.Now()
+
+		if err := t.processNotifications(ctx, notify); err != nil {
+			lastErr = err
+
+			t.logger.Warn("error while processing notification, retrying", "err", err, "last_startup", lastStartup)
+		}
+	}
+}
+
+func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notify) (err error) {
+	t.loaded.Store(false)
+
 	objects, err := t.listFunc(ctx, t.pool)
 	if err != nil {
 		return fmt.Errorf("error while fetching all objects to populate the cache: %w", err)
@@ -387,6 +415,23 @@ func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
 	}
 
 	t.logger.Info("populated initial object cache", "table", t.table, "count", len(objects))
+	t.loaded.Store(true)
+
+	poolcfg := t.pool.Config()
+
+	t.nm, err = newNotificationManager(poolcfg.ConnConfig, t.table, t.parseKey)
+	if err != nil {
+		return fmt.Errorf("error while building the notification manager: %w", err)
+	}
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), ShutdownDelay)
+		defer cancel()
+
+		if e := t.nm.Close(ctx); e != nil {
+			err = errors.Join(err, fmt.Errorf("closing notification manager: %w", e))
+		}
+	}()
 
 	err = t.nm.Listen(ctx)
 	if err != nil {
@@ -394,7 +439,6 @@ func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
 	}
 
 	notify.Notify()
-	t.loaded.Store(true)
 
 	for {
 		events, err := t.nm.Next(ctx)
@@ -402,7 +446,7 @@ func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
 			// If the context was canceled, we can ignore the error we get from the
 			// postgres connection - it's due to the context cancelation.
 			if ctx.Err() != nil {
-				return nil //nolint:nilerr
+				return nil
 			}
 
 			return fmt.Errorf("error while getting the next notification: %w", err)
