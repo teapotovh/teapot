@@ -45,10 +45,11 @@ type notificationManager[K Key[K]] struct {
 	// notifyConn is a single connection used to send notifications for cache invalidations.
 	notifyConn *pgx.Conn
 	// listenConn is a single connection used to receive notifications for cache invalidations.
-	listenConn *pgx.Conn
-	channel    string
-	fromString FromString[K]
-	listening  atomic.Bool
+	listenConn   *pgx.Conn
+	listenCancel context.CancelFunc
+	channel      string
+	fromString   FromString[K]
+	listening    atomic.Bool
 }
 
 func newNotificationManager[K Key[K]](
@@ -154,11 +155,15 @@ func (nm *notificationManager[K]) Ping(ctx context.Context) error {
 }
 
 func (nm *notificationManager[K]) Listen(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+
 	_, err := nm.listenConn.Exec(ctx, "LISTEN "+nm.channel+";")
 	if err != nil {
+		defer cancel()
 		return fmt.Errorf("error while listening: %w", err)
 	}
 
+	nm.listenCancel = cancel
 	nm.listening.Store(true)
 
 	return nil
@@ -198,6 +203,22 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, events []Event[K])
 	_, err = nm.notifyConn.Exec(ctx, "SELECT pg_notify($1, $2);", nm.channel, payload)
 	if err != nil {
 		return fmt.Errorf("error while sending notification: %w", err)
+	}
+
+	return nil
+}
+
+func (nm *notificationManager[K]) Close(ctx context.Context) error {
+	if nm.listenCancel != nil {
+		nm.listenCancel()
+	}
+
+	if err := nm.notifyConn.Close(ctx); err != nil {
+		return fmt.Errorf("error while closing notify connection: %w", err)
+	}
+
+	if err := nm.listenConn.Close(ctx); err != nil {
+		return fmt.Errorf("error while closing listen connection: %w", err)
 	}
 
 	return nil
