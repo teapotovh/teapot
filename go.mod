@@ -6,7 +6,7 @@ require (
 	git.sr.ht/~bitfehler/brant v0.5.1
 	github.com/ammario/tlru v0.4.0
 	github.com/arran4/golang-ical v0.3.5
-	github.com/bazelbuild/rules_go v0.62.0
+	github.com/bazelbuild/rules_go v0.63.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/coreos/go-iptables v0.8.0
 	github.com/daulet/tokenizers v1.27.0
