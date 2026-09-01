@@ -35,7 +35,7 @@ require (
 	github.com/sqids/sqids-go v0.4.1
 	github.com/teambition/rrule-go v1.8.2
 	github.com/vishvananda/netlink v1.3.1
-	github.com/yalue/onnxruntime_go v1.33.0
+	github.com/yalue/onnxruntime_go v1.35.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.65.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.71.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0
