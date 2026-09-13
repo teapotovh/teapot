@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/tmplstring"
+	"golang.org/x/sync/errgroup"
 )
 
 type LDAPConfig struct {
@@ -25,6 +25,7 @@ type LDAPConfig struct {
 	UsersDN      string
 	UsersFilter  string
 	GroupsDN     string
+	GroupsFilter string
 	AdminGroupDN string
 	AccessesDN   string
 }
@@ -40,9 +41,10 @@ type Factory struct {
 	rootDN     string
 	rootPasswd string
 
-	usersFilter  *tmplstring.TMPL[filterTemplateValues]
 	usersDN      string
+	usersFilter  *tmplstring.TMPL[userFilterTemplateValues]
 	groupsDN     string
+	groupsFilter *tmplstring.TMPL[groupFilterTemplateValues]
 	adminGroupDN string
 	accessesDN   string
 
@@ -51,9 +53,14 @@ type Factory struct {
 }
 
 func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
-	usersFilter, err := tmplstring.NewTMPL[filterTemplateValues](config.UsersFilter)
+	usersFilter, err := tmplstring.NewTMPL[userFilterTemplateValues](config.UsersFilter)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing user filter template: %w", err)
+	}
+
+	groupsFilter, err := tmplstring.NewTMPL[groupFilterTemplateValues](config.GroupsFilter)
+	if err != nil {
+		return nil, fmt.Errorf("error while parsing group filter template: %w", err)
 	}
 
 	pool := newPool(config.URL, config.RootDN, config.Timeout, config.MaxConnections, logger)
@@ -69,6 +76,7 @@ func NewFactory(config LDAPConfig, logger *slog.Logger) (*Factory, error) {
 		usersDN:      config.UsersDN,
 		usersFilter:  usersFilter,
 		groupsDN:     config.GroupsDN,
+		groupsFilter: groupsFilter,
 		adminGroupDN: config.AdminGroupDN,
 		accessesDN:   config.AccessesDN,
 	}
@@ -113,6 +121,7 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 		usersDN:      f.usersDN,
 		usersFilter:  f.usersFilter,
 		groupsDN:     f.groupsDN,
+		groupsFilter: f.groupsFilter,
 		adminGroupDN: f.adminGroupDN,
 		accessesDN:   f.accessesDN,
 	}, nil
@@ -120,18 +129,17 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 
 // Run implements run.Runnable.
 func (f *Factory) Run(ctx context.Context, notify run.Notify) (err error) {
-	var wg sync.WaitGroup
+	eg, ctx := errgroup.WithContext(ctx)
 	for i := range f.workers {
-		wg.Add(1)
-		wg.Go(func() {
-			f.pool.fill(ctx, i, f.metrics.dial)
-			wg.Done()
+		eg.Go(func() error {
+			return f.pool.fill(ctx, i, f.metrics.dial)
 		})
 	}
 
 	notify.Notify()
-
-	wg.Done()
+	if err := eg.Wait(); err != nil {
+		return err
+	}
 
 	return nil
 }

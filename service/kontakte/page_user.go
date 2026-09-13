@@ -30,7 +30,7 @@ const (
 	mailID      = "mail"
 	homeID      = "home"
 	uidID       = "uid"
-	gidID       = "gid"
+	userGidID   = "gid"
 )
 
 func canViewUser(auth *httpauth.Auth, username string) bool {
@@ -148,12 +148,12 @@ func (u user) Render(ctx ui.Context) g.Node {
 			dn(ctx, u.user.Username, u.user.DN, u.user.Admin),
 
 			h.Form(ctx.Class(UserFormStyle),
-				components.ValueInput(ctx, firstNameID, "text", "First Name", u.user.Firstname, true),
+				components.ValueInput(ctx, groupNameID, "text", "First Name", u.user.Firstname, true),
 				components.ValueInput(ctx, lastNameID, "text", "Last Name", u.user.Lastname, true),
 				components.ValueInput(ctx, mailID, "text", "Mail", u.user.Mail, false),
 				components.ValueInput(ctx, homeID, "text", "Unix Home", u.user.Home, false),
 				components.ValueInput(ctx, uidID, "text", "Unix UID", strconv.Itoa(u.user.UID), false),
-				components.ValueInput(ctx, gidID, "text", "Unix GID", strconv.Itoa(u.user.GID), false),
+				components.ValueInput(ctx, userGidID, "text", "Unix GID", strconv.Itoa(u.user.GID), false),
 
 				h.Div(ctx.Class(UserButtonGroupStyle),
 					h.A(ctx.Class(components.ButtonStyle, UserChangePasswordStyle),
@@ -169,15 +169,15 @@ func (u user) Render(ctx ui.Context) g.Node {
 		components.HorizontalLine(ctx),
 
 		h.H2(ctx.Class(HeaderStyle), g.Text("Groups")),
-		h.Section(g.Map(u.user.Groups, func(access string) g.Node {
-			return group(ctx, access)
+		h.Section(g.Map(u.user.Groups, func(group string) g.Node {
+			return groupLink(ctx, group)
 		})),
 
 		components.HorizontalLine(ctx),
 
 		h.H2(ctx.Class(HeaderStyle), g.Text("Accesses")),
 		h.Section(g.Map(u.user.Accesses, func(access string) g.Node {
-			return group(ctx, access)
+			return accessLink(ctx, access)
 		})),
 	}
 }
@@ -192,13 +192,30 @@ func dn(ctx ui.Context, name, dn string, admin bool) g.Node {
 	)
 }
 
-func group(ctx ui.Context, access string) g.Node {
-	first := strings.Split(access, ",")[0]
+func nameFromDN(dn string) string {
+	first, _, found := strings.Cut(dn, ",")
+	if !found {
+		return InvalidGroupDN
+	}
 
 	var name string
 	if n, err := fmt.Sscanf(first, "cn=%s", &name); err != nil || n < 1 {
 		name = InvalidGroupDN
 	}
 
-	return dn(ctx, name, access, false)
+	return name
+}
+
+func groupLink(ctx ui.Context, group string) g.Node {
+	name := nameFromDN(group)
+	return h.A(
+		hx.Boost("true"),
+		h.Href(PathGroup(name)),
+		dn(ctx, name, group, false),
+	)
+}
+
+func accessLink(ctx ui.Context, acess string) g.Node {
+	name := nameFromDN(acess)
+	return dn(ctx, name, acess, false)
 }

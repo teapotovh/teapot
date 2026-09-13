@@ -19,7 +19,7 @@ func (c *Client) Passwd(ctx context.Context, username, password string) (err err
 
 	span.SetAttributes(attribute.String("username", username))
 
-	entry, err := c.find(ctx, username)
+	entry, err := c.findUser(ctx, username)
 	if err != nil {
 		return fmt.Errorf("error while looking up user: %w", err)
 	}

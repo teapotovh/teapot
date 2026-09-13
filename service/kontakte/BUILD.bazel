@@ -5,6 +5,8 @@ go_library(
     srcs = [
         "flag.go",
         "kontakte.go",
+        "page_group.go",
+        "page_groups.go",
         "page_index.go",
         "page_passwd.go",
         "page_user.go",

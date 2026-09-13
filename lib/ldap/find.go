@@ -16,22 +16,12 @@ var (
 	ErrNotMatchingUsername = errors.New("username doesn't match")
 )
 
-func (c *Client) list(ctx context.Context) (entries []*ldap.Entry, err error) {
+func (c *Client) list(ctx context.Context, base, filter string) (entries []*ldap.Entry, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.list")
 	defer func() { observability.SpanEnd(span, err) }()
 
-	filter, err := c.usersFilter.Render(filterTemplateValues{Username: "*"})
-	if err != nil {
-		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
-	}
-
-	span.AddEvent(
-		"rendered find filter template string for all users",
-		trace.WithAttributes(attribute.String("filter", filter)),
-	)
-
 	searchRequest := ldap.NewSearchRequest(
-		c.usersDN,
+		base,
 		ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases,
 		0,
@@ -52,28 +42,17 @@ func (c *Client) list(ctx context.Context) (entries []*ldap.Entry, err error) {
 		dns = append(dns, entry.DN)
 	}
 
-	c.logger.DebugContext(c.ctx, "found user entries", "dns", dns)
+	c.logger.DebugContext(c.ctx, "found entries", "base", base, "filter", filter, "dns", dns)
 
 	return search.Entries, nil
 }
 
-func (c *Client) find(ctx context.Context, username string) (entry *ldap.Entry, err error) {
+func (c *Client) find(ctx context.Context, base, cn, filter string) (entry *ldap.Entry, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "ldap.find")
 	defer func() { observability.SpanEnd(span, err) }()
 
-	span.SetAttributes(attribute.String("username", username))
-
-	filter, err := c.usersFilter.Render(filterTemplateValues{
-		Username: username,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
-	}
-
-	span.AddEvent("rendered find filter template string", trace.WithAttributes(attribute.String("filter", filter)))
-
 	searchRequest := ldap.NewSearchRequest(
-		c.usersDN,
+		base,
 		ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases,
 		0,
@@ -89,10 +68,10 @@ func (c *Client) find(ctx context.Context, username string) (entry *ldap.Entry, 
 		return nil, fmt.Errorf("error while performing search for user: %w", err)
 	}
 
-	span.AddEvent("searched for machine users", trace.WithAttributes(attribute.Int("results", len(search.Entries))))
+	span.AddEvent("searched for matching users", trace.WithAttributes(attribute.Int("results", len(search.Entries))))
 
 	if len(search.Entries) == 0 {
-		return nil, ErrUserNotFound
+		return nil, ErrEntityNotFound
 	}
 
 	if len(search.Entries) > 1 {
@@ -101,17 +80,17 @@ func (c *Client) find(ctx context.Context, username string) (entry *ldap.Entry, 
 
 	entry = search.Entries[0]
 
-	cn := entry.GetAttributeValue("cn")
-	if username != cn {
-		return nil, fmt.Errorf("expected %q for username, but got %q: %w", username, cn, ErrNotMatchingUsername)
+	actualCN := entry.GetAttributeValue("cn")
+	if cn != actualCN {
+		return nil, fmt.Errorf("expected %q for CN, but got %q: %w", cn, actualCN, ErrNotMatchingUsername)
 	}
 
-	log := c.logger.With("username", username)
+	log := c.logger.With("cn", cn, "filter", filter)
 	for _, attr := range entry.Attributes {
 		log = log.With(attr.Name, attr.Values)
 	}
 
-	log.DebugContext(c.ctx, "found user entry for username")
+	c.logger.DebugContext(c.ctx, "found entry for filter", "base", base, "filter", filter, "dn", entry.DN)
 
 	return entry, nil
 }

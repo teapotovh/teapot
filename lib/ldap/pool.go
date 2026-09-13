@@ -59,7 +59,7 @@ func newPool(url, base string, timeout time.Duration, size uint32, logger *slog.
 // Call this n times to have n workers filling the pool. Adjust n for your
 // desired refill rate, which is determined by n and the connection latency,
 // using Little's law.
-func (p *pool) fill(ctx context.Context, i uint32, dial prometheus.Histogram) {
+func (p *pool) fill(ctx context.Context, i uint32, dial prometheus.Histogram) error {
 	p.logger.DebugContext(ctx, "started LDAP pool filler worker", "id", i)
 	defer func() {
 		p.logger.DebugContext(ctx, "stopped LDAP pool filler worker", "id", i)
@@ -69,7 +69,7 @@ func (p *pool) fill(ctx context.Context, i uint32, dial prometheus.Histogram) {
 		select {
 		case <-p.demand: // wait for an actual open slot
 		case <-ctx.Done():
-			return
+			return nil
 		}
 
 		start := time.Now()
@@ -107,7 +107,7 @@ func (p *pool) fill(ctx context.Context, i uint32, dial prometheus.Histogram) {
 				)
 			}
 
-			return
+			return nil
 		}
 	}
 }
