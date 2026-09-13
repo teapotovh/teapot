@@ -31,7 +31,10 @@ func (k *Kontakte) Groups(w http.ResponseWriter, r *http.Request) (ui.Component,
 
 		usrs, err := client.Groups(r.Context())
 		if err != nil {
-			return nil, webhandler.NewInternalError(fmt.Errorf("error while enumerating groups from LDAP: %w", err), nil)
+			return nil, webhandler.NewInternalError(
+				fmt.Errorf("error while enumerating groups from LDAP: %w", err),
+				nil,
+			)
 		}
 
 		component := groups{

@@ -22,7 +22,7 @@ var ErrFetchGroup = errors.New("error while fetching group information")
 
 const (
 	groupNameID = "firstname"
-	groupGidID  = "gid"
+	groupGIDID  = "gid"
 )
 
 func (k *Kontakte) Group(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
@@ -94,7 +94,7 @@ func (gr group) Render(ctx ui.Context) g.Node {
 
 			h.Form(ctx.Class(GroupFormStyle),
 				components.ValueInput(ctx, groupNameID, "text", "Group Name", gr.group.Groupname, true),
-				components.ValueInput(ctx, groupGidID, "text", "Unix GID", strconv.Itoa(gr.group.GID), false),
+				components.ValueInput(ctx, groupGIDID, "text", "Unix GID", strconv.Itoa(gr.group.GID), false),
 
 				h.Div(ctx.Class(GroupButtonGroupStyle),
 					components.Button(ctx, h.Disabled(), h.Type("submit"), g.Text("Update")),
@@ -113,6 +113,7 @@ func (gr group) Render(ctx ui.Context) g.Node {
 
 func userLink(ctx ui.Context, user string) g.Node {
 	name := nameFromDN(user)
+
 	return h.A(
 		hx.Boost("true"),
 		h.Href(PathUser(name)),

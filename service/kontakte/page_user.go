@@ -30,7 +30,7 @@ const (
 	mailID      = "mail"
 	homeID      = "home"
 	uidID       = "uid"
-	userGidID   = "gid"
+	userGIDID   = "gid"
 )
 
 func canViewUser(auth *httpauth.Auth, username string) bool {
@@ -153,7 +153,7 @@ func (u user) Render(ctx ui.Context) g.Node {
 				components.ValueInput(ctx, mailID, "text", "Mail", u.user.Mail, false),
 				components.ValueInput(ctx, homeID, "text", "Unix Home", u.user.Home, false),
 				components.ValueInput(ctx, uidID, "text", "Unix UID", strconv.Itoa(u.user.UID), false),
-				components.ValueInput(ctx, userGidID, "text", "Unix GID", strconv.Itoa(u.user.GID), false),
+				components.ValueInput(ctx, userGIDID, "text", "Unix GID", strconv.Itoa(u.user.GID), false),
 
 				h.Div(ctx.Class(UserButtonGroupStyle),
 					h.A(ctx.Class(components.ButtonStyle, UserChangePasswordStyle),
@@ -208,6 +208,7 @@ func nameFromDN(dn string) string {
 
 func groupLink(ctx ui.Context, group string) g.Node {
 	name := nameFromDN(group)
+
 	return h.A(
 		hx.Boost("true"),
 		h.Href(PathGroup(name)),

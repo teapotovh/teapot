@@ -7,10 +7,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/tmplstring"
-	"golang.org/x/sync/errgroup"
 )
 
 type LDAPConfig struct {
@@ -137,6 +138,7 @@ func (f *Factory) Run(ctx context.Context, notify run.Notify) (err error) {
 	}
 
 	notify.Notify()
+
 	if err := eg.Wait(); err != nil {
 		return err
 	}

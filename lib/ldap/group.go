@@ -6,8 +6,9 @@ import (
 	"strconv"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/teapotovh/teapot/lib/observability"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 // Group is an abstracted view over a group entry in LDAP.
