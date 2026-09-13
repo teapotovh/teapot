@@ -30,6 +30,11 @@ func LDAPFlagSet() (*flag.FlagSet, func() LDAPConfig) {
 		"a templated filter to identify a unique user given the username",
 	)
 	groupsDN := fs.String("ldap-groups-dn", "ou=groups,dc=teapot,dc=ovh", "the base DN where all groups are stored")
+	groupsFilter := fs.String(
+		"ldap-groups-filter",
+		"(&(objectClass=posixGroup)(cn={{ .Groupname }}))",
+		"a templated filter to identify a unique group given the groupname",
+	)
 	adminGroupDN := fs.String(
 		"ldap-admin-group-dn",
 		"cn=admin,ou=groups,dc=teapot,dc=ovh",
@@ -54,6 +59,7 @@ func LDAPFlagSet() (*flag.FlagSet, func() LDAPConfig) {
 			UsersDN:      *usersDN,
 			UsersFilter:  *usersFilter,
 			GroupsDN:     *groupsDN,
+			GroupsFilter: *groupsFilter,
 			AdminGroupDN: *adminGroupDN,
 			AccessesDN:   *accessesDN,
 		}

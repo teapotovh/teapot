@@ -82,7 +82,7 @@ func (c *Client) mapUser(entry *ldap.Entry) (*User, error) {
 }
 
 func (c *Client) Users(ctx context.Context) (users []*User, err error) {
-	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.User")
+	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "Client.Users")
 	defer func() { observability.SpanEnd(span, err) }()
 
 	defer func() {
@@ -91,7 +91,12 @@ func (c *Client) Users(ctx context.Context) (users []*User, err error) {
 		}
 	}()
 
-	entries, err := c.list(ctx)
+	filter, err := c.usersFilter.Render(userFilterTemplateValues{Username: "*"})
+	if err != nil {
+		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
+	}
+
+	entries, err := c.list(ctx, c.usersDN, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error while listing all users: %w", err)
 	}
@@ -100,13 +105,24 @@ func (c *Client) Users(ctx context.Context) (users []*User, err error) {
 		user, err := c.mapUser(entry)
 		if err != nil {
 			username := entry.GetAttributeValue("cn")
-			return nil, fmt.Errorf("error while mapping user %s: %w", username, err)
+			return nil, fmt.Errorf("error while mapping user %q: %w", username, err)
 		}
 
 		users = append(users, user)
 	}
 
 	return users, nil
+}
+
+func (c *Client) findUser(ctx context.Context, username string) (entry *ldap.Entry, err error) {
+	filter, err := c.usersFilter.Render(userFilterTemplateValues{
+		Username: username,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error while rendering user filter template: %w", err)
+	}
+
+	return c.find(ctx, c.usersDN, username, filter)
 }
 
 func (c *Client) User(ctx context.Context, username string) (user *User, err error) {
@@ -121,7 +137,7 @@ func (c *Client) User(ctx context.Context, username string) (user *User, err err
 		}
 	}()
 
-	entry, err := c.find(ctx, username)
+	entry, err := c.findUser(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("error while looking up user: %w", err)
 	}
