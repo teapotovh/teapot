@@ -40,9 +40,6 @@ type DesecConfig struct {
 }
 
 func NewDesec(config DesecConfig, logger *slog.Logger) (*Desec, error) {
-	// Provide request information in all log operations
-	logger = httplog.WithHandler(logger)
-
 	httpLog, err := httplog.NewHTTPLog(config.HTTPLog, logger.With("component", "httplog"))
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)

@@ -29,9 +29,6 @@ type Web struct {
 }
 
 func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, error) {
-	// Provide request information in all log operations
-	logger = httplog.WithHandler(logger)
-
 	httpLog, err := httplog.NewHTTPLog(config.HTTPLog, logger.With("component", "httplog"))
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)

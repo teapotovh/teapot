@@ -32,9 +32,6 @@ type KontakteConfig struct {
 }
 
 func NewKontakte(config KontakteConfig, logger *slog.Logger) (*Kontakte, error) {
-	// Provide request information in all log operations
-	logger = httplog.WithHandler(logger)
-
 	httpLog, err := httplog.NewHTTPLog(config.HTTPLog, logger.With("component", "httplog"))
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)

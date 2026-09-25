@@ -11,6 +11,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/observability"
@@ -57,6 +58,8 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
+	logger = httplog.WithHandler(logger)
+	logger = observability.WithHandler(logger)
 
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 

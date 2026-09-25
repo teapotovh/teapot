@@ -28,9 +28,6 @@ type AlertManagerConfig struct {
 }
 
 func NewAlertManager(alert *alert.Alert, config AlertManagerConfig, logger *slog.Logger) (*AlertManager, error) {
-	// Provide request information in all log operations
-	logger = httplog.WithHandler(logger)
-
 	httplog, err := httplog.NewHTTPLog(config.HTTPLog, logger.With("component", "httplog"))
 	if err != nil {
 		return nil, fmt.Errorf("error while initializing component httplog: %w", err)
