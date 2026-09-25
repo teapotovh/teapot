@@ -48,6 +48,7 @@ func main() {
 		slog.Error("error while configuring the logger", "err", err) //nolint:sloglint
 		os.Exit(CodeLog)
 	}
+
 	logger = httplog.WithHandler(logger)
 	logger = observability.WithHandler(logger)
 

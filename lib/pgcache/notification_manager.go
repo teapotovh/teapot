@@ -213,6 +213,7 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, events []Event[K])
 	}
 
 	nm.logger.Info("sent notification", "id", nm.id, "events", len(events))
+
 	return nil
 }
 
