@@ -76,6 +76,10 @@ func NewKontakte(config KontakteConfig, logger *slog.Logger) (*Kontakte, error) 
 	return &kontakte, nil
 }
 
+func (k *Kontakte) LDAPFactory() *ldap.Factory {
+	return k.ldapFactory
+}
+
 // Handler implements httpsrv.HTTPService.
 func (k *Kontakte) Handler(prefix string) http.Handler {
 	mux := http.NewServeMux()
@@ -88,6 +92,9 @@ func (k *Kontakte) Handler(prefix string) http.Handler {
 	mux.Handle(PathUsers, k.webHandler.Adapt(k.Users))
 	mux.Handle(PathUser("{username}"), k.webHandler.Adapt(k.User))
 	mux.Handle(PathPasswd("{username}"), k.webHandler.Adapt(k.Passwd))
+
+	mux.Handle(PathGroups, k.webHandler.Adapt(k.Groups))
+	mux.Handle(PathGroup("{groupname}"), k.webHandler.Adapt(k.Group))
 
 	mux.Handle("/{path...}", k.webHandler.Adapt(k.NotFound))
 

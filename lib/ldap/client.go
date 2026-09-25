@@ -14,13 +14,17 @@ import (
 )
 
 var (
-	ErrUserNotFound       = errors.New("user not found")
+	ErrEntityNotFound     = errors.New("entity not found")
 	ErrTooManyMatches     = errors.New("too many matches for user search")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
-type filterTemplateValues struct {
+type userFilterTemplateValues struct {
 	Username string
+}
+
+type groupFilterTemplateValues struct {
+	Groupname string
 }
 
 // Client holds a connection to an LDAP server and can be used to perform
@@ -34,8 +38,9 @@ type Client struct {
 	metrics *metrics
 
 	usersDN      string
-	usersFilter  *tmplstring.TMPL[filterTemplateValues]
+	usersFilter  *tmplstring.TMPL[userFilterTemplateValues]
 	groupsDN     string
+	groupsFilter *tmplstring.TMPL[groupFilterTemplateValues]
 	adminGroupDN string
 	accessesDN   string
 }
@@ -46,7 +51,7 @@ func (c *Client) Authenticate(ctx context.Context, username string, password str
 
 	span.SetAttributes(attribute.String("username", username))
 
-	entry, err := c.find(ctx, username)
+	entry, err := c.findUser(ctx, username)
 	if err != nil {
 		c.errored = true
 		return nil, fmt.Errorf("error while looking up user for bind: %w", err)
