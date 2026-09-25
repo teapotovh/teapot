@@ -279,12 +279,23 @@ func (ttx *TableTx[K, T]) Commit(ctx context.Context) error {
 		}
 	}
 
-	if err := ttx.table.nm.Notify(ctx, events); err != nil {
-		return fmt.Errorf("error while sending notification during commit: %w", err)
-	}
-
 	if err := ttx.tx.Commit(ctx); err != nil {
 		return fmt.Errorf("error while committing: %w", err)
+	}
+
+	f := func() (struct{}, error) { return struct{}{}, ttx.table.nm.Notify(ctx, events) }
+
+	expoBackoff := backoff.NewExponentialBackOff()
+	expoBackoff.InitialInterval = BackoffInitialInterval
+	expoBackoff.Multiplier = BackoffMultiplier
+
+	if _, err := backoff.Retry(
+		ctx,
+		f,
+		backoff.WithMaxTries(BackoffMaxRetries),
+		backoff.WithBackOff(expoBackoff),
+	); err != nil {
+		return fmt.Errorf("error while sending notification during commit: %w", err)
 	}
 
 	for _, update := range ttx.updates {
@@ -419,7 +430,7 @@ func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notif
 
 	poolcfg := t.pool.Config()
 
-	t.nm, err = newNotificationManager(poolcfg.ConnConfig, t.table, t.parseKey)
+	t.nm, err = newNotificationManager(poolcfg.ConnConfig, t.table, t.parseKey, t.logger)
 	if err != nil {
 		return fmt.Errorf("error while building the notification manager: %w", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/google/uuid"
@@ -41,6 +42,8 @@ func (e Event[K]) String() string {
 }
 
 type notificationManager[K Key[K]] struct {
+	logger *slog.Logger
+
 	id uuid.UUID
 	// notifyConn is a single connection used to send notifications for cache invalidations.
 	notifyConn *pgx.Conn
@@ -56,6 +59,7 @@ func newNotificationManager[K Key[K]](
 	config *pgx.ConnConfig,
 	table string,
 	fromString FromString[K],
+	logger *slog.Logger,
 ) (*notificationManager[K], error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -74,6 +78,8 @@ func newNotificationManager[K Key[K]](
 
 	name := "teapot_invalidate_" + table
 	nm := notificationManager[K]{
+		logger: logger,
+
 		id:         id,
 		notifyConn: notifyConn,
 		listenConn: listenConn,
@@ -184,6 +190,7 @@ func (nm *notificationManager[K]) Next(ctx context.Context) ([]Event[K], error) 
 
 			// We are only interested in events NOT coming from this same cache
 			if id != nm.id {
+				nm.logger.Info("received events", "id", nm.id, "events", len(events))
 				return events, nil
 			}
 		}
@@ -205,6 +212,7 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, events []Event[K])
 		return fmt.Errorf("error while sending notification: %w", err)
 	}
 
+	nm.logger.Info("sent notification", "id", nm.id, "events", len(events))
 	return nil
 }
 
