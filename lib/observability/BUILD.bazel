@@ -4,6 +4,7 @@ go_library(
     name = "observability",
     srcs = [
         "flag.go",
+        "log.go",
         "observability.go",
         "pprof.go",
         "prometheus.go",
