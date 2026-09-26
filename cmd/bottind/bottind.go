@@ -44,6 +44,8 @@ func main() {
 		os.Exit(CodeLog)
 	}
 
+	logger = observability.WithHandler(logger)
+
 	run := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, logger.With("sub", "run"))
 
 	observability, err := observability.NewObservability(getObservabilityConfig(), logger.With("sub", "observability"))
