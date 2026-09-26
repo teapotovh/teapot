@@ -16,7 +16,7 @@ func ObservabilityFlagSet(serviceName string) (*flag.FlagSet, func() Observabili
 
 	tracingEndpoint := fs.String(
 		"observability-tracing-endpoint",
-		"0.0.0.0:4137",
+		"127.0.0.1:4137",
 		"the grpc endpoint for OTLP opentelemetry trace collection",
 	)
 	tracingServiceName := fs.String(

@@ -5,11 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/httplog"
-	"github.com/teapotovh/teapot/lib/httptrace"
 	"github.com/teapotovh/teapot/lib/ldap"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	"github.com/teapotovh/teapot/service/calendar/backend"
@@ -20,7 +17,6 @@ type Calendar struct {
 	logger *slog.Logger
 
 	httpLog     *httplog.HTTPLog
-	httpTrace   *httptrace.HTTPTrace
 	ldapFactory *ldap.Factory
 	httpAuth    *httpauth.BasicAuth
 
@@ -39,8 +35,6 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
 	}
-
-	httpTrace := httptrace.NewHTTPTrace()
 
 	ldapFactory, err := ldap.NewFactory(config.LDAP, logger.With("component", "ldap"))
 	if err != nil {
@@ -64,7 +58,6 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 		logger: logger,
 
 		httpLog:     httpLog,
-		httpTrace:   httpTrace,
 		ldapFactory: ldapFactory,
 		httpAuth:    httpAuth,
 
@@ -95,9 +88,4 @@ func (c *Calendar) Handler(prefix string) http.Handler {
 	handler = c.httpLog.ExtractMiddleware(handler)
 
 	return handler
-}
-
-// WithTracing implements observability.Tracing.
-func (c *Calendar) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
-	c.httpTrace.WithTracing(tp, tracer)
 }

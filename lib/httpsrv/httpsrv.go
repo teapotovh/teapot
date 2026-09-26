@@ -16,6 +16,7 @@ import (
 
 	"github.com/teapotovh/teapot/lib/httptrace"
 	"github.com/teapotovh/teapot/lib/run"
+	"github.com/teapotovh/teapot/lib/wideevent"
 )
 
 type HTTPSrvConfig struct {
@@ -26,11 +27,12 @@ type HTTPSrvConfig struct {
 type HTTPSrv struct {
 	logger *slog.Logger
 
-	inner     *http.Server
-	running   atomic.Bool
-	mux       *http.ServeMux
-	httpTrace *httptrace.HTTPTrace
-	metrics   metrics
+	inner         *http.Server
+	running       atomic.Bool
+	mux           *http.ServeMux
+	httpTrace     *httptrace.HTTPTrace
+	httpWideEvent *wideevent.HTTPWideEvent
+	metrics       metrics
 
 	shutdownDelay time.Duration
 }
@@ -46,6 +48,7 @@ func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 	}
 
 	httpTrace := httptrace.NewHTTPTrace()
+	httpWideEvent := wideevent.NewHTTPWideEvent(logger.With("component", "wideevent"))
 
 	srv := HTTPSrv{
 		logger: logger,
@@ -54,6 +57,7 @@ func NewHTTPSrv(config HTTPSrvConfig, logger *slog.Logger) (*HTTPSrv, error) {
 		inner:         &inner,
 		mux:           mux,
 		httpTrace:     httpTrace,
+		httpWideEvent: httpWideEvent,
 	}
 
 	srv.initMetrics()
@@ -70,6 +74,7 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 	handler := service.Handler(prefix)
 	handler = h.metricsMiddleware(handler)
 	handler = h.httpTrace.TracerMiddleware(handler)
+	handler = h.httpWideEvent.Middleware(handler)
 
 	h.logger.Info("registering HTTP service", "name", name, "prefix", prefix)
 

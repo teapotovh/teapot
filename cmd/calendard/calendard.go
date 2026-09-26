@@ -79,7 +79,6 @@ func main() {
 
 	observability.RegisterMetrics(calendar)
 	observability.RegisterReadyz(calendar)
-	observability.RegisterTracing(calendar)
 
 	observability.RegisterTracing(calendar.Store())
 

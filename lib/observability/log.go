@@ -22,9 +22,8 @@ func (h *Handler) Handle(ctx context.Context, r slog.Record) error {
 	}
 
 	r.AddAttrs(
-		slog.Bool("observability_is_sampled", spanCtx.IsSampled()),
-		slog.String("observability_trace_id", spanCtx.TraceID().String()),
-		slog.String("observability_span_id", spanCtx.SpanID().String()),
+		slog.String("trace_id", spanCtx.TraceID().String()),
+		slog.String("span_id", spanCtx.SpanID().String()),
 	)
 
 	return h.handler.Handle(ctx, r)

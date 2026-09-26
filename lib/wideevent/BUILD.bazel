@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "wideevent",
+    srcs = [
+        "http.go",
+        "wideevent.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/wideevent",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "@com_github_iancoleman_strcase//:strcase",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel//codes",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)
