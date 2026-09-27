@@ -51,6 +51,7 @@ func (hl *HTTPLog) ExtractMiddleware(next http.Handler) http.Handler {
 
 		ctx = context.WithValue(ctx, RequestID, requestid.Get(r))
 		ctx = context.WithValue(ctx, RequestMethod, r.Method)
+		ctx = context.WithValue(ctx, RequestUserAgent, r.UserAgent())
 		ctx = context.WithValue(ctx, RequestURI, r.URL.RequestURI())
 
 		next.ServeHTTP(w, r.WithContext(ctx))

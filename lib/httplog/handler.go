@@ -6,15 +6,17 @@ import (
 )
 
 type (
-	requestID     struct{}
-	requestMethod struct{}
-	requestURI    struct{}
+	requestID        struct{}
+	requestMethod    struct{}
+	requestUserAgent struct{}
+	requestURI       struct{}
 )
 
 var (
-	RequestID     = requestID{}
-	RequestMethod = requestMethod{}
-	RequestURI    = requestURI{}
+	RequestID        = requestID{}
+	RequestMethod    = requestMethod{}
+	RequestUserAgent = requestMethod{}
+	RequestURI       = requestURI{}
 )
 
 type Handler struct {
@@ -30,12 +32,16 @@ func (h *Handler) Handle(ctx context.Context, r slog.Record) error {
 		r.AddAttrs(slog.String("requestid", reqID))
 	}
 
-	if reqID, ok := ctx.Value(RequestMethod).(string); ok {
-		r.AddAttrs(slog.String("method", reqID))
+	if reqMethod, ok := ctx.Value(RequestMethod).(string); ok {
+		r.AddAttrs(slog.String("method", reqMethod))
 	}
 
-	if reqID, ok := ctx.Value(RequestURI).(string); ok {
-		r.AddAttrs(slog.String("uri", reqID))
+	if reqUserAgent, ok := ctx.Value(RequestUserAgent).(string); ok {
+		r.AddAttrs(slog.String("user_agent", reqUserAgent))
+	}
+
+	if reqURI, ok := ctx.Value(RequestURI).(string); ok {
+		r.AddAttrs(slog.String("uri", reqURI))
 	}
 
 	return h.handler.Handle(ctx, r)
