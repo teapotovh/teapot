@@ -132,7 +132,7 @@ func release() (err error) {
 	}
 
 	if out != "" && !*dirty {
-		fmt.Fprintf(os.Stderr, "%s", out)
+		fmt.Fprintf(os.Stderr, "%s\n", out)
 		return ErrWorkingTreeNotClean
 	}
 
