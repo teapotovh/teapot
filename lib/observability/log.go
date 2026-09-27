@@ -17,14 +17,12 @@ func (h *Handler) Enabled(ctx context.Context, level slog.Level) bool {
 
 func (h *Handler) Handle(ctx context.Context, r slog.Record) error {
 	spanCtx := trace.SpanContextFromContext(ctx)
-	if !spanCtx.IsValid() {
-		return nil
+	if spanCtx.IsValid() {
+		r.AddAttrs(
+			slog.String("trace_id", spanCtx.TraceID().String()),
+			slog.String("span_id", spanCtx.SpanID().String()),
+		)
 	}
-
-	r.AddAttrs(
-		slog.String("trace_id", spanCtx.TraceID().String()),
-		slog.String("span_id", spanCtx.SpanID().String()),
-	)
 
 	return h.handler.Handle(ctx, r)
 }
