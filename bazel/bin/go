@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-exec bazel run @rules_go//go -- "$@"
+exec bazel run --noshow_progress   --ui_event_filters=-info,-stdout,-stderr @rules_go//go -- "$@"

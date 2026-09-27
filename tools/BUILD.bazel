@@ -28,8 +28,3 @@ alias(
     name = "buildifier",
     actual = "@multitool//tools/buildifier:workspace_root",
 )
-
-alias(
-    name = "gopls",
-    actual = "@org_golang_x_tools_gopls//:gopls",
-)
