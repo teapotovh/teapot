@@ -37,6 +37,13 @@ const (
 	MinimumRetryTime = 10 * time.Minute
 )
 
+var expoBackoff = &backoff.ExponentialBackOff{
+	InitialInterval:     BackoffInitialInterval,
+	RandomizationFactor: backoff.DefaultRandomizationFactor,
+	Multiplier:          BackoffMultiplier,
+	MaxInterval:         backoff.DefaultMaxInterval,
+}
+
 type (
 	Table[K Key[K], T Object[K]] struct {
 		logger *slog.Logger
@@ -285,17 +292,13 @@ func (ttx *TableTx[K, T]) Commit(ctx context.Context) error {
 
 	f := func() (struct{}, error) { return struct{}{}, ttx.table.nm.Notify(ctx, events) }
 
-	expoBackoff := backoff.NewExponentialBackOff()
-	expoBackoff.InitialInterval = BackoffInitialInterval
-	expoBackoff.Multiplier = BackoffMultiplier
-
 	if _, err := backoff.Retry(
 		ctx,
 		f,
 		backoff.WithMaxTries(BackoffMaxRetries),
 		backoff.WithBackOff(expoBackoff),
 	); err != nil {
-		return fmt.Errorf("error while sending notification during commit: %w", err)
+		return fmt.Errorf("sending notification during commit: %w", err)
 	}
 
 	for _, update := range ttx.updates {

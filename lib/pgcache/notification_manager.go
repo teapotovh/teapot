@@ -6,11 +6,110 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 
+	"github.com/cenkalti/backoff/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+var ErrClosing = errors.New("reconnecting connection is closing down")
+
+type unit struct{}
+
+type ReconnectingConn struct {
+	ctx     context.Context
+	mu      sync.Mutex
+	closing bool
+	conn    *pgx.Conn
+
+	config    *pgx.ConnConfig
+	onConnect func(ctx context.Context, conn *pgx.Conn) error
+}
+
+const reconnectingConnMaxRetries = 2
+
+func (rc *ReconnectingConn) Do[T any](
+	ctx context.Context,
+	fn func(ctx context.Context, conn *pgx.Conn) (T, error),
+) (T, error) {
+	var empty T
+
+	f := func() (T, error) {
+		rc.mu.Lock()
+		conn := rc.conn
+		closing := rc.closing
+		rc.mu.Unlock()
+
+		if closing {
+			return empty, ErrClosing
+		}
+
+		if conn == nil || conn.IsClosed() {
+			var err error
+
+			conn, err = rc.reconnect(ctx, rc.ctx)
+			if err != nil {
+				return empty, fmt.Errorf("reconnecting closed connection: %w", err)
+			}
+		}
+
+		return fn(ctx, conn)
+	}
+
+	return backoff.Retry(
+		ctx,
+		f,
+		backoff.WithMaxTries(reconnectingConnMaxRetries),
+		backoff.WithBackOff(expoBackoff),
+	)
+}
+
+func (rc *ReconnectingConn) Close(ctx context.Context) error {
+	rc.mu.Lock()
+	rc.closing = true
+
+	conn := rc.conn
+	defer rc.mu.Unlock()
+
+	if conn != nil {
+		return conn.Close(ctx)
+	}
+
+	return nil
+}
+
+func (rc *ReconnectingConn) reconnect(reqCtx, connCtx context.Context) (*pgx.Conn, error) {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+
+	if rc.closing {
+		return nil, ErrClosing
+	}
+
+	if rc.conn != nil {
+		if err := rc.conn.Close(reqCtx); err != nil {
+			return nil, fmt.Errorf("closing previous connection: %w", err)
+		}
+	}
+
+	conn, err := pgx.ConnectConfig(connCtx, rc.config)
+	if err != nil {
+		return nil, fmt.Errorf("(re)connecting: %w", err)
+	}
+
+	if rc.onConnect != nil {
+		if err = rc.onConnect(reqCtx, conn); err != nil {
+			return nil, fmt.Errorf("running on-connect boostrap: %w", err)
+		}
+	}
+
+	rc.conn = conn
+
+	return conn, nil
+}
 
 var ErrUnexpectedEvenType = errors.New("unexpected event type")
 
@@ -46,7 +145,7 @@ type notificationManager[K Key[K]] struct {
 
 	id uuid.UUID
 	// notifyConn is a single connection used to send notifications for cache invalidations.
-	notifyConn *pgx.Conn
+	notifyConn *ReconnectingConn
 	// listenConn is a single connection used to receive notifications for cache invalidations.
 	listenConn   *pgx.Conn
 	listenCancel context.CancelFunc
@@ -66,10 +165,7 @@ func newNotificationManager[K Key[K]](
 		return nil, fmt.Errorf("error while generating uuid: %w", err)
 	}
 
-	notifyConn, err := pgx.ConnectConfig(context.Background(), config)
-	if err != nil {
-		return nil, fmt.Errorf("error while opening notify connection: %w", err)
-	}
+	notifyConn := &ReconnectingConn{ctx: context.Background(), config: config}
 
 	listenConn, err := pgx.ConnectConfig(context.Background(), config)
 	if err != nil {
@@ -153,7 +249,10 @@ func (nm *notificationManager[K]) IsListening() bool {
 
 func (nm *notificationManager[K]) Ping(ctx context.Context) error {
 	// NOTE: we cannot ping nm.listenConn as it will be busy performing LISTEN
-	if err := nm.notifyConn.Ping(ctx); err != nil {
+	_, err := nm.notifyConn.Do(ctx, func(ctx context.Context, conn *pgx.Conn) (unit, error) {
+		return unit{}, conn.Ping(ctx)
+	})
+	if err != nil {
 		return fmt.Errorf("error while pinging notify connection: %w", err)
 	}
 
@@ -207,7 +306,9 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, events []Event[K])
 		return fmt.Errorf("error while encoding notification events: %w", err)
 	}
 
-	_, err = nm.notifyConn.Exec(ctx, "SELECT pg_notify($1, $2);", nm.channel, payload)
+	_, err = nm.notifyConn.Do(ctx, func(ctx context.Context, conn *pgx.Conn) (pgconn.CommandTag, error) {
+		return conn.Exec(ctx, "SELECT pg_notify($1, $2);", nm.channel, payload)
+	})
 	if err != nil {
 		return fmt.Errorf("error while sending notification: %w", err)
 	}
