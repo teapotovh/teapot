@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/iancoleman/strcase"
 	"go.opentelemetry.io/otel/attribute"
@@ -74,6 +75,7 @@ type Handle[T WideEvent] struct {
 	name     string
 	children *children
 
+	start   time.Time
 	we      T
 	span    trace.Span
 	sampled bool
@@ -151,11 +153,18 @@ func (h *Handle[T]) End(err error) {
 				level = slog.LevelError
 			}
 
+			// Prepend wide_event name and duration
+			attrs = append([]slog.Attr{
+				slog.String("wide_event", h.name),
+				slog.Duration("duration", time.Since(h.start)),
+			}, attrs...)
+
 			logger.LogAttrs(
 				h.ctx,
 				level,
 				WideEventMessage,
-				append([]slog.Attr{slog.String("wide_event", h.name)}, attrs...)...)
+				attrs...,
+			)
 		}
 
 	default:
@@ -251,8 +260,9 @@ func Start[T any, P interface {
 		name:     strcase.ToSnake(name),
 		children: children,
 
-		span: span,
-		we:   &t,
+		start: time.Now(),
+		span:  span,
+		we:    &t,
 	}
 
 	return withParent(ctx, handle.children), &t, handle
