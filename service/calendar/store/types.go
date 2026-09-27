@@ -37,7 +37,7 @@ type Calendar struct {
 type CalendarMetadata struct {
 	Name                  string   `json:"name,omitempty"`
 	Description           string   `json:"description,omitempty"`
-	SupportedComponentSet []string `json:"supported-calendar-component-set,omitempty"`
+	SupportedComponentSet []string `json:"supported-component-set,omitempty"`
 	MaxResourceSize       int64    `json:"max-resource-size,omitempty"`
 	Color                 string   `json:"color,omitempty"`
 	Tag                   string   `json:"tag,omitempty"`

@@ -15,16 +15,18 @@ type CalendarHomeSetPathWideEvent struct {
 func (c *CalendarHomeSetPathWideEvent) Fields() wideevent.Fields { return wideevent.ExtractFields(c) }
 
 type CalendarWideEvent struct {
-	Path        string
-	Name        string
-	Description string
+	Path                  string
+	Name                  string
+	Description           string
+	SupportedComponentSet []string
 }
 
 func wideEventCalendarFromCaldav(cal *caldav.Calendar) CalendarWideEvent {
 	return CalendarWideEvent{
-		Path:        cal.Path,
-		Name:        cal.Name,
-		Description: cal.Description,
+		Path:                  cal.Path,
+		Name:                  cal.Name,
+		Description:           cal.Description,
+		SupportedComponentSet: cal.SupportedComponentSet,
 	}
 }
 
@@ -144,6 +146,7 @@ type QueryCalendarObjectWideEvent struct {
 
 	All      int
 	Filtered int
+	Query    *caldav.CalendarQuery
 }
 
 func (q *QueryCalendarObjectWideEvent) Fields() wideevent.Fields { return wideevent.ExtractFields(q) }

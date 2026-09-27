@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
+	ErrInvalidTopLevel  = errors.New("invalid top level filter")
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -49,7 +50,7 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 
 	if query.Name != string(ics.ComponentVCalendar) {
 		// Filter-in unsupported component types
-		return true, nil
+		return true, fmt.Errorf("could not apply filter %q: %w", query.Name, ErrInvalidTopLevel)
 	}
 
 	// TODO checks other properties of VCALENDAR component
@@ -57,6 +58,11 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 
 	for _, child := range cal.Events() {
 		for _, childFilter := range query.Comps {
+			if query.Name != string(ics.ComponentVEvent) {
+				// Filter-in unsupported component types
+				return true, nil
+			}
+
 			childMatches, err := matchEvent(childFilter, child)
 			if err != nil {
 				return false, fmt.Errorf("matching children component: %w", err)

@@ -351,6 +351,8 @@ func (b *Backend) QueryCalendarObjects(
 	ctx, we, handle := wideevent.Start[QueryCalendarObjectWideEvent](ctx, "QueryCalendarObjects")
 	defer func() { handle.End(err) }()
 
+	we.Query = query
+
 	objects, err = b.ListCalendarObjects(ctx, path, &query.CompRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error while listing all calendar objects for query: %w", err)
