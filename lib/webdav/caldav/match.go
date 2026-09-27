@@ -56,13 +56,13 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 	// TODO checks other properties of VCALENDAR component
 	// TODO checks components != VEVENT too
 
-	for _, child := range cal.Events() {
-		for _, childFilter := range query.Comps {
-			if query.Name != string(ics.ComponentVEvent) {
-				// Filter-in unsupported component types
-				return true, nil
-			}
+	for _, childFilter := range query.Comps {
+		if childFilter.Name != string(ics.ComponentVEvent) {
+			// Filter-in unsupported component types
+			return true, nil
+		}
 
+		for _, child := range cal.Events() {
 			childMatches, err := matchEvent(childFilter, child)
 			if err != nil {
 				return false, fmt.Errorf("matching children component: %w", err)
