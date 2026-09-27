@@ -10,12 +10,6 @@ let
   '';
 in pkgs.mkShell {
   buildInputs = with pkgs; [
-    go
-    gopls
-
-    grpcurl
-
-    bazelisk
-    steam-run
+    bazel
   ];
 }
