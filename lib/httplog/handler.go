@@ -15,7 +15,7 @@ type (
 var (
 	RequestID        = requestID{}
 	RequestMethod    = requestMethod{}
-	RequestUserAgent = requestMethod{}
+	RequestUserAgent = requestUserAgent{}
 	RequestURI       = requestURI{}
 )
 
