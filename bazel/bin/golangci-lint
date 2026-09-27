@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+exec bazel run --noshow_progress --ui_event_filters=-info,-stdout,-stderr -- //tools:golangci-lint "${@}"
