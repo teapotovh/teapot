@@ -26,7 +26,7 @@ func createInterface(name string) (*netlink.Bridge, error) {
 		return prev.(*netlink.Bridge), nil
 	}
 
-	link := &netlink.Bridge{LinkAttrs: netlink.LinkAttrs{Name: name}}
+	link := &netlink.Bridge{Name: name}
 	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, fmt.Errorf("failed to create bridge device: %w", err)
 	}

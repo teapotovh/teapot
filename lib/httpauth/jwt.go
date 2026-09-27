@@ -116,14 +116,12 @@ func (ja *JWTAuth) authCookie(username string, admin bool) (*http.Cookie, error)
 	expiry := now.Add(ja.duration)
 
 	claims := &jwtAuth{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expiry),
-			IssuedAt:  jwt.NewNumericDate(now),
-			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    ja.issuer,
-			Subject:   username,
-		},
-		Admin: admin,
+		ExpiresAt: jwt.NewNumericDate(expiry),
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now),
+		Issuer:    ja.issuer,
+		Subject:   username,
+		Admin:     admin,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 

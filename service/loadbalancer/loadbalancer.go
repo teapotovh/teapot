@@ -96,10 +96,8 @@ func (lb *LoadBalancer) podToService(ctx context.Context, obj client.Object) []r
 
 		if selector.Matches(labels.Set(pod.Labels)) {
 			requests = append(requests, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: svc.Namespace,
-					Name:      svc.Name,
-				},
+				Namespace: svc.Namespace,
+				Name:      svc.Name,
 			})
 		}
 	}

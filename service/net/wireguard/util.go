@@ -47,10 +47,8 @@ func createInterface(name string) (*netlink.Wireguard, error) {
 	// but the library doesn't support reliable not found checks.
 
 	link := &netlink.Wireguard{
-		LinkAttrs: netlink.LinkAttrs{
-			Name: name,
-			MTU:  OptimalMTU,
-		},
+		Name: name,
+		MTU:  OptimalMTU,
 	}
 	if err := netlink.LinkAdd(link); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, fmt.Errorf("failed to create wireguard device: %w", err)
