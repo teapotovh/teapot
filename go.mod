@@ -1,6 +1,6 @@
 module github.com/teapotovh/teapot
 
-go 1.26.6
+go 1.27.1
 
 require (
 	git.sr.ht/~bitfehler/brant v0.5.1
