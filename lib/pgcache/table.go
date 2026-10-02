@@ -34,7 +34,7 @@ const (
 	BackoffMaxRetries      = 3
 
 	ShutdownDelay    = 2 * time.Second
-	MinimumRetryTime = 10 * time.Minute
+	MinimumRetryTime = 5 * time.Minute
 )
 
 var expoBackoff = &backoff.ExponentialBackOff{
@@ -286,19 +286,12 @@ func (ttx *TableTx[K, T]) Commit(ctx context.Context) error {
 		}
 	}
 
-	if err := ttx.tx.Commit(ctx); err != nil {
-		return fmt.Errorf("error while committing: %w", err)
+	if err := ttx.table.nm.Notify(ctx, ttx.tx, events); err != nil {
+		return fmt.Errorf("sending notification during commit: %w", err)
 	}
 
-	f := func() (struct{}, error) { return struct{}{}, ttx.table.nm.Notify(ctx, events) }
-
-	if _, err := backoff.Retry(
-		ctx,
-		f,
-		backoff.WithMaxTries(BackoffMaxRetries),
-		backoff.WithBackOff(expoBackoff),
-	); err != nil {
-		return fmt.Errorf("sending notification during commit: %w", err)
+	if err := ttx.tx.Commit(ctx); err != nil {
+		return fmt.Errorf("error while committing: %w", err)
 	}
 
 	for _, update := range ttx.updates {
@@ -466,8 +459,6 @@ func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notif
 			return fmt.Errorf("error while getting the next notification: %w", err)
 		}
 
-		t.logger.Info("received notifications", "count", len(events))
-
 		if err := t.handleEvents(ctx, events); err != nil {
 			return fmt.Errorf("error while performing cache update due to notification: %w", err)
 		}
@@ -490,7 +481,7 @@ func (t *Table[K, T]) ping(ctx context.Context) error {
 		return fmt.Errorf("error while pinging pool: %w", err)
 	}
 
-	return t.nm.Ping(ctx)
+	return nil
 }
 
 func (t *Table[K, T]) isLoaded(_ context.Context) error {
