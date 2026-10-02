@@ -170,12 +170,14 @@ func (nm *notificationManager[K]) Next(ctx context.Context) ([]Event[K], error) 
 	for {
 		waitCtx, cancel := context.WithTimeout(ctx, ConnectionKeepaliveCheckTime)
 		msg, err := nm.listenConn.WaitForNotification(waitCtx)
+
 		cancel()
 
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				pingCtx, cancel := context.WithTimeout(ctx, PingTimeout)
 				err := nm.listenConn.Ping(pingCtx)
+
 				cancel()
 
 				if err != nil {

@@ -37,13 +37,6 @@ const (
 	MinimumRetryTime = 5 * time.Minute
 )
 
-var expoBackoff = &backoff.ExponentialBackOff{
-	InitialInterval:     BackoffInitialInterval,
-	RandomizationFactor: backoff.DefaultRandomizationFactor,
-	Multiplier:          BackoffMultiplier,
-	MaxInterval:         backoff.DefaultMaxInterval,
-}
-
 type (
 	Table[K Key[K], T Object[K]] struct {
 		logger *slog.Logger
