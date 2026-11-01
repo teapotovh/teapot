@@ -9,7 +9,7 @@ require (
 	git.sr.ht/~bitfehler/brant v0.5.1
 	github.com/ammario/tlru v0.4.0
 	github.com/arran4/golang-ical v0.3.8
-	github.com/bazelbuild/rules_go v0.64.0
+	github.com/bazelbuild/rules_go v0.65.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/coreos/go-iptables v0.8.0
 	github.com/daulet/tokenizers v1.27.0
@@ -156,7 +156,7 @@ require (
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	golang.org/x/vuln v1.4.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
