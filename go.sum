@@ -228,8 +228,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdhx/f4=
 github.com/ncruces/go-strftime v0.1.9/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
-github.com/nrdcg/desec v0.11.2 h1:zPttKdQFzmlXMSkiuKnb34G7LkROdmRyL9SidYXIm4k=
-github.com/nrdcg/desec v0.11.2/go.mod h1:2LuxHlOcwML/7cntu0eimONmA1U+ZxFDAonoSXr4igQ=
+github.com/nrdcg/desec v0.11.3 h1:TL4Kffpgn3ChKr03jukvlIpH/z16Y13dzWE83HUu3nw=
+github.com/nrdcg/desec v0.11.3/go.mod h1:A3YUxGVTXk/ZVfvjuPbZCj8HMykIqzTgOugOoF4WIHA=
 github.com/onsi/ginkgo/v2 v2.28.0 h1:Rrf+lVLmtlBIKv6KrIGJCjyY8N36vDVcutbGJkyqjJc=
 github.com/onsi/ginkgo/v2 v2.28.0/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
 github.com/onsi/gomega v1.39.1 h1:1IJLAad4zjPn2PsnhH70V4DKRFlrCzGBNrNaru+Vf28=
