@@ -59,7 +59,7 @@ require (
 	k8s.io/klog/v2 v2.140.0
 	maragu.dev/gomponents v1.3.0
 	maragu.dev/gomponents-htmx v0.6.1
-	sigs.k8s.io/controller-runtime v0.25.1
+	sigs.k8s.io/controller-runtime v0.25.2
 	sigs.k8s.io/external-dns v0.23.0
 )
 
