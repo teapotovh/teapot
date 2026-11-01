@@ -21,7 +21,7 @@ require (
 	github.com/google/btree v1.1.3
 	github.com/google/go-github/v81 v81.0.0
 	github.com/google/uuid v1.6.0
-	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
+	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.1
 	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/iancoleman/strcase v0.3.0
