@@ -28,7 +28,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150
 	github.com/kataras/requestid v0.0.2
-	github.com/lmittmann/tint v1.2.0
+	github.com/lmittmann/tint v1.2.1
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/nrdcg/desec v0.11.3
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
