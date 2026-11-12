@@ -80,18 +80,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.URL.Path == "/.well-known/caldav" {
-		principalPath, err := h.Backend.CurrentUserPrincipal(r.Context())
-		if err != nil {
-			http.Error(w, "caldav: failed to determine current user principal", http.StatusInternalServerError)
-			return
-		}
-
-		http.Redirect(w, r, principalPath, http.StatusPermanentRedirect)
-
-		return
-	}
-
 	var err error
 
 	switch r.Method {

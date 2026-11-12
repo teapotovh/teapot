@@ -9,6 +9,7 @@ import (
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ldap"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
+	"github.com/teapotovh/teapot/lib/wellknown"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
 )
@@ -19,6 +20,7 @@ type Calendar struct {
 	httpLog     *httplog.HTTPLog
 	ldapFactory *ldap.Factory
 	httpAuth    *httpauth.BasicAuth
+	wellKnown   wellknown.WellKnown
 
 	store   store.Store
 	backend *backend.Backend
@@ -47,6 +49,10 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 		logger.With("component", "auth"),
 	)
 
+	wellKnown := wellknown.WellKnown{
+		wellknown.Caldav: wellknown.ResolverHost,
+	}
+
 	store, err := store.NewStore(config.Store, logger.With("component", "store"))
 	if err != nil {
 		return nil, fmt.Errorf("error while initializing calendar store: %w", err)
@@ -60,6 +66,7 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 		httpLog:     httpLog,
 		ldapFactory: ldapFactory,
 		httpAuth:    httpAuth,
+		wellKnown:   wellKnown,
 
 		store:   store,
 		backend: backend,
@@ -77,14 +84,20 @@ func (c *Calendar) LDAPFactory() *ldap.Factory {
 }
 
 func (c *Calendar) Handler(prefix string) http.Handler {
-	var handler http.Handler = &caldav.Handler{
+	mux := http.NewServeMux()
+
+	var caldav http.Handler = &caldav.Handler{
 		Prefix:  prefix,
 		Backend: c.backend,
 	}
 
-	handler = c.httpAuth.Required(handler)
-	handler = c.httpAuth.Middleware(handler)
-	handler = c.httpLog.LogMiddleware(handler)
+	caldav = c.httpAuth.Required(caldav)
+	caldav = c.httpAuth.Middleware(caldav)
+
+	mux.Handle(wellknown.Prefix, c.wellKnown)
+	mux.Handle("/{path...}", caldav)
+
+	handler := c.httpLog.LogMiddleware(mux)
 	handler = c.httpLog.ExtractMiddleware(handler)
 
 	return handler
