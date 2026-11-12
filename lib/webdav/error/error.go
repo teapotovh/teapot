@@ -1,4 +1,4 @@
-package error //nolint:predeclared
+package error
 
 import (
 	"errors"
