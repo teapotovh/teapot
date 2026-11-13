@@ -137,7 +137,7 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 func (f *Factory) Authenticate(ctx context.Context, username string, password string) (*User, error) {
 	client, err := f.NewClient(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrClientCreation, err)
 	}
 	defer client.Close()
 
