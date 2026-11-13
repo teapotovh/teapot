@@ -4,6 +4,7 @@ go_library(
     name = "web",
     srcs = [
         "flag.go",
+        "metrics.go",
         "page_browse.go",
         "page_browse_dialog.go",
         "page_file.go",
