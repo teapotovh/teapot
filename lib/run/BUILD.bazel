@@ -13,12 +13,12 @@ go_library(
 
 go_test(
     name = "run_test",
+    size = "small",  # gazelle:keep
     srcs = [
         "combine_test.go",
         "run_test.go",
     ],
     embed = [":run"],
-    size = "small",  # gazelle:keep
     deps = [
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",

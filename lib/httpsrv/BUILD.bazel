@@ -24,9 +24,9 @@ go_library(
 
 go_test(
     name = "httpsrv_test",
+    size = "small",  # gazelle:keep
     srcs = ["httpsrv_test.go"],
     embed = [":httpsrv"],
-    size = "small",  # gazelle:keep
     deps = [
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
