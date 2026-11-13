@@ -134,6 +134,7 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 	}, nil
 }
 
+// Authenticate implements the Authenticator interface.
 func (f *Factory) Authenticate(ctx context.Context, username string, password string) (*User, error) {
 	client, err := f.NewClient(ctx)
 	if err != nil {
