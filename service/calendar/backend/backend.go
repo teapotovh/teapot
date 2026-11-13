@@ -102,7 +102,12 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 
 	err = b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
 	if err != nil {
-		return fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
+		err = fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
+		if errors.Is(err, store.ErrCalendarAlreadyExists) {
+			return &daverr.HTTPError{Code: http.StatusForbidden, Err: err}
+		}
+
+		return err
 	}
 
 	return nil

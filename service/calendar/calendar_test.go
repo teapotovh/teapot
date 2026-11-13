@@ -339,10 +339,11 @@ func TestCalendarHandlerMKCalendarDuplicate(t *testing.T) {
 		contentType: `application/xml; charset="utf-8"`,
 	})
 
-	// The store rejects the duplicate with ErrCalendarAlreadyExists, but the
-	// backend does not translate store errors to WebDAV errors, so the handler
-	// reports an internal server error instead of 405 or 409.
-	assert.Equal(t, http.StatusInternalServerError, status)
+	// DAV:resource-must-be-null: the request URI must not map to an existing
+	// resource, so a duplicate MKCALENDAR is rejected with 403 (RFC 4791 1.3).
+	assert.Equal(t, http.StatusForbidden, status)
+	assert.GreaterOrEqual(t, status, 400)
+	assert.Less(t, status, 500)
 }
 
 func TestCalendarHandlerOptions(t *testing.T) {
