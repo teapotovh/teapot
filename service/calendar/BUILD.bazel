@@ -27,7 +27,13 @@ go_library(
 go_test(
     name = "calendar_test",
     srcs = ["calendar_test.go"],
+    data = glob(["testdata/**"]),
     embed = [":calendar"],
+    embedsrcs = [
+        "testdata/calendar-query.xml",
+        "testdata/event.ics",
+        "testdata/mkcalendar.xml",
+    ],
     deps = [
         "//lib/httpauth",
         "//lib/httplog",

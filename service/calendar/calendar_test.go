@@ -2,6 +2,7 @@ package calendar
 
 import (
 	"context"
+	"embed"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -36,57 +37,17 @@ const (
 	eventPath            = calendarPath + "event.ics"
 )
 
-const mkcalendarBody = `<?xml version="1.0" encoding="utf-8" ?>
-<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:set>
-    <D:prop>
-      <D:displayname>Test calendar</D:displayname>
-      <C:calendar-description>Calendar used by integration tests.</C:calendar-description>
-      <C:supported-calendar-component-set>
-        <C:comp name="VEVENT"/>
-      </C:supported-calendar-component-set>
-      <C:calendar-timezone><![CDATA[BEGIN:VCALENDAR
-PRODID:-//Example Corp.//CalDAV Client//EN
-VERSION:2.0
-BEGIN:VTIMEZONE
-TZID:UTC
-BEGIN:STANDARD
-DTSTART:19700101T000000
-TZOFFSETFROM:+0000
-TZOFFSETTO:+0000
-END:STANDARD
-END:VTIMEZONE
-END:VCALENDAR
-]]></C:calendar-timezone>
-    </D:prop>
-  </D:set>
-</C:mkcalendar>`
+//go:embed testdata/*.xml testdata/*.ics
+var testdataFS embed.FS
 
-const eventBody = "BEGIN:VCALENDAR\r\n" +
-	"VERSION:2.0\r\n" +
-	"PRODID:-//teapot//calendar//EN\r\n" +
-	"BEGIN:VEVENT\r\n" +
-	"UID:event1\r\n" +
-	"DTSTAMP:20260101T000000Z\r\n" +
-	"DTSTART:20260101T100000Z\r\n" +
-	"DTEND:20260101T110000Z\r\n" +
-	"SUMMARY:Test event\r\n" +
-	"END:VEVENT\r\n" +
-	"END:VCALENDAR\r\n"
+func testdata(t *testing.T, name string) string {
+	t.Helper()
 
-const calendarQueryBody = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <D:getetag/>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VEVENT">
-        <C:time-range start="20260101T000000Z" end="20260102T000000Z"/>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
+	b, err := testdataFS.ReadFile("testdata/" + name)
+	require.NoError(t, err)
+
+	return string(b)
+}
 
 type fakeAuthenticator struct {
 	users map[string]string
@@ -347,7 +308,7 @@ func TestCalendarHandlerMKCalendar(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        mkcalendarBody,
+		body:        testdata(t, "mkcalendar.xml"),
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
@@ -368,13 +329,13 @@ func TestCalendarHandlerMKCalendarDuplicate(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        mkcalendarBody,
+		body:        testdata(t, "mkcalendar.xml"),
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
 
 	status, _, _ = doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        mkcalendarBody,
+		body:        testdata(t, "mkcalendar.xml"),
 		contentType: `application/xml; charset="utf-8"`,
 	})
 
@@ -400,13 +361,13 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        mkcalendarBody,
+		body:        testdata(t, "mkcalendar.xml"),
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
 
 	status, headers, _ := doAuthenticatedRequest(t, srv, http.MethodPut, eventPath, calendarRequest{
-		body:        eventBody,
+		body:        testdata(t, "event.ics"),
 		contentType: "text/calendar; charset=utf-8",
 	})
 	require.Equal(t, http.StatusCreated, status)
@@ -423,7 +384,7 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	require.Contains(t, body, "SUMMARY:Test event")
 
 	status, _, body = doAuthenticatedRequest(t, srv, "REPORT", calendarPath, calendarRequest{
-		body:        calendarQueryBody,
+		body:        testdata(t, "calendar-query.xml"),
 		contentType: "application/xml",
 		depth:       "1",
 	})
