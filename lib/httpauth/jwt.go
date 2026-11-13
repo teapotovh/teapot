@@ -26,8 +26,8 @@ type JWTAuth struct {
 	prefix   string
 	secure   bool
 
-	factory *ldap.Factory
-	metrics metrics
+	authenticator ldap.Authenticator
+	metrics       metrics
 }
 
 type JWTAuthConfig struct {
@@ -45,7 +45,7 @@ type JWTAuthConfig struct {
 	Secure bool
 }
 
-func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger) *JWTAuth {
+func NewJWTAuth(authenticator ldap.Authenticator, config JWTAuthConfig, logger *slog.Logger) *JWTAuth {
 	ja := &JWTAuth{
 		logger: logger,
 
@@ -55,7 +55,7 @@ func NewJWTAuth(factory *ldap.Factory, config JWTAuthConfig, logger *slog.Logger
 		prefix:   config.Prefix,
 		secure:   config.Secure,
 
-		factory: factory,
+		authenticator: authenticator,
 	}
 	ja.metrics.init()
 
@@ -79,7 +79,7 @@ func (ja *JWTAuth) Middleware(next http.Handler) http.Handler {
 }
 
 func (ja *JWTAuth) Authenticate(ctx context.Context, username, password string) (*http.Cookie, *Auth, error) {
-	user, err := authenticate(ctx, ja.factory, username, password, metricsMethodJWT, &ja.metrics, ja.logger)
+	user, err := authenticate(ctx, ja.authenticator, username, password, metricsMethodJWT, &ja.metrics, ja.logger)
 	if err != nil {
 		return nil, nil, err
 	}

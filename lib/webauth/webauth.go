@@ -43,12 +43,12 @@ type WebAuth struct {
 }
 
 func NewWebAuth(
-	factory *ldap.Factory,
+	authenticator ldap.Authenticator,
 	config WebAuthConfig,
 	options WebAuthOptions,
 	logger *slog.Logger,
 ) (*WebAuth, error) {
-	auth := httpauth.NewJWTAuth(factory, config.JWTAuth, logger)
+	auth := httpauth.NewJWTAuth(authenticator, config.JWTAuth, logger)
 
 	resetURL, err := url.Parse(config.ResetPasswordURL)
 	if err != nil {
