@@ -17,6 +17,7 @@ var (
 	ErrEntityNotFound     = errors.New("entity not found")
 	ErrTooManyMatches     = errors.New("too many matches for user search")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrClientCreation     = errors.New("error while creating LDAP client")
 )
 
 type userFilterTemplateValues struct {
