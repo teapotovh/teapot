@@ -22,7 +22,14 @@ go_library(
 
 go_test(
     name = "httpauth_test",
-    srcs = ["httpauth_test.go"],
+    srcs = [
+        "basic_test.go",
+        "httpauth_test.go",
+    ],
     embed = [":httpauth"],
-    deps = ["@com_github_stretchr_testify//assert"],
+    deps = [
+        "//lib/ldap",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )
