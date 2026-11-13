@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "httpauth",
@@ -18,4 +18,11 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
     ],
+)
+
+go_test(
+    name = "httpauth_test",
+    srcs = ["httpauth_test.go"],
+    embed = [":httpauth"],
+    deps = ["@com_github_stretchr_testify//assert"],
 )
