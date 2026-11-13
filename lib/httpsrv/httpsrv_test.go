@@ -30,6 +30,7 @@ func (handlerService) Handler(prefix string) http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
 	return mux
 }
 
@@ -40,6 +41,7 @@ func runServer(t *testing.T, h *HTTPSrv, ctx context.Context) <-chan error {
 
 	done := make(chan error, 1)
 	go func() { done <- h.Run(ctx, stubNotify{}) }()
+
 	return done
 }
 
@@ -95,7 +97,9 @@ func TestHTTPSrvServesRequests(t *testing.T) {
 
 	resp, err := http.Get("http://" + addr + "/")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+
+	t.Cleanup(func() { _ = resp.Body.Close() })
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	cancel()

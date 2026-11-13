@@ -44,12 +44,14 @@ func (f *fakeService) Run(ctx context.Context, notify Notify) error {
 	if f.notifyDelay > 0 {
 		time.Sleep(f.notifyDelay)
 	}
+
 	f.notified.Store(true)
 	notify.Notify()
 
 	if f.errAfter > 0 {
 		time.Sleep(f.errAfter)
 		close(f.done)
+
 		return f.err
 	}
 
@@ -58,7 +60,9 @@ func (f *fakeService) Run(ctx context.Context, notify Notify) error {
 	if f.runDelay > 0 {
 		time.Sleep(f.runDelay)
 	}
+
 	close(f.done)
+
 	return f.err
 }
 

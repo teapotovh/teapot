@@ -14,11 +14,12 @@ import (
 // is called.
 type countingNotify struct {
 	notify
+
 	count atomic.Int64
 }
 
 func newCountingNotify() *countingNotify {
-	return &countingNotify{notify: notify{ch: make(chan error, 1)}}
+	return &countingNotify{ch: make(chan error, 1)}
 }
 
 func (n *countingNotify) Notify() {
@@ -36,6 +37,7 @@ func (s gateService) Run(ctx context.Context, notify Notify) error {
 	<-s.gate
 	notify.Notify()
 	<-ctx.Done()
+
 	return nil
 }
 
@@ -65,10 +67,12 @@ func TestCombinedNotifyRequiresAllRunnables(t *testing.T) {
 	close(gateB)
 
 	select {
-	case <-lower.ch:
+	case err := <-lower.ch:
+		_ = err
 	case <-time.After(time.Second):
 		t.Fatal("lower notify did not fire after all runnables notified")
 	}
+
 	assert.EqualValues(t, 1, lower.count.Load())
 
 	cancel()
@@ -110,5 +114,6 @@ func (s blockerService) Run(ctx context.Context, notify Notify) error {
 	notify.Notify()
 	<-ctx.Done()
 	close(s.done)
+
 	return nil
 }
