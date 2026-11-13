@@ -87,7 +87,7 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 
 // Run implements run.Runnable.
 func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
-	var ch chan error
+	ch := make(chan error, 1)
 	defer close(ch)
 
 	h.inner.BaseContext = func(l net.Listener) context.Context { return ctx }

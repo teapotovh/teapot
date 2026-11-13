@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -53,15 +54,17 @@ type Runnable interface {
 type runnable struct {
 	runnable Runnable
 	logger   *slog.Logger
-	errors   chan error
 	name     string
 	timeout  time.Duration
 }
 
-func (r runnable) startup(ctx context.Context) error {
+func (r runnable) startup(ctx context.Context, done func(), errors chan error) error {
 	notify := &notify{ch: make(chan error, 1)}
 
-	go r.watch(ctx, notify)
+	go func() {
+		defer done()
+		r.watch(ctx, notify, errors)
+	}()
 
 	start := time.Now()
 
@@ -80,7 +83,7 @@ func (r runnable) startup(ctx context.Context) error {
 	}
 }
 
-func (r runnable) watch(ctx context.Context, ntfy *notify) {
+func (r runnable) watch(ctx context.Context, ntfy *notify, errors chan error) {
 	err := r.wrap(ctx, ntfy)
 	if err != nil {
 		// the outer service is still waiting for timeout (since no notification
@@ -88,7 +91,7 @@ func (r runnable) watch(ctx context.Context, ntfy *notify) {
 		if !ntfy.sent.Load() {
 			ntfy.notifyError(err)
 		} else {
-			r.errors <- err
+			errors <- err
 		}
 	}
 }
@@ -138,7 +141,6 @@ func (r *Run) Add(name string, run Runnable, timeout *time.Duration) {
 		name:     name,
 		runnable: run,
 		timeout:  t,
-		errors:   r.errors,
 	})
 }
 
@@ -146,7 +148,13 @@ func (r *Run) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(ErrOtherService)
 
+	// Services can report errors while we are draining the wait group below,
+	// so buffer the channel to make sure nobody blocks.
+	r.errors = make(chan error, len(r.services))
+
+	var wg sync.WaitGroup
 	for _, svc := range r.services {
+		wg.Add(1)
 		r.logger.Debug("starting service", "name", svc.name, "timeout", svc.timeout)
 		// This runs the service in the background, unless there is a failure at
 		// startup, in which case it returns immediately (or after the specified
@@ -154,7 +162,7 @@ func (r *Run) Run(ctx context.Context) error {
 		//
 		// If the service startup succeeds, runtime errors can be monitored via the
 		// `errors` channel.
-		if err := svc.startup(ctx); err != nil {
+		if err := svc.startup(ctx, wg.Done, r.errors); err != nil {
 			return fmt.Errorf("error while starting service: %w", err)
 		}
 	}
@@ -162,10 +170,11 @@ func (r *Run) Run(ctx context.Context) error {
 	var err error
 	select {
 	case <-ctx.Done():
-		break
 	case err = <-r.errors:
-		break
 	}
+
+	cancel(ErrOtherService)
+	wg.Wait()
 
 	return err
 }
