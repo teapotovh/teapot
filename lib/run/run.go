@@ -8,6 +8,8 @@ import (
 	"runtime/debug"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -53,15 +55,16 @@ type Runnable interface {
 type runnable struct {
 	runnable Runnable
 	logger   *slog.Logger
-	errors   chan error
 	name     string
 	timeout  time.Duration
 }
 
-func (r runnable) startup(ctx context.Context) error {
+func (r runnable) startup(ctx context.Context, g *errgroup.Group) error {
 	notify := &notify{ch: make(chan error, 1)}
 
-	go r.watch(ctx, notify)
+	g.Go(func() error {
+		return r.watch(ctx, notify)
+	})
 
 	start := time.Now()
 
@@ -80,17 +83,17 @@ func (r runnable) startup(ctx context.Context) error {
 	}
 }
 
-func (r runnable) watch(ctx context.Context, ntfy *notify) {
+func (r runnable) watch(ctx context.Context, ntfy *notify) error {
 	err := r.wrap(ctx, ntfy)
 	if err != nil {
 		// the outer service is still waiting for timeout (since no notification
 		// was fired), thus send a notification error.
 		if !ntfy.sent.Load() {
 			ntfy.notifyError(err)
-		} else {
-			r.errors <- err
 		}
 	}
+
+	return err
 }
 
 // wrap wraps the Runnable service with panic-handling code, so that we return
@@ -110,7 +113,6 @@ func (r runnable) wrap(ctx context.Context, ntfy *notify) (err error) {
 
 type Run struct {
 	logger   *slog.Logger
-	errors   chan error
 	services []runnable
 	timeout  time.Duration
 }
@@ -123,7 +125,6 @@ func NewRun(config RunConfig, logger *slog.Logger) *Run {
 	return &Run{
 		logger:  logger,
 		timeout: config.Timeout,
-		errors:  make(chan error),
 	}
 }
 
@@ -138,7 +139,6 @@ func (r *Run) Add(name string, run Runnable, timeout *time.Duration) {
 		name:     name,
 		runnable: run,
 		timeout:  t,
-		errors:   r.errors,
 	})
 }
 
@@ -146,26 +146,20 @@ func (r *Run) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(ErrOtherService)
 
+	g, ctx := errgroup.WithContext(ctx)
+
 	for _, svc := range r.services {
 		r.logger.Debug("starting service", "name", svc.name, "timeout", svc.timeout)
 		// This runs the service in the background, unless there is a failure at
 		// startup, in which case it returns immediately (or after the specified
 		// timeout) with an error.
 		//
-		// If the service startup succeeds, runtime errors can be monitored via the
-		// `errors` channel.
-		if err := svc.startup(ctx); err != nil {
+		// If the service startup succeeds, runtime errors cancel the context and
+		// are returned by the group.
+		if err := svc.startup(ctx, g); err != nil {
 			return fmt.Errorf("error while starting service: %w", err)
 		}
 	}
 
-	var err error
-	select {
-	case <-ctx.Done():
-		break
-	case err = <-r.errors:
-		break
-	}
-
-	return err
+	return g.Wait()
 }
