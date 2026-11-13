@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/teapotovh/teapot/lib/observability"
 )
 
 type metrics struct {
@@ -39,14 +41,22 @@ func (m *metrics) observe(method, status string, duration time.Duration) {
 
 // Metrics implements observability.Metrics.
 func (ba *BasicAuth) Metrics() []prometheus.Collector {
-	return append([]prometheus.Collector{
-		ba.metrics.duration,
-	}, ba.factory.Metrics()...)
+	collectors := []prometheus.Collector{ba.metrics.duration}
+
+	if m, ok := ba.authenticator.(observability.Metrics); ok {
+		collectors = append(collectors, m.Metrics()...)
+	}
+
+	return collectors
 }
 
 // Metrics implements observability.Metrics.
 func (ja *JWTAuth) Metrics() []prometheus.Collector {
-	return append([]prometheus.Collector{
-		ja.metrics.duration,
-	}, ja.factory.Metrics()...)
+	collectors := []prometheus.Collector{ja.metrics.duration}
+
+	if m, ok := ja.authenticator.(observability.Metrics); ok {
+		collectors = append(collectors, m.Metrics()...)
+	}
+
+	return collectors
 }

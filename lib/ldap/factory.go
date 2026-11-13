@@ -31,6 +31,12 @@ type LDAPConfig struct {
 	AccessesDN   string
 }
 
+// Authenticator authenticates users against their credentials.
+type Authenticator interface {
+	// Authenticate checks the given credentials and returns the matching user.
+	Authenticate(ctx context.Context, username string, password string) (*User, error)
+}
+
 // Factory is a constructor for high-level LDAP clients that can perform
 // operations to manage users, as needed by kontakte.
 // One client should be constructed per request.
@@ -126,6 +132,16 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 		adminGroupDN: f.adminGroupDN,
 		accessesDN:   f.accessesDN,
 	}, nil
+}
+
+func (f *Factory) Authenticate(ctx context.Context, username string, password string) (*User, error) {
+	client, err := f.NewClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	return client.Authenticate(ctx, username, password)
 }
 
 // Run implements run.Runnable.
