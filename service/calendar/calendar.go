@@ -32,15 +32,25 @@ type CalendarConfig struct {
 	Store   store.StoreConfig
 }
 
-func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) {
+type calendarComponents struct {
+	httpLog     *httplog.HTTPLog
+	ldapFactory *ldap.Factory
+	httpAuth    *httpauth.BasicAuth
+	wellKnown   wellknown.WellKnown
+
+	store   store.Store
+	backend *backend.Backend
+}
+
+func newComponents(config CalendarConfig, logger *slog.Logger) (calendarComponents, error) {
 	httpLog, err := httplog.NewHTTPLog(config.HTTPLog, logger.With("component", "httplog"))
 	if err != nil {
-		return nil, fmt.Errorf("error while constructing httplog: %w", err)
+		return calendarComponents{}, fmt.Errorf("error while constructing httplog: %w", err)
 	}
 
 	ldapFactory, err := ldap.NewFactory(config.LDAP, logger.With("component", "ldap"))
 	if err != nil {
-		return nil, fmt.Errorf("error while building LDAP factory: %w", err)
+		return calendarComponents{}, fmt.Errorf("error while building LDAP factory: %w", err)
 	}
 
 	httpAuth := httpauth.NewBasicAuth(
@@ -55,14 +65,12 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 
 	store, err := store.NewStore(config.Store, logger.With("component", "store"))
 	if err != nil {
-		return nil, fmt.Errorf("error while initializing calendar store: %w", err)
+		return calendarComponents{}, fmt.Errorf("error while initializing calendar store: %w", err)
 	}
 
 	backend := backend.NewBackend(store, logger.With("component", "backend"))
 
-	calendar := Calendar{
-		logger: logger,
-
+	return calendarComponents{
 		httpLog:     httpLog,
 		ldapFactory: ldapFactory,
 		httpAuth:    httpAuth,
@@ -70,9 +78,30 @@ func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) 
 
 		store:   store,
 		backend: backend,
+	}, nil
+}
+
+func newCalendarFromComponents(comps calendarComponents, logger *slog.Logger) *Calendar {
+	return &Calendar{
+		logger: logger,
+
+		httpLog:     comps.httpLog,
+		ldapFactory: comps.ldapFactory,
+		httpAuth:    comps.httpAuth,
+		wellKnown:   comps.wellKnown,
+
+		store:   comps.store,
+		backend: comps.backend,
+	}
+}
+
+func NewCalendar(config CalendarConfig, logger *slog.Logger) (*Calendar, error) {
+	comps, err := newComponents(config, logger)
+	if err != nil {
+		return nil, err
 	}
 
-	return &calendar, nil
+	return newCalendarFromComponents(comps, logger), nil
 }
 
 func (c *Calendar) Store() store.Store {
