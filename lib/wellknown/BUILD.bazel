@@ -1,8 +1,18 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "wellknown",
     srcs = ["wellknown.go"],
     importpath = "github.com/teapotovh/teapot/lib/wellknown",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "wellknown_test",
+    srcs = ["wellknown_test.go"],
+    embed = [":wellknown"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )
