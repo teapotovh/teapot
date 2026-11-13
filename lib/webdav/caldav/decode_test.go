@@ -11,150 +11,6 @@ import (
 	"github.com/teapotovh/teapot/lib/webdav/internal"
 )
 
-const calendarQuery7181 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:D="DAV:"
-                  xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <D:getetag/>
-    <C:calendar-data>
-      <C:comp name="VCALENDAR">
-        <C:prop name="VERSION"/>
-        <C:comp name="VEVENT">
-          <C:prop name="SUMMARY"/>
-          <C:prop name="UID"/>
-          <C:prop name="DTSTART"/>
-          <C:prop name="DTEND"/>
-          <C:prop name="DURATION"/>
-          <C:prop name="RRULE"/>
-          <C:prop name="RDATE"/>
-          <C:prop name="EXRULE"/>
-          <C:prop name="EXDATE"/>
-          <C:prop name="RECURRENCE-ID"/>
-        </C:comp>
-        <C:comp name="VTIMEZONE"/>
-      </C:comp>
-    </C:calendar-data>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VEVENT">
-        <C:time-range start="20060104T000000Z"
-                      end="20060105T000000Z"/>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
-
-const calendarQuery7182 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:D="DAV:"
-                  xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <C:calendar-data>
-      <C:limit-recurrence-set start="20060103T000000Z"
-                              end="20060105T000000Z"/>
-    </C:calendar-data>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VEVENT">
-        <C:time-range start="20060103T000000Z"
-                      end="20060105T000000Z"/>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
-
-const calendarQuery7183 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:D="DAV:"
-                  xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <C:calendar-data>
-      <C:expand start="20060103T000000Z"
-                end="20060105T000000Z"/>
-    </C:calendar-data>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VEVENT">
-        <C:time-range start="20060103T000000Z"
-                      end="20060105T000000Z"/>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
-
-const calendarQuery7186 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop xmlns:D="DAV:">
-    <D:getetag/>
-    <C:calendar-data/>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VEVENT">
-        <C:prop-filter name="UID">
-          <C:text-match collation="i;octet"
-          >DC6C50A017428C5216A2F1CD@example.com</C:text-match>
-        </C:prop-filter>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
-
-const calendarQuery7187 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop xmlns:D="DAV:">
-    <D:getetag/>
-    <C:calendar-data/>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VEVENT">
-        <C:prop-filter name="ATTENDEE">
-          <C:text-match collation="i;ascii-casemap"
-           >mailto:lisa@example.com</C:text-match>
-          <C:param-filter name="PARTSTAT">
-            <C:text-match collation="i;ascii-casemap"
-             >NEEDS-ACTION</C:text-match>
-          </C:param-filter>
-        </C:prop-filter>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
-
-const calendarQuery7189 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop xmlns:D="DAV:">
-    <D:getetag/>
-    <C:calendar-data/>
-  </D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="VTODO">
-        <C:prop-filter name="COMPLETED">
-          <C:is-not-defined/>
-        </C:prop-filter>
-        <C:prop-filter name="STATUS">
-          <C:text-match
-             negate-condition="yes">CANCELLED</C:text-match>
-        </C:prop-filter>
-      </C:comp-filter>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>`
-
-const calendarMultiget791 = `<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-multiget xmlns:D="DAV:"
-                     xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop>
-    <D:getetag/>
-    <C:calendar-data/>
-  </D:prop>
-  <D:href>/bernard/work/abcd1.ics</D:href>
-  <D:href>/bernard/work/mtg1.ics</D:href>
-</C:calendar-multiget>`
-
 func unmarshalReport(t *testing.T, body string) *reportReq {
 	t.Helper()
 
@@ -198,7 +54,7 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 	t.Run("calendar-query", func(t *testing.T) {
 		t.Parallel()
 
-		req := unmarshalReport(t, calendarQuery7186)
+		req := unmarshalReport(t, testdata(t, "rfc4791-7.8.6-calendar-query.xml"))
 		assert.NotNil(t, req.Query)
 		assert.Nil(t, req.Multiget)
 	})
@@ -206,7 +62,7 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 	t.Run("calendar-multiget", func(t *testing.T) {
 		t.Parallel()
 
-		req := unmarshalReport(t, calendarMultiget791)
+		req := unmarshalReport(t, testdata(t, "rfc4791-7.9.1-calendar-multiget.xml"))
 		assert.Nil(t, req.Query)
 		assert.NotNil(t, req.Multiget)
 	})
@@ -238,7 +94,7 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 func TestDecodeCalendarQueryTimeRange(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarQuery7181)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.1-calendar-query.xml"))
 	cf := decodeQueryFilter(t, req)
 
 	assert.Equal(t, testCalendarComponent, cf.Name)
@@ -283,7 +139,7 @@ func TestDecodeCalendarQueryTimeRange(t *testing.T) {
 func TestDecodeCalendarDataLimitRecurrenceSet(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarQuery7182)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.2-calendar-query.xml"))
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -309,7 +165,7 @@ func TestDecodeCalendarDataLimitRecurrenceSet(t *testing.T) {
 func TestDecodeCalendarDataExpand(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarQuery7183)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.3-calendar-query.xml"))
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -334,7 +190,7 @@ func TestDecodeCalendarDataExpand(t *testing.T) {
 func TestDecodePropFilterTextMatch(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarQuery7186)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.6-calendar-query.xml"))
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -356,7 +212,7 @@ func TestDecodePropFilterTextMatch(t *testing.T) {
 func TestDecodeParamFilter(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarQuery7187)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.7-calendar-query.xml"))
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -386,7 +242,7 @@ func TestDecodeParamFilter(t *testing.T) {
 func TestDecodePropFilterNegateCondition(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarQuery7189)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.9-calendar-query.xml"))
 	cf := decodeQueryFilter(t, req)
 
 	assert.Equal(t, testCalendarComponent, cf.Name)
@@ -412,7 +268,7 @@ func TestDecodePropFilterNegateCondition(t *testing.T) {
 func TestDecodeCalendarMultigetHrefs(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, calendarMultiget791)
+	req := unmarshalReport(t, testdata(t, "rfc4791-7.9.1-calendar-multiget.xml"))
 
 	require.NotNil(t, req.Multiget)
 	require.Len(t, req.Multiget.Hrefs, 2)
