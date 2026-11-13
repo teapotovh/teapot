@@ -41,14 +41,18 @@ type BasicAuth struct {
 	logger       *slog.Logger
 	errorHandler http.Handler
 	factory      *ldap.Factory
+	metrics      metrics
 }
 
 func NewBasicAuth(factory *ldap.Factory, errorHandler http.Handler, logger *slog.Logger) *BasicAuth {
-	return &BasicAuth{
+	ba := &BasicAuth{
 		logger:       logger,
 		errorHandler: errorHandler,
 		factory:      factory,
 	}
+	ba.metrics.init()
+
+	return ba
 }
 
 func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
@@ -60,7 +64,7 @@ func (ba *BasicAuth) Middleware(next http.Handler) http.Handler {
 
 		username, password, ok := r.BasicAuth()
 		if ok && len(username) > 0 {
-			user, err := authenticate(ctx, ba.factory, username, password, ba.logger)
+			user, err := authenticate(ctx, ba.factory, username, password, metricsMethodBasic, &ba.metrics, ba.logger)
 			if err != nil {
 				r := r.WithContext(context.WithValue(ctx, basicAuthErrContextKey, err))
 				ba.errorHandler.ServeHTTP(w, r)

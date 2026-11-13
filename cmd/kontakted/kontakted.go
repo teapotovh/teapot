@@ -71,9 +71,8 @@ func main() {
 	}
 
 	httpsrv.Register("kontakte", kontakte, HTTPKontaktePrefix)
-	// TODO
-	// observability.RegisterMetrics(kontakte)
-	// observability.RegisterReadyz(kontakte)
+	observability.RegisterMetrics(kontakte)
+	// TODO: expose readiness probes. See #59
 
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)

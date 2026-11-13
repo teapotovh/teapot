@@ -64,14 +64,19 @@ func authenticate(
 	ctx context.Context,
 	factory *ldap.Factory,
 	username, password string,
+	method string,
+	m *metrics,
 	logger *slog.Logger,
 ) (user *ldap.User, err error) {
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, "BasicAuth.Middleware")
 	defer func() { observability.SpanEnd(span, err) }()
 
+	start := time.Now()
+
 	client, err := factory.NewClient(ctx)
 	if err != nil {
 		logger.ErrorContext(ctx, "error while creating LDAP client", "err", err)
+		m.observe(method, metricsStatusError, time.Since(start))
 		return nil, err
 	}
 	defer client.Close()
@@ -79,13 +84,17 @@ func authenticate(
 	user, err = client.Authenticate(ctx, username, password)
 	if err != nil {
 		if errors.Is(err, ldap.ErrInvalidCredentials) {
+			m.observe(method, metricsStatusInvalid, time.Since(start))
 			return nil, ErrInvalidCredentials
 		}
 
 		logger.ErrorContext(ctx, "unexpected error while authenticating", "username", username, "err", err)
+		m.observe(method, metricsStatusError, time.Since(start))
 
 		return nil, err
 	}
+
+	m.observe(method, metricsStatusSuccess, time.Since(start))
 
 	return user, nil
 }

@@ -4,6 +4,7 @@ go_library(
     name = "web",
     srcs = [
         "flag.go",
+        "metrics.go",
         "page_browse.go",
         "page_browse_dialog.go",
         "page_file.go",
@@ -25,6 +26,7 @@ go_library(
         "//service/files",
         "@com_github_dustin_go_humanize//:go-humanize",
         "@com_github_hack_pad_hackpadfs//:hackpadfs",
+        "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
         "@dev_maragu_gomponents//:gomponents",
         "@dev_maragu_gomponents//html",

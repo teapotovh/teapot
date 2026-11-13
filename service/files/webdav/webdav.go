@@ -98,7 +98,6 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 
 // Metrics implements observability.Metrics.
 func (wd *WebDav) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{
-		// TODO: define/re-export metrics for this module
-	}
+	// The LDAP factory metrics are owned and exposed by files.Files.
+	return wd.httpAuth.Metrics()
 }

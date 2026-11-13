@@ -111,6 +111,7 @@ func main() {
 		}
 
 		httpsrv.Register("web", web, HTTPWebPrefix)
+		observability.RegisterMetrics(web)
 	}
 
 	run.Add("httpsrv", httpsrv, nil)
