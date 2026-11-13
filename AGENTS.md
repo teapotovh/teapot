@@ -1,5 +1,7 @@
 # Agent instructions
 
+0. Build: Never run `bazel build` with a huge list of targets. Only rebuild the specific few packages you're working on. Building is expensive and time-consuming. The CI will build everything.
+
 1. MODULE.bazel: to update `use_repo` rules and similar (derived from go.mod), ALWAYS run `bazel mod tidy`. Never edit `use_repo` lists by hand.
 
 2. BUILD.bazel files: when code imports change, files are added, or dependencies are added, ALWAYS run `bazel run //tools:gazelle`. Do not edit BUILD.bazel files by hand.
@@ -12,3 +14,4 @@
 
 6. Linter: after modifying any code, ALWAYS run `bazel run //tools:golangci-lint -- run --fix`. The `--fix` flag is optional but recommended: it auto-corrects simple linting errors.
 
+7. Sub-Agents: When starting sub-agents, always pick the cheapest model. If free models (non OpenCode Go ones) are available and not rate-limite, use those. For simple correction and iteration tasks, always spawn sub agents with the smallest model available on lowest effort.
