@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "store",
@@ -38,5 +38,16 @@ go_library(
         "@ht_sr_git__bitfehler_brant//database/dialect",
         "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "store_test",
+    srcs = ["mem_test.go"],
+    embed = [":store"],
+    deps = [
+        "//lib/webdav/caldav",
+        "@com_github_arran4_golang_ical//:golang-ical",
+        "@com_github_stretchr_testify//require",
     ],
 )
