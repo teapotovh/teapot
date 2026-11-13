@@ -273,7 +273,12 @@ func (b *Backend) GetCalendarObject(
 
 	obj, err := b.store.GetCalendarObject(ctx, storePath)
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
+		err = fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
+		}
+
+		return nil, err
 	}
 
 	object, err = storeObjectToCaldavObject(ctx, *obj)
