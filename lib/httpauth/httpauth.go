@@ -79,16 +79,16 @@ func authenticate(
 
 	user, err = authenticator.Authenticate(ctx, username, password)
 	if err != nil {
-		if errors.Is(err, ldap.ErrInvalidCredentials) {
-			m.observe(method, metricsStatusInvalid, time.Since(start))
-			return nil, ErrInvalidCredentials
-		}
-
 		if errors.Is(err, ldap.ErrClientCreation) {
 			logger.ErrorContext(ctx, "error while creating LDAP client", "err", err)
 			m.observe(method, metricsStatusError, time.Since(start))
 
 			return nil, err
+		}
+
+		if errors.Is(err, ldap.ErrInvalidCredentials) {
+			m.observe(method, metricsStatusInvalid, time.Since(start))
+			return nil, ErrInvalidCredentials
 		}
 
 		logger.ErrorContext(ctx, "unexpected error while authenticating", "username", username, "err", err)
