@@ -21,9 +21,13 @@ go_library(
 
 go_test(
     name = "caldav_test",
-    srcs = ["match_test.go"],
+    srcs = [
+        "decode_test.go",
+        "match_test.go",
+    ],
     embed = [":caldav"],
     deps = [
+        "//lib/webdav/internal",
         "@com_github_arran4_golang_ical//:golang-ical",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
