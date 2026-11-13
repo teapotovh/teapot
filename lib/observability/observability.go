@@ -99,20 +99,9 @@ type Metrics interface {
 
 // RegisterMetrics gets all the collectors from the Metrics method on the
 // provided subsystem. These collectors will then be registered to be exported
-// via the metrics endpoint. Collectors that were already registered (e.g.
-// because two subsystems share the same underlying component) are ignored.
+// via the metrics endpoint.
 func (obs *Observability) RegisterMetrics(metrics Metrics) {
-	for _, collector := range metrics.Metrics() {
-		for _, existing := range obs.collectors {
-			if existing == collector {
-				goto next
-			}
-		}
-
-		obs.collectors = append(obs.collectors, collector)
-
-	next:
-	}
+	obs.collectors = append(obs.collectors, metrics.Metrics()...)
 }
 
 type Check interface {
@@ -236,6 +225,14 @@ func (obs *Observability) registerMetrics() error {
 
 	for _, collector := range obs.collectors {
 		if err := obs.registry.Register(collector); err != nil {
+			// Collectors that are registered twice (e.g. because two
+			// subsystems share the same underlying component) are
+			// already deduplicated by the registry itself.
+			var alreadyRegistered prometheus.AlreadyRegisteredError
+			if errors.As(err, &alreadyRegistered) {
+				continue
+			}
+
 			errs = append(errs, err)
 		}
 	}
