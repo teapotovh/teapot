@@ -281,6 +281,20 @@ func TestCalendarHandlerPropFindCurrentUserPrincipal(t *testing.T) {
 	require.Equal(t, principalPath, resp.PropStats[0].Prop.CurrentUserPrincipal.Href)
 }
 
+func TestCalendarHandlerPropFindCurrentUserPrincipalTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, map[string]string{testUsername: testPassword})
+
+	status, ms := propFind(t, srv, principalPath+"/", `<D:current-user-principal/>`)
+	require.Equal(t, http.StatusMultiStatus, status)
+
+	resp := requireSingleResponse(t, ms)
+	require.Equal(t, principalPath, resp.Hrefs[0])
+	require.NotNil(t, resp.PropStats[0].Prop.CurrentUserPrincipal)
+	require.Equal(t, principalPath, resp.PropStats[0].Prop.CurrentUserPrincipal.Href)
+}
+
 func TestCalendarHandlerPropFindCalendarHomeSet(t *testing.T) {
 	t.Parallel()
 
@@ -307,6 +321,20 @@ func TestCalendarHandlerPropFindCalendarHomeSetCollection(t *testing.T) {
 	require.NotNil(t, resp.PropStats[0].Prop.ResourceType)
 	require.NotNil(t, resp.PropStats[0].Prop.ResourceType.Collection)
 	require.Nil(t, resp.PropStats[0].Prop.ResourceType.Calendar)
+}
+
+func TestCalendarHandlerPropFindCalendarHomeSetNoTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, map[string]string{testUsername: testPassword})
+
+	status, ms := propFind(t, srv, strings.TrimSuffix(calendarHomeSet, "/"), `<D:resourcetype/>`)
+	require.Equal(t, http.StatusMultiStatus, status)
+
+	resp := requireSingleResponse(t, ms)
+	require.Equal(t, calendarHomeSet, resp.Hrefs[0])
+	require.NotNil(t, resp.PropStats[0].Prop.ResourceType)
+	require.NotNil(t, resp.PropStats[0].Prop.ResourceType.Collection)
 }
 
 func TestCalendarHandlerMKCalendar(t *testing.T) {

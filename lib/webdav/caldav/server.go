@@ -459,7 +459,7 @@ func (b *backend) PropFind(
 			return nil, err
 		}
 
-		if r.URL.Path == principalPath {
+		if samePath(r.URL.Path, principalPath) {
 			resp, err := b.propFindUserPrincipal(r.Context(), propfind)
 			if err != nil {
 				return nil, err
@@ -490,7 +490,7 @@ func (b *backend) PropFind(
 			return nil, err
 		}
 
-		if r.URL.Path == homeSetPath {
+		if samePath(r.URL.Path, homeSetPath) {
 			resp, err := b.propFindHomeSet(r.Context(), propfind)
 			if err != nil {
 				return nil, err
@@ -706,6 +706,12 @@ func (b *backend) resourceTypeAtPath(reqPath string) resourceType {
 	}
 
 	return resourceType(len(strings.Split(p, "/")) - 1)
+}
+
+// samePath reports whether two request paths identify the same resource,
+// ignoring trailing slashes.
+func samePath(a, b string) bool {
+	return path.Clean(a) == path.Clean(b)
 }
 
 func (b *backend) propFindRoot(ctx context.Context, propfind *internal.PropFind) (*internal.Response, error) {
