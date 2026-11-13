@@ -235,7 +235,10 @@ func (b *Backend) PutCalendarObject(
 			}
 
 			if !match {
-				return nil, ErrETagDidNotMatch
+				return nil, &daverr.HTTPError{
+					Code: http.StatusPreconditionFailed,
+					Err:  ErrETagDidNotMatch,
+				}
 			}
 		}
 	}
