@@ -38,15 +38,15 @@ func (m *metrics) observe(method, status string, duration time.Duration) {
 }
 
 // Metrics implements observability.Metrics.
-// Only the httpauth-owned collectors are returned; metrics from the
-// underlying LDAP factory are owned and exposed by its direct consumer.
 func (ba *BasicAuth) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{ba.metrics.duration}
+	return append([]prometheus.Collector{
+		ba.metrics.duration,
+	}, ba.factory.Metrics()...)
 }
 
 // Metrics implements observability.Metrics.
-// Only the httpauth-owned collectors are returned; metrics from the
-// underlying LDAP factory are owned and exposed by its direct consumer.
 func (ja *JWTAuth) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{ja.metrics.duration}
+	return append([]prometheus.Collector{
+		ja.metrics.duration,
+	}, ja.factory.Metrics()...)
 }

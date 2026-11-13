@@ -10,7 +10,6 @@ func (c *Calendar) Metrics() []prometheus.Collector {
 	collectors := []prometheus.Collector{}
 
 	collectors = append(collectors, c.httpAuth.Metrics()...)
-	collectors = append(collectors, c.ldapFactory.Metrics()...)
 
 	return collectors
 }

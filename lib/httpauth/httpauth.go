@@ -77,6 +77,7 @@ func authenticate(
 	if err != nil {
 		logger.ErrorContext(ctx, "error while creating LDAP client", "err", err)
 		m.observe(method, metricsStatusError, time.Since(start))
+
 		return nil, err
 	}
 	defer client.Close()

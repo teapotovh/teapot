@@ -99,9 +99,20 @@ type Metrics interface {
 
 // RegisterMetrics gets all the collectors from the Metrics method on the
 // provided subsystem. These collectors will then be registered to be exported
-// via the metrics endpoint.
+// via the metrics endpoint. Collectors that were already registered (e.g.
+// because two subsystems share the same underlying component) are ignored.
 func (obs *Observability) RegisterMetrics(metrics Metrics) {
-	obs.collectors = append(obs.collectors, metrics.Metrics()...)
+	for _, collector := range metrics.Metrics() {
+		for _, existing := range obs.collectors {
+			if existing == collector {
+				goto next
+			}
+		}
+
+		obs.collectors = append(obs.collectors, collector)
+
+	next:
+	}
 }
 
 type Check interface {
