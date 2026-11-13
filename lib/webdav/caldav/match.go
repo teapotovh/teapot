@@ -3,6 +3,8 @@ package caldav
 import (
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +15,8 @@ import (
 var (
 	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
 	ErrInvalidTopLevel  = errors.New("invalid top level filter")
+
+	errInvalidDuration = errors.New("invalid iCalendar duration")
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -147,68 +151,78 @@ func matchCompFilter(filter CompFilter, comp *ics.VEvent) (bool, error) {
 
 func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
 	prop := ics.ComponentProperty(filter.Name)
-	if prop.Singular(comp) {
-		field := comp.GetProperty(prop)
-		if field == nil {
-			return filter.IsNotDefined, nil
+	properties := comp.GetProperties(prop)
+
+	if len(properties) == 0 {
+		return filter.IsNotDefined, nil
+	}
+
+	if filter.IsNotDefined {
+		return false, nil
+	}
+
+	if !filter.Start.IsZero() {
+		return matchPropDateFilter(filter, comp, prop)
+	}
+
+	// A prop-filter matches if any of the property values satisfies all the
+	// parameter filters and the text-match.
+	for _, field := range properties {
+		if matchPropValue(filter, field) {
+			return true, nil
 		}
 	}
 
-	for _, field := range comp.GetProperties(prop) {
-		for _, paramFilter := range filter.ParamFilter {
-			if !matchParamFilter(paramFilter, field) {
-				return false, nil
-			}
+	return false, nil
+}
+
+func matchPropValue(filter PropFilter, field *ics.IANAProperty) bool {
+	for _, paramFilter := range filter.ParamFilter {
+		if !matchParamFilter(paramFilter, field) {
+			return false
 		}
 	}
 
-	// We support two types of matches:
-	// 1. Date matching
-	// 2. Text matching
-	switch {
-	case !filter.Start.IsZero():
-		var (
-			dates []time.Time
-			err   error
-		)
+	return filter.TextMatch == nil || matchTextMatch(*filter.TextMatch, field.Value)
+}
 
-		switch prop { //nolint:exhaustive
-		case ics.ComponentPropertyRdate:
-			dates, err = comp.GetRDates()
+func matchPropDateFilter(
+	filter PropFilter,
+	comp *ics.VEvent,
+	prop ics.ComponentProperty,
+) (bool, error) {
+	var (
+		dates []time.Time
+		err   error
+	)
 
-		case ics.ComponentPropertyExdate:
-			dates, err = comp.GetExDates()
+	switch prop { //nolint:exhaustive
+	case ics.ComponentPropertyRdate:
+		dates, err = comp.GetRDates()
 
-		default:
-			// Matching a date against a non-date prop, invalid
+	case ics.ComponentPropertyExdate:
+		dates, err = comp.GetExDates()
+
+	default:
+		// Matching a date against a non-date prop, invalid
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("error while getting dates for property %q: %w", string(prop), err)
+	}
+
+	if len(dates) == 0 {
+		return false, nil
+	}
+
+	for _, date := range dates {
+		if !matchPropTimeRange(filter.Start, filter.End, date) {
 			return false, nil
 		}
-
-		if err != nil {
-			return false, fmt.Errorf("error while getting dates for property %q: %w", string(prop), err)
-		}
-
-		for _, date := range dates {
-			if !matchPropTimeRange(filter.Start, filter.End, date) {
-				return false, nil
-			}
-		}
-
-		// All dates match
-		return true, nil
-
-	case filter.TextMatch != nil:
-		for _, field := range comp.GetProperties(prop) {
-			if !matchTextMatch(*filter.TextMatch, field.Value) {
-				return false, nil
-			}
-		}
-
-		// All texts match
-		return true, nil
 	}
 
-	// empty (or unsupported) prop-filter, property exists
+	// All dates match
 	return true, nil
 }
 
@@ -216,11 +230,104 @@ func intervalsOverlap(
 	eventStart, eventEnd,
 	rangeStart, rangeEnd time.Time,
 ) bool {
+	// A zero-duration component matches when it starts within the range:
+	// the range start is inclusive and the range end is exclusive.
+	if eventStart.Equal(eventEnd) {
+		return !eventStart.Before(rangeStart) && (rangeEnd.IsZero() || eventStart.Before(rangeEnd))
+	}
+
 	if !eventEnd.After(rangeStart) {
 		return false
 	}
 
 	return rangeEnd.IsZero() || eventStart.Before(rangeEnd)
+}
+
+// eventEndFromDuration computes the effective end of an event that does not
+// define DTEND, using its DURATION property as described in RFC 4791,
+// section 9.9. Events without DURATION have zero duration.
+func eventEndFromDuration(comp *ics.VEvent, eventStart time.Time) (time.Time, error) {
+	prop := comp.GetProperty(ics.ComponentPropertyDuration)
+	if prop == nil {
+		return eventStart, nil
+	}
+
+	duration, err := parseICalDuration(prop.Value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("while parsing event duration: %w", err)
+	}
+
+	if duration < 0 {
+		return time.Time{}, fmt.Errorf("%w: %q", errInvalidDuration, prop.Value)
+	}
+
+	return eventStart.Add(duration), nil
+}
+
+var icalDurationRegexp = regexp.MustCompile(
+	`^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$`,
+)
+
+// parseICalDuration parses a duration value as defined in RFC 5545, section
+// 3.3.6.
+func parseICalDuration(value string) (time.Duration, error) {
+	matches := icalDurationRegexp.FindStringSubmatch(value)
+	if matches == nil {
+		return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+	}
+
+	var duration time.Duration
+
+	if matches[2] != "" {
+		weeks, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+		}
+
+		duration += time.Duration(weeks) * 7 * 24 * time.Hour
+	}
+
+	if matches[3] != "" {
+		days, err := strconv.Atoi(matches[3])
+		if err != nil {
+			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+		}
+
+		duration += time.Duration(days) * 24 * time.Hour
+	}
+
+	if matches[4] != "" {
+		hours, err := strconv.Atoi(matches[4])
+		if err != nil {
+			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+		}
+
+		duration += time.Duration(hours) * time.Hour
+	}
+
+	if matches[5] != "" {
+		minutes, err := strconv.Atoi(matches[5])
+		if err != nil {
+			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+		}
+
+		duration += time.Duration(minutes) * time.Minute
+	}
+
+	if matches[6] != "" {
+		seconds, err := strconv.Atoi(matches[6])
+		if err != nil {
+			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+		}
+
+		duration += time.Duration(seconds) * time.Second
+	}
+
+	if matches[1] == "-" {
+		duration = -duration
+	}
+
+	return duration, nil
 }
 
 //nolint:gocyclo
@@ -232,7 +339,14 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 
 	eventEnd, err := comp.GetEndAt()
 	if err != nil {
-		return false, fmt.Errorf("while parsing event end time: %w", err)
+		if !errors.Is(err, ics.ErrPropertyNotFound) {
+			return false, fmt.Errorf("while parsing event end time: %w", err)
+		}
+
+		eventEnd, err = eventEndFromDuration(comp, eventStart)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	rules, err := comp.GetRRules()
