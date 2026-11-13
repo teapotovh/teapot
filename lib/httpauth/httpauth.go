@@ -62,7 +62,7 @@ func authFromUser(user *ldap.User, expiresAt *time.Time) Auth {
 
 func authenticate(
 	ctx context.Context,
-	factory *ldap.Factory,
+	authenticator ldap.Authenticator,
 	username, password string,
 	method string,
 	m *metrics,
@@ -73,16 +73,7 @@ func authenticate(
 
 	start := time.Now()
 
-	client, err := factory.NewClient(ctx)
-	if err != nil {
-		logger.ErrorContext(ctx, "error while creating LDAP client", "err", err)
-		m.observe(method, metricsStatusError, time.Since(start))
-
-		return nil, err
-	}
-	defer client.Close()
-
-	user, err = client.Authenticate(ctx, username, password)
+	user, err = authenticator.Authenticate(ctx, username, password)
 	if err != nil {
 		if errors.Is(err, ldap.ErrInvalidCredentials) {
 			m.observe(method, metricsStatusInvalid, time.Since(start))
