@@ -25,6 +25,10 @@ func GetAuth(r *http.Request) *Auth {
 	return GetAuthContext(r.Context())
 }
 
+func NewAuthContext(ctx context.Context, auth *Auth) context.Context {
+	return context.WithValue(ctx, authContextKey, auth)
+}
+
 func GetAuthContext(ctx context.Context) *Auth {
 	val := ctx.Value(authContextKey)
 	if val == nil {
