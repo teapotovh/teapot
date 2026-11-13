@@ -25,7 +25,7 @@ func GetBasicAuthErr(r *http.Request) error {
 
 var DefaultBasicAuthErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	err := GetBasicAuthErr(r)
-	if errors.Is(err, ldap.ErrInvalidCredentials) {
+	if errors.Is(err, ErrInvalidCredentials) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 	} else {
