@@ -251,6 +251,20 @@ func decodeCalendarDataReq(calendarData *calendarDataReq) (*CalendarCompRequest,
 	return decodeComp(calendarData.Comp)
 }
 
+// componentNames extracts the component names from a supported-calendar-component-set
+// element, ignoring empty names.
+func componentNames(components []comp) []string {
+	names := make([]string, 0, len(components))
+
+	for _, component := range components {
+		if component.Name != "" {
+			names = append(names, component.Name)
+		}
+	}
+
+	return names
+}
+
 func (h *Handler) handleQuery(r *http.Request, w http.ResponseWriter, query *calendarQuery) error {
 	var q CalendarQuery
 	// TODO: calendar-data in query.Prop
@@ -618,7 +632,7 @@ func (b *backend) Mkcol(r *http.Request) error {
 		cal.Name = m.DisplayName
 		cal.Description = m.Description
 		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = m.SupportedComponents
+		cal.SupportedComponentSet = componentNames(m.SupportedComponents)
 	}
 
 	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
@@ -656,7 +670,7 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 		cal.Name = m.DisplayName
 		cal.Description = m.Description
 		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = m.SupportedComponents
+		cal.SupportedComponentSet = componentNames(m.SupportedComponents)
 	}
 
 	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
@@ -828,8 +842,8 @@ func (b *backend) propFindCalendar(
 		})
 	}
 
-	// TODO: CALDAV:calendar-timezone, CALDAV:supported-calendar-component-set, CALDAV:min-date-time,
-	// CALDAV:max-date-time, CALDAV:max-instances, CALDAV:max-attendees-per-instance
+	// TODO: CALDAV:calendar-timezone, CALDAV:min-date-time, CALDAV:max-date-time,
+	// CALDAV:max-instances, CALDAV:max-attendees-per-instance
 
 	return internal.NewPropFindResponse(cal.Path, propfind, props)
 }

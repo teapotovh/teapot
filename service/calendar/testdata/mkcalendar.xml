@@ -6,6 +6,7 @@
       <C:calendar-description>Calendar used by integration tests.</C:calendar-description>
       <C:supported-calendar-component-set>
         <C:comp name="VEVENT"/>
+        <C:comp name="VTODO"/>
       </C:supported-calendar-component-set>
       <C:calendar-timezone><![CDATA[BEGIN:VCALENDAR
 PRODID:-//Example Corp.//CalDAV Client//EN

@@ -190,9 +190,16 @@ type multistatusPropstat struct {
 }
 
 type multistatusProp struct {
-	CurrentUserPrincipal *hrefProp         `xml:"DAV: current-user-principal"`
-	CalendarHomeSet      *hrefProp         `xml:"urn:ietf:params:xml:ns:caldav calendar-home-set"`
-	ResourceType         *resourceTypeProp `xml:"DAV: resourcetype"`
+	CurrentUserPrincipal          *hrefProp                          `xml:"DAV: current-user-principal"`
+	CalendarHomeSet               *hrefProp                          `xml:"urn:ietf:params:xml:ns:caldav calendar-home-set"`
+	ResourceType                  *resourceTypeProp                  `xml:"DAV: resourcetype"`
+	SupportedCalendarComponentSet *supportedCalendarComponentSetProp `xml:"urn:ietf:params:xml:ns:caldav supported-calendar-component-set"`
+}
+
+type supportedCalendarComponentSetProp struct {
+	Comp []struct {
+		Name string `xml:"name,attr"`
+	} `xml:"urn:ietf:params:xml:ns:caldav comp"`
 }
 
 type hrefProp struct {
@@ -321,6 +328,33 @@ func TestCalendarHandlerMKCalendar(t *testing.T) {
 	require.NotNil(t, resp.PropStats[0].Prop.ResourceType)
 	require.NotNil(t, resp.PropStats[0].Prop.ResourceType.Collection)
 	require.NotNil(t, resp.PropStats[0].Prop.ResourceType.Calendar)
+}
+
+func TestCalendarHandlerMKCalendarSupportedComponents(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, map[string]string{testUsername: testPassword})
+
+	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
+		body:        testdata(t, "mkcalendar.xml"),
+		contentType: `application/xml; charset="utf-8"`,
+	})
+	require.Equal(t, http.StatusCreated, status)
+
+	status, ms := propFind(t, srv, calendarPath,
+		`<C:supported-calendar-component-set xmlns:C="urn:ietf:params:xml:ns:caldav"/>`)
+	require.Equal(t, http.StatusMultiStatus, status)
+
+	resp := requireSingleResponse(t, ms)
+	require.NotNil(t, resp.PropStats[0].Prop.SupportedCalendarComponentSet)
+
+	var names []string
+
+	for _, component := range resp.PropStats[0].Prop.SupportedCalendarComponentSet.Comp {
+		names = append(names, component.Name)
+	}
+
+	assert.ElementsMatch(t, []string{"VEVENT", "VTODO"}, names)
 }
 
 func TestCalendarHandlerMKCalendarDuplicate(t *testing.T) {
