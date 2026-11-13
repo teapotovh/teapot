@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "caldav",
@@ -16,5 +16,16 @@ go_library(
         "//lib/webdav/internal",
         "@com_github_arran4_golang_ical//:golang-ical",
         "@com_github_teambition_rrule_go//:rrule-go",
+    ],
+)
+
+go_test(
+    name = "caldav_test",
+    srcs = ["match_test.go"],
+    embed = [":caldav"],
+    deps = [
+        "@com_github_arran4_golang_ical//:golang-ical",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
     ],
 )
