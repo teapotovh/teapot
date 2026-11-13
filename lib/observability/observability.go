@@ -225,14 +225,6 @@ func (obs *Observability) registerMetrics() error {
 
 	for _, collector := range obs.collectors {
 		if err := obs.registry.Register(collector); err != nil {
-			// Collectors that are registered twice (e.g. because two
-			// subsystems share the same underlying component) are
-			// already deduplicated by the registry itself.
-			var alreadyRegistered prometheus.AlreadyRegisteredError
-			if errors.As(err, &alreadyRegistered) {
-				continue
-			}
-
 			errs = append(errs, err)
 		}
 	}
