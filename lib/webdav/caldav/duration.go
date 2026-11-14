@@ -49,14 +49,9 @@ func (d icalDuration) addTo(t time.Time) time.Time {
 	return t.AddDate(0, 0, d.days).Add(d.exact)
 }
 
-type icalDurationUnit struct {
-	days  int
-	exact time.Duration
-}
-
 // icalDurationUnits maps a unit suffix to its value. Day units are nominal,
 // time units are exact.
-var icalDurationUnits = map[byte]icalDurationUnit{
+var icalDurationUnits = map[byte]icalDuration{
 	'W': {days: 7},
 	'D': {days: 1},
 	'H': {exact: time.Hour},
