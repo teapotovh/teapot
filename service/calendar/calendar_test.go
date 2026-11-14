@@ -2,7 +2,6 @@ package calendar
 
 import (
 	"context"
-	"embed"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -21,6 +20,8 @@ import (
 	"github.com/teapotovh/teapot/lib/wellknown"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
+
+	_ "embed"
 )
 
 const (
@@ -37,17 +38,14 @@ const (
 	eventPath            = calendarPath + "event.ics"
 )
 
-//go:embed testdata/*.xml testdata/*.ics
-var testdataFS embed.FS
+//go:embed testdata/calendar-query.xml
+var calendarQueryXML string
 
-func testdata(t *testing.T, name string) string {
-	t.Helper()
+//go:embed testdata/mkcalendar.xml
+var mkcalendarXML string
 
-	b, err := testdataFS.ReadFile("testdata/" + name)
-	require.NoError(t, err)
-
-	return string(b)
-}
+//go:embed testdata/teapot-event.ics
+var teapotEvent string
 
 type fakeAuthenticator struct {
 	users map[string]string
@@ -343,7 +341,7 @@ func TestCalendarHandlerMKCalendar(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        testdata(t, "mkcalendar.xml"),
+		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
@@ -364,7 +362,7 @@ func TestCalendarHandlerMKCalendarSupportedComponents(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        testdata(t, "mkcalendar.xml"),
+		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
@@ -391,13 +389,13 @@ func TestCalendarHandlerMKCalendarDuplicate(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        testdata(t, "mkcalendar.xml"),
+		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
 
 	status, _, _ = doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        testdata(t, "mkcalendar.xml"),
+		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
 
@@ -424,13 +422,13 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
 	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
-		body:        testdata(t, "mkcalendar.xml"),
+		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
 
 	status, headers, _ := doAuthenticatedRequest(t, srv, http.MethodPut, eventPath, calendarRequest{
-		body:        testdata(t, "event.ics"),
+		body:        teapotEvent,
 		contentType: "text/calendar; charset=utf-8",
 	})
 	require.Equal(t, http.StatusCreated, status)
@@ -447,7 +445,7 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	require.Contains(t, body, "SUMMARY:Test event")
 
 	status, _, body = doAuthenticatedRequest(t, srv, "REPORT", calendarPath, calendarRequest{
-		body:        testdata(t, "calendar-query.xml"),
+		body:        calendarQueryXML,
 		contentType: "application/xml",
 		depth:       "1",
 	})

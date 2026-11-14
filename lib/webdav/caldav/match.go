@@ -121,101 +121,112 @@ func matchEvent(filter CompFilter, comp *ics.VEvent) (bool, error) {
 }
 
 func matchCompFilter(filter CompFilter, comp *ics.VEvent) (bool, error) {
-	matches := false
-
 	for _, child := range comp.Components {
-		switch event := child.(type) {
-		case *ics.VEvent:
-			match, err := matchEvent(filter, event)
-			if err != nil {
-				return false, err
-			}
+		event, ok := child.(*ics.VEvent)
+		if !ok {
+			continue
+		}
 
-			matches = matches || match
-			if matches {
-				break // early exit
-			}
+		match, err := matchEvent(filter, event)
+		if err != nil {
+			return false, err
+		}
+
+		if match {
+			return true, nil
 		}
 	}
 
-	if !matches {
-		return filter.IsNotDefined, nil
-	}
-
-	return true, nil
+	return filter.IsNotDefined, nil
 }
 
 func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
 	prop := ics.ComponentProperty(filter.Name)
-	if prop.Singular(comp) {
-		field := comp.GetProperty(prop)
-		if field == nil {
-			return filter.IsNotDefined, nil
+	properties := comp.GetProperties(prop)
+
+	if len(properties) == 0 {
+		return filter.IsNotDefined, nil
+	}
+
+	if filter.IsNotDefined {
+		return false, nil
+	}
+
+	if !filter.Start.IsZero() {
+		return matchPropDateFilter(filter, comp, prop)
+	}
+
+	// A prop-filter matches if any of the property values satisfies all the
+	// parameter filters and the text-match.
+	for _, field := range properties {
+		if matchPropValue(filter, field) {
+			return true, nil
 		}
 	}
 
-	for _, field := range comp.GetProperties(prop) {
-		for _, paramFilter := range filter.ParamFilter {
-			if !matchParamFilter(paramFilter, field) {
-				return false, nil
-			}
-		}
-	}
-
-	// We support two types of matches:
-	// 1. Date matching
-	// 2. Text matching
-	switch {
-	case !filter.Start.IsZero():
-		var (
-			dates []time.Time
-			err   error
-		)
-
-		switch prop { //nolint:exhaustive
-		case ics.ComponentPropertyRdate:
-			dates, err = comp.GetRDates()
-
-		case ics.ComponentPropertyExdate:
-			dates, err = comp.GetExDates()
-
-		default:
-			// Matching a date against a non-date prop, invalid
-			return false, nil
-		}
-
-		if err != nil {
-			return false, fmt.Errorf("error while getting dates for property %q: %w", string(prop), err)
-		}
-
-		for _, date := range dates {
-			if !matchPropTimeRange(filter.Start, filter.End, date) {
-				return false, nil
-			}
-		}
-
-		// All dates match
-		return true, nil
-
-	case filter.TextMatch != nil:
-		for _, field := range comp.GetProperties(prop) {
-			if !matchTextMatch(*filter.TextMatch, field.Value) {
-				return false, nil
-			}
-		}
-
-		// All texts match
-		return true, nil
-	}
-
-	// empty (or unsupported) prop-filter, property exists
-	return true, nil
+	return false, nil
 }
 
+func matchPropValue(filter PropFilter, field *ics.IANAProperty) bool {
+	for _, paramFilter := range filter.ParamFilter {
+		if !matchParamFilter(paramFilter, field) {
+			return false
+		}
+	}
+
+	return filter.TextMatch == nil || matchTextMatch(*filter.TextMatch, field.Value)
+}
+
+func matchPropDateFilter(
+	filter PropFilter,
+	comp *ics.VEvent,
+	prop ics.ComponentProperty,
+) (bool, error) {
+	var (
+		dates []time.Time
+		err   error
+	)
+
+	switch prop { //nolint:exhaustive
+	case ics.ComponentPropertyRdate:
+		dates, err = comp.GetRDates()
+
+	case ics.ComponentPropertyExdate:
+		dates, err = comp.GetExDates()
+
+	default:
+		// Matching a date against a non-date prop, invalid
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("error while getting dates for property %q: %w", string(prop), err)
+	}
+
+	// RFC 4791, section 9.7.2 matches if a property value is in the range.
+	for _, date := range dates {
+		if matchPropTimeRange(filter.Start, filter.End, date) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// intervalsOverlap reports whether the event interval overlaps the time
+// range. A point event (no DTEND and no DURATION) matches when its instant is
+// within the range. An event with an explicit end uses the overlap formula
+// from RFC 4791, section 9.9.
 func intervalsOverlap(
 	eventStart, eventEnd,
 	rangeStart, rangeEnd time.Time,
+	pointEvent bool,
 ) bool {
+	if pointEvent {
+		// The range start is inclusive and the range end is exclusive.
+		return !eventStart.Before(rangeStart) && (rangeEnd.IsZero() || eventStart.Before(rangeEnd))
+	}
+
 	if !eventEnd.After(rangeStart) {
 		return false
 	}
@@ -230,9 +241,30 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 		return false, fmt.Errorf("while parsing event start time: %w", err)
 	}
 
-	eventEnd, err := comp.GetEndAt()
-	if err != nil {
-		return false, fmt.Errorf("while parsing event end time: %w", err)
+	eventEndProp := comp.GetProperty(ics.ComponentPropertyDtEnd)
+	durationProp := comp.GetProperty(ics.ComponentPropertyDuration)
+
+	// A point event has neither an explicit end nor a duration. Only such an
+	// event uses the inclusive-start point semantics.
+	pointEvent := eventEndProp == nil && durationProp == nil
+
+	var eventEnd time.Time
+
+	switch {
+	case eventEndProp != nil:
+		eventEnd, err = comp.GetEndAt()
+		if err != nil {
+			return false, fmt.Errorf("while parsing event end time: %w", err)
+		}
+
+	case durationProp != nil:
+		eventEnd, err = eventEndFromDuration(comp, eventStart)
+		if err != nil {
+			return false, err
+		}
+
+	default:
+		eventEnd = eventStart
 	}
 
 	rules, err := comp.GetRRules()
@@ -253,7 +285,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 	hasRecurrence := len(rules) > 0 || len(rDates) > 0 || len(exDates) > 0
 
 	if !hasRecurrence {
-		return intervalsOverlap(eventStart, eventEnd, start, end), nil
+		return intervalsOverlap(eventStart, eventEnd, start, end, pointEvent), nil
 	}
 
 	rset := &rrule.Set{}
@@ -311,6 +343,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 			occurrenceEnd,
 			start,
 			end,
+			pointEvent,
 		) {
 			return true, nil
 		}

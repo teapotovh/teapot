@@ -1,9 +1,10 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "caldav",
     srcs = [
         "caldav.go",
+        "duration.go",
         "elements.go",
         "match.go",
         "server.go",
@@ -16,5 +17,48 @@ go_library(
         "//lib/webdav/internal",
         "@com_github_arran4_golang_ical//:golang-ical",
         "@com_github_teambition_rrule_go//:rrule-go",
+    ],
+)
+
+go_test(
+    name = "caldav_test",
+    srcs = [
+        "decode_test.go",
+        "duration_test.go",
+        "match_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":caldav"],
+    embedsrcs = [
+        "testdata/rfc4791-7.8.1-calendar-query.xml",
+        "testdata/rfc4791-7.8.2-calendar-query.xml",
+        "testdata/rfc4791-7.8.3-calendar-query.xml",
+        "testdata/rfc4791-7.8.6-calendar-query.xml",
+        "testdata/rfc4791-7.8.7-calendar-query.xml",
+        "testdata/rfc4791-7.8.9-calendar-query.xml",
+        "testdata/rfc4791-7.9.1-calendar-multiget.xml",
+        "testdata/teapot-daily-rrule.ics",
+        "testdata/teapot-exdate.ics",
+        "testdata/teapot-overlapping.ics",
+        "testdata/teapot-rdate.ics",
+        "testdata/teapot-zero-duration.ics",
+        "testdata/teapot-invalid-duration.ics",
+        "testdata/rfc4791-event-attendees.ics",
+        "testdata/rfc4791-event-recurring.ics",
+        "testdata/rfc4791-event-single.ics",
+        "testdata/rfc4791-freebusy.ics",
+        "testdata/rfc4791-todo-cancelled.ics",
+        "testdata/rfc4791-todo-completed.ics",
+        "testdata/rfc4791-todo-due-jan-4.ics",
+        "testdata/rfc4791-todo-due-jan-6.ics",
+        "testdata/teapot-event-duration-dst.ics",
+        "testdata/teapot-event-zero-length.ics",
+        "testdata/teapot-multiple-exdate.ics",
+    ],
+    deps = [
+        "//lib/webdav/internal",
+        "@com_github_arran4_golang_ical//:golang-ical",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
     ],
 )
