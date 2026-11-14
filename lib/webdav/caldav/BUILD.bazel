@@ -44,6 +44,11 @@ go_test(
         "testdata/rfc4791-7.8.7-calendar-query.xml",
         "testdata/rfc4791-7.8.9-calendar-query.xml",
         "testdata/rfc4791-7.9.1-calendar-multiget.xml",
+        "testdata/teapot-daily-rrule.ics",
+        "testdata/teapot-exdate.ics",
+        "testdata/teapot-overlapping.ics",
+        "testdata/teapot-rdate.ics",
+        "testdata/teapot-zero-duration.ics",
     ],
     deps = [
         "//lib/webdav/internal",

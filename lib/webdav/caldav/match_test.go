@@ -110,16 +110,6 @@ func objectPaths(cos []CalendarObject) []string {
 	return paths
 }
 
-func icsEvent(props ...string) string {
-	return "BEGIN:VEVENT\n" + strings.Join(props, "\n") + "\nEND:VEVENT\n"
-}
-
-func eventCalendar(t *testing.T, event string) *ics.Calendar {
-	t.Helper()
-
-	return mustParseICS(t, "BEGIN:VCALENDAR\nVERSION:2.0\n"+event+"END:VCALENDAR\n")
-}
-
 func timeRangeQuery(t *testing.T, start, end string) CompFilter {
 	t.Helper()
 
@@ -343,94 +333,82 @@ func TestMatchCalendarEmptyObject(t *testing.T) {
 func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 	t.Parallel()
 
-	overlapping := icsEvent(
-		"UID:overlapping@example.com",
-		"DTSTAMP:20060101T000000Z",
-		"DTSTART:20060104T100000Z",
-		"DTEND:20060104T110000Z",
-	)
-	zeroDuration := icsEvent(
-		"UID:zero@example.com",
-		"DTSTAMP:20060101T000000Z",
-		"DTSTART:20060104T100000Z",
-	)
-
 	tests := []struct {
-		name  string
-		event string
-		start string
-		end   string
-		want  bool
+		name    string
+		fixture string
+		start   string
+		end     string
+		want    bool
 	}{
 		{
-			name:  "range covers event",
-			event: overlapping,
-			start: "20060104T090000Z",
-			end:   "20060104T120000Z",
-			want:  true,
+			name:    "range covers event",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T090000Z",
+			end:     "20060104T120000Z",
+			want:    true,
 		},
 		{
-			name:  "range start equals event start",
-			event: overlapping,
-			start: "20060104T100000Z",
-			end:   "20060104T120000Z",
-			want:  true,
+			name:    "range start equals event start",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T100000Z",
+			end:     "20060104T120000Z",
+			want:    true,
 		},
 		{
-			name:  "range start equals event end",
-			event: overlapping,
-			start: "20060104T110000Z",
-			end:   "20060104T120000Z",
-			want:  false,
+			name:    "range start equals event end",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T110000Z",
+			end:     "20060104T120000Z",
+			want:    false,
 		},
 		{
-			name:  "range end equals event start",
-			event: overlapping,
-			start: "20060104T090000Z",
-			end:   "20060104T100000Z",
-			want:  false,
+			name:    "range end equals event start",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T090000Z",
+			end:     "20060104T100000Z",
+			want:    false,
 		},
 		{
-			name:  "range end equals event end",
-			event: overlapping,
-			start: "20060104T103000Z",
-			end:   "20060104T110000Z",
-			want:  true,
+			name:    "range end equals event end",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T103000Z",
+			end:     "20060104T110000Z",
+			want:    true,
 		},
 		{
-			name:  "open-ended range overlaps event",
-			event: overlapping,
-			start: "20060104T103000Z",
-			end:   "",
-			want:  true,
+			name:    "open-ended range overlaps event",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T103000Z",
+			end:     "",
+			want:    true,
 		},
 		{
-			name:  "event before open-ended range",
-			event: overlapping,
-			start: "20060104T120000Z",
-			end:   "",
-			want:  false,
+			name:    "event before open-ended range",
+			fixture: "teapot-overlapping.ics",
+			start:   "20060104T120000Z",
+			end:     "",
+			want:    false,
 		},
 		{
-			name:  "zero-duration event at range start",
-			event: zeroDuration,
-			start: "20060104T100000Z",
-			end:   "20060104T110000Z",
-			want:  true,
+			name:    "zero-duration event at range start",
+			fixture: "teapot-zero-duration.ics",
+			start:   "20060104T100000Z",
+			end:     "20060104T110000Z",
+			want:    true,
 		},
 		{
-			name:  "zero-duration event inside range",
-			event: zeroDuration,
-			start: "20060104T090000Z",
-			end:   "20060104T110000Z",
-			want:  true,
+			name:    "zero-duration event inside range",
+			fixture: "teapot-zero-duration.ics",
+			start:   "20060104T090000Z",
+			end:     "20060104T110000Z",
+			want:    true,
 		},
 		{
-			name:  "zero-duration event at range end",
-			event: zeroDuration,
-			start: "20060104T090000Z",
-			end:   "20060104T100000Z",
-			want:  false,
+			name:    "zero-duration event at range end",
+			fixture: "teapot-zero-duration.ics",
+			start:   "20060104T090000Z",
+			end:     "20060104T100000Z",
+			want:    false,
 		},
 	}
 
@@ -438,7 +416,8 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), eventCalendar(t, tt.event))
+			cal := mustParseICS(t, testdata(t, tt.fixture))
+			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
@@ -448,77 +427,54 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 func TestMatchCalendarRecurrence(t *testing.T) {
 	t.Parallel()
 
-	daily := icsEvent(
-		"UID:daily@example.com",
-		"DTSTAMP:20060101T000000Z",
-		"DTSTART:20060102T100000Z",
-		"DTEND:20060102T110000Z",
-		"RRULE:FREQ=DAILY;COUNT=3",
-	)
-	excluded := icsEvent(
-		"UID:excluded@example.com",
-		"DTSTAMP:20060101T000000Z",
-		"DTSTART:20060102T100000Z",
-		"DTEND:20060102T110000Z",
-		"RRULE:FREQ=DAILY;COUNT=3",
-		"EXDATE:20060103T100000Z",
-	)
-	additional := icsEvent(
-		"UID:additional@example.com",
-		"DTSTAMP:20060101T000000Z",
-		"DTSTART:20060102T100000Z",
-		"DTEND:20060102T110000Z",
-		"RDATE:20060110T100000Z",
-	)
-
 	tests := []struct {
-		name  string
-		event string
-		start string
-		end   string
-		want  bool
+		name    string
+		fixture string
+		start   string
+		end     string
+		want    bool
 	}{
 		{
-			name:  "recurring instance within range",
-			event: daily,
-			start: "20060104T000000Z",
-			end:   "20060105T000000Z",
-			want:  true,
+			name:    "recurring instance within range",
+			fixture: "teapot-daily-rrule.ics",
+			start:   "20060104T000000Z",
+			end:     "20060105T000000Z",
+			want:    true,
 		},
 		{
-			name:  "recurrence count exhausted",
-			event: daily,
-			start: "20060105T000000Z",
-			end:   "20060106T000000Z",
-			want:  false,
+			name:    "recurrence count exhausted",
+			fixture: "teapot-daily-rrule.ics",
+			start:   "20060105T000000Z",
+			end:     "20060106T000000Z",
+			want:    false,
 		},
 		{
-			name:  "excluded date does not match",
-			event: excluded,
-			start: "20060103T090000Z",
-			end:   "20060103T120000Z",
-			want:  false,
+			name:    "excluded date does not match",
+			fixture: "teapot-exdate.ics",
+			start:   "20060103T090000Z",
+			end:     "20060103T120000Z",
+			want:    false,
 		},
 		{
-			name:  "excluded date keeps other instances",
-			event: excluded,
-			start: "20060104T090000Z",
-			end:   "20060104T120000Z",
-			want:  true,
+			name:    "excluded date keeps other instances",
+			fixture: "teapot-exdate.ics",
+			start:   "20060104T090000Z",
+			end:     "20060104T120000Z",
+			want:    true,
 		},
 		{
-			name:  "rdate instance within range",
-			event: additional,
-			start: "20060110T090000Z",
-			end:   "20060110T120000Z",
-			want:  true,
+			name:    "rdate instance within range",
+			fixture: "teapot-rdate.ics",
+			start:   "20060110T090000Z",
+			end:     "20060110T120000Z",
+			want:    true,
 		},
 		{
-			name:  "rdate instance outside range",
-			event: additional,
-			start: "20060105T000000Z",
-			end:   "20060106T000000Z",
-			want:  false,
+			name:    "rdate instance outside range",
+			fixture: "teapot-rdate.ics",
+			start:   "20060105T000000Z",
+			end:     "20060106T000000Z",
+			want:    false,
 		},
 	}
 
@@ -526,7 +482,8 @@ func TestMatchCalendarRecurrence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), eventCalendar(t, tt.event))
+			cal := mustParseICS(t, testdata(t, tt.fixture))
+			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
