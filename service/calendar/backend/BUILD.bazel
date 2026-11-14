@@ -5,7 +5,6 @@ go_library(
     srcs = [
         "backend.go",
         "components.go",
-        "etag.go",
         "filtering.go",
         "user_principal.go",
         "wideevent.go",
@@ -26,10 +25,7 @@ go_library(
 
 go_test(
     name = "backend_test",
-    srcs = [
-        "backend_test.go",
-        "etag_test.go",
-    ],
+    srcs = ["backend_test.go"],
     embed = [":backend"],
     deps = [
         "//lib/httpauth",

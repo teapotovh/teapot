@@ -13,6 +13,7 @@ import (
 
 	ics "github.com/arran4/golang-ical"
 
+	"github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 )
@@ -23,10 +24,10 @@ type fakeBackend struct {
 	calendars map[string]caldav.Calendar
 	objects   map[string]caldav.CalendarObject
 
-	hasPut        bool
-	putOptions    caldav.PutCalendarObjectOptions
-	hasDelete     bool
-	deleteOptions caldav.DeleteCalendarObjectOptions
+	hasPut              bool
+	putPreconditions    webdav.Preconditions
+	hasDelete           bool
+	deletePreconditions webdav.Preconditions
 }
 
 var _ caldav.Backend = (*fakeBackend)(nil)
@@ -92,7 +93,8 @@ func (b *fakeBackend) GetCalendarObject(
 	_ context.Context,
 	objectPath string,
 	_ *caldav.CalendarCompRequest,
-) (*caldav.CalendarObject, error) {
+	pre webdav.Preconditions,
+) (*caldav.CalendarObject, webdav.Outcome, error) {
 	key := path.Clean(objectPath)
 
 	b.mu.Lock()
@@ -100,10 +102,19 @@ func (b *fakeBackend) GetCalendarObject(
 
 	object, ok := b.objects[key]
 	if !ok {
-		return nil, daverr.HTTPErrorf(http.StatusNotFound, "fake: calendar object %q not found", objectPath)
+		return nil, webdav.Proceed, daverr.HTTPErrorf(
+			http.StatusNotFound,
+			"fake: calendar object %q not found",
+			objectPath,
+		)
 	}
 
-	return &object, nil
+	outcome, err := pre.Evaluate(true, object.ETag)
+	if err != nil {
+		return nil, webdav.Proceed, err
+	}
+
+	return &object, outcome, nil
 }
 
 func (b *fakeBackend) ListCalendarObjects(
@@ -147,7 +158,7 @@ func (b *fakeBackend) PutCalendarObject(
 	_ context.Context,
 	objectPath string,
 	calendar *ics.Calendar,
-	opts *caldav.PutCalendarObjectOptions,
+	pre webdav.Preconditions,
 ) (*caldav.CalendarObject, bool, error) {
 	if calendar == nil {
 		return nil, false, daverr.HTTPErrorf(http.StatusBadRequest, "fake: nil calendar object")
@@ -174,10 +185,7 @@ func (b *fakeBackend) PutCalendarObject(
 	_, exists := b.objects[key]
 	b.objects[key] = object
 	b.hasPut = true
-
-	if opts != nil {
-		b.putOptions = *opts
-	}
+	b.putPreconditions = pre
 
 	return &object, !exists, nil
 }
@@ -185,7 +193,7 @@ func (b *fakeBackend) PutCalendarObject(
 func (b *fakeBackend) DeleteCalendarObject(
 	_ context.Context,
 	objectPath string,
-	opts *caldav.DeleteCalendarObjectOptions,
+	pre webdav.Preconditions,
 ) error {
 	key := path.Clean(objectPath)
 
@@ -196,10 +204,7 @@ func (b *fakeBackend) DeleteCalendarObject(
 		return daverr.HTTPErrorf(http.StatusNotFound, "fake: calendar object %q not found", objectPath)
 	}
 
-	if opts != nil {
-		b.deleteOptions = *opts
-	}
-
+	b.deletePreconditions = pre
 	b.hasDelete = true
 
 	delete(b.objects, key)
@@ -207,16 +212,16 @@ func (b *fakeBackend) DeleteCalendarObject(
 	return nil
 }
 
-func (b *fakeBackend) lastPutOptions() (caldav.PutCalendarObjectOptions, bool) {
+func (b *fakeBackend) lastPutPreconditions() (webdav.Preconditions, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	return b.putOptions, b.hasPut
+	return b.putPreconditions, b.hasPut
 }
 
-func (b *fakeBackend) lastDeleteOptions() (caldav.DeleteCalendarObjectOptions, bool) {
+func (b *fakeBackend) lastDeletePreconditions() (webdav.Preconditions, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	return b.deleteOptions, b.hasDelete
+	return b.deletePreconditions, b.hasDelete
 }

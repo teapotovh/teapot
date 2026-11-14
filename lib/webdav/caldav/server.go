@@ -35,25 +35,6 @@ var (
 	)
 )
 
-// PutCalendarObjectOptions represents the options for the PutCalendarObject call.
-// TODO if nothing more Caldav-specific needs to be added this should be merged with carddav.PutAddressObjectOptions.
-type PutCalendarObjectOptions struct {
-	// IfNoneMatch indicates that the client does not want to overwrite
-	// an existing resource.
-	IfNoneMatch webdav.ConditionalMatch
-	// IfMatch provides the ETag of the resource that the client intends
-	// to overwrite, can be ""
-	IfMatch webdav.ConditionalMatch
-}
-
-// DeleteCalendarObjectOptions represents the options for the DeleteCalendarObject call.
-type DeleteCalendarObjectOptions struct {
-	// IfMatch provides the ETag of the resource that the client intends to delete.
-	IfMatch webdav.ConditionalMatch
-	// IfNoneMatch indicates that the client does not want to delete a matching resource.
-	IfNoneMatch webdav.ConditionalMatch
-}
-
 // Backend is a CalDAV server backend.
 type Backend interface {
 	CalendarHomeSetPath(ctx context.Context) (string, error)
@@ -62,16 +43,21 @@ type Backend interface {
 	ListCalendars(ctx context.Context) ([]Calendar, error)
 	GetCalendar(ctx context.Context, path string) (*Calendar, error)
 
-	GetCalendarObject(ctx context.Context, path string, req *CalendarCompRequest) (*CalendarObject, error)
+	GetCalendarObject(
+		ctx context.Context,
+		path string,
+		req *CalendarCompRequest,
+		pre webdav.Preconditions,
+	) (*CalendarObject, webdav.Outcome, error)
 	ListCalendarObjects(ctx context.Context, path string, req *CalendarCompRequest) ([]CalendarObject, error)
 	QueryCalendarObjects(ctx context.Context, path string, query *CalendarQuery) ([]CalendarObject, error)
 	PutCalendarObject(
 		ctx context.Context,
 		path string,
 		calendar *ics.Calendar,
-		opts *PutCalendarObjectOptions,
+		pre webdav.Preconditions,
 	) (*CalendarObject, bool, error)
-	DeleteCalendarObject(ctx context.Context, path string, opts *DeleteCalendarObjectOptions) error
+	DeleteCalendarObject(ctx context.Context, path string, pre webdav.Preconditions) error
 
 	webdav.UserPrincipalBackend
 }
@@ -370,7 +356,7 @@ func (h *Handler) handleMultiget(ctx context.Context, w http.ResponseWriter, mul
 	var resps []internal.Response
 
 	for _, href := range multiget.Hrefs {
-		co, err := h.Backend.GetCalendarObject(ctx, href.Path, &dataReq)
+		co, _, err := h.Backend.GetCalendarObject(ctx, href.Path, &dataReq, webdav.Preconditions{})
 		if err != nil {
 			resp := internal.NewErrorResponse(href.Path, err)
 			resps = append(resps, *resp)
@@ -429,7 +415,7 @@ func (b *backend) Options(r *http.Request) (caps []string, allow []string, err e
 	case resourceTypeCalendarObject:
 		var dataReq CalendarCompRequest
 
-		_, err = b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
+		_, _, err = b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq, webdav.Preconditions{})
 
 		httpErr := &daverr.HTTPError{}
 		if errors.As(err, &httpErr) {
@@ -457,7 +443,12 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 		dataReq.AllProps = true
 	}
 
-	co, err := b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
+	pre, err := webdav.PreconditionsFromHeader(r.Header)
+	if err != nil {
+		return err
+	}
+
+	co, outcome, err := b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq, pre)
 	if err != nil {
 		return err
 	}
@@ -470,29 +461,13 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 		w.Header().Set("Last-Modified", co.ModTime.UTC().Format(http.TimeFormat))
 	}
 
-	ifMatch := webdav.IfMatch(r.Header)
-	if ifMatch.IsSet() {
-		match, err := ifMatch.MatchETag(co.ETag)
-		if err != nil {
-			return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-Match header: %v", err)
-		}
-
-		if !match {
-			return daverr.HTTPErrorf(http.StatusPreconditionFailed, "caldav: If-Match did not match")
-		}
+	if outcome == webdav.NotModified {
+		w.WriteHeader(http.StatusNotModified)
+		return nil
 	}
 
-	ifNoneMatch := webdav.IfNoneMatch(r.Header)
-	if ifNoneMatch.IsSet() {
-		match, err := ifNoneMatch.MatchETagWeak(co.ETag)
-		if err != nil {
-			return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-None-Match header: %v", err)
-		}
-
-		if match {
-			w.WriteHeader(http.StatusNotModified)
-			return nil
-		}
+	if outcome == webdav.PreconditionFailed {
+		return daverr.HTTPErrorf(http.StatusPreconditionFailed, "caldav: precondition failed")
 	}
 
 	w.Header().Set("Content-Type", MIMEType)
@@ -607,7 +582,7 @@ func (b *backend) PropFind(
 			resps = append(resps, resps_...)
 		}
 	case resourceTypeCalendarObject:
-		ao, err := b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
+		ao, _, err := b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq, webdav.Preconditions{})
 		if err != nil {
 			return nil, err
 		}
@@ -627,28 +602,16 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
 }
 
-func validateConditionalHeaders(ifMatch, ifNoneMatch webdav.ConditionalMatch) error {
-	if err := ifMatch.Validate(); err != nil {
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-Match header: %v", err)
+func mapPreconditionError(err error) error {
+	if errors.Is(err, webdav.ErrPreconditionFailed) {
+		return &daverr.HTTPError{Code: http.StatusPreconditionFailed, Err: err}
 	}
 
-	if err := ifNoneMatch.Validate(); err != nil {
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-None-Match header: %v", err)
-	}
-
-	return nil
+	return err
 }
 
 //nolint:gocyclo
 func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
-	ifNoneMatch := webdav.IfNoneMatch(r.Header)
-	ifMatch := webdav.IfMatch(r.Header)
-
-	opts := PutCalendarObjectOptions{
-		IfNoneMatch: ifNoneMatch,
-		IfMatch:     ifMatch,
-	}
-
 	t, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
 		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: malformed Content-Type: %v", err)
@@ -679,13 +642,14 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 		return NewPreconditionError(PreconditionValidCalendarData)
 	}
 
-	if err := validateConditionalHeaders(ifMatch, ifNoneMatch); err != nil {
+	pre, err := webdav.PreconditionsFromHeader(r.Header)
+	if err != nil {
 		return err
 	}
 
-	co, created, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
+	co, created, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, pre)
 	if err != nil {
-		return err
+		return mapPreconditionError(err)
 	}
 
 	// A strong ETag is only valid when the stored representation is equal to
@@ -719,19 +683,12 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 }
 
 func (b *backend) Delete(r *http.Request) error {
-	ifMatch := webdav.IfMatch(r.Header)
-	ifNoneMatch := webdav.IfNoneMatch(r.Header)
-
-	if err := validateConditionalHeaders(ifMatch, ifNoneMatch); err != nil {
+	pre, err := webdav.PreconditionsFromHeader(r.Header)
+	if err != nil {
 		return err
 	}
 
-	opts := DeleteCalendarObjectOptions{
-		IfMatch:     ifMatch,
-		IfNoneMatch: ifNoneMatch,
-	}
-
-	return b.Backend.DeleteCalendarObject(r.Context(), r.URL.Path, &opts)
+	return mapPreconditionError(b.Backend.DeleteCalendarObject(r.Context(), r.URL.Path, pre))
 }
 
 func (b *backend) Mkcol(r *http.Request) error {
