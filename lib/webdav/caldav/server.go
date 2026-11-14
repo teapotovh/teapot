@@ -598,6 +598,11 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 		// TODO: send CALDAV:valid-calendar-data error
 		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
 	}
+
+	if len(cal.Components) == 0 {
+		return NewPreconditionError(PreconditionValidCalendarData)
+	}
+
 	defer func() {
 		if e := r.Body.Close(); e != nil {
 			err = errors.Join(err, fmt.Errorf("error while closing request body: %w", err))
