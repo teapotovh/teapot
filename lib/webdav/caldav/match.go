@@ -226,13 +226,17 @@ func matchPropDateFilter(
 	return true, nil
 }
 
+// intervalsOverlap reports whether the event interval overlaps the time
+// range. A point event (no DTEND and no DURATION) matches when its instant is
+// within the range. An event with an explicit end uses the overlap formula
+// from RFC 4791, section 9.9.
 func intervalsOverlap(
 	eventStart, eventEnd,
 	rangeStart, rangeEnd time.Time,
+	pointEvent bool,
 ) bool {
-	// A zero-duration component matches when it starts within the range:
-	// the range start is inclusive and the range end is exclusive.
-	if eventStart.Equal(eventEnd) {
+	if pointEvent {
+		// The range start is inclusive and the range end is exclusive.
 		return !eventStart.Before(rangeStart) && (rangeEnd.IsZero() || eventStart.Before(rangeEnd))
 	}
 
@@ -359,16 +363,30 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 		return false, fmt.Errorf("while parsing event start time: %w", err)
 	}
 
-	eventEnd, err := comp.GetEndAt()
-	if err != nil {
-		if !errors.Is(err, ics.ErrPropertyNotFound) {
+	eventEndProp := comp.GetProperty(ics.ComponentPropertyDtEnd)
+	durationProp := comp.GetProperty(ics.ComponentPropertyDuration)
+
+	// A point event has neither an explicit end nor a duration. Only such an
+	// event uses the inclusive-start point semantics.
+	pointEvent := eventEndProp == nil && durationProp == nil
+
+	var eventEnd time.Time
+
+	switch {
+	case eventEndProp != nil:
+		eventEnd, err = comp.GetEndAt()
+		if err != nil {
 			return false, fmt.Errorf("while parsing event end time: %w", err)
 		}
 
+	case durationProp != nil:
 		eventEnd, err = eventEndFromDuration(comp, eventStart)
 		if err != nil {
 			return false, err
 		}
+
+	default:
+		eventEnd = eventStart
 	}
 
 	rules, err := comp.GetRRules()
@@ -389,7 +407,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 	hasRecurrence := len(rules) > 0 || len(rDates) > 0 || len(exDates) > 0
 
 	if !hasRecurrence {
-		return intervalsOverlap(eventStart, eventEnd, start, end), nil
+		return intervalsOverlap(eventStart, eventEnd, start, end, pointEvent), nil
 	}
 
 	rset := &rrule.Set{}
@@ -447,6 +465,7 @@ func matchCompTimeRange(start, end time.Time, comp *ics.VEvent) (bool, error) {
 			occurrenceEnd,
 			start,
 			end,
+			pointEvent,
 		) {
 			return true, nil
 		}
