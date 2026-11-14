@@ -220,8 +220,8 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 }
 
 func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
-	ifNoneMatch := ConditionalMatch(r.Header.Get("If-None-Match"))
-	ifMatch := ConditionalMatch(r.Header.Get("If-Match"))
+	ifNoneMatch := IfNoneMatch(r.Header)
+	ifMatch := IfMatch(r.Header)
 
 	opts := CreateOptions{
 		IfNoneMatch: ifNoneMatch,
@@ -255,8 +255,8 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (b *backend) Delete(r *http.Request) error {
-	ifNoneMatch := ConditionalMatch(r.Header.Get("If-None-Match"))
-	ifMatch := ConditionalMatch(r.Header.Get("If-Match"))
+	ifNoneMatch := IfNoneMatch(r.Header)
+	ifMatch := IfMatch(r.Header)
 
 	opts := RemoveAllOptions{
 		IfNoneMatch: ifNoneMatch,

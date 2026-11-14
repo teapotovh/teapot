@@ -432,7 +432,7 @@ func checkPutPreconditions(
 		we.NoneMatchETag = string(opts.IfNoneMatch)
 
 		if exists {
-			match, err := NegateETagMatch(ETagMatcher(opts.IfNoneMatch.MatchETag))(existing.ETag)
+			match, err := NegateETagMatch(ETagMatcher(opts.IfNoneMatch.MatchETagWeak))(existing.ETag)
 			if err != nil {
 				return &daverr.HTTPError{
 					Code: http.StatusPreconditionFailed,

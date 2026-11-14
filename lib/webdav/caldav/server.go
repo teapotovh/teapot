@@ -445,18 +445,43 @@ func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	w.Header().Set("Content-Type", MIMEType)
-
-	if co.ContentLength > 0 {
-		w.Header().Set("Content-Length", strconv.FormatInt(co.ContentLength, 10))
-	}
-
 	if co.ETag != "" {
 		w.Header().Set("ETag", internal.ETag(co.ETag).String())
 	}
 
 	if !co.ModTime.IsZero() {
 		w.Header().Set("Last-Modified", co.ModTime.UTC().Format(http.TimeFormat))
+	}
+
+	ifMatch := webdav.IfMatch(r.Header)
+	if ifMatch.IsSet() {
+		match, err := ifMatch.MatchETag(co.ETag)
+		if err != nil {
+			return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-Match header: %v", err)
+		}
+
+		if !match {
+			return daverr.HTTPErrorf(http.StatusPreconditionFailed, "caldav: If-Match did not match")
+		}
+	}
+
+	ifNoneMatch := webdav.IfNoneMatch(r.Header)
+	if ifNoneMatch.IsSet() {
+		match, err := ifNoneMatch.MatchETagWeak(co.ETag)
+		if err != nil {
+			return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-None-Match header: %v", err)
+		}
+
+		if match {
+			w.WriteHeader(http.StatusNotModified)
+			return nil
+		}
+	}
+
+	w.Header().Set("Content-Type", MIMEType)
+
+	if co.ContentLength > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(co.ContentLength, 10))
 	}
 
 	if r.Method != http.MethodHead {
@@ -586,8 +611,8 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 }
 
 func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
-	ifNoneMatch := webdav.ConditionalMatch(r.Header.Get("If-None-Match"))
-	ifMatch := webdav.ConditionalMatch(r.Header.Get("If-Match"))
+	ifNoneMatch := webdav.IfNoneMatch(r.Header)
+	ifMatch := webdav.IfMatch(r.Header)
 
 	opts := PutCalendarObjectOptions{
 		IfNoneMatch: ifNoneMatch,
