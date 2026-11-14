@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "webdav",
@@ -11,5 +11,16 @@ go_library(
     deps = [
         "//lib/webdav/error",
         "//lib/webdav/internal",
+    ],
+)
+
+go_test(
+    name = "webdav_test",
+    srcs = ["webdav_test.go"],
+    embed = [":webdav"],
+    deps = [
+        "//lib/webdav/error",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
     ],
 )
