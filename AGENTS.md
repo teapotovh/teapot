@@ -1,17 +1,34 @@
-# Agent instructions
+## Characters
 
-0. Build: Never run `bazel build` with a huge list of targets. Only rebuild the specific few packages you're working on. Building is expensive and time-consuming. The CI will build everything.
+Only use ASCII characters for any output. Only ever write in plain English
+ASD-STE100. You MUST NOT use any unicode characters in the code or comments or
+any type of output committed to Git.
 
-1. MODULE.bazel: to update `use_repo` rules and similar (derived from go.mod), ALWAYS run `bazel mod tidy`. Never edit `use_repo` lists by hand.
+## Sub-Agents
 
-2. BUILD.bazel files: when code imports change, files are added, or dependencies are added, ALWAYS run `bazel run //tools:gazelle`. Do not edit BUILD.bazel files by hand.
+When starting sub-agents, always pick the cheapest model. If free models (non
+'OpenCode Go' ones) are available and not rate-limited, you MUST use those. For
+simple correction and iteration tasks, always spawn sub agents with the smallest
+model available on lowest effort.
 
-3. Go: never use the Go toolchain directly, only bazel. If Go itself is needed (for example a `go get`), use the binary at `./bazel/bin/go` ($PATH should already be correct); it calls the Go binary for rules_go.
+## Bazel instructions
 
-4. TMPDIR: when running bazel commands, prefix with `TMPDIR=/tmp` if TMPDIR points to a directory that does not exist (bazel sandboxing fails otherwise).
+To update the `MODULE.bazel` on `go.mod` changes, you MUST use `bazel mod tidy`.
+Never perform edits by hand.
 
-5. ASCII only: use only ASCII symbols in all changes done by agents. Never write em dashes or any other non ASCII characters in code, comments, docs, commit messages or PR descriptions.
+To update `BUILD.bazel` files when changing imports, you MUST use
+`bazel run //tools:gazelle`. Never perform edits by hand.
 
-6. Linter: after modifying any code, ALWAYS run `bazel run //tools:golangci-lint -- run --fix`. The `--fix` flag is optional but recommended: it auto-corrects simple linting errors.
+After performing any code changes, ensure that the linter is passing by running
+`bazel run //tools:golangci-lint -- run --fix`. The `--fix` flag is optional but
+recommended: it auto-corrects simple linting errors.
 
-7. Sub-Agents: When starting sub-agents, always pick the cheapest model. If free models (non OpenCode Go ones) are available and not rate-limite, use those. For simple correction and iteration tasks, always spawn sub agents with the smallest model available on lowest effort.
+## Go
+
+You must avoid running the `go` binary directly. If you absolutley have to, for
+example to run `go get`, make sure the binary you're running is the one aliased
+to `bazel/bin/go`, which runs the `rules_go`'s Go version.
+
+## TMPDIR
+
+You may find the `TMPDIR` points to a non-existing directory. Feel free to use `TMPDIR=/tmp` instead.
