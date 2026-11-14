@@ -25,8 +25,8 @@ go_test(
     srcs = [
         "decode_test.go",
         "duration_test.go",
+        "fixtures_test.go",
         "match_test.go",
-        "testdata_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":caldav"],

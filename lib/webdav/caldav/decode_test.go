@@ -54,7 +54,7 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 	t.Run("calendar-query", func(t *testing.T) {
 		t.Parallel()
 
-		req := unmarshalReport(t, testdata(t, "rfc4791-7.8.6-calendar-query.xml"))
+		req := unmarshalReport(t, rfc4791CalendarQuery786)
 		assert.NotNil(t, req.Query)
 		assert.Nil(t, req.Multiget)
 	})
@@ -62,7 +62,7 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 	t.Run("calendar-multiget", func(t *testing.T) {
 		t.Parallel()
 
-		req := unmarshalReport(t, testdata(t, "rfc4791-7.9.1-calendar-multiget.xml"))
+		req := unmarshalReport(t, rfc4791CalendarMultiget791)
 		assert.Nil(t, req.Query)
 		assert.NotNil(t, req.Multiget)
 	})
@@ -94,7 +94,7 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 func TestDecodeCalendarQueryTimeRange(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.1-calendar-query.xml"))
+	req := unmarshalReport(t, rfc4791CalendarQuery781)
 	cf := decodeQueryFilter(t, req)
 
 	assert.Equal(t, testCalendarComponent, cf.Name)
@@ -139,7 +139,7 @@ func TestDecodeCalendarQueryTimeRange(t *testing.T) {
 func TestDecodeCalendarDataLimitRecurrenceSet(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.2-calendar-query.xml"))
+	req := unmarshalReport(t, rfc4791CalendarQuery782)
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -165,7 +165,7 @@ func TestDecodeCalendarDataLimitRecurrenceSet(t *testing.T) {
 func TestDecodeCalendarDataExpand(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.3-calendar-query.xml"))
+	req := unmarshalReport(t, rfc4791CalendarQuery783)
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -190,7 +190,7 @@ func TestDecodeCalendarDataExpand(t *testing.T) {
 func TestDecodePropFilterTextMatch(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.6-calendar-query.xml"))
+	req := unmarshalReport(t, rfc4791CalendarQuery786)
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -212,7 +212,7 @@ func TestDecodePropFilterTextMatch(t *testing.T) {
 func TestDecodeParamFilter(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.7-calendar-query.xml"))
+	req := unmarshalReport(t, rfc4791CalendarQuery787)
 	cf := decodeQueryFilter(t, req)
 
 	require.Len(t, cf.Comps, 1)
@@ -242,7 +242,7 @@ func TestDecodeParamFilter(t *testing.T) {
 func TestDecodePropFilterNegateCondition(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.8.9-calendar-query.xml"))
+	req := unmarshalReport(t, rfc4791CalendarQuery789)
 	cf := decodeQueryFilter(t, req)
 
 	assert.Equal(t, testCalendarComponent, cf.Name)
@@ -268,7 +268,7 @@ func TestDecodePropFilterNegateCondition(t *testing.T) {
 func TestDecodeCalendarMultigetHrefs(t *testing.T) {
 	t.Parallel()
 
-	req := unmarshalReport(t, testdata(t, "rfc4791-7.9.1-calendar-multiget.xml"))
+	req := unmarshalReport(t, rfc4791CalendarMultiget791)
 
 	require.NotNil(t, req.Multiget)
 	require.Len(t, req.Multiget.Hrefs, 2)

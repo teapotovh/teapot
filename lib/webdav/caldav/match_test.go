@@ -23,23 +23,24 @@ const (
 
 type appendixBFixture struct {
 	name string
+	data string
 	uid  string
 }
 
 // path returns the calendar object path used by the RFC 4791 examples.
 func (f appendixBFixture) path() string {
-	return "/bernard/work/" + strings.TrimPrefix(f.name, "rfc4791-")
+	return "/bernard/work/" + f.name
 }
 
 var appendixBFixtures = []appendixBFixture{
-	{name: "rfc4791-event-single.ics", uid: "74855313FA803DA593CD579A@example.com"},
-	{name: "rfc4791-event-recurring.ics", uid: "00959BC664CA650E933C892C@example.com"},
-	{name: "rfc4791-event-attendees.ics", uid: "DC6C50A017428C5216A2F1CD@example.com"},
-	{name: "rfc4791-todo-due-jan-4.ics", uid: "DDDEEB7915FA61233B861457@example.com"},
-	{name: "rfc4791-todo-due-jan-6.ics", uid: "E10BA47467C5C69BB74E8720@example.com"},
-	{name: "rfc4791-todo-completed.ics", uid: "E10BA47467C5C69BB74E8722@example.com"},
-	{name: "rfc4791-todo-cancelled.ics", uid: "E10BA47467C5C69BB74E8725@example.com"},
-	{name: "rfc4791-freebusy.ics", uid: "76ef34-54a3d2@example.com"},
+	{name: "event-single.ics", data: rfc4791EventSingle, uid: "74855313FA803DA593CD579A@example.com"},
+	{name: "event-recurring.ics", data: rfc4791EventRecurring, uid: "00959BC664CA650E933C892C@example.com"},
+	{name: "event-attendees.ics", data: rfc4791EventAttendees, uid: "DC6C50A017428C5216A2F1CD@example.com"},
+	{name: "todo-due-jan-4.ics", data: rfc4791TodoDueJan4, uid: "DDDEEB7915FA61233B861457@example.com"},
+	{name: "todo-due-jan-6.ics", data: rfc4791TodoDueJan6, uid: "E10BA47467C5C69BB74E8720@example.com"},
+	{name: "todo-completed.ics", data: rfc4791TodoCompleted, uid: "E10BA47467C5C69BB74E8722@example.com"},
+	{name: "todo-cancelled.ics", data: rfc4791TodoCancelled, uid: "E10BA47467C5C69BB74E8725@example.com"},
+	{name: "freebusy.ics", data: rfc4791Freebusy, uid: "76ef34-54a3d2@example.com"},
 }
 
 func mustParseICS(t *testing.T, data string) *ics.Calendar {
@@ -75,7 +76,7 @@ func appendixBCalendarObjects(t *testing.T) []CalendarObject {
 
 	cos := make([]CalendarObject, 0, len(appendixBFixtures))
 	for _, fixture := range appendixBFixtures {
-		cal := mustParseICS(t, testdata(t, fixture.name))
+		cal := mustParseICS(t, fixture.data)
 		require.Equal(t, fixture.uid, firstComponentID(t, cal), "fixture %s", fixture.name)
 
 		cos = append(cos, CalendarObject{
@@ -339,81 +340,81 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		fixture string
-		start   string
-		end     string
-		want    bool
+		name  string
+		data  string
+		start string
+		end   string
+		want  bool
 	}{
 		{
-			name:    "range covers event",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T090000Z",
-			end:     "20060104T120000Z",
-			want:    true,
+			name:  "range covers event",
+			data:  teapotOverlapping,
+			start: "20060104T090000Z",
+			end:   "20060104T120000Z",
+			want:  true,
 		},
 		{
-			name:    "range start equals event start",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T100000Z",
-			end:     "20060104T120000Z",
-			want:    true,
+			name:  "range start equals event start",
+			data:  teapotOverlapping,
+			start: "20060104T100000Z",
+			end:   "20060104T120000Z",
+			want:  true,
 		},
 		{
-			name:    "range start equals event end",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T110000Z",
-			end:     "20060104T120000Z",
-			want:    false,
+			name:  "range start equals event end",
+			data:  teapotOverlapping,
+			start: "20060104T110000Z",
+			end:   "20060104T120000Z",
+			want:  false,
 		},
 		{
-			name:    "range end equals event start",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T090000Z",
-			end:     "20060104T100000Z",
-			want:    false,
+			name:  "range end equals event start",
+			data:  teapotOverlapping,
+			start: "20060104T090000Z",
+			end:   "20060104T100000Z",
+			want:  false,
 		},
 		{
-			name:    "range end equals event end",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T103000Z",
-			end:     "20060104T110000Z",
-			want:    true,
+			name:  "range end equals event end",
+			data:  teapotOverlapping,
+			start: "20060104T103000Z",
+			end:   "20060104T110000Z",
+			want:  true,
 		},
 		{
-			name:    "open-ended range overlaps event",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T103000Z",
-			end:     "",
-			want:    true,
+			name:  "open-ended range overlaps event",
+			data:  teapotOverlapping,
+			start: "20060104T103000Z",
+			end:   "",
+			want:  true,
 		},
 		{
-			name:    "event before open-ended range",
-			fixture: "teapot-overlapping.ics",
-			start:   "20060104T120000Z",
-			end:     "",
-			want:    false,
+			name:  "event before open-ended range",
+			data:  teapotOverlapping,
+			start: "20060104T120000Z",
+			end:   "",
+			want:  false,
 		},
 		{
-			name:    "zero-duration event at range start",
-			fixture: "teapot-zero-duration.ics",
-			start:   "20060104T100000Z",
-			end:     "20060104T110000Z",
-			want:    true,
+			name:  "zero-duration event at range start",
+			data:  teapotZeroDuration,
+			start: "20060104T100000Z",
+			end:   "20060104T110000Z",
+			want:  true,
 		},
 		{
-			name:    "zero-duration event inside range",
-			fixture: "teapot-zero-duration.ics",
-			start:   "20060104T090000Z",
-			end:     "20060104T110000Z",
-			want:    true,
+			name:  "zero-duration event inside range",
+			data:  teapotZeroDuration,
+			start: "20060104T090000Z",
+			end:   "20060104T110000Z",
+			want:  true,
 		},
 		{
-			name:    "zero-duration event at range end",
-			fixture: "teapot-zero-duration.ics",
-			start:   "20060104T090000Z",
-			end:     "20060104T100000Z",
-			want:    false,
+			name:  "zero-duration event at range end",
+			data:  teapotZeroDuration,
+			start: "20060104T090000Z",
+			end:   "20060104T100000Z",
+			want:  false,
 		},
 	}
 
@@ -421,7 +422,7 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cal := mustParseICS(t, testdata(t, tt.fixture))
+			cal := mustParseICS(t, tt.data)
 			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
@@ -432,7 +433,7 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 func TestMatchCalendarInvalidDuration(t *testing.T) {
 	t.Parallel()
 
-	cal := mustParseICS(t, testdata(t, "teapot-invalid-duration.ics"))
+	cal := mustParseICS(t, teapotInvalidDuration)
 
 	_, err := MatchCalendar(timeRangeQuery(t, "20060104T000000Z", "20060105T000000Z"), cal)
 	require.ErrorIs(t, err, ErrInvalidDuration)
@@ -441,7 +442,7 @@ func TestMatchCalendarInvalidDuration(t *testing.T) {
 func TestMatchCalendarNominalDurationAcrossDST(t *testing.T) {
 	t.Parallel()
 
-	cal := mustParseICS(t, testdata(t, "teapot-event-duration-dst.ics"))
+	cal := mustParseICS(t, teapotEventDurationDST)
 
 	loc, err := time.LoadLocation("US/Eastern")
 	require.NoError(t, err)
@@ -495,7 +496,7 @@ func TestMatchCalendarNominalDurationAcrossDST(t *testing.T) {
 func TestMatchCalendarExplicitZeroLength(t *testing.T) {
 	t.Parallel()
 
-	cal := mustParseICS(t, testdata(t, "teapot-event-zero-length.ics"))
+	cal := mustParseICS(t, teapotEventZeroLength)
 
 	tests := []struct {
 		name  string
@@ -532,53 +533,53 @@ func TestMatchCalendarRecurrence(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		fixture string
-		start   string
-		end     string
-		want    bool
+		name  string
+		data  string
+		start string
+		end   string
+		want  bool
 	}{
 		{
-			name:    "recurring instance within range",
-			fixture: "teapot-daily-rrule.ics",
-			start:   "20060104T000000Z",
-			end:     "20060105T000000Z",
-			want:    true,
+			name:  "recurring instance within range",
+			data:  teapotDailyRrule,
+			start: "20060104T000000Z",
+			end:   "20060105T000000Z",
+			want:  true,
 		},
 		{
-			name:    "recurrence count exhausted",
-			fixture: "teapot-daily-rrule.ics",
-			start:   "20060105T000000Z",
-			end:     "20060106T000000Z",
-			want:    false,
+			name:  "recurrence count exhausted",
+			data:  teapotDailyRrule,
+			start: "20060105T000000Z",
+			end:   "20060106T000000Z",
+			want:  false,
 		},
 		{
-			name:    "excluded date does not match",
-			fixture: "teapot-exdate.ics",
-			start:   "20060103T090000Z",
-			end:     "20060103T120000Z",
-			want:    false,
+			name:  "excluded date does not match",
+			data:  teapotExdate,
+			start: "20060103T090000Z",
+			end:   "20060103T120000Z",
+			want:  false,
 		},
 		{
-			name:    "excluded date keeps other instances",
-			fixture: "teapot-exdate.ics",
-			start:   "20060104T090000Z",
-			end:     "20060104T120000Z",
-			want:    true,
+			name:  "excluded date keeps other instances",
+			data:  teapotExdate,
+			start: "20060104T090000Z",
+			end:   "20060104T120000Z",
+			want:  true,
 		},
 		{
-			name:    "rdate instance within range",
-			fixture: "teapot-rdate.ics",
-			start:   "20060110T090000Z",
-			end:     "20060110T120000Z",
-			want:    true,
+			name:  "rdate instance within range",
+			data:  teapotRdate,
+			start: "20060110T090000Z",
+			end:   "20060110T120000Z",
+			want:  true,
 		},
 		{
-			name:    "rdate instance outside range",
-			fixture: "teapot-rdate.ics",
-			start:   "20060105T000000Z",
-			end:     "20060106T000000Z",
-			want:    false,
+			name:  "rdate instance outside range",
+			data:  teapotRdate,
+			start: "20060105T000000Z",
+			end:   "20060106T000000Z",
+			want:  false,
 		},
 	}
 
@@ -586,7 +587,7 @@ func TestMatchCalendarRecurrence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cal := mustParseICS(t, testdata(t, tt.fixture))
+			cal := mustParseICS(t, tt.data)
 			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
