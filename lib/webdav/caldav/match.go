@@ -257,74 +257,96 @@ func eventEndFromDuration(comp *ics.VEvent, eventStart time.Time) (time.Time, er
 		return time.Time{}, fmt.Errorf("while parsing event duration: %w", err)
 	}
 
-	if duration < 0 {
+	if duration.negative {
 		return time.Time{}, fmt.Errorf("%w: %q", ErrInvalidDuration, prop.Value)
 	}
 
-	return eventStart.Add(duration), nil
+	return duration.addTo(eventStart), nil
 }
 
 var icalDurationRegexp = regexp.MustCompile(
 	`^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$`,
 )
 
-// parseICalDuration parses a duration value as defined in RFC 5545, section
-// 3.3.6.
-func parseICalDuration(value string) (time.Duration, error) {
-	matches := icalDurationRegexp.FindStringSubmatch(value)
-	if matches == nil {
-		return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+// icalDuration is a duration as defined in RFC 5545, section 3.3.6. Weeks and
+// days are nominal: they keep the wall clock time across DST transitions.
+// Hours, minutes and seconds are exact.
+type icalDuration struct {
+	negative bool
+	weeks    int
+	days     int
+	exact    time.Duration
+}
+
+func (d icalDuration) addTo(t time.Time) time.Time {
+	days := 7*d.weeks + d.days
+	exact := d.exact
+
+	if d.negative {
+		days = -days
+		exact = -exact
 	}
 
-	var duration time.Duration
+	return t.AddDate(0, 0, days).Add(exact)
+}
+
+// parseICalDuration parses a duration value as defined in RFC 5545, section
+// 3.3.6.
+func parseICalDuration(value string) (icalDuration, error) {
+	matches := icalDurationRegexp.FindStringSubmatch(value)
+	if matches == nil {
+		return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+	}
+
+	var duration icalDuration
 
 	if matches[2] != "" {
 		weeks, err := strconv.Atoi(matches[2])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
-		duration += time.Duration(weeks) * 7 * 24 * time.Hour
+		duration.weeks = weeks
 	}
 
 	if matches[3] != "" {
 		days, err := strconv.Atoi(matches[3])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
-		duration += time.Duration(days) * 24 * time.Hour
+		duration.days = days
 	}
 
 	if matches[4] != "" {
 		hours, err := strconv.Atoi(matches[4])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
-		duration += time.Duration(hours) * time.Hour
+		duration.exact += time.Duration(hours) * time.Hour
 	}
 
 	if matches[5] != "" {
 		minutes, err := strconv.Atoi(matches[5])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
-		duration += time.Duration(minutes) * time.Minute
+		duration.exact += time.Duration(minutes) * time.Minute
 	}
 
 	if matches[6] != "" {
 		seconds, err := strconv.Atoi(matches[6])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
+			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
-		duration += time.Duration(seconds) * time.Second
+		duration.exact += time.Duration(seconds) * time.Second
 	}
 
 	if matches[1] == "-" {
-		duration = -duration
+		duration.negative = true
 	}
 
 	return duration, nil
