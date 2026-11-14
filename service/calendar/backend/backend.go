@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
@@ -82,8 +82,8 @@ func storeCalendarToCaldavCalendar(cal store.Calendar) caldav.Calendar {
 	}
 }
 
-func normalizePath(path string) store.Path {
-	return store.Path(strings.TrimRight(filepath.Clean(path), "/"))
+func normalizePath(p string) store.Path {
+	return store.Path(strings.TrimRight(path.Clean(p), "/"))
 }
 
 func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) (err error) {
