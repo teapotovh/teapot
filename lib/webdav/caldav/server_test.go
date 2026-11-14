@@ -526,6 +526,36 @@ func TestPutCalendarObjectConditional(t *testing.T) {
 	assert.Equal(t, `W/"other"`, string(opts.IfNoneMatch))
 }
 
+func TestPutCalendarObjectMalformedConditionalHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		header string
+	}{
+		{name: "malformed if-match", header: headerIfMatch},
+		{name: "malformed if-none-match", header: headerIfNoneMatch},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv, b := newTestServerWithBackend(t)
+			createCalendar(t, srv)
+
+			res := doRequest(t, srv, http.MethodPut, objectPath, teapotEvent1, map[string]string{
+				headerContentType: contentTypeCalendar,
+				tt.header:         "not-a-quoted-etag",
+			})
+			require.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
+
+			_, ok := b.lastPutOptions()
+			assert.False(t, ok, "PutCalendarObject was not called")
+		})
+	}
+}
+
 func TestCalendarObjectConditionalGet(t *testing.T) {
 	t.Parallel()
 

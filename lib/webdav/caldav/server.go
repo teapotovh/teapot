@@ -610,6 +610,19 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
 }
 
+func validateConditionalHeaders(ifMatch, ifNoneMatch webdav.ConditionalMatch) error {
+	if err := ifMatch.Validate(); err != nil {
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-Match header: %v", err)
+	}
+
+	if err := ifNoneMatch.Validate(); err != nil {
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: invalid If-None-Match header: %v", err)
+	}
+
+	return nil
+}
+
+//nolint:gocyclo
 func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 	ifNoneMatch := webdav.IfNoneMatch(r.Header)
 	ifMatch := webdav.IfMatch(r.Header)
@@ -647,6 +660,10 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 
 	if len(cal.Components) == 0 {
 		return NewPreconditionError(PreconditionValidCalendarData)
+	}
+
+	if err := validateConditionalHeaders(ifMatch, ifNoneMatch); err != nil {
+		return err
 	}
 
 	co, created, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
