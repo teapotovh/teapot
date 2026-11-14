@@ -294,6 +294,7 @@ type multiStatus struct {
 
 type multiStatusResponse struct {
 	Hrefs     []string              `xml:"DAV: href"`
+	Status    string                `xml:"DAV: status"`
 	PropStats []multiStatusPropstat `xml:"DAV: propstat"`
 }
 
@@ -303,7 +304,27 @@ type multiStatusPropstat struct {
 }
 
 type multiStatusProp struct {
-	SupportedReportSet *supportedReportSet `xml:"DAV: supported-report-set"`
+	SupportedReportSet  *supportedReportSet    `xml:"DAV: supported-report-set"`
+	GetContentLength    *string                `xml:"DAV: getcontentlength"`
+	GetContentType      *string                `xml:"DAV: getcontenttype"`
+	GetETag             *string                `xml:"DAV: getetag"`
+	DisplayName         *string                `xml:"DAV: displayname"`
+	CalendarData        *string                `xml:"urn:ietf:params:xml:ns:caldav calendar-data"`
+	CalendarDescription *string                `xml:"urn:ietf:params:xml:ns:caldav calendar-description"`
+	MaxResourceSize     *string                `xml:"urn:ietf:params:xml:ns:caldav max-resource-size"`
+	ResourceType        *davResourceType       `xml:"DAV: resourcetype"`
+	SupportedComponents *supportedComponentSet `xml:"urn:ietf:params:xml:ns:caldav supported-calendar-component-set"`
+}
+
+type davResourceType struct {
+	Collection *struct{} `xml:"DAV: collection"`
+	Calendar   *struct{} `xml:"urn:ietf:params:xml:ns:caldav calendar"`
+}
+
+type supportedComponentSet struct {
+	Comp []struct {
+		Name string `xml:"name,attr"`
+	} `xml:"urn:ietf:params:xml:ns:caldav comp"`
 }
 
 type supportedReportSet struct {
@@ -398,7 +419,7 @@ func (response multiStatusResponse) findPropstat(t *testing.T, status int) (mult
 
 	for _, propstat := range response.PropStats {
 		fields := strings.Fields(propstat.Status)
-		require.Len(t, fields, 3)
+		require.GreaterOrEqual(t, len(fields), 2)
 
 		code, err := strconv.Atoi(fields[1])
 		require.NoError(t, err)
@@ -431,15 +452,38 @@ func hasName(names []xml.Name, space string, local string) bool {
 }
 
 var appleFixtureSubstitutions = map[string]string{
-	"$uid1:":          "teapot-delete-event-1",
+	"$uid1:":          "teapot-uid-1",
+	"$uid2:":          "teapot-uid-2",
+	"$uid3:":          "teapot-uid-3",
+	"$uid4:":          "teapot-uid-4",
+	"$uid5:":          "teapot-uid-5",
+	"$uid6:":          "teapot-uid-6",
 	"$uidrandom:":     "teapot-random-uid",
-	"$now.year.1:":    strconv.Itoa(time.Now().Year()),
 	"$userid1:":       userOne,
+	"$userid2:":       userTwo,
 	"$pswd1:":         userOne,
+	"$pswd2:":         userTwo,
+	"$username1:":     userOne,
+	"$email1:":        userOne + "@example.com",
 	"$principal1:":    principal(userOne),
 	"$calendarhome1:": calendarHome(userOne),
 	"$calendarpath1:": calendarPath(userOne),
 	"$taskspath1:":    tasksPath(userOne),
+}
+
+func appleSubstitutionValues(substitutions map[string]string) map[string]string {
+	values := make(map[string]string, len(appleFixtureSubstitutions)+len(substitutions))
+
+	maps.Copy(values, appleFixtureSubstitutions)
+
+	maps.Copy(values, substitutions)
+
+	year := time.Now().Year()
+	for offset := -3; offset <= 10; offset++ {
+		values["$now.year."+strconv.Itoa(offset)+":"] = strconv.Itoa(year + offset)
+	}
+
+	return values
 }
 
 func loadAppleFixture(t *testing.T, path string, substitutions map[string]string) string {
@@ -448,11 +492,11 @@ func loadAppleFixture(t *testing.T, path string, substitutions map[string]string
 	data, err := appleFixtures.ReadFile("testdata/apple/" + path)
 	require.NoError(t, err)
 
-	values := make(map[string]string, len(appleFixtureSubstitutions)+len(substitutions))
+	return expandAppleValue(string(data), substitutions)
+}
 
-	maps.Copy(values, appleFixtureSubstitutions)
-
-	maps.Copy(values, substitutions)
+func expandAppleValue(value string, substitutions map[string]string) string {
+	values := appleSubstitutionValues(substitutions)
 
 	keys := make([]string, 0, len(values))
 	for key := range values {
@@ -461,10 +505,9 @@ func loadAppleFixture(t *testing.T, path string, substitutions map[string]string
 
 	sort.Strings(keys)
 
-	fixture := string(data)
 	for _, key := range keys {
-		fixture = strings.ReplaceAll(fixture, key, values[key])
+		value = strings.ReplaceAll(value, key, values[key])
 	}
 
-	return fixture
+	return value
 }
