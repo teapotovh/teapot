@@ -169,13 +169,13 @@ func TestParseICalDurationInvalid(t *testing.T) {
 	}
 }
 
-func TestEventEndFromDurationNegative(t *testing.T) {
+func TestEndFromDurationNegative(t *testing.T) {
 	t.Parallel()
 
 	comp := ics.NewEvent("negative@example.com")
 	comp.SetProperty(ics.ComponentPropertyDuration, "-P1D")
 
-	_, err := eventEndFromDuration(comp, time.Date(2006, time.January, 4, 10, 0, 0, 0, time.UTC))
+	_, err := endFromDuration(&comp.ComponentBase, time.Date(2006, time.January, 4, 10, 0, 0, 0, time.UTC))
 	require.ErrorIs(t, err, ErrInvalidDuration)
 }
 

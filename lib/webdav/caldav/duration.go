@@ -12,25 +12,25 @@ import (
 
 var ErrInvalidDuration = errors.New("invalid iCalendar duration")
 
-// eventEndFromDuration computes the effective end of an event that does not
-// define DTEND, using its DURATION property as described in RFC 4791,
-// section 9.9. Events without DURATION have zero duration.
-func eventEndFromDuration(comp *ics.VEvent, eventStart time.Time) (time.Time, error) {
+// endFromDuration computes the effective end of a component that defines a
+// DURATION property, as described in RFC 4791, section 9.9. Components without
+// DURATION have zero duration.
+func endFromDuration(comp *ics.ComponentBase, start time.Time) (time.Time, error) {
 	prop := comp.GetProperty(ics.ComponentPropertyDuration)
 	if prop == nil {
-		return eventStart, nil
+		return start, nil
 	}
 
 	duration, err := parseICalDuration(prop.Value)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("while parsing event duration: %w", err)
+		return time.Time{}, fmt.Errorf("while parsing duration: %w", err)
 	}
 
 	if duration.days < 0 || duration.exact < 0 {
 		return time.Time{}, fmt.Errorf("%w: %q", ErrInvalidDuration, prop.Value)
 	}
 
-	return duration.addTo(eventStart), nil
+	return duration.addTo(start), nil
 }
 
 // icalDuration is a duration as defined in RFC 5545, section 3.3.6. Days are
