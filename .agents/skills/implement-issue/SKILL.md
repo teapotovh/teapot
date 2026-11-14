@@ -19,6 +19,8 @@ Create a new branch based off the latest `origin/main` (fetch), unless the user
 specified the work should be based on another feature branch. Then, create a
 git worktree where all the implementation will be carried out.
 
+The worktree must be placed in `~/.local/state/opencode/worktrees/teapot/<branch name>`.
+
 ## Implementation
 
 If strictly necessary, you can ask questions to the user before proceeding. Only
