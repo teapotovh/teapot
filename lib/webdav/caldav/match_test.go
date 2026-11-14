@@ -18,7 +18,7 @@ const (
 	testTodoComponent     = "VTODO"
 	testAlarmComponent    = "VALARM"
 
-	abcd3Path = "/bernard/work/abcd3.ics"
+	attendeesPath = "/bernard/work/event-attendees.ics"
 )
 
 type appendixBFixture struct {
@@ -32,14 +32,14 @@ func (f appendixBFixture) path() string {
 }
 
 var appendixBFixtures = []appendixBFixture{
-	{name: "rfc4791-abcd1.ics", uid: "74855313FA803DA593CD579A@example.com"},
-	{name: "rfc4791-abcd2.ics", uid: "00959BC664CA650E933C892C@example.com"},
-	{name: "rfc4791-abcd3.ics", uid: "DC6C50A017428C5216A2F1CD@example.com"},
-	{name: "rfc4791-abcd4.ics", uid: "DDDEEB7915FA61233B861457@example.com"},
-	{name: "rfc4791-abcd5.ics", uid: "E10BA47467C5C69BB74E8720@example.com"},
-	{name: "rfc4791-abcd6.ics", uid: "E10BA47467C5C69BB74E8722@example.com"},
-	{name: "rfc4791-abcd7.ics", uid: "E10BA47467C5C69BB74E8725@example.com"},
-	{name: "rfc4791-abcd8.ics", uid: "76ef34-54a3d2@example.com"},
+	{name: "rfc4791-event-single.ics", uid: "74855313FA803DA593CD579A@example.com"},
+	{name: "rfc4791-event-recurring.ics", uid: "00959BC664CA650E933C892C@example.com"},
+	{name: "rfc4791-event-attendees.ics", uid: "DC6C50A017428C5216A2F1CD@example.com"},
+	{name: "rfc4791-todo-due-jan-4.ics", uid: "DDDEEB7915FA61233B861457@example.com"},
+	{name: "rfc4791-todo-due-jan-6.ics", uid: "E10BA47467C5C69BB74E8720@example.com"},
+	{name: "rfc4791-todo-completed.ics", uid: "E10BA47467C5C69BB74E8722@example.com"},
+	{name: "rfc4791-todo-cancelled.ics", uid: "E10BA47467C5C69BB74E8725@example.com"},
+	{name: "rfc4791-freebusy.ics", uid: "76ef34-54a3d2@example.com"},
 }
 
 func mustParseICS(t *testing.T, data string) *ics.Calendar {
@@ -148,7 +148,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					End:   mustICSTime(t, "20060105T000000Z"),
 				}},
 			},
-			want: []string{"/bernard/work/abcd2.ics", abcd3Path},
+			want: []string{"/bernard/work/event-recurring.ics", attendeesPath},
 		},
 		{
 			name: "7.8.6 event by UID",
@@ -162,7 +162,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{abcd3Path},
+			want: []string{attendeesPath},
 		},
 		{
 			name: "7.8.7 events by PARTSTAT",
@@ -180,7 +180,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{abcd3Path},
+			want: []string{attendeesPath},
 		},
 		{
 			name: "7.8.8 events only",
@@ -189,9 +189,9 @@ func TestFilterRFC4791Examples(t *testing.T) {
 				Comps: []CompFilter{{Name: testEventComponent}},
 			},
 			want: []string{
-				"/bernard/work/abcd1.ics",
-				"/bernard/work/abcd2.ics",
-				abcd3Path,
+				"/bernard/work/event-single.ics",
+				"/bernard/work/event-recurring.ics",
+				attendeesPath,
 			},
 		},
 		{
@@ -224,7 +224,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{"/bernard/work/abcd1.ics", "/bernard/work/abcd2.ics"},
+			want: []string{"/bernard/work/event-single.ics", "/bernard/work/event-recurring.ics"},
 		},
 		{
 			name: "prop-filter is-not-defined excludes defined properties",
@@ -247,9 +247,9 @@ func TestFilterRFC4791Examples(t *testing.T) {
 				}},
 			},
 			want: []string{
-				"/bernard/work/abcd1.ics",
-				"/bernard/work/abcd2.ics",
-				abcd3Path,
+				"/bernard/work/event-single.ics",
+				"/bernard/work/event-recurring.ics",
+				attendeesPath,
 			},
 		},
 		{
@@ -262,9 +262,9 @@ func TestFilterRFC4791Examples(t *testing.T) {
 				}},
 			},
 			want: []string{
-				"/bernard/work/abcd1.ics",
-				"/bernard/work/abcd2.ics",
-				abcd3Path,
+				"/bernard/work/event-single.ics",
+				"/bernard/work/event-recurring.ics",
+				attendeesPath,
 			},
 		},
 		{
@@ -290,7 +290,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{abcd3Path},
+			want: []string{attendeesPath},
 		},
 	}
 
@@ -524,7 +524,7 @@ func TestMatchCalendarVTodoTimeRange(t *testing.T) {
 
 	got, err := Filter(query, cos)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"/bernard/work/abcd4.ics"}, objectPaths(got))
+	assert.Equal(t, []string{"/bernard/work/todo-due-jan-4.ics"}, objectPaths(got))
 }
 
 func TestMatchCalendarValarmTimeRange(t *testing.T) {
@@ -550,5 +550,5 @@ func TestMatchCalendarValarmTimeRange(t *testing.T) {
 
 	got, err := Filter(query, cos)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"/bernard/work/abcd4.ics", "/bernard/work/abcd5.ics"}, objectPaths(got))
+	assert.Equal(t, []string{"/bernard/work/todo-due-jan-4.ics", "/bernard/work/todo-due-jan-6.ics"}, objectPaths(got))
 }

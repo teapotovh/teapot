@@ -272,7 +272,7 @@ func TestDecodeCalendarMultigetHrefs(t *testing.T) {
 
 	require.NotNil(t, req.Multiget)
 	require.Len(t, req.Multiget.Hrefs, 2)
-	assert.Equal(t, "/bernard/work/abcd1.ics", req.Multiget.Hrefs[0].Path)
+	assert.Equal(t, "/bernard/work/event-single.ics", req.Multiget.Hrefs[0].Path)
 	assert.Equal(t, "/bernard/work/mtg1.ics", req.Multiget.Hrefs[1].Path)
 
 	data, compReq := decodeReportCalendarData(t, req.Multiget.Prop)

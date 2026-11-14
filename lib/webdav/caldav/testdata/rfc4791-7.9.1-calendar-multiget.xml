@@ -5,6 +5,6 @@
     <D:getetag/>
     <C:calendar-data/>
   </D:prop>
-  <D:href>/bernard/work/abcd1.ics</D:href>
+  <D:href>/bernard/work/event-single.ics</D:href>
   <D:href>/bernard/work/mtg1.ics</D:href>
 </C:calendar-multiget>
