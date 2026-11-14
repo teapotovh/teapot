@@ -25,7 +25,6 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L29-L67
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 
@@ -57,11 +56,21 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L68-L108
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 
+		// The Apple test runs after the set test, so set the details first.
 		res := doRequest(
+			t,
+			srv,
+			webdav.MethodPropPatch,
+			calendarPath(userOne),
+			withContentType(xmlContentType),
+			withBody(loadAppleFixture(t, "Resource/CalDAV/proppatches/1.xml", nil)),
+		)
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		res = doRequest(
 			t,
 			srv,
 			webdav.MethodPropPatch,
@@ -88,7 +97,6 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L109-L126
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 

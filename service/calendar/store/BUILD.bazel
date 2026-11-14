@@ -43,7 +43,10 @@ go_library(
 
 go_test(
     name = "store_test",
-    srcs = ["mem_test.go"],
+    srcs = [
+        "mem_test.go",
+        "types_test.go",
+    ],
     embed = [":store"],
     deps = [
         "//lib/webdav/caldav",

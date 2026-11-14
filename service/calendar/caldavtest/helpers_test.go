@@ -499,6 +499,10 @@ func assertPropAbsent(t *testing.T, body string, href string, name xml.Name) {
 		}
 
 		for _, propstat := range response.PropStats {
+			if statusCode(t, propstat.Status) != http.StatusOK {
+				continue
+			}
+
 			for _, prop := range propstat.Prop.Props {
 				assert.NotEqual(t, name, prop.XMLName, "unexpected property %s", name.Local)
 			}
