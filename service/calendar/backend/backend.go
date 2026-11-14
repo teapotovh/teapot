@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
@@ -82,8 +82,8 @@ func storeCalendarToCaldavCalendar(cal store.Calendar) caldav.Calendar {
 	}
 }
 
-func normalizePath(path string) store.Path {
-	return store.Path(strings.TrimRight(filepath.Clean(path), "/"))
+func normalizePath(p string) store.Path {
+	return store.Path(strings.TrimRight(path.Clean(p), "/"))
 }
 
 func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) (err error) {
@@ -102,7 +102,12 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar)
 
 	err = b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
 	if err != nil {
-		return fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
+		err = fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
+		if errors.Is(err, store.ErrCalendarAlreadyExists) {
+			return &daverr.HTTPError{Code: http.StatusForbidden, Err: err}
+		}
+
+		return err
 	}
 
 	return nil
@@ -273,7 +278,12 @@ func (b *Backend) GetCalendarObject(
 
 	obj, err := b.store.GetCalendarObject(ctx, storePath)
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
+		err = fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
+		}
+
+		return nil, err
 	}
 
 	object, err = storeObjectToCaldavObject(ctx, *obj)
