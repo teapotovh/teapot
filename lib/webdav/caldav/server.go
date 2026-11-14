@@ -45,6 +45,14 @@ type PutCalendarObjectOptions struct {
 	IfMatch webdav.ConditionalMatch
 }
 
+// DeleteCalendarObjectOptions represents the options for the DeleteCalendarObject call.
+type DeleteCalendarObjectOptions struct {
+	// IfMatch provides the ETag of the resource that the client intends to delete.
+	IfMatch webdav.ConditionalMatch
+	// IfNoneMatch indicates that the client does not want to delete a matching resource.
+	IfNoneMatch webdav.ConditionalMatch
+}
+
 // Backend is a CalDAV server backend.
 type Backend interface {
 	CalendarHomeSetPath(ctx context.Context) (string, error)
@@ -62,7 +70,7 @@ type Backend interface {
 		calendar *ics.Calendar,
 		opts *PutCalendarObjectOptions,
 	) (*CalendarObject, bool, error)
-	DeleteCalendarObject(ctx context.Context, path string) error
+	DeleteCalendarObject(ctx context.Context, path string, opts *DeleteCalendarObjectOptions) error
 
 	webdav.UserPrincipalBackend
 }
@@ -702,7 +710,19 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 }
 
 func (b *backend) Delete(r *http.Request) error {
-	return b.Backend.DeleteCalendarObject(r.Context(), r.URL.Path)
+	ifMatch := webdav.IfMatch(r.Header)
+	ifNoneMatch := webdav.IfNoneMatch(r.Header)
+
+	if err := validateConditionalHeaders(ifMatch, ifNoneMatch); err != nil {
+		return err
+	}
+
+	opts := DeleteCalendarObjectOptions{
+		IfMatch:     ifMatch,
+		IfNoneMatch: ifNoneMatch,
+	}
+
+	return b.Backend.DeleteCalendarObject(r.Context(), r.URL.Path, &opts)
 }
 
 func (b *backend) Mkcol(r *http.Request) error {

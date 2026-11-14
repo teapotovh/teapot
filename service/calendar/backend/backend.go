@@ -13,6 +13,7 @@ import (
 	ics "github.com/arran4/golang-ical"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	daverr "github.com/teapotovh/teapot/lib/webdav/error"
 	"github.com/teapotovh/teapot/lib/wideevent"
@@ -373,12 +374,46 @@ func (b *Backend) QueryCalendarObjects(
 	return objects, nil
 }
 
-func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err error) {
+func (b *Backend) DeleteCalendarObject(
+	ctx context.Context,
+	path string,
+	opts *caldav.DeleteCalendarObjectOptions,
+) (err error) {
 	ctx, we, handle := wideevent.Start[DeleteCalendarObjectWideEvent](ctx, "DeleteCalendarObject")
 	defer func() { handle.End(err) }()
 
+	if opts == nil {
+		opts = &caldav.DeleteCalendarObjectOptions{}
+	}
+
 	storePath := normalizePath(path)
 	we.Path = storePath
+
+	if opts.IfMatch.IsSet() {
+		we.MatchETag = string(opts.IfMatch)
+	}
+
+	if opts.IfNoneMatch.IsSet() {
+		we.NoneMatchETag = string(opts.IfNoneMatch)
+	}
+
+	obj, err := b.store.GetCalendarObject(ctx, storePath)
+	if err != nil {
+		err = fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
+		if errors.Is(err, store.ErrNotFound) {
+			if err := checkETagPreconditions(nil, false, opts.IfMatch, opts.IfNoneMatch); err != nil {
+				return err
+			}
+
+			return &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
+		}
+
+		return err
+	}
+
+	if err := checkETagPreconditions(obj, true, opts.IfMatch, opts.IfNoneMatch); err != nil {
+		return err
+	}
 
 	if err := b.store.DeleteCalendarObject(ctx, storePath); err != nil {
 		err = fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
@@ -404,7 +439,22 @@ func checkPutPreconditions(
 
 	if opts.IfMatch.IsSet() {
 		we.MatchETag = string(opts.IfMatch)
+	}
 
+	if opts.IfNoneMatch.IsSet() {
+		we.NoneMatchETag = string(opts.IfNoneMatch)
+	}
+
+	return checkETagPreconditions(existing, exists, opts.IfMatch, opts.IfNoneMatch)
+}
+
+func checkETagPreconditions(
+	existing *store.Object,
+	exists bool,
+	ifMatch webdav.ConditionalMatch,
+	ifNoneMatch webdav.ConditionalMatch,
+) error {
+	if ifMatch.IsSet() {
 		if !exists {
 			return &daverr.HTTPError{
 				Code: http.StatusPreconditionFailed,
@@ -412,7 +462,7 @@ func checkPutPreconditions(
 			}
 		}
 
-		match, err := ETagMatcher(opts.IfMatch.MatchETag)(existing.ETag)
+		match, err := ETagMatcher(ifMatch.MatchETag)(existing.ETag)
 		if err != nil {
 			return &daverr.HTTPError{
 				Code: http.StatusPreconditionFailed,
@@ -428,11 +478,9 @@ func checkPutPreconditions(
 		}
 	}
 
-	if opts.IfNoneMatch.IsSet() {
-		we.NoneMatchETag = string(opts.IfNoneMatch)
-
+	if ifNoneMatch.IsSet() {
 		if exists {
-			match, err := NegateETagMatch(ETagMatcher(opts.IfNoneMatch.MatchETagWeak))(existing.ETag)
+			match, err := NegateETagMatch(ETagMatcher(ifNoneMatch.MatchETagWeak))(existing.ETag)
 			if err != nil {
 				return &daverr.HTTPError{
 					Code: http.StatusPreconditionFailed,

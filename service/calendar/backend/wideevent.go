@@ -154,7 +154,9 @@ func (q *QueryCalendarObjectWideEvent) Fields() wideevent.Fields { return wideev
 type DeleteCalendarObjectWideEvent struct {
 	wideevent.AlwaysEmit
 
-	Path store.Path
+	Path          store.Path
+	MatchETag     string
+	NoneMatchETag string
 }
 
 func (d *DeleteCalendarObjectWideEvent) Fields() wideevent.Fields { return wideevent.ExtractFields(d) }
