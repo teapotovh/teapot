@@ -533,10 +533,10 @@ func TestAppleReportsBasicQuery(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L1097-L1110
-			name:       "basic query 17a",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/basicquery/201.txt",
-			skipReason: "RFC 4791 9.7.1: multiple component filters must all match (AND semantics).",
+			name:    "basic query 17a",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/basicquery/201.txt",
+			okHrefs: []string{},
 		},
 		{
 			// Ported from:
@@ -593,10 +593,10 @@ func TestAppleReportsBasicQuery(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L1238-L1251
-			name:       "basic query 19a",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/basicquery/202.txt",
-			skipReason: "RFC 4791 9.7.1: multiple component filters must all match (AND semantics).",
+			name:    "basic query 19a",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/basicquery/202.txt",
+			okHrefs: []string{},
 		},
 		{
 			// Ported from:
@@ -638,10 +638,10 @@ func TestAppleReportsBasicQuery(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L1348-L1361
-			name:       "basic query 21",
-			path:       tasksPath(userOne),
-			fixture:    "Resource/CalDAV/reports/basicquery/203.txt",
-			skipReason: "RFC 4791 9.7.1: multiple component filters must all match (AND semantics).",
+			name:    "basic query 21",
+			path:    tasksPath(userOne),
+			fixture: "Resource/CalDAV/reports/basicquery/203.txt",
+			okHrefs: []string{},
 		},
 		{
 			// Ported from:
@@ -1029,10 +1029,10 @@ func TestAppleReportsTimeRange(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2180-L2193
-			name:       "time range 19a",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/timerangequery/201.xml",
-			skipReason: "RFC 4791 9.7.1: multiple component filters must all match (AND semantics).",
+			name:    "time range 19a",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/timerangequery/201.xml",
+			okHrefs: []string{},
 		},
 		{
 			// Ported from:
@@ -1063,10 +1063,10 @@ func TestAppleReportsTimeRange(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2284-L2297
-			name:       "time range 21a",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/timerangequery/202.xml",
-			skipReason: "RFC 4791 9.7.1: multiple component filters must all match (AND semantics).",
+			name:    "time range 21a",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/timerangequery/202.xml",
+			okHrefs: []string{},
 		},
 		{
 			// Ported from:
@@ -1119,10 +1119,10 @@ func TestAppleReportsTimeRange(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2416-L2429
-			name:       "time range 23a",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/timerangequery/203.xml",
-			skipReason: "RFC 4791 9.7.1: multiple component filters must all match (AND semantics).",
+			name:    "time range 23a",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/timerangequery/203.xml",
+			okHrefs: []string{},
 		},
 		{
 			// Ported from:

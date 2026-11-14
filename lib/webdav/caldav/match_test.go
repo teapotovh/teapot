@@ -381,6 +381,57 @@ func TestMatchCalendarEmptyObject(t *testing.T) {
 	assert.ErrorIs(t, err, ErrMatchEmptyObject)
 }
 
+func TestMatchCalendarMultipleComponentFilters(t *testing.T) {
+	t.Parallel()
+
+	eventCal := mustParseICS(t, rfc4791EventSingle)
+	todoCal := mustParseICS(t, todoCalendar(testTodoStartProp))
+
+	eventAndTodoQuery := CompFilter{
+		Name: testCalendarComponent,
+		Comps: []CompFilter{
+			{Name: testEventComponent},
+			{Name: testTodoComponent},
+		},
+	}
+
+	tests := []struct {
+		name  string
+		query CompFilter
+		cal   *ics.Calendar
+		want  bool
+	}{
+		{
+			name:  "single vevent filter matches vevent object",
+			query: CompFilter{Name: testCalendarComponent, Comps: []CompFilter{{Name: testEventComponent}}},
+			cal:   eventCal,
+			want:  true,
+		},
+		{
+			name:  "vevent object does not match vevent and vtodo filter",
+			query: eventAndTodoQuery,
+			cal:   eventCal,
+			want:  false,
+		},
+		{
+			name:  "vtodo object does not match vevent and vtodo filter",
+			query: eventAndTodoQuery,
+			cal:   todoCal,
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			match, err := MatchCalendar(tt.query, tt.cal)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, match)
+		})
+	}
+}
+
 func TestMatchCalendarPropDateFilterAnyMatch(t *testing.T) {
 	t.Parallel()
 

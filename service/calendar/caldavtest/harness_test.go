@@ -23,6 +23,8 @@ import (
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
+
+	_ "time/tzdata"
 )
 
 const (
