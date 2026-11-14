@@ -83,6 +83,8 @@ func TestStatusErr(t *testing.T) {
 	}{
 		{name: "nil status", status: nil, wantCode: 0},
 		{name: "ok", status: &Status{Code: http.StatusOK}, wantCode: 0},
+		{name: "no content", status: &Status{Code: http.StatusNoContent}, wantCode: 0},
+		{name: "multi status", status: &Status{Code: http.StatusMultiStatus}, wantCode: 0},
 		{name: "not found", status: &Status{Code: http.StatusNotFound}, wantCode: http.StatusNotFound},
 		{
 			name:     "internal server error",

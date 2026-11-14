@@ -77,8 +77,7 @@ func (s *Status) Err() error {
 		return nil
 	}
 
-	// TODO: handle 2xx, 3xx
-	if s.Code != http.StatusOK {
+	if s.Code/100 != 2 {
 		return &daverr.HTTPError{Code: s.Code}
 	}
 
