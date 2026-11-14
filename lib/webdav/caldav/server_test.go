@@ -74,6 +74,9 @@ var reportCalendarQueryUID string
 //go:embed testdata/report_calendar_query_events_only.xml
 var reportCalendarQueryEventsOnly string
 
+//go:embed testdata/teapot-report-calendar-query-multiple-text-match.xml
+var reportCalendarQueryMultipleTextMatch string
+
 //go:embed testdata/report_calendar_multiget.xml
 var reportCalendarMultiget string
 
@@ -1006,6 +1009,16 @@ func TestReportCalendarQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReportCalendarQueryMultipleTextMatch(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	createCalendar(t, srv)
+
+	res := report(t, srv, calendarPath, reportCalendarQueryMultipleTextMatch)
+	assert.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
 }
 
 func TestReportMultiget(t *testing.T) {

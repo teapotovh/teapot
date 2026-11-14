@@ -26,6 +26,7 @@ const MIMEType = "text/calendar"
 var (
 	ErrInvalidCalendarPath                   = errors.New("invalid calendar path (must be under calendar home-set)")
 	ErrTextMatchIncompatibleWithIfNotDefined = errors.New("if is-not-defined is provided, text-match can't be provided")
+	ErrMultipleTextMatch                     = errors.New("prop-filter can have at most one text-match")
 	ErrMany1IncompatibleWithIfNotDefined     = errors.New(
 		"if is-not-defined is provided, text-match, time-range, or param-filter can't be provided",
 	)
@@ -155,17 +156,25 @@ func decodeParamFilter(el *paramFilter) (*ParamFilter, error) {
 }
 
 func decodePropFilter(el *propFilter) (*PropFilter, error) {
+	if len(el.TextMatch) > 1 {
+		return nil, daverr.HTTPErrorf(
+			http.StatusBadRequest,
+			"caldav: failed to parse prop-filter: %w",
+			ErrMultipleTextMatch,
+		)
+	}
+
 	pf := &PropFilter{Name: el.Name}
 	if el.IsNotDefined != nil {
-		if el.TextMatch != nil || el.TimeRange != nil || len(el.ParamFilter) > 0 {
+		if len(el.TextMatch) > 0 || el.TimeRange != nil || len(el.ParamFilter) > 0 {
 			return nil, fmt.Errorf("caldav: failed to parse prop-filter: %w", ErrMany1IncompatibleWithIfNotDefined)
 		}
 
 		pf.IsNotDefined = true
 	}
 
-	if el.TextMatch != nil {
-		pf.TextMatch = decodeTextMatch(el.TextMatch)
+	if len(el.TextMatch) > 0 {
+		pf.TextMatch = decodeTextMatch(&el.TextMatch[0])
 	}
 
 	if el.TimeRange != nil {
