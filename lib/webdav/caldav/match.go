@@ -121,28 +121,23 @@ func matchEvent(filter CompFilter, comp *ics.VEvent) (bool, error) {
 }
 
 func matchCompFilter(filter CompFilter, comp *ics.VEvent) (bool, error) {
-	matches := false
-
 	for _, child := range comp.Components {
-		switch event := child.(type) {
-		case *ics.VEvent:
-			match, err := matchEvent(filter, event)
-			if err != nil {
-				return false, err
-			}
+		event, ok := child.(*ics.VEvent)
+		if !ok {
+			continue
+		}
 
-			matches = matches || match
-			if matches {
-				break // early exit
-			}
+		match, err := matchEvent(filter, event)
+		if err != nil {
+			return false, err
+		}
+
+		if match {
+			return true, nil
 		}
 	}
 
-	if !matches {
-		return filter.IsNotDefined, nil
-	}
-
-	return true, nil
+	return filter.IsNotDefined, nil
 }
 
 func matchPropFilter(filter PropFilter, comp *ics.VEvent) (bool, error) {
