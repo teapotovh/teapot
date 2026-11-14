@@ -39,7 +39,7 @@ var (
 type Backend interface {
 	CalendarHomeSetPath(ctx context.Context) (string, error)
 
-	CreateCalendar(ctx context.Context, calendar *Calendar) error
+	PutCalendar(ctx context.Context, calendar *Calendar) (created bool, err error)
 	ListCalendars(ctx context.Context) ([]Calendar, error)
 	GetCalendar(ctx context.Context, path string) (*Calendar, error)
 
@@ -599,7 +599,83 @@ func (b *backend) PropFind(
 }
 
 func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*internal.Response, error) {
-	return nil, daverr.HTTPErrorf(http.StatusNotImplemented, "caldav: PropPatch not implemented")
+	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
+		return nil, daverr.HTTPErrorf(http.StatusForbidden, "caldav: proppatch not allowed at given location")
+	}
+
+	cal, err := b.Backend.GetCalendar(r.Context(), r.URL.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(update.Set) > 0 && cal.DeadProperties == nil {
+		cal.DeadProperties = map[xml.Name]string{}
+	}
+
+	var names []xml.Name
+
+	for _, set := range update.Set {
+		for i := range set.Prop.Raw {
+			raw := &set.Prop.Raw[i]
+
+			name, ok := raw.XMLName()
+			if !ok {
+				continue
+			}
+
+			value, err := marshalProperty(raw)
+			if err != nil {
+				return nil, err
+			}
+
+			cal.DeadProperties[name] = value
+			names = append(names, name)
+		}
+	}
+
+	for _, remove := range update.Remove {
+		for i := range remove.Prop.Raw {
+			name, ok := remove.Prop.Raw[i].XMLName()
+			if !ok {
+				continue
+			}
+
+			delete(cal.DeadProperties, name)
+			names = append(names, name)
+		}
+	}
+
+	if _, err := b.Backend.PutCalendar(r.Context(), cal); err != nil {
+		return nil, err
+	}
+
+	resp := &internal.Response{Hrefs: []internal.Href{{Path: r.URL.Path}}}
+
+	for _, name := range names {
+		if err := resp.EncodeProp(http.StatusOK, internal.NewRawXMLElement(name, nil, nil)); err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
+}
+
+func marshalProperty(raw *internal.RawXMLValue) (string, error) {
+	data, err := xml.Marshal(raw)
+	if err != nil {
+		return "", fmt.Errorf("caldav: failed to encode property: %w", err)
+	}
+
+	return string(data), nil
+}
+
+func unmarshalProperty(value string) (*internal.RawXMLValue, error) {
+	var raw internal.RawXMLValue
+	if err := xml.Unmarshal([]byte(value), &raw); err != nil {
+		return nil, fmt.Errorf("caldav: failed to decode property: %w", err)
+	}
+
+	return &raw, nil
 }
 
 func mapPreconditionError(err error) error {
@@ -726,7 +802,9 @@ func (b *backend) Mkcol(r *http.Request) error {
 		return ErrInvalidCalendarPath
 	}
 
-	return b.Backend.CreateCalendar(ctx, &cal)
+	_, err = b.Backend.PutCalendar(ctx, &cal)
+
+	return err
 }
 
 func (b *backend) Mkcalendar(r *http.Request) error {
@@ -774,7 +852,9 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 		return ErrInvalidCalendarPath
 	}
 
-	return b.Backend.CreateCalendar(ctx, &cal)
+	_, err = b.Backend.PutCalendar(ctx, &cal)
+
+	return err
 }
 
 func (b *backend) Copy(r *http.Request, dest *internal.Href, recursive, overwrite bool) (created bool, err error) {
@@ -941,6 +1021,16 @@ func (b *backend) propFindCalendar(
 		props[calendarColorName] = internal.PropFindValue(&calendarColor{
 			Color: cal.Color,
 		})
+	}
+
+	for name, value := range cal.DeadProperties {
+		if _, exists := props[name]; exists {
+			continue
+		}
+
+		props[name] = func(*internal.RawXMLValue) (any, error) {
+			return unmarshalProperty(value)
+		}
 	}
 
 	// TODO: CALDAV:calendar-timezone, CALDAV:min-date-time, CALDAV:max-date-time,

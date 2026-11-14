@@ -38,20 +38,6 @@ func (m *Mem) Ping(_ context.Context) error {
 	return nil
 }
 
-// CreateCalendar implements Store.
-func (m *Mem) CreateCalendar(ctx context.Context, calendar Calendar) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, exists := m.calendars[calendar.Path]; exists {
-		return ErrCalendarAlreadyExists
-	}
-
-	m.calendars[calendar.Path] = calendar
-
-	return nil
-}
-
 // ListCalendars implements Store.
 func (m *Mem) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error) {
 	m.mu.Lock()
@@ -77,6 +63,17 @@ func (m *Mem) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 	}
 
 	return nil, ErrCalendarNotFound
+}
+
+// PutCalendar implements Store.
+func (m *Mem) PutCalendar(ctx context.Context, calendar Calendar) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	_, exists := m.calendars[calendar.Path]
+	m.calendars[calendar.Path] = calendar
+
+	return !exists, nil
 }
 
 // PutCalendarObject implements Store.

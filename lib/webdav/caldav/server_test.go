@@ -1083,7 +1083,7 @@ func TestUnsupportedMethods(t *testing.T) {
 			method:  webdav.MethodPropPatch,
 			body:    proppatchPropertyUpdate,
 			headers: map[string]string{headerContentType: contentTypeXML},
-			want:    http.StatusNotImplemented,
+			want:    http.StatusMultiStatus,
 		},
 		{
 			name:    "copy",

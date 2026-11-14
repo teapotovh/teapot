@@ -30,18 +30,6 @@ func wideEventCalendarFromCaldav(cal *caldav.Calendar) CalendarWideEvent {
 	}
 }
 
-type CreateCalendarWideEvent struct {
-	wideevent.AlwaysEmit
-
-	Calendar CalendarWideEvent
-}
-
-func (c *CreateCalendarWideEvent) Fields() wideevent.Fields { return wideevent.ExtractFields(c) }
-
-func (c *CreateCalendarWideEvent) withCalendar(cal *caldav.Calendar) {
-	c.Calendar = wideEventCalendarFromCaldav(cal)
-}
-
 type ListCalendarsWideEvent struct {
 	wideevent.AlwaysEmit
 
@@ -71,6 +59,18 @@ func (g *GetCalendarWideEvent) Fields() wideevent.Fields { return wideevent.Extr
 
 func (g *GetCalendarWideEvent) withCalendar(cal *caldav.Calendar) {
 	g.Calendar = wideEventCalendarFromCaldav(cal)
+}
+
+type PutCalendarWideEvent struct {
+	wideevent.AlwaysEmit
+
+	Calendar CalendarWideEvent
+}
+
+func (p *PutCalendarWideEvent) Fields() wideevent.Fields { return wideevent.ExtractFields(p) }
+
+func (p *PutCalendarWideEvent) withCalendar(cal *caldav.Calendar) {
+	p.Calendar = wideEventCalendarFromCaldav(cal)
 }
 
 type ToCaldavObjectWideEvent struct {

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -60,6 +61,17 @@ func (b *Backend) CalendarHomeSetPath(ctx context.Context) (path string, err err
 }
 
 func caldavCalendarToStoreCalendar(cal *caldav.Calendar) store.Calendar {
+	var deadProperties []store.CalendarProperty
+	if len(cal.DeadProperties) > 0 {
+		deadProperties = make([]store.CalendarProperty, 0, len(cal.DeadProperties))
+		for name, value := range cal.DeadProperties {
+			deadProperties = append(deadProperties, store.CalendarProperty{
+				Name:  name,
+				Value: value,
+			})
+		}
+	}
+
 	return store.Calendar{
 		Path: normalizePath(cal.Path),
 		Metadata: store.CalendarMetadata{
@@ -68,49 +80,32 @@ func caldavCalendarToStoreCalendar(cal *caldav.Calendar) store.Calendar {
 			Color:                 cal.Color,
 			SupportedComponentSet: cal.SupportedComponentSet,
 			MaxResourceSize:       cal.MaxResourceSize,
+			DeadProperties:        deadProperties,
 		},
 	}
 }
 
 func storeCalendarToCaldavCalendar(cal store.Calendar) caldav.Calendar {
+	var deadProperties map[xml.Name]string
+	if len(cal.Metadata.DeadProperties) > 0 {
+		deadProperties = make(map[xml.Name]string, len(cal.Metadata.DeadProperties))
+		for _, property := range cal.Metadata.DeadProperties {
+			deadProperties[property.Name] = property.Value
+		}
+	}
+
 	return caldav.Calendar{
 		Path:                  string(cal.Path),
 		Name:                  cal.Metadata.Name,
 		Description:           cal.Metadata.Description,
 		Color:                 cal.Metadata.Color,
 		SupportedComponentSet: cal.Metadata.SupportedComponentSet,
+		DeadProperties:        deadProperties,
 	}
 }
 
 func normalizePath(p string) store.Path {
 	return store.Path(strings.TrimRight(path.Clean(p), "/"))
-}
-
-func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) (err error) {
-	ctx, we, handle := wideevent.Start[CreateCalendarWideEvent](ctx, "CreateCalendars")
-	defer func() { handle.End(err) }()
-
-	if calendar == nil {
-		return ErrUnexpectedNilCalendar
-	}
-
-	if len(calendar.SupportedComponentSet) <= 0 {
-		calendar.SupportedComponentSet = SupportedComponentSet
-	}
-
-	we.withCalendar(calendar)
-
-	err = b.store.CreateCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
-	if err != nil {
-		err = fmt.Errorf("error while creating calendar at path %q in storage: %w", calendar.Path, err)
-		if errors.Is(err, store.ErrCalendarAlreadyExists) {
-			return &daverr.HTTPError{Code: http.StatusForbidden, Err: err}
-		}
-
-		return err
-	}
-
-	return nil
 }
 
 func (b *Backend) ListCalendars(ctx context.Context) (calendars []caldav.Calendar, err error) {
@@ -161,6 +156,28 @@ func (b *Backend) GetCalendar(ctx context.Context, path string) (calendar *calda
 	we.withCalendar(&c)
 
 	return &c, nil
+}
+
+func (b *Backend) PutCalendar(ctx context.Context, calendar *caldav.Calendar) (created bool, err error) {
+	ctx, we, handle := wideevent.Start[PutCalendarWideEvent](ctx, "PutCalendar")
+	defer func() { handle.End(err) }()
+
+	if calendar == nil {
+		return false, ErrUnexpectedNilCalendar
+	}
+
+	if len(calendar.SupportedComponentSet) <= 0 {
+		calendar.SupportedComponentSet = SupportedComponentSet
+	}
+
+	we.withCalendar(calendar)
+
+	created, err = b.store.PutCalendar(ctx, caldavCalendarToStoreCalendar(calendar))
+	if err != nil {
+		return false, fmt.Errorf("error while storing calendar at path %q in storage: %w", calendar.Path, err)
+	}
+
+	return created, nil
 }
 
 func caldavObjectToStoreObject(
