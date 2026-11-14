@@ -1249,20 +1249,18 @@ func TestAppleReportsAlarmTimeRange(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2702-L2716
-			name:       "alarm time range 1",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/alarmtimerangequery/1.txt",
-			okHrefs:    []string{object4},
-			skipReason: "RFC 4791 9.9: VALARM time-range filters are not implemented.",
+			name:    "alarm time range 1",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/alarmtimerangequery/1.txt",
+			okHrefs: []string{object4},
 		},
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2720-L2734
-			name:       "alarm time range 2",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/alarmtimerangequery/2.txt",
-			okHrefs:    []string{object4},
-			skipReason: "RFC 4791 9.9: VALARM time-range filters are not implemented.",
+			name:    "alarm time range 2",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/alarmtimerangequery/2.txt",
+			okHrefs: []string{object4},
 		},
 		{
 			// Ported from:
@@ -1271,7 +1269,7 @@ func TestAppleReportsAlarmTimeRange(t *testing.T) {
 			path:       calendarPath(userOne),
 			fixture:    "Resource/CalDAV/reports/alarmtimerangequery/3.txt",
 			okHrefs:    []string{object5, object7},
-			skipReason: "RFC 4791 9.9: VALARM time-range filters are not implemented.",
+			skipReason: "RFC 4791 9.9: VALARM time-range on recurring events is not implemented.",
 		},
 		{
 			// Ported from:
@@ -1280,16 +1278,15 @@ func TestAppleReportsAlarmTimeRange(t *testing.T) {
 			path:       calendarPath(userOne),
 			fixture:    "Resource/CalDAV/reports/alarmtimerangequery/4.txt",
 			okHrefs:    []string{object5, object6},
-			skipReason: "RFC 4791 9.9: VALARM time-range filters are not implemented.",
+			skipReason: "RFC 4791 9.9: VALARM time-range on recurring events is not implemented.",
 		},
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2776-L2790
-			name:       "alarm time range 5",
-			path:       tasksPath(userOne),
-			fixture:    "Resource/CalDAV/reports/alarmtimerangequery/5.txt",
-			okHrefs:    []string{object102},
-			skipReason: "RFC 4791 9.9: VALARM time-range filters are not implemented.",
+			name:    "alarm time range 5",
+			path:    tasksPath(userOne),
+			fixture: "Resource/CalDAV/reports/alarmtimerangequery/5.txt",
+			okHrefs: []string{object102},
 		},
 	}
 
