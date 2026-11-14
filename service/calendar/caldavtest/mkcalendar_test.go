@@ -61,17 +61,13 @@ func TestAppleMkcalendar(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L43-L56
-		t.Skip(
-			"RFC 4791 5.3.1: MKCALENDAR on an existing resource must fail with the resource-must-be-null precondition.",
-		)
-
 		srv := newTestServer(t)
 
 		res := createCalendar(t, srv, userOne, calendarHome(userOne)+"caltest1/")
 		require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
 
 		res = createCalendar(t, srv, userOne, calendarHome(userOne)+"caltest1/")
-		require.Equal(t, http.StatusPreconditionFailed, res.Status, "body: %s", res.Body)
+		require.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)
 
 		davErr := parseDAVError(t, res.Body)
 		assert.True(t, hasName(davErr.Names, davNamespace, "resource-must-be-null"))
@@ -82,8 +78,6 @@ func TestAppleMkcalendar(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L57-L70
-		t.Skip("RFC 4791 5.3.1: MKCALENDAR nested inside a calendar must fail with calendar-collection-location-ok.")
-
 		srv := newTestServer(t)
 
 		res := createCalendar(t, srv, userOne, calendarHome(userOne)+"caltest1/")
@@ -146,10 +140,6 @@ func TestAppleMkcalendar(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L106-L123
-		t.Skip(
-			"RFC 4791 5.3.1: MKCALENDAR on an existing resource must fail with the resource-must-be-null precondition.",
-		)
-
 		srv := newTestServer(t)
 
 		res := doRequest(
@@ -170,7 +160,7 @@ func TestAppleMkcalendar(t *testing.T) {
 			withContentType(xmlContentType),
 			withBody(loadAppleFixture(t, fixtureMkcalendar1, nil)),
 		)
-		require.Equal(t, http.StatusPreconditionFailed, res.Status, "body: %s", res.Body)
+		require.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)
 
 		davErr := parseDAVError(t, res.Body)
 		assert.True(t, hasName(davErr.Names, davNamespace, "resource-must-be-null"))
@@ -204,10 +194,6 @@ func TestAppleMkcalendar(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L155-L172
-		t.Skip(
-			"RFC 4791 5.3.1: MKCALENDAR on an existing resource must fail with the resource-must-be-null precondition.",
-		)
-
 		srv := newTestServer(t)
 
 		res := doRequest(
@@ -228,7 +214,10 @@ func TestAppleMkcalendar(t *testing.T) {
 			withContentType(xmlContentType),
 			withBody(loadAppleFixture(t, "Resource/CalDAV/mkcalendar/2.txt", nil)),
 		)
-		require.Equal(t, http.StatusPreconditionFailed, res.Status, "body: %s", res.Body)
+		require.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)
+
+		davErr := parseDAVError(t, res.Body)
+		assert.True(t, hasName(davErr.Names, davNamespace, "resource-must-be-null"))
 	})
 
 	t.Run("read-free-busy privilege", func(t *testing.T) {
