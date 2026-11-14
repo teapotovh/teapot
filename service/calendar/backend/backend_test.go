@@ -152,7 +152,10 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnexpectedNilObject)
 
 	require.NoError(t, b.DeleteCalendarObject(ctx, path))
-	require.ErrorIs(t, b.DeleteCalendarObject(ctx, path), store.ErrCalendarObjectNotFound)
+
+	err = b.DeleteCalendarObject(ctx, path)
+	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
+	require.Equal(t, http.StatusNotFound, daverr.HTTPErrorFromError(err).Code)
 
 	_, err = b.GetCalendarObject(ctx, path, nil)
 	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)

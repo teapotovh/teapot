@@ -84,7 +84,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	switch r.Method {
-	case "REPORT":
+	case webdav.MethodReport:
 		err = h.handleReport(w, r)
 	default:
 		b := backend{
@@ -103,6 +103,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleReport(w http.ResponseWriter, r *http.Request) error {
 	var report reportReq
 	if err := internal.DecodeXMLRequest(r, &report); err != nil {
+		if errors.Is(err, ErrUnsupportedREPORTRoot) {
+			return newDAVError(http.StatusForbidden, internal.SupportedReportName)
+		}
+
 		return err
 	}
 
@@ -398,29 +402,36 @@ const (
 func (b *backend) Options(r *http.Request) (caps []string, allow []string, err error) {
 	caps = []string{"calendar-access"}
 
-	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendarObject {
-		return caps, []string{http.MethodOptions, "PROPFIND", "REPORT", "DELETE", "MKCOL", "MKCALENDAR"}, nil
+	switch b.resourceTypeAtPath(r.URL.Path) {
+	case resourceTypeRoot, resourceTypeUserPrincipal:
+		return caps, []string{http.MethodOptions, webdav.MethodPropFind}, nil
+	case resourceTypeCalendarHomeSet:
+		return caps, []string{http.MethodOptions, webdav.MethodPropFind, webdav.MethodMkcalendar}, nil
+	case resourceTypeCalendar:
+		return caps, []string{http.MethodOptions, webdav.MethodPropFind, webdav.MethodReport}, nil
+	case resourceTypeCalendarObject:
+		var dataReq CalendarCompRequest
+
+		_, err = b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
+
+		httpErr := &daverr.HTTPError{}
+		if errors.As(err, &httpErr) {
+			return caps, []string{http.MethodOptions, http.MethodPut}, nil
+		} else if err != nil {
+			return nil, nil, err
+		}
+
+		return caps, []string{
+			http.MethodOptions,
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPut,
+			http.MethodDelete,
+			webdav.MethodPropFind,
+		}, nil
 	}
 
-	var dataReq CalendarCompRequest
-
-	_, err = b.Backend.GetCalendarObject(r.Context(), r.URL.Path, &dataReq)
-
-	httpErr := &daverr.HTTPError{}
-	if errors.As(err, &httpErr) {
-		return caps, []string{http.MethodOptions, http.MethodPut}, nil
-	} else if err != nil {
-		return nil, nil, err
-	}
-
-	return caps, []string{
-		http.MethodOptions,
-		http.MethodHead,
-		http.MethodGet,
-		http.MethodPut,
-		http.MethodDelete,
-		"PROPFIND",
-	}, nil
+	return caps, []string{http.MethodOptions, webdav.MethodPropFind}, nil
 }
 
 func (b *backend) HeadGet(w http.ResponseWriter, r *http.Request) error {
@@ -838,6 +849,9 @@ func (b *backend) propFindCalendar(
 		internal.ResourceTypeName: internal.PropFindValue(
 			internal.NewResourceType(internal.CollectionName, calendarName),
 		),
+		internal.SupportedReportSetName: internal.PropFindValue(
+			internal.NewSupportedReportSet(calendarQueryName, calendarMultigetName),
+		),
 		supportedCalendarDataName: internal.PropFindValue(&supportedCalendarData{
 			Types: []calendarDataType{
 				{ContentType: MIMEType, Version: "2.0"},
@@ -947,6 +961,9 @@ func (b *backend) propFindCalendarObject(
 		internal.GetContentTypeName: internal.PropFindValue(&internal.GetContentType{
 			Type: MIMEType,
 		}),
+		internal.SupportedReportSetName: internal.PropFindValue(
+			internal.NewSupportedReportSet(calendarQueryName, calendarMultigetName),
+		),
 		// TODO: calendar-data can only be used in REPORT requests
 		calendarDataName: func(*internal.RawXMLValue) (any, error) {
 			var buf bytes.Buffer
@@ -1029,13 +1046,19 @@ func NewPreconditionError(precondition PreconditionType) error {
 		code = http.StatusConflict
 	}
 
-	name := xml.Name{Space: "urn:ietf:params:xml:ns:caldav", Local: string(precondition)}
-	elem := internal.NewRawXMLElement(name, nil, nil)
+	return newDAVError(code, xml.Name{Space: caldavNS, Local: string(precondition)})
+}
+
+func newDAVError(code int, names ...xml.Name) error {
+	raw := make([]internal.RawXMLValue, len(names))
+	for i, name := range names {
+		raw[i] = *internal.NewRawXMLElement(name, nil, nil)
+	}
 
 	return &daverr.HTTPError{
 		Code: code,
 		Err: &internal.Error{
-			Raw: []internal.RawXMLValue{*elem},
+			Raw: raw,
 		},
 	}
 }

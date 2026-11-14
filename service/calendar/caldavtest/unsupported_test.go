@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/teapotovh/teapot/lib/webdav"
 )
 
 const supportedReportSetQuery = `<D:propfind xmlns:D="DAV:"><D:prop><D:supported-report-set/></D:prop></D:propfind>`
@@ -37,8 +39,6 @@ func TestOptionsDAVHeader(t *testing.T) {
 func TestOptionsAllowHeader(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("blocked by missing protocol fix; covered by follow-up PR")
-
 	tests := []struct {
 		name      string
 		path      string
@@ -48,17 +48,17 @@ func TestOptionsAllowHeader(t *testing.T) {
 		{
 			name:      "calendar collection",
 			path:      calendarPath(userOne),
-			wantAllow: []string{http.MethodOptions, "PROPFIND", "REPORT"},
+			wantAllow: []string{http.MethodOptions, webdav.MethodPropFind, webdav.MethodReport},
 		},
 		{
 			name:      "calendar home",
 			path:      calendarHome(userOne),
-			wantAllow: []string{http.MethodOptions, "PROPFIND", "MKCALENDAR"},
+			wantAllow: []string{http.MethodOptions, webdav.MethodPropFind, webdav.MethodMkcalendar},
 		},
 		{
 			name:      "principal",
 			path:      principal(userOne),
-			wantAllow: []string{http.MethodOptions, "PROPFIND"},
+			wantAllow: []string{http.MethodOptions, webdav.MethodPropFind},
 		},
 		{
 			name:      "existing calendar object",
@@ -70,7 +70,7 @@ func TestOptionsAllowHeader(t *testing.T) {
 				http.MethodGet,
 				http.MethodPut,
 				http.MethodDelete,
-				"PROPFIND",
+				webdav.MethodPropFind,
 			},
 		},
 		{
@@ -104,8 +104,6 @@ func TestOptionsAllowHeader(t *testing.T) {
 // RFC 4791, section 2: https://www.rfc-editor.org/rfc/rfc4791#section-2
 func TestSupportedReportSet(t *testing.T) {
 	t.Parallel()
-
-	t.Skip("blocked by missing protocol fix; covered by follow-up PR")
 
 	t.Run("calendar collection", func(t *testing.T) {
 		t.Parallel()
@@ -179,8 +177,6 @@ func assertReports(t *testing.T, set *supportedReportSet) {
 func TestUnsupportedReport(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("blocked by missing protocol fix; covered by follow-up PR")
-
 	srv := newTestServer(t)
 
 	body := `<C:free-busy-query xmlns:C="urn:ietf:params:xml:ns:caldav">` +
@@ -197,8 +193,6 @@ func TestUnsupportedReport(t *testing.T) {
 // RFC 4791, section 5.3.2.1: https://www.rfc-editor.org/rfc/rfc4791#section-5.3.2.1
 func TestPutUnsupportedContentType(t *testing.T) {
 	t.Parallel()
-
-	t.Skip("blocked by missing protocol fix; covered by follow-up PR")
 
 	srv := newTestServer(t)
 
@@ -226,8 +220,6 @@ func TestPutUnsupportedContentType(t *testing.T) {
 func TestPutMalformedCalendarData(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("blocked by missing protocol fix; covered by follow-up PR")
-
 	srv := newTestServer(t)
 
 	res := putObject(t, srv, userOne, calendarPath(userOne)+"event.ics", "this is not a calendar")
@@ -241,15 +233,13 @@ func TestPutMalformedCalendarData(t *testing.T) {
 func TestUnsupportedMethod(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("blocked by missing protocol fix; covered by follow-up PR")
-
 	tests := []struct {
 		name   string
 		method string
 	}{
 		{
 			name:   "acl",
-			method: "ACL",
+			method: webdav.MethodACL,
 		},
 		{
 			name:   "post",

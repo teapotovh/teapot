@@ -123,34 +123,45 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				w.WriteHeader(http.StatusNoContent)
 			}
-		case "PROPFIND":
+		case MethodPropFind:
 			err = h.handlePropfind(w, r)
-		case "PROPPATCH":
+		case MethodPropPatch:
 			err = h.handleProppatch(w, r)
-		case "MKCOL":
+		case MethodMkcol:
 			err = h.Backend.Mkcol(r)
 			if err == nil {
 				w.WriteHeader(http.StatusCreated)
 			}
-		case "MKCALENDAR":
+		case MethodMkcalendar:
 			if withMkcalendar, ok := h.Backend.(WithMkcalendar); ok {
 				err = withMkcalendar.Mkcalendar(r)
 				if err == nil {
 					w.WriteHeader(http.StatusCreated)
 				}
 			} else {
-				err = daverr.HTTPErrorf(http.StatusMethodNotAllowed, "webdav: server does not support MKCALENDAR")
+				err = h.methodNotAllowed(w, r, "webdav: server does not support MKCALENDAR")
 			}
-		case "COPY", "MOVE":
+		case MethodCopy, MethodMove:
 			err = h.handleCopyMove(w, r)
 		default:
-			err = daverr.HTTPErrorf(http.StatusMethodNotAllowed, "webdav: unsupported method")
+			err = h.methodNotAllowed(w, r, "webdav: unsupported method")
 		}
 	}
 
 	if err != nil {
 		ServeError(w, err)
 	}
+}
+
+func (h *Handler) methodNotAllowed(w http.ResponseWriter, r *http.Request, message string) error {
+	_, allow, err := h.Backend.Options(r)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set("Allow", strings.Join(allow, ", "))
+
+	return daverr.HTTPErrorf(http.StatusMethodNotAllowed, "%s", message)
 }
 
 func (h *Handler) handleOptions(w http.ResponseWriter, r *http.Request) error {
@@ -340,7 +351,7 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) error {
 
 	var created bool
 
-	if r.Method == "COPY" {
+	if r.Method == MethodCopy {
 		var recursive bool
 
 		switch depth {

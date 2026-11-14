@@ -341,3 +341,56 @@ func TestServeMultiStatus(t *testing.T) {
 	assert.NoError(t, decoded.Responses[0].Err())
 	assert.Equal(t, http.StatusNotFound, daverr.HTTPErrorFromError(decoded.Responses[1].Err()).Code)
 }
+
+type stubBackend struct{}
+
+func (stubBackend) Options(*http.Request) ([]string, []string, error) {
+	return nil, []string{http.MethodOptions, MethodPropFind}, nil
+}
+
+func (stubBackend) HeadGet(http.ResponseWriter, *http.Request) error { return nil }
+
+func (stubBackend) PropFind(*http.Request, *PropFind, Depth) (*MultiStatus, error) {
+	return NewMultiStatus(), nil
+}
+
+func (stubBackend) PropPatch(*http.Request, *PropertyUpdate) (*Response, error) {
+	return &Response{}, nil
+}
+
+func (stubBackend) Put(http.ResponseWriter, *http.Request) error { return nil }
+
+func (stubBackend) Delete(*http.Request) error { return nil }
+
+func (stubBackend) Mkcol(*http.Request) error { return nil }
+
+func (stubBackend) Copy(*http.Request, *Href, bool, bool) (bool, error) { return false, nil }
+
+func (stubBackend) Move(*http.Request, *Href, bool) (bool, error) { return false, nil }
+
+func TestMethodNotAllowedSetsAllow(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		method string
+	}{
+		{name: "unsupported method", method: MethodLock},
+		{name: "unsupported mkcalendar", method: MethodMkcalendar},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(tt.method, "/calendars/user/", nil)
+			w := httptest.NewRecorder()
+
+			h := &Handler{Backend: stubBackend{}}
+			h.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+			assert.Equal(t, "OPTIONS, PROPFIND", w.Header().Get("Allow"))
+		})
+	}
+}

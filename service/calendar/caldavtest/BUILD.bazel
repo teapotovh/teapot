@@ -29,6 +29,7 @@ go_test(
     deps = [
         "//lib/httpauth",
         "//lib/ldap",
+        "//lib/webdav",
         "//lib/webdav/caldav",
         "//service/calendar/backend",
         "//service/calendar/store",

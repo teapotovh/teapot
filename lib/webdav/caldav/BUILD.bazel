@@ -73,6 +73,7 @@ go_test(
     ],
     deps = [
         "//lib/httpauth",
+        "//lib/webdav",
         "//lib/webdav/error",
         "//lib/webdav/internal",
         "@com_github_arran4_golang_ical//:golang-ical",

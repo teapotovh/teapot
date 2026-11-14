@@ -35,6 +35,9 @@ var (
 
 	CurrentUserPrincipalName    = xml.Name{Space: Namespace, Local: "current-user-principal"}
 	CurrentUserPrivilegeSetName = xml.Name{Space: Namespace, Local: "current-user-privilege-set"}
+
+	SupportedReportSetName = xml.Name{Space: Namespace, Local: "supported-report-set"}
+	SupportedReportName    = xml.Name{Space: Namespace, Local: "supported-report"}
 )
 
 type Status struct {
@@ -365,6 +368,35 @@ func (t *ResourceType) Is(name xml.Name) bool {
 	}
 
 	return false
+}
+
+// SupportedReportSet implements https://tools.ietf.org/html/rfc3253#section-3.1.5
+type SupportedReportSet struct {
+	XMLName xml.Name          `xml:"DAV: supported-report-set"`
+	Reports []SupportedReport `xml:"DAV: supported-report"`
+}
+
+// SupportedReport implements https://tools.ietf.org/html/rfc3253#section-3.1.5
+type SupportedReport struct {
+	XMLName xml.Name `xml:"DAV: supported-report"`
+	Report  Report   `xml:"DAV: report"`
+}
+
+// Report implements https://tools.ietf.org/html/rfc3253#section-3.1.5
+type Report struct {
+	XMLName xml.Name      `xml:"DAV: report"`
+	Raw     []RawXMLValue `xml:",any"`
+}
+
+func NewSupportedReportSet(names ...xml.Name) *SupportedReportSet {
+	reports := make([]SupportedReport, len(names))
+	for i, name := range names {
+		reports[i] = SupportedReport{
+			Report: Report{Raw: xmlNamesToRaw([]xml.Name{name})},
+		}
+	}
+
+	return &SupportedReportSet{Reports: reports}
 }
 
 // GetContentLength implements https://tools.ietf.org/html/rfc4918#section-15.4

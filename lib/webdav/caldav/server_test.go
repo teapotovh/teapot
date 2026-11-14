@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/teapotovh/teapot/lib/httpauth"
+	"github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 
 	_ "embed"
@@ -172,7 +173,7 @@ func doRequest(t *testing.T, srv *httptest.Server, method, reqPath, body string,
 func createCalendar(t *testing.T, srv *httptest.Server) {
 	t.Helper()
 
-	res := doRequest(t, srv, "MKCALENDAR", calendarPath, "", nil)
+	res := doRequest(t, srv, webdav.MethodMkcalendar, calendarPath, "", nil)
 	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
 }
 
@@ -187,7 +188,7 @@ func putCalendarObject(t *testing.T, srv *httptest.Server, reqPath, data string)
 func propFind(t *testing.T, srv *httptest.Server, reqPath, depth, body string) httpResult {
 	t.Helper()
 
-	return doRequest(t, srv, "PROPFIND", reqPath, body, map[string]string{
+	return doRequest(t, srv, webdav.MethodPropFind, reqPath, body, map[string]string{
 		headerContentType: contentTypeXML,
 		headerDepth:       depth,
 	})
@@ -196,7 +197,7 @@ func propFind(t *testing.T, srv *httptest.Server, reqPath, depth, body string) h
 func report(t *testing.T, srv *httptest.Server, reqPath, body string) httpResult {
 	t.Helper()
 
-	return doRequest(t, srv, "REPORT", reqPath, body, map[string]string{
+	return doRequest(t, srv, webdav.MethodReport, reqPath, body, map[string]string{
 		headerContentType: contentTypeXML,
 		headerDepth:       "1",
 	})
@@ -335,9 +336,11 @@ func TestOptions(t *testing.T) {
 	assert.Contains(t, dav, "calendar-access")
 
 	allow := res.Header.Get("Allow")
-	for _, method := range []string{"OPTIONS", "PROPFIND", "REPORT", "DELETE", "MKCOL", "MKCALENDAR"} {
-		assert.Contains(t, allow, method)
-	}
+	assert.Equal(
+		t,
+		strings.Join([]string{http.MethodOptions, webdav.MethodPropFind, webdav.MethodMkcalendar}, ", "),
+		allow,
+	)
 }
 
 func TestMkcalendar(t *testing.T) {
@@ -345,7 +348,7 @@ func TestMkcalendar(t *testing.T) {
 
 	srv := newTestServer(t)
 
-	res := doRequest(t, srv, "MKCALENDAR", calendarPath, mkcalendarRFC5312, map[string]string{
+	res := doRequest(t, srv, webdav.MethodMkcalendar, calendarPath, mkcalendarRFC5312, map[string]string{
 		headerContentType: contentTypeXML,
 	})
 	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
@@ -374,7 +377,7 @@ func TestMkcol(t *testing.T) {
 
 	srv := newTestServer(t)
 
-	res := doRequest(t, srv, "MKCOL", "/user/calendars/plain/", "", nil)
+	res := doRequest(t, srv, webdav.MethodMkcol, "/user/calendars/plain/", "", nil)
 	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
 }
 
@@ -801,7 +804,8 @@ func TestReportUnsupportedRoot(t *testing.T) {
 	createCalendar(t, srv)
 
 	res := report(t, srv, calendarPath, reportFreeBusy)
-	assert.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
+	assert.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)
+	assert.Contains(t, res.Body, "supported-report")
 }
 
 func TestUnsupportedMethods(t *testing.T) {
@@ -819,26 +823,26 @@ func TestUnsupportedMethods(t *testing.T) {
 	}{
 		{
 			name:    "proppatch",
-			method:  "PROPPATCH",
+			method:  webdav.MethodPropPatch,
 			body:    proppatchPropertyUpdate,
 			headers: map[string]string{headerContentType: contentTypeXML},
 			want:    http.StatusNotImplemented,
 		},
 		{
 			name:    "copy",
-			method:  "COPY",
+			method:  webdav.MethodCopy,
 			headers: map[string]string{"Destination": srv.URL + calendarPath + "copy.ics"},
 			want:    http.StatusNotImplemented,
 		},
 		{
 			name:    "move",
-			method:  "MOVE",
+			method:  webdav.MethodMove,
 			headers: map[string]string{"Destination": srv.URL + calendarPath + "moved.ics"},
 			want:    http.StatusNotImplemented,
 		},
 		{
 			name:   "lock",
-			method: "LOCK",
+			method: webdav.MethodLock,
 			want:   http.StatusMethodNotAllowed,
 		},
 	}

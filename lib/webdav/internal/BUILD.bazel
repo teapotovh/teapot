@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "elements.go",
         "internal.go",
+        "method.go",
         "server.go",
         "xml.go",
     ],

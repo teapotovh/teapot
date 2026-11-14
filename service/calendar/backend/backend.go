@@ -381,7 +381,12 @@ func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err er
 	we.Path = storePath
 
 	if err := b.store.DeleteCalendarObject(ctx, storePath); err != nil {
-		return fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
+		err = fmt.Errorf("error while deleting calendar object at path %q in storage: %w", path, err)
+		if errors.Is(err, store.ErrNotFound) {
+			return &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
+		}
+
+		return err
 	}
 
 	return nil
