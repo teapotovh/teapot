@@ -285,8 +285,6 @@ func TestAppleMkcalendar(t *testing.T) {
 
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L243-L260
-			t.Skip("RFC 4791 5.3.2.1: PUT must reject a component outside supported-calendar-component-set.")
-
 			srv := newTestServer(t)
 
 			res := doRequest(
@@ -354,8 +352,6 @@ func TestAppleMkcalendar(t *testing.T) {
 
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L279-L296
-			t.Skip("RFC 4791 5.3.2.1: PUT must reject a component outside supported-calendar-component-set.")
-
 			srv := newTestServer(t)
 
 			res := doRequest(

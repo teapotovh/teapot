@@ -175,6 +175,47 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	require.Empty(t, objects)
 }
 
+func TestPutCalendarObjectSupportedComponentSet(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext()
+	b := newTestBackend(t)
+
+	require.NoError(t, b.CreateCalendar(ctx, &caldav.Calendar{
+		Path:                  "/user/calendars/test/",
+		SupportedComponentSet: []string{string(ics.ComponentVEvent)},
+	}))
+
+	todo := ics.NewCalendar()
+	todo.AddTodo("todo-1").SetSummary("Todo 1")
+
+	_, _, err := b.PutCalendarObject(ctx, testObjectPath, todo, nil)
+	requireHTTPStatus(t, err, http.StatusForbidden)
+
+	event := newTestEvent(
+		t,
+		"event-1",
+		"Event 1",
+		time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
+	)
+
+	_, _, err = b.PutCalendarObject(ctx, testObjectPath, event, nil)
+	require.NoError(t, err)
+
+	withTimezone := newTestEvent(
+		t,
+		"event-1",
+		"Event 1",
+		time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
+	)
+	withTimezone.AddTimezone("Europe/Rome")
+
+	_, _, err = b.PutCalendarObject(ctx, testObjectPath, withTimezone, nil)
+	require.NoError(t, err)
+}
+
 func TestDeleteCalendarObjectPreconditions(t *testing.T) {
 	t.Parallel()
 

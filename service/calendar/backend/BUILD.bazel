@@ -4,6 +4,7 @@ go_library(
     name = "backend",
     srcs = [
         "backend.go",
+        "components.go",
         "etag.go",
         "filtering.go",
         "user_principal.go",
