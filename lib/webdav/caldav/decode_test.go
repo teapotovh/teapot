@@ -9,7 +9,30 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/teapotovh/teapot/lib/webdav/internal"
+
+	_ "embed"
 )
+
+//go:embed testdata/rfc4791-7.8.1-calendar-query.xml
+var rfc4791CalendarQuery781 string
+
+//go:embed testdata/rfc4791-7.8.2-calendar-query.xml
+var rfc4791CalendarQuery782 string
+
+//go:embed testdata/rfc4791-7.8.3-calendar-query.xml
+var rfc4791CalendarQuery783 string
+
+//go:embed testdata/rfc4791-7.8.6-calendar-query.xml
+var rfc4791CalendarQuery786 string
+
+//go:embed testdata/rfc4791-7.8.7-calendar-query.xml
+var rfc4791CalendarQuery787 string
+
+//go:embed testdata/rfc4791-7.8.9-calendar-query.xml
+var rfc4791CalendarQuery789 string
+
+//go:embed testdata/rfc4791-7.9.1-calendar-multiget.xml
+var rfc4791CalendarMultiget791 string
 
 func unmarshalReport(t *testing.T, body string) *reportReq {
 	t.Helper()
