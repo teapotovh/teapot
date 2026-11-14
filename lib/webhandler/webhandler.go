@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
+	"path"
 
 	hxhttp "maragu.dev/gomponents-htmx/http"
 	c "maragu.dev/gomponents/components"
@@ -63,7 +63,7 @@ func NewWebHandler(
 		skeleton:    skeleton,
 		renderer:    renderer,
 
-		AssetPath:    filepath.Join(config.Renderer.AssetPath, "{path...}"),
+		AssetPath:    path.Join(config.Renderer.AssetPath, "{path...}"),
 		AssetHandler: httpHandler.Adapt(dependencyHandler),
 	}
 
