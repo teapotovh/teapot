@@ -398,7 +398,7 @@ func (b *backend) Options(r *http.Request) (caps []string, allow []string, err e
 	caps = []string{"calendar-access"}
 
 	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendarObject {
-		return caps, []string{http.MethodOptions, "PROPFIND", "REPORT", "DELETE", "MKCOL"}, nil
+		return caps, []string{http.MethodOptions, "PROPFIND", "REPORT", "DELETE", "MKCOL", "MKCALENDAR"}, nil
 	}
 
 	var dataReq CalendarCompRequest
