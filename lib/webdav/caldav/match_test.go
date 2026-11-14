@@ -26,15 +26,20 @@ type appendixBFixture struct {
 	uid  string
 }
 
+// path returns the calendar object path used by the RFC 4791 examples.
+func (f appendixBFixture) path() string {
+	return "/bernard/work/" + strings.TrimPrefix(f.name, "rfc4791-")
+}
+
 var appendixBFixtures = []appendixBFixture{
-	{name: "abcd1.ics", uid: "74855313FA803DA593CD579A@example.com"},
-	{name: "abcd2.ics", uid: "00959BC664CA650E933C892C@example.com"},
-	{name: "abcd3.ics", uid: "DC6C50A017428C5216A2F1CD@example.com"},
-	{name: "abcd4.ics", uid: "DDDEEB7915FA61233B861457@example.com"},
-	{name: "abcd5.ics", uid: "E10BA47467C5C69BB74E8720@example.com"},
-	{name: "abcd6.ics", uid: "E10BA47467C5C69BB74E8722@example.com"},
-	{name: "abcd7.ics", uid: "E10BA47467C5C69BB74E8725@example.com"},
-	{name: "abcd8.ics", uid: "76ef34-54a3d2@example.com"},
+	{name: "rfc4791-abcd1.ics", uid: "74855313FA803DA593CD579A@example.com"},
+	{name: "rfc4791-abcd2.ics", uid: "00959BC664CA650E933C892C@example.com"},
+	{name: "rfc4791-abcd3.ics", uid: "DC6C50A017428C5216A2F1CD@example.com"},
+	{name: "rfc4791-abcd4.ics", uid: "DDDEEB7915FA61233B861457@example.com"},
+	{name: "rfc4791-abcd5.ics", uid: "E10BA47467C5C69BB74E8720@example.com"},
+	{name: "rfc4791-abcd6.ics", uid: "E10BA47467C5C69BB74E8722@example.com"},
+	{name: "rfc4791-abcd7.ics", uid: "E10BA47467C5C69BB74E8725@example.com"},
+	{name: "rfc4791-abcd8.ics", uid: "76ef34-54a3d2@example.com"},
 }
 
 func mustParseICS(t *testing.T, data string) *ics.Calendar {
@@ -74,7 +79,7 @@ func appendixBCalendarObjects(t *testing.T) []CalendarObject {
 		require.Equal(t, fixture.uid, firstComponentID(t, cal), "fixture %s", fixture.name)
 
 		cos = append(cos, CalendarObject{
-			Path: "/bernard/work/" + fixture.name,
+			Path: fixture.path(),
 			Data: cal,
 		})
 	}
