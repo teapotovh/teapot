@@ -24,7 +24,7 @@ git worktree where all the implementation will be carried out.
 If strictly necessary, you can ask questions to the user before proceeding. Only
 do this if the plan has some clear gaps that must be addressed before continuing.
 
-Read the style guidelines in ~/.agents/STYLE.md for how to write code.
+Read the style guidelines in .agents/STYLE.md (from project root) for how to write code.
 
 ### Checks
 
@@ -52,6 +52,8 @@ PRs MUST always be created as drafts. Unless explicitly asked by the user, the
 PR should contain one single commit. If changes are made during the iteration
 on the PR, that same commit should be amended. The commit name should be the
 same as the PR's. The commit description can be more in-depth compared to the PR's.
+
+Always mention 'Closes #<issue>' at the end of the PR.
 
 ### Iteration
 
