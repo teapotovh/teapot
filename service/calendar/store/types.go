@@ -3,6 +3,7 @@ package store
 import (
 	"bufio"
 	"bytes"
+	"encoding/xml"
 	"fmt"
 	"strings"
 	"time"
@@ -33,6 +34,12 @@ type Calendar struct {
 	Metadata CalendarMetadata
 }
 
+// CalendarProperty is a dead calendar property with a raw XML value.
+type CalendarProperty struct {
+	Name  xml.Name `json:"name"`
+	Value string   `json:"value"`
+}
+
 //nolint:tagliatelle
 type CalendarMetadata struct {
 	Name                  string   `json:"name,omitempty"`
@@ -41,6 +48,10 @@ type CalendarMetadata struct {
 	MaxResourceSize       int64    `json:"max-resource-size,omitempty"`
 	Color                 string   `json:"color,omitempty"`
 	Tag                   string   `json:"tag,omitempty"`
+	// DeadProperties holds client-defined WebDAV properties stored as opaque XML,
+	// unlike live properties that the server computes or enforces. Known
+	// properties with server behavior stay as typed fields.
+	DeadProperties []CalendarProperty `json:"dead-properties,omitempty"`
 }
 
 // Key implements pgcache.Object.

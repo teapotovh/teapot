@@ -56,8 +56,13 @@ func TestMemCalendarLifecycle(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, st.CreateCalendar(ctx, calendar))
-	require.ErrorIs(t, st.CreateCalendar(ctx, calendar), ErrCalendarAlreadyExists)
+	created, err := st.PutCalendar(ctx, calendar)
+	require.NoError(t, err)
+	require.True(t, created)
+
+	created, err = st.PutCalendar(ctx, calendar)
+	require.NoError(t, err)
+	require.False(t, created)
 
 	got, err := st.GetCalendar(ctx, calendar.Path)
 	require.NoError(t, err)

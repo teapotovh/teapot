@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -86,8 +87,12 @@ func TestCalendarLifecycle(t *testing.T) {
 		Color:       "#ff0000",
 	}
 
-	require.ErrorIs(t, b.CreateCalendar(ctx, nil), ErrUnexpectedNilCalendar)
-	require.NoError(t, b.CreateCalendar(ctx, calendar))
+	_, err := b.PutCalendar(ctx, nil)
+	require.ErrorIs(t, err, ErrUnexpectedNilCalendar)
+
+	created, err := b.PutCalendar(ctx, calendar)
+	require.NoError(t, err)
+	require.True(t, created)
 	require.Equal(t, SupportedComponentSet, calendar.SupportedComponentSet)
 
 	got, err := b.GetCalendar(ctx, "/user/calendars/test/")
@@ -104,7 +109,9 @@ func TestCalendarLifecycle(t *testing.T) {
 	require.Equal(t, "Test calendar", calendars[0].Name)
 	require.Equal(t, "/user/calendars/test", calendars[0].Path)
 
-	require.ErrorIs(t, b.CreateCalendar(ctx, calendar), store.ErrCalendarAlreadyExists)
+	created, err = b.PutCalendar(ctx, calendar)
+	require.NoError(t, err)
+	require.False(t, created)
 
 	_, err = b.GetCalendar(ctx, "/user/calendars/missing/")
 	require.ErrorIs(t, err, store.ErrCalendarNotFound)
@@ -118,6 +125,50 @@ func TestGetCalendarMissing(t *testing.T) {
 	_, err := b.GetCalendar(testContext(), "/user/calendars/missing/")
 	require.ErrorIs(t, err, store.ErrCalendarNotFound)
 	requireHTTPStatus(t, err, http.StatusNotFound)
+}
+
+func TestPutCalendar(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext()
+	b := newTestBackend(t)
+
+	calendarPath := "/user/calendars/test/"
+	details := xml.Name{Space: "DAV:", Local: "details"}
+	details2 := xml.Name{Space: "DAV:", Local: "details2"}
+
+	calendar := &caldav.Calendar{
+		Path: calendarPath,
+		Name: "Test calendar",
+		DeadProperties: map[xml.Name]string{
+			details:  `<details xmlns="DAV:">My Name</details>`,
+			details2: `<details2 xmlns="DAV:">My Name 2</details2>`,
+		},
+	}
+	created, err := b.PutCalendar(ctx, calendar)
+	require.NoError(t, err)
+	require.True(t, created)
+
+	got, err := b.GetCalendar(ctx, calendarPath)
+	require.NoError(t, err)
+	require.Equal(t, "Test calendar", got.Name)
+	require.Equal(t, calendar.DeadProperties, got.DeadProperties)
+
+	replacement := &caldav.Calendar{
+		Path: calendarPath,
+		Name: "Renamed calendar",
+		DeadProperties: map[xml.Name]string{
+			details2: `<details2 xmlns="DAV:">My Name 3</details2>`,
+		},
+	}
+	created, err = b.PutCalendar(ctx, replacement)
+	require.NoError(t, err)
+	require.False(t, created)
+
+	got, err = b.GetCalendar(ctx, calendarPath)
+	require.NoError(t, err)
+	require.Equal(t, "Renamed calendar", got.Name)
+	require.Equal(t, replacement.DeadProperties, got.DeadProperties)
 }
 
 func TestCalendarObjectRoundTrip(t *testing.T) {
@@ -181,15 +232,16 @@ func TestPutCalendarObjectSupportedComponentSet(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	require.NoError(t, b.CreateCalendar(ctx, &caldav.Calendar{
+	_, err := b.PutCalendar(ctx, &caldav.Calendar{
 		Path:                  "/user/calendars/test/",
 		SupportedComponentSet: []string{string(ics.ComponentVEvent)},
-	}))
+	})
+	require.NoError(t, err)
 
 	todo := ics.NewCalendar()
 	todo.AddTodo("todo-1").SetSummary("Todo 1")
 
-	_, _, err := b.PutCalendarObject(ctx, testObjectPath, todo, webdav.Preconditions{})
+	_, _, err = b.PutCalendarObject(ctx, testObjectPath, todo, webdav.Preconditions{})
 	requireHTTPStatus(t, err, http.StatusForbidden)
 
 	event := newTestEvent(
