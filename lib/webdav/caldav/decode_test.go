@@ -34,6 +34,9 @@ var rfc4791CalendarQuery789 string
 //go:embed testdata/rfc4791-7.9.1-calendar-multiget.xml
 var rfc4791CalendarMultiget791 string
 
+//go:embed testdata/teapot-report-calendar-query-multiple-text-match.xml
+var reportCalendarQueryMultipleTextMatch string
+
 func unmarshalReport(t *testing.T, body string) *reportReq {
 	t.Helper()
 
@@ -228,8 +231,8 @@ func TestDecodePropFilterTextMatch(t *testing.T) {
 	assert.Empty(t, prop.ParamFilter)
 
 	raw := req.Query.Filter.CompFilter.CompFilters[0].PropFilters[0].TextMatch
-	require.NotNil(t, raw)
-	assert.Equal(t, "i;octet", raw.Collation)
+	require.Len(t, raw, 1)
+	assert.Equal(t, "i;octet", raw[0].Collation)
 }
 
 func TestDecodeParamFilter(t *testing.T) {
@@ -255,8 +258,8 @@ func TestDecodeParamFilter(t *testing.T) {
 	assert.Equal(t, "NEEDS-ACTION", param.TextMatch.Text)
 
 	raw := req.Query.Filter.CompFilter.CompFilters[0].PropFilters[0]
-	require.NotNil(t, raw.TextMatch)
-	assert.Equal(t, "i;ascii-casemap", raw.TextMatch.Collation)
+	require.Len(t, raw.TextMatch, 1)
+	assert.Equal(t, "i;ascii-casemap", raw.TextMatch[0].Collation)
 	require.Len(t, raw.ParamFilter, 1)
 	require.NotNil(t, raw.ParamFilter[0].TextMatch)
 	assert.Equal(t, "i;ascii-casemap", raw.ParamFilter[0].TextMatch.Collation)
@@ -332,7 +335,7 @@ func TestDecodeFilterErrors(t *testing.T) {
 				_, err := decodePropFilter(&propFilter{
 					Name:         "UID",
 					IsNotDefined: &struct{}{},
-					TextMatch:    &textMatch{Text: "value"},
+					TextMatch:    []textMatch{{Text: "value"}},
 				})
 
 				return err
@@ -420,10 +423,12 @@ func TestDecodeFilterErrors(t *testing.T) {
 func TestDecodePropFilterMultipleTextMatch(t *testing.T) {
 	t.Parallel()
 
-	// RFC 4791, section 9.7.2 allows at most one text-match in a
-	// prop-filter. propFilter keeps a single textMatch, so duplicate
-	// elements are silently overwritten instead of being rejected.
-	t.Skip("TODO: RFC 4791 section 9.7.2 duplicate text-match elements are not rejected")
+	// RFC 4791, section 9.7.2 allows at most one text-match in a prop-filter.
+	req := unmarshalReport(t, reportCalendarQueryMultipleTextMatch)
+
+	_, err := decodeCompFilter(&req.Query.Filter.CompFilter)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrMultipleTextMatch)
 }
 
 func TestNegateConditionUnmarshal(t *testing.T) {

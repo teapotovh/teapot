@@ -123,7 +123,7 @@ type propFilter struct {
 	Name         string        `xml:"name,attr"`
 	IsNotDefined *struct{}     `xml:"is-not-defined,omitempty"`
 	TimeRange    *timeRange    `xml:"time-range,omitempty"`
-	TextMatch    *textMatch    `xml:"text-match,omitempty"`
+	TextMatch    []textMatch   `xml:"text-match,omitempty"`
 	ParamFilter  []paramFilter `xml:"param-filter,omitempty"`
 }
 

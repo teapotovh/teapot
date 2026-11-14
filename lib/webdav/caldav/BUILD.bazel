@@ -70,6 +70,7 @@ go_test(
         "testdata/teapot-overlapping.ics",
         "testdata/teapot-rdate.ics",
         "testdata/teapot-zero-duration.ics",
+        "testdata/teapot-report-calendar-query-multiple-text-match.xml",
     ],
     deps = [
         "//lib/httpauth",
