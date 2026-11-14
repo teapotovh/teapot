@@ -146,14 +146,14 @@ func (b *fakeBackend) PutCalendarObject(
 	objectPath string,
 	calendar *ics.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
-) (*caldav.CalendarObject, error) {
+) (*caldav.CalendarObject, bool, error) {
 	if calendar == nil {
-		return nil, daverr.HTTPErrorf(http.StatusBadRequest, "fake: nil calendar object")
+		return nil, false, daverr.HTTPErrorf(http.StatusBadRequest, "fake: nil calendar object")
 	}
 
 	var buf bytes.Buffer
 	if err := calendar.SerializeTo(&buf); err != nil {
-		return nil, fmt.Errorf("fake: could not serialize calendar object: %w", err)
+		return nil, false, fmt.Errorf("fake: could not serialize calendar object: %w", err)
 	}
 
 	data := buf.Bytes()
@@ -169,6 +169,7 @@ func (b *fakeBackend) PutCalendarObject(
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	_, exists := b.objects[key]
 	b.objects[key] = object
 	b.hasPut = true
 
@@ -176,7 +177,7 @@ func (b *fakeBackend) PutCalendarObject(
 		b.putOptions = *opts
 	}
 
-	return &object, nil
+	return &object, !exists, nil
 }
 
 func (b *fakeBackend) DeleteCalendarObject(_ context.Context, objectPath string) error {

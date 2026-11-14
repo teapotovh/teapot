@@ -433,12 +433,11 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, status)
 
-	etag := headers.Get("ETag")
-	require.NotEmpty(t, etag)
+	require.Empty(t, headers.Get("ETag"))
 
 	status, headers, body := doAuthenticatedRequest(t, srv, http.MethodGet, eventPath, calendarRequest{})
 	require.Equal(t, http.StatusOK, status)
-	require.Equal(t, etag, headers.Get("ETag"))
+	require.NotEmpty(t, headers.Get("ETag"))
 	require.Contains(t, headers.Get("Content-Type"), "text/calendar")
 	require.Contains(t, body, "BEGIN:VCALENDAR")
 	require.Contains(t, body, "UID:event1")

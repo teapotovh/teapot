@@ -84,8 +84,9 @@ func TestMemObjectLifecycle(t *testing.T) {
 
 	object := newTestObject(t, "/user/calendars/test/event-1.ics", "Event 1")
 
-	require.NoError(t, st.CreateCalendarObject(ctx, object))
-	require.ErrorIs(t, st.CreateCalendarObject(ctx, object), ErrCalendarObjectAlreadyExists)
+	created, err := st.PutCalendarObject(ctx, object)
+	require.NoError(t, err)
+	require.True(t, created)
 
 	got, err := st.GetCalendarObject(ctx, object.Path)
 	require.NoError(t, err)
@@ -95,13 +96,27 @@ func TestMemObjectLifecycle(t *testing.T) {
 	require.Equal(t, object.ETag, got.ETag)
 	require.NotEmpty(t, got.ETag)
 
+	updated := newTestObject(t, object.Path.String(), "Event 1 updated")
+	updated.ModTime = testModTime.Add(time.Hour)
+	created, err = st.PutCalendarObject(ctx, updated)
+	require.NoError(t, err)
+	require.False(t, created)
+
+	got, err = st.GetCalendarObject(ctx, object.Path)
+	require.NoError(t, err)
+	require.Equal(t, updated.ModTime, got.ModTime)
+	require.Equal(t, updated.Data, got.Data)
+	require.Equal(t, updated.ETag, got.ETag)
+
 	other := newTestObject(t, "/user/calendars/other/event-2.ics", "Event 2")
-	require.NoError(t, st.CreateCalendarObject(ctx, other))
+	created, err = st.PutCalendarObject(ctx, other)
+	require.NoError(t, err)
+	require.True(t, created)
 
 	objects, err := st.ListCalendarObjects(ctx, "/user/calendars/test")
 	require.NoError(t, err)
 	require.Len(t, objects, 1)
-	require.Equal(t, object, objects[0])
+	require.Equal(t, updated, objects[0])
 
 	require.NoError(t, st.DeleteCalendarObject(ctx, object.Path))
 

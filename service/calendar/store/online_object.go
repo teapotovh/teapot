@@ -133,11 +133,13 @@ func deleteObjectRefPSQL(ctx context.Context, tx pgx.Tx, paths []Path) error {
 	return nil
 }
 
-// CreateCalendarObject implements Store.
-func (o *Online) CreateCalendarObject(ctx context.Context, object Object) error {
+// PutCalendarObject implements Store.
+func (o *Online) PutCalendarObject(ctx context.Context, object Object) (bool, error) {
 	// First, check if we already have an object under this path. In that case,
 	// we want to reuse the Ref as the S3's key.
 	ref, exists := o.objectRefTable.Get(object.Path)
+
+	created := !exists
 	if !exists {
 		// Let's create a new object ref for this path
 		ref = objectRef{
@@ -149,9 +151,11 @@ func (o *Online) CreateCalendarObject(ctx context.Context, object Object) error 
 		}
 	}
 
+	ref.ModTime = object.ModTime
+
 	etag, err := o.objectCache.Put(ctx, ref.s3Key(), object.Data)
 	if err != nil {
-		return fmt.Errorf("error while storing calendar object in s3: %w", err)
+		return false, fmt.Errorf("error while storing calendar object in s3: %w", err)
 	}
 	// Ensure we store the correct etag
 	ref.ETag = etag
@@ -159,8 +163,11 @@ func (o *Online) CreateCalendarObject(ctx context.Context, object Object) error 
 	_, err = runInTx(o.objectRefTable, func(ctx context.Context, tx *pgcache.TableTx[Path, objectRef]) (unit, error) {
 		return unit{}, tx.Store(ctx, []objectRef{ref})
 	})(ctx)
+	if err != nil {
+		return false, err
+	}
 
-	return err
+	return created, nil
 }
 
 // ListCalendarObjects implements Store.

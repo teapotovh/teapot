@@ -196,76 +196,66 @@ func (b *Backend) PutCalendarObject(
 	path string,
 	calendar *ics.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
-) (object *caldav.CalendarObject, err error) {
+) (object *caldav.CalendarObject, created bool, err error) {
 	ctx, we, handle := wideevent.Start[PutCalendarObjectWideEvent](ctx, "PutCalendarObject")
 	defer func() { handle.End(err) }()
 
 	if calendar == nil {
-		return nil, ErrUnexpectedNilObject
+		return nil, false, ErrUnexpectedNilObject
 	}
 
+	storePath := normalizePath(path)
 	we.Path = path
 
-	if opts != nil {
-		matchers := make([]ETagMatcher, 0, 2)
+	existing, err := b.store.GetCalendarObject(ctx, storePath)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, false, fmt.Errorf("error while checking for previous object at path %q: %w", path, err)
+	}
 
-		if opts.IfMatch.IsSet() {
-			we.MatchETag = string(opts.IfMatch)
-			matchers = append(matchers, ETagMatcher(opts.IfMatch.MatchETag))
-		}
+	exists := err == nil
+	if exists {
+		we.ETag = existing.ETag
+	}
 
-		if opts.IfNoneMatch.IsSet() {
-			we.NoneMatchETag = string(opts.IfNoneMatch)
-			matchers = append(matchers, NegateETagMatch(ETagMatcher(opts.IfNoneMatch.MatchETag)))
-		}
+	if err := checkPutPreconditions(existing, exists, opts, we); err != nil {
+		return nil, false, err
+	}
 
-		matcher := AndETagMatch(matchers...)
-
-		obj, err := b.store.GetCalendarObject(ctx, normalizePath(path))
+	if exists {
+		existingCalendar, err := existing.Calendar()
 		if err != nil {
-			if !errors.Is(err, store.ErrNotFound) {
-				return nil, fmt.Errorf("error while checking for previous object at path %q: %w", path, err)
-			}
-			// We ignore NotFound errors, insertion is safe on the first insertion of an object
-		} else {
-			etag := obj.ETag
-			we.ETag = etag
+			return nil, false, fmt.Errorf("error while parsing existing calendar object at path %q: %w", storePath, err)
+		}
 
-			match, err := matcher(etag)
-			if err != nil {
-				return nil, &daverr.HTTPError{
-					Code: http.StatusPreconditionFailed,
-					Err:  fmt.Errorf("error while matching etag: %w", err),
-				}
-			}
-
-			if !match {
-				return nil, &daverr.HTTPError{
-					Code: http.StatusPreconditionFailed,
-					Err:  ErrETagDidNotMatch,
-				}
-			}
+		if calendarUID(calendar) != calendarUID(existingCalendar) {
+			return nil, false, fmt.Errorf(
+				"calendar object at path %q changes its uid: %w",
+				storePath,
+				caldav.NewPreconditionError(caldav.PreconditionNoUIDConflict),
+			)
 		}
 	}
 
 	objPtr, err := caldavObjectToStoreObject(path, calendar)
 	if err != nil {
-		return nil, fmt.Errorf("could not convert caldav Object at path %q into store Object: %w", path, err)
+		return nil, false, fmt.Errorf("could not convert caldav Object at path %q into store Object: %w", path, err)
 	}
 
 	obj := *objPtr
-	if err := b.store.CreateCalendarObject(ctx, obj); err != nil {
-		return nil, fmt.Errorf("error while creating calendar object at path %q in storage: %w", path, err)
+
+	created, err = b.store.PutCalendarObject(ctx, obj)
+	if err != nil {
+		return nil, false, fmt.Errorf("error while storing calendar object at path %q in storage: %w", path, err)
 	}
 
 	object, err = storeObjectToCaldavObject(ctx, obj)
 	if err != nil {
-		return nil, fmt.Errorf("error while converting stored object back to a caldav CalendarObject: %w", err)
+		return nil, false, fmt.Errorf("error while converting stored object back to a caldav CalendarObject: %w", err)
 	}
 
 	we.withCalendarObject(object)
 
-	return object, nil
+	return object, created, nil
 }
 
 func (b *Backend) GetCalendarObject(
@@ -395,6 +385,89 @@ func (b *Backend) DeleteCalendarObject(ctx context.Context, path string) (err er
 	}
 
 	return nil
+}
+
+func checkPutPreconditions(
+	existing *store.Object,
+	exists bool,
+	opts *caldav.PutCalendarObjectOptions,
+	we *PutCalendarObjectWideEvent,
+) error {
+	if opts == nil {
+		return nil
+	}
+
+	if opts.IfMatch.IsSet() {
+		we.MatchETag = string(opts.IfMatch)
+
+		if !exists {
+			return &daverr.HTTPError{
+				Code: http.StatusPreconditionFailed,
+				Err:  ErrETagDidNotMatch,
+			}
+		}
+
+		match, err := ETagMatcher(opts.IfMatch.MatchETag)(existing.ETag)
+		if err != nil {
+			return &daverr.HTTPError{
+				Code: http.StatusPreconditionFailed,
+				Err:  fmt.Errorf("error while matching etag: %w", err),
+			}
+		}
+
+		if !match {
+			return &daverr.HTTPError{
+				Code: http.StatusPreconditionFailed,
+				Err:  ErrETagDidNotMatch,
+			}
+		}
+	}
+
+	if opts.IfNoneMatch.IsSet() {
+		we.NoneMatchETag = string(opts.IfNoneMatch)
+
+		if exists {
+			match, err := NegateETagMatch(ETagMatcher(opts.IfNoneMatch.MatchETag))(existing.ETag)
+			if err != nil {
+				return &daverr.HTTPError{
+					Code: http.StatusPreconditionFailed,
+					Err:  fmt.Errorf("error while matching etag: %w", err),
+				}
+			}
+
+			if !match {
+				return &daverr.HTTPError{
+					Code: http.StatusPreconditionFailed,
+					Err:  ErrETagDidNotMatch,
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func calendarUID(calendar *ics.Calendar) string {
+	for _, component := range calendar.Components {
+		var uid string
+
+		switch component := component.(type) {
+		case *ics.VEvent:
+			uid = component.Id()
+		case *ics.VTodo:
+			uid = component.Id()
+		case *ics.VJournal:
+			uid = component.Id()
+		case *ics.VBusy:
+			uid = component.Id()
+		}
+
+		if uid != "" {
+			return uid
+		}
+	}
+
+	return ""
 }
 
 // Ensure Backend implements caldav.Backend.

@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"path"
@@ -60,7 +61,7 @@ type Backend interface {
 		path string,
 		calendar *ics.Calendar,
 		opts *PutCalendarObjectOptions,
-	) (*CalendarObject, error)
+	) (*CalendarObject, bool, error)
 	DeleteCalendarObject(ctx context.Context, path string) error
 
 	webdav.UserPrincipalBackend
@@ -593,7 +594,18 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// TODO: check CALDAV:max-resource-size precondition
-	cal, err := ics.ParseCalendar(r.Body)
+	defer func() {
+		if e := r.Body.Close(); e != nil {
+			err = errors.Join(err, fmt.Errorf("error while closing request body: %w", e))
+		}
+	}()
+
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to read request body: %v", err)
+	}
+
+	cal, err := ics.ParseCalendar(bytes.NewReader(data))
 	if err != nil {
 		// TODO: send CALDAV:valid-calendar-data error
 		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
@@ -603,18 +615,21 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 		return NewPreconditionError(PreconditionValidCalendarData)
 	}
 
-	defer func() {
-		if e := r.Body.Close(); e != nil {
-			err = errors.Join(err, fmt.Errorf("error while closing request body: %w", err))
-		}
-	}()
-
-	co, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
+	co, created, err := b.Backend.PutCalendarObject(r.Context(), r.URL.Path, cal, &opts)
 	if err != nil {
 		return err
 	}
 
-	if co.ETag != "" {
+	// A strong ETag is only valid when the stored representation is equal to
+	// the submitted representation. Omit it when the server changed the bytes.
+	stored := bytes.Buffer{}
+	if co.Data != nil {
+		if err := co.Data.SerializeTo(&stored); err != nil {
+			return fmt.Errorf("caldav: failed to serialize calendar object: %w", err)
+		}
+	}
+
+	if co.ETag != "" && bytes.Equal(data, stored.Bytes()) {
 		w.Header().Set("ETag", internal.ETag(co.ETag).String())
 	}
 
@@ -622,12 +637,15 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 		w.Header().Set("Last-Modified", co.ModTime.UTC().Format(http.TimeFormat))
 	}
 
-	if co.Path != "" {
-		w.Header().Set("Location", co.Path)
-	}
+	if created {
+		if co.Path != "" {
+			w.Header().Set("Location", co.Path)
+		}
 
-	// TODO: http.StatusNoContent if the resource already existed
-	w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusCreated)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
 
 	return nil
 }
