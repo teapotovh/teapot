@@ -35,6 +35,8 @@ const (
 	headerDate        = "Last-Modified"
 	headerDepth       = "Depth"
 	headerETag        = "ETag"
+
+	caldavNamespace = "urn:ietf:params:xml:ns:caldav"
 )
 
 var errInvalidHTTPStatus = errors.New("invalid HTTP status")
@@ -266,6 +268,29 @@ func parseMultiStatus(t *testing.T, body string) multiStatus {
 	return ms
 }
 
+type davErrorResponse struct {
+	XMLName  xml.Name          `xml:"DAV: error"`
+	Elements []davErrorElement `xml:",any"`
+}
+
+type davErrorElement struct {
+	XMLName xml.Name
+}
+
+func parseDAVError(t *testing.T, body string) []xml.Name {
+	t.Helper()
+
+	var errResp davErrorResponse
+	require.NoError(t, xml.Unmarshal([]byte(body), &errResp), "body: %s", body)
+
+	names := make([]xml.Name, 0, len(errResp.Elements))
+	for _, elem := range errResp.Elements {
+		names = append(names, elem.XMLName)
+	}
+
+	return names
+}
+
 func (r multiStatusResponse) propStat(code int) (multiStatusPropStat, bool) {
 	for _, ps := range r.PropStats {
 		if ps.Status.Code == code {
@@ -437,26 +462,28 @@ func TestPutCalendarObjectRejectsInvalidRequests(t *testing.T) {
 		contentType string
 		body        string
 		want        int
-		wantBody    string
+		wantError   xml.Name
 	}{
 		{
 			name:        "wrong content type",
 			contentType: "text/plain",
 			body:        teapotEvent1,
-			want:        http.StatusBadRequest,
+			want:        http.StatusForbidden,
+			wantError:   xml.Name{Space: caldavNamespace, Local: "supported-calendar-data"},
 		},
 		{
 			name:        "malformed calendar data",
 			contentType: contentTypeCalendar,
 			body:        "this is not a calendar",
-			want:        http.StatusBadRequest,
+			want:        http.StatusForbidden,
+			wantError:   xml.Name{Space: caldavNamespace, Local: "valid-calendar-data"},
 		},
 		{
 			name:        "empty body",
 			contentType: contentTypeCalendar,
 			body:        "",
-			want:        http.StatusConflict,
-			wantBody:    "valid-calendar-data",
+			want:        http.StatusForbidden,
+			wantError:   xml.Name{Space: caldavNamespace, Local: "valid-calendar-data"},
 		},
 	}
 
@@ -469,11 +496,8 @@ func TestPutCalendarObjectRejectsInvalidRequests(t *testing.T) {
 			res := doRequest(t, srv, http.MethodPut, reqPath, tt.body, map[string]string{
 				headerContentType: tt.contentType,
 			})
-			assert.Equal(t, tt.want, res.Status, "body: %s", res.Body)
-
-			if tt.wantBody != "" {
-				assert.Contains(t, res.Body, tt.wantBody)
-			}
+			require.Equal(t, tt.want, res.Status, "body: %s", res.Body)
+			assert.Contains(t, parseDAVError(t, res.Body), tt.wantError)
 		})
 	}
 }
