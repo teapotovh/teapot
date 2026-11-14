@@ -1,0 +1,38 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "caldavtest_test",
+    srcs = [
+        "delete_test.go",
+        "harness_test.go",
+        "ical_client_test.go",
+        "options_test.go",
+        "unsupported_test.go",
+        "vtodos_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embedsrcs = [
+        "testdata/apple/Resource/CalDAV/delete/1.txt",
+        "testdata/apple/Resource/CalDAV/ical-client/client1/1.xml",
+        "testdata/apple/Resource/CalDAV/ical-client/client1/2.xml",
+        "testdata/apple/Resource/CalDAV/ical-client/client2/1.xml",
+        "testdata/apple/Resource/CalDAV/ical-client/client2/2.xml",
+        "testdata/apple/Resource/CalDAV/todo/1.txt",
+        "testdata/apple/Resource/CalDAV/vtodos/1.ics",
+        "testdata/apple/Resource/CalDAV/vtodos/2.ics",
+        "testdata/apple/Resource/CalDAV/vtodos/3.ics",
+        "testdata/apple/Resource/CalDAV/vtodos/4.ics",
+        "testdata/apple/Resource/CalDAV/vtodos/5.ics",
+        "testdata/apple/Resource/Common/PROPFIND/props.xml",
+        "testdata/apple/NOTICE",
+    ],
+    deps = [
+        "//lib/httpauth",
+        "//lib/ldap",
+        "//lib/webdav/caldav",
+        "//service/calendar/backend",
+        "//service/calendar/store",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)
