@@ -26,7 +26,7 @@ func eventEndFromDuration(comp *ics.VEvent, eventStart time.Time) (time.Time, er
 		return time.Time{}, fmt.Errorf("while parsing event duration: %w", err)
 	}
 
-	if duration.negative() {
+	if duration.days < 0 || duration.exact < 0 {
 		return time.Time{}, fmt.Errorf("%w: %q", ErrInvalidDuration, prop.Value)
 	}
 
@@ -41,37 +41,48 @@ type icalDuration struct {
 	exact time.Duration
 }
 
-func (d icalDuration) negative() bool {
-	return d.days < 0 || d.exact < 0
-}
-
 func (d icalDuration) addTo(t time.Time) time.Time {
 	return t.AddDate(0, 0, d.days).Add(d.exact)
 }
 
-// icalDurationUnits maps a unit suffix to its value. Day units are nominal,
-// time units are exact.
-var icalDurationUnits = map[byte]icalDuration{
-	'W': {days: 7},
-	'D': {days: 1},
-	'H': {exact: time.Hour},
-	'M': {exact: time.Minute},
-	'S': {exact: time.Second},
-}
+// Date units are nominal, time units are exact.
+var (
+	icalDurationDateUnits = map[byte]int{'W': 7, 'D': 1}
+	icalDurationTimeUnits = map[byte]time.Duration{'H': time.Hour, 'M': time.Minute, 'S': time.Second}
+)
 
 // parseICalDuration parses a duration value as defined in RFC 5545, section
 // 3.3.6. The input is case-insensitive. A bare "P" is accepted for parity with
 // the previous parser.
 func parseICalDuration(value string) (icalDuration, error) {
-	rest, negative := splitDurationSign(strings.ToUpper(value))
+	rest := strings.ToUpper(value)
 
-	if !strings.HasPrefix(rest, "P") {
+	rest, negative := strings.CutPrefix(rest, "-")
+	if !negative {
+		rest, _ = strings.CutPrefix(rest, "+")
+	}
+
+	rest, ok := strings.CutPrefix(rest, "P")
+	if !ok {
 		return icalDuration{}, invalidDuration(value)
 	}
 
-	duration, err := scanDurationParts(value, rest[1:])
+	datePart, timePart, hasTime := strings.Cut(rest, "T")
+
+	duration, err := parseDurationDate(value, datePart)
 	if err != nil {
 		return icalDuration{}, err
+	}
+
+	if hasTime {
+		if timePart == "" {
+			return icalDuration{}, invalidDuration(value)
+		}
+
+		duration.exact, err = parseDurationTime(value, timePart)
+		if err != nil {
+			return icalDuration{}, err
+		}
 	}
 
 	if negative {
@@ -82,90 +93,73 @@ func parseICalDuration(value string) (icalDuration, error) {
 	return duration, nil
 }
 
-// splitDurationSign removes an optional leading sign and reports whether the
-// duration is negative.
-func splitDurationSign(value string) (string, bool) {
-	switch {
-	case strings.HasPrefix(value, "+"):
-		return value[1:], false
-	case strings.HasPrefix(value, "-"):
-		return value[1:], true
-	default:
-		return value, false
+// parseDurationDate parses the date part, either "nW" alone or "nD".
+func parseDurationDate(value, part string) (icalDuration, error) {
+	if part == "" {
+		return icalDuration{}, nil
 	}
+
+	number, suffix, rest, err := scanDurationComponent(value, part)
+	if err != nil {
+		return icalDuration{}, err
+	}
+
+	days, ok := icalDurationDateUnits[suffix]
+	if !ok || rest != "" {
+		return icalDuration{}, invalidDuration(value)
+	}
+
+	return icalDuration{days: number * days}, nil
 }
 
-// scanDurationParts scans the part after "P". Day units are only valid before
-// T, time units only after T, and weeks can not be combined with other units.
-func scanDurationParts(value, rest string) (icalDuration, error) {
+// parseDurationTime parses the time part as "nH", "nM" and "nS" in that order.
+func parseDurationTime(value, part string) (time.Duration, error) {
 	var (
-		duration  icalDuration
-		timeMode  bool
-		weeksOnly bool
+		exact time.Duration
+		last  = -1
 	)
 
-	for rest != "" {
-		if rest[0] == 'T' {
-			if timeMode || len(rest) == 1 {
-				return icalDuration{}, invalidDuration(value)
-			}
-
-			timeMode = true
-			rest = rest[1:]
-
-			continue
-		}
-
-		number, suffix, tail, err := scanDurationComponent(value, rest)
+	for part != "" {
+		number, suffix, rest, err := scanDurationComponent(value, part)
 		if err != nil {
-			return icalDuration{}, err
+			return 0, err
 		}
 
-		rest = tail
-
-		unit, ok := icalDurationUnits[suffix]
-		if !ok || (unit.days > 0) == timeMode {
-			return icalDuration{}, invalidDuration(value)
+		unit, ok := icalDurationTimeUnits[suffix]
+		if !ok {
+			return 0, invalidDuration(value)
 		}
 
-		if suffix == 'W' {
-			if weeksOnly || duration.days != 0 || duration.exact != 0 {
-				return icalDuration{}, invalidDuration(value)
-			}
-
-			weeksOnly = true
-		} else if weeksOnly {
-			return icalDuration{}, invalidDuration(value)
+		index := strings.IndexByte("HMS", suffix)
+		if index <= last {
+			return 0, invalidDuration(value)
 		}
 
-		if unit.days > 0 {
-			duration.days += number * unit.days
-		} else {
-			duration.exact += time.Duration(number) * unit.exact
-		}
+		last = index
+		exact += time.Duration(number) * unit
+		part = rest
 	}
 
-	return duration, nil
+	return exact, nil
 }
 
-// scanDurationComponent reads one number and unit suffix from rest.
-func scanDurationComponent(value, rest string) (int, byte, string, error) {
-	digits := 0
-	for digits < len(rest) && rest[digits] >= '0' && rest[digits] <= '9' {
-		digits++
-	}
+// scanDurationComponent reads one number and unit suffix from part.
+func scanDurationComponent(value, part string) (int, byte, string, error) {
+	digits := strings.IndexFunc(part, func(r rune) bool {
+		return r < '0' || r > '9'
+	})
 
 	// A component needs digits and a unit suffix.
-	if digits == 0 || digits == len(rest) {
+	if digits <= 0 || digits == len(part) {
 		return 0, 0, "", invalidDuration(value)
 	}
 
-	number, err := strconv.Atoi(rest[:digits])
+	number, err := strconv.Atoi(part[:digits])
 	if err != nil {
 		return 0, 0, "", invalidDuration(value)
 	}
 
-	return number, rest[digits], rest[digits+1:], nil
+	return number, part[digits], part[digits+1:], nil
 }
 
 func invalidDuration(value string) error {

@@ -136,7 +136,7 @@ func TestParseICalDurationNegative(t *testing.T) {
 			got, err := parseICalDuration(tt.value)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
-			assert.True(t, got.negative())
+			assert.True(t, got.days < 0 || got.exact < 0)
 		})
 	}
 }
