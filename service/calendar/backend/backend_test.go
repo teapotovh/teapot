@@ -18,6 +18,8 @@ import (
 	"github.com/teapotovh/teapot/service/calendar/store"
 )
 
+const testObjectPath = "/user/calendars/test/event-1.ics"
+
 func newTestBackend(t *testing.T) *Backend {
 	t.Helper()
 
@@ -114,7 +116,7 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	path := "/user/calendars/test/event-1.ics"
+	path := testObjectPath
 	cal := newTestEvent(
 		t,
 		"event-1",
@@ -123,16 +125,14 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	created, err := b.PutCalendarObject(ctx, path, cal, nil)
+	created, wasCreated, err := b.PutCalendarObject(ctx, path, cal, nil)
 	require.NoError(t, err)
+	require.True(t, wasCreated)
 	require.Equal(t, path, created.Path)
 	require.NotEmpty(t, created.ETag)
 	require.Positive(t, created.ContentLength)
 	require.False(t, created.ModTime.IsZero())
 	require.Len(t, created.Data.Events(), 1)
-
-	_, err = b.PutCalendarObject(ctx, path, cal, nil)
-	require.ErrorIs(t, err, store.ErrCalendarObjectAlreadyExists)
 
 	got, err := b.GetCalendarObject(ctx, path, nil)
 	require.NoError(t, err)
@@ -148,7 +148,7 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	require.Equal(t, path, objects[0].Path)
 	require.Equal(t, created.ETag, objects[0].ETag)
 
-	_, err = b.PutCalendarObject(ctx, path, nil, nil)
+	_, _, err = b.PutCalendarObject(ctx, path, nil, nil)
 	require.ErrorIs(t, err, ErrUnexpectedNilObject)
 
 	require.NoError(t, b.DeleteCalendarObject(ctx, path))
@@ -171,7 +171,7 @@ func TestQueryCalendarObjects(t *testing.T) {
 	inside := "/user/calendars/test/inside.ics"
 	outside := "/user/calendars/test/outside.ics"
 
-	_, err := b.PutCalendarObject(ctx, inside, newTestEvent(
+	_, _, err := b.PutCalendarObject(ctx, inside, newTestEvent(
 		t,
 		"inside",
 		"Inside the range",
@@ -180,7 +180,7 @@ func TestQueryCalendarObjects(t *testing.T) {
 	), nil)
 	require.NoError(t, err)
 
-	_, err = b.PutCalendarObject(ctx, outside, newTestEvent(
+	_, _, err = b.PutCalendarObject(ctx, outside, newTestEvent(
 		t,
 		"outside",
 		"Outside the range",
@@ -262,7 +262,7 @@ func TestPutCalendarObjectIfMatchWrongETag(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	path := "/user/calendars/test/event-1.ics"
+	path := testObjectPath
 	cal := newTestEvent(
 		t,
 		"event-1",
@@ -271,14 +271,14 @@ func TestPutCalendarObjectIfMatchWrongETag(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	_, err := b.PutCalendarObject(ctx, path, cal, nil)
+	_, _, err := b.PutCalendarObject(ctx, path, cal, nil)
 	require.NoError(t, err)
 
 	opts := &caldav.PutCalendarObjectOptions{
 		IfMatch: webdav.ConditionalMatch(`"not-the-current-etag"`),
 	}
 
-	_, err = b.PutCalendarObject(ctx, path, cal, opts)
+	_, _, err = b.PutCalendarObject(ctx, path, cal, opts)
 	require.ErrorIs(t, err, ErrETagDidNotMatch)
 
 	httpErr := &daverr.HTTPError{}
@@ -292,7 +292,7 @@ func TestPutCalendarObjectIfMatchMalformedETag(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	path := "/user/calendars/test/event-1.ics"
+	path := testObjectPath
 	cal := newTestEvent(
 		t,
 		"event-1",
@@ -301,14 +301,14 @@ func TestPutCalendarObjectIfMatchMalformedETag(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	_, err := b.PutCalendarObject(ctx, path, cal, nil)
+	_, _, err := b.PutCalendarObject(ctx, path, cal, nil)
 	require.NoError(t, err)
 
 	opts := &caldav.PutCalendarObjectOptions{
 		IfMatch: webdav.ConditionalMatch("not-a-quoted-etag"),
 	}
 
-	_, err = b.PutCalendarObject(ctx, path, cal, opts)
+	_, _, err = b.PutCalendarObject(ctx, path, cal, opts)
 
 	httpErr := &daverr.HTTPError{}
 	require.ErrorAs(t, err, &httpErr)
@@ -321,7 +321,7 @@ func TestPutCalendarObjectIfNoneMatchWildcardExisting(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	path := "/user/calendars/test/event-1.ics"
+	path := testObjectPath
 	cal := newTestEvent(
 		t,
 		"event-1",
@@ -330,14 +330,14 @@ func TestPutCalendarObjectIfNoneMatchWildcardExisting(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	_, err := b.PutCalendarObject(ctx, path, cal, nil)
+	_, _, err := b.PutCalendarObject(ctx, path, cal, nil)
 	require.NoError(t, err)
 
 	opts := &caldav.PutCalendarObjectOptions{
 		IfNoneMatch: webdav.ConditionalMatch("*"),
 	}
 
-	_, err = b.PutCalendarObject(ctx, path, cal, opts)
+	_, _, err = b.PutCalendarObject(ctx, path, cal, opts)
 	require.ErrorIs(t, err, ErrETagDidNotMatch)
 
 	httpErr := &daverr.HTTPError{}
@@ -351,7 +351,7 @@ func TestPutCalendarObjectIfNoneMatchWildcardNew(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	path := "/user/calendars/test/event-1.ics"
+	path := testObjectPath
 	cal := newTestEvent(
 		t,
 		"event-1",
@@ -364,8 +364,9 @@ func TestPutCalendarObjectIfNoneMatchWildcardNew(t *testing.T) {
 		IfNoneMatch: webdav.ConditionalMatch("*"),
 	}
 
-	created, err := b.PutCalendarObject(ctx, path, cal, opts)
+	created, wasCreated, err := b.PutCalendarObject(ctx, path, cal, opts)
 	require.NoError(t, err)
+	require.True(t, wasCreated)
 	require.Equal(t, path, created.Path)
 	require.NotEmpty(t, created.ETag)
 
@@ -377,25 +378,94 @@ func TestPutCalendarObjectIfNoneMatchWildcardNew(t *testing.T) {
 func TestPutCalendarObjectUpdateWithMatchingETag(t *testing.T) {
 	t.Parallel()
 
-	t.Skip(
-		"TODO: updating an existing calendar object fails with ErrCalendarObjectAlreadyExists; the store needs upsert support",
-	)
-
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	path := "/user/calendars/test/event-1.ics"
+	path := testObjectPath
 	start := time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC)
 	end := time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC)
 
-	created, err := b.PutCalendarObject(ctx, path, newTestEvent(t, "event-1", "Event 1", start, end), nil)
+	created, wasCreated, err := b.PutCalendarObject(
+		ctx,
+		path,
+		newTestEvent(t, "event-1", "Event 1", start, end),
+		nil,
+	)
 	require.NoError(t, err)
+	require.True(t, wasCreated)
 
 	opts := &caldav.PutCalendarObjectOptions{
 		IfMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", created.ETag)),
 	}
 
-	updated, err := b.PutCalendarObject(ctx, path, newTestEvent(t, "event-1", "Event 1 updated", start, end), opts)
+	updated, wasCreated, err := b.PutCalendarObject(
+		ctx,
+		path,
+		newTestEvent(t, "event-1", "Event 1 updated", start, end),
+		opts,
+	)
 	require.NoError(t, err)
+	require.False(t, wasCreated)
 	require.NotEqual(t, created.ETag, updated.ETag)
+	require.Equal(t, "Event 1 updated", updated.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
+
+	stored, err := b.GetCalendarObject(ctx, path, nil)
+	require.NoError(t, err)
+	require.Equal(t, updated.ETag, stored.ETag)
+	require.Equal(t, "Event 1 updated", stored.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
+}
+
+func TestPutCalendarObjectIfMatchMissing(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext()
+	b := newTestBackend(t)
+
+	path := testObjectPath
+	cal := newTestEvent(
+		t,
+		"event-1",
+		"Event 1",
+		time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
+	)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfMatch: webdav.ConditionalMatch(`"missing"`),
+	}
+
+	_, _, err := b.PutCalendarObject(ctx, path, cal, opts)
+	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+
+	_, err = b.GetCalendarObject(ctx, path, nil)
+	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
+}
+
+func TestPutCalendarObjectUpdateWithDifferentUID(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext()
+	b := newTestBackend(t)
+
+	path := testObjectPath
+	start := time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC)
+	end := time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC)
+
+	_, _, err := b.PutCalendarObject(ctx, path, newTestEvent(t, "event-1", "Event 1", start, end), nil)
+	require.NoError(t, err)
+
+	_, _, err = b.PutCalendarObject(ctx, path, newTestEvent(t, "event-2", "Event 2", start, end), nil)
+	requireHTTPStatus(t, err, http.StatusConflict)
+
+	stored, err := b.GetCalendarObject(ctx, path, nil)
+	require.NoError(t, err)
+	require.Equal(t, "event-1", stored.Data.Events()[0].Id())
+}
+
+func requireHTTPStatus(t *testing.T, err error, want int) {
+	t.Helper()
+
+	httpErr := &daverr.HTTPError{}
+	require.ErrorAs(t, err, &httpErr)
+	require.Equal(t, want, httpErr.Code)
 }

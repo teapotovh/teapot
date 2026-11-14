@@ -386,6 +386,46 @@ func TestCalendarObjectLifecycle(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, res.Status, "body: %s", res.Body)
 }
 
+func TestUpdateCalendarObject(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	createCalendar(t, srv)
+
+	created := putCalendarObject(t, srv, objectPath, teapotEvent1)
+	require.Equal(t, http.StatusCreated, created.Status, "body: %s", created.Body)
+
+	updated := putCalendarObject(t, srv, objectPath, teapotEvent1Updated)
+	require.Equal(t, http.StatusNoContent, updated.Status, "body: %s", updated.Body)
+	assert.Empty(t, updated.Header.Get("Location"))
+	assert.NotEqual(t, created.Header.Get(headerETag), updated.Header.Get(headerETag))
+
+	res := doRequest(t, srv, http.MethodGet, objectPath, "", nil)
+	require.Equal(t, http.StatusOK, res.Status, "body: %s", res.Body)
+	assert.Equal(t, updated.Header.Get(headerETag), res.Header.Get(headerETag))
+	assert.Contains(t, res.Body, "SUMMARY:Put Event Updated")
+}
+
+func TestPutCalendarObjectOmitsETagForModifiedData(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	createCalendar(t, srv)
+
+	// The server normalizes line endings, so the stored bytes differ from the
+	// submitted bytes.
+	body := strings.ReplaceAll(teapotEvent1, "\n", "\r\n")
+
+	res := putCalendarObject(t, srv, objectPath, body)
+	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+	assert.Empty(t, res.Header.Get(headerETag))
+
+	get := doRequest(t, srv, http.MethodGet, objectPath, "", nil)
+	require.Equal(t, http.StatusOK, get.Status, "body: %s", get.Body)
+	assert.NotEmpty(t, get.Header.Get(headerETag))
+	assert.Contains(t, get.Body, "SUMMARY:Put Event")
+}
+
 func TestPutCalendarObjectRejectsInvalidRequests(t *testing.T) {
 	t.Parallel()
 

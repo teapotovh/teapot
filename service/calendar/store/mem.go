@@ -79,18 +79,15 @@ func (m *Mem) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 	return nil, ErrCalendarNotFound
 }
 
-// CreateCalendarObject implements Store.
-func (m *Mem) CreateCalendarObject(ctx context.Context, object Object) error {
+// PutCalendarObject implements Store.
+func (m *Mem) PutCalendarObject(ctx context.Context, object Object) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.objects[object.Path]; exists {
-		return ErrCalendarObjectAlreadyExists
-	}
-
+	_, exists := m.objects[object.Path]
 	m.objects[object.Path] = object
 
-	return nil
+	return !exists, nil
 }
 
 // ListCalendarObjects implements Store.
