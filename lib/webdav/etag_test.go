@@ -8,7 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testETag = "abc"
+const (
+	testETag       = "abc"
+	testQuotedETag = `"abc"`
+)
 
 func TestParseEntityTag(t *testing.T) {
 	t.Parallel()
@@ -22,7 +25,7 @@ func TestParseEntityTag(t *testing.T) {
 	}{
 		{
 			name:  "strong",
-			value: `"abc"`,
+			value: testQuotedETag,
 			want:  entityTag{value: testETag},
 		},
 		{
@@ -106,7 +109,7 @@ func TestParseEntityTags(t *testing.T) {
 		},
 		{
 			name:  "single strong tag",
-			value: `"abc"`,
+			value: testQuotedETag,
 			want:  []entityTag{{value: testETag}},
 		},
 		{
@@ -242,7 +245,7 @@ func TestConditionalMatch(t *testing.T) {
 		},
 		{
 			name:   "strong etag matches",
-			match:  `"abc"`,
+			match:  testQuotedETag,
 			isSet:  true,
 			etag:   testETag,
 			strong: true,
@@ -250,7 +253,7 @@ func TestConditionalMatch(t *testing.T) {
 		},
 		{
 			name:  "strong etag mismatch",
-			match: `"abc"`,
+			match: testQuotedETag,
 			isSet: true,
 			etag:  "def",
 		},
@@ -324,7 +327,7 @@ func TestConditionalHeaders(t *testing.T) {
 	t.Parallel()
 
 	header := http.Header{}
-	header.Add("If-Match", `"abc"`)
+	header.Add("If-Match", testQuotedETag)
 	header.Add("If-Match", `W/"def"`)
 	header.Add("If-None-Match", `"ghi"`)
 	header.Add("If-None-Match", `"jkl"`)

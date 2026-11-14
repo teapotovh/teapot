@@ -13,6 +13,7 @@ go_test(
         "ical_client_test.go",
         "mkcalendar_test.go",
         "options_test.go",
+        "preconditions_test.go",
         "propfind_test.go",
         "proppatch_test.go",
         "put_test.go",

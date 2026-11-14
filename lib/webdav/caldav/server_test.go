@@ -523,10 +523,10 @@ func TestPutCalendarObjectConditional(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
 
-	opts, ok := b.lastPutOptions()
+	pre, ok := b.lastPutPreconditions()
 	require.True(t, ok, "PutCalendarObject was not called")
-	assert.Equal(t, `"current", "other"`, string(opts.IfMatch))
-	assert.Equal(t, `W/"other"`, string(opts.IfNoneMatch))
+	assert.Equal(t, `"current", "other"`, string(pre.IfMatch))
+	assert.Equal(t, `W/"other"`, string(pre.IfNoneMatch))
 }
 
 func TestPutCalendarObjectMalformedConditionalHeaders(t *testing.T) {
@@ -553,7 +553,7 @@ func TestPutCalendarObjectMalformedConditionalHeaders(t *testing.T) {
 			})
 			require.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
 
-			_, ok := b.lastPutOptions()
+			_, ok := b.lastPutPreconditions()
 			assert.False(t, ok, "PutCalendarObject was not called")
 		})
 	}
@@ -574,10 +574,10 @@ func TestDeleteCalendarObjectConditional(t *testing.T) {
 	})
 	require.Equal(t, http.StatusNoContent, res.Status, "body: %s", res.Body)
 
-	opts, ok := b.lastDeleteOptions()
+	pre, ok := b.lastDeletePreconditions()
 	require.True(t, ok, "DeleteCalendarObject was not called")
-	assert.Equal(t, `"current", "other"`, string(opts.IfMatch))
-	assert.Equal(t, `W/"other"`, string(opts.IfNoneMatch))
+	assert.Equal(t, `"current", "other"`, string(pre.IfMatch))
+	assert.Equal(t, `W/"other"`, string(pre.IfNoneMatch))
 }
 
 func TestDeleteCalendarObjectMalformedConditionalHeaders(t *testing.T) {
@@ -606,7 +606,7 @@ func TestDeleteCalendarObjectMalformedConditionalHeaders(t *testing.T) {
 			})
 			require.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
 
-			_, ok := b.lastDeleteOptions()
+			_, ok := b.lastDeletePreconditions()
 			assert.False(t, ok, "DeleteCalendarObject was not called")
 		})
 	}

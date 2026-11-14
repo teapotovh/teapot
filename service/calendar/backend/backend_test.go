@@ -135,7 +135,7 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	created, wasCreated, err := b.PutCalendarObject(ctx, path, cal, nil)
+	created, wasCreated, err := b.PutCalendarObject(ctx, path, cal, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.True(t, wasCreated)
 	require.Equal(t, path, created.Path)
@@ -144,7 +144,7 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	require.False(t, created.ModTime.IsZero())
 	require.Len(t, created.Data.Events(), 1)
 
-	got, err := b.GetCalendarObject(ctx, path, nil)
+	got, _, err := b.GetCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.Equal(t, path, got.Path)
 	require.Equal(t, created.ETag, got.ETag)
@@ -158,16 +158,16 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	require.Equal(t, path, objects[0].Path)
 	require.Equal(t, created.ETag, objects[0].ETag)
 
-	_, _, err = b.PutCalendarObject(ctx, path, nil, nil)
+	_, _, err = b.PutCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.ErrorIs(t, err, ErrUnexpectedNilObject)
 
-	require.NoError(t, b.DeleteCalendarObject(ctx, path, nil))
+	require.NoError(t, b.DeleteCalendarObject(ctx, path, webdav.Preconditions{}))
 
-	err = b.DeleteCalendarObject(ctx, path, nil)
+	err = b.DeleteCalendarObject(ctx, path, webdav.Preconditions{})
 	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 	require.Equal(t, http.StatusNotFound, daverr.HTTPErrorFromError(err).Code)
 
-	_, err = b.GetCalendarObject(ctx, path, nil)
+	_, _, err = b.GetCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 
 	objects, err = b.ListCalendarObjects(ctx, "/user/calendars/test/", nil)
@@ -189,7 +189,7 @@ func TestPutCalendarObjectSupportedComponentSet(t *testing.T) {
 	todo := ics.NewCalendar()
 	todo.AddTodo("todo-1").SetSummary("Todo 1")
 
-	_, _, err := b.PutCalendarObject(ctx, testObjectPath, todo, nil)
+	_, _, err := b.PutCalendarObject(ctx, testObjectPath, todo, webdav.Preconditions{})
 	requireHTTPStatus(t, err, http.StatusForbidden)
 
 	event := newTestEvent(
@@ -200,7 +200,7 @@ func TestPutCalendarObjectSupportedComponentSet(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	_, _, err = b.PutCalendarObject(ctx, testObjectPath, event, nil)
+	_, _, err = b.PutCalendarObject(ctx, testObjectPath, event, webdav.Preconditions{})
 	require.NoError(t, err)
 
 	withTimezone := newTestEvent(
@@ -212,7 +212,7 @@ func TestPutCalendarObjectSupportedComponentSet(t *testing.T) {
 	)
 	withTimezone.AddTimezone("Europe/Rome")
 
-	_, _, err = b.PutCalendarObject(ctx, testObjectPath, withTimezone, nil)
+	_, _, err = b.PutCalendarObject(ctx, testObjectPath, withTimezone, webdav.Preconditions{})
 	require.NoError(t, err)
 }
 
@@ -221,14 +221,13 @@ func TestDeleteCalendarObjectPreconditions(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		opts        func(etag string) *caldav.DeleteCalendarObjectOptions
-		wantStatus  int
+		pre         func(etag string) webdav.Preconditions
 		wantDeleted bool
 	}{
 		{
 			name: "if-match matches",
-			opts: func(etag string) *caldav.DeleteCalendarObjectOptions {
-				return &caldav.DeleteCalendarObjectOptions{
+			pre: func(etag string) webdav.Preconditions {
+				return webdav.Preconditions{
 					IfMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", etag)),
 				}
 			},
@@ -236,17 +235,16 @@ func TestDeleteCalendarObjectPreconditions(t *testing.T) {
 		},
 		{
 			name: "if-match does not match",
-			opts: func(string) *caldav.DeleteCalendarObjectOptions {
-				return &caldav.DeleteCalendarObjectOptions{
+			pre: func(string) webdav.Preconditions {
+				return webdav.Preconditions{
 					IfMatch: webdav.ConditionalMatch(`"missing"`),
 				}
 			},
-			wantStatus: http.StatusPreconditionFailed,
 		},
 		{
 			name: "if-match wildcard",
-			opts: func(string) *caldav.DeleteCalendarObjectOptions {
-				return &caldav.DeleteCalendarObjectOptions{
+			pre: func(string) webdav.Preconditions {
+				return webdav.Preconditions{
 					IfMatch: webdav.ConditionalMatch("*"),
 				}
 			},
@@ -254,17 +252,16 @@ func TestDeleteCalendarObjectPreconditions(t *testing.T) {
 		},
 		{
 			name: "if-none-match matches",
-			opts: func(etag string) *caldav.DeleteCalendarObjectOptions {
-				return &caldav.DeleteCalendarObjectOptions{
+			pre: func(etag string) webdav.Preconditions {
+				return webdav.Preconditions{
 					IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", etag)),
 				}
 			},
-			wantStatus: http.StatusPreconditionFailed,
 		},
 		{
 			name: "if-none-match does not match",
-			opts: func(string) *caldav.DeleteCalendarObjectOptions {
-				return &caldav.DeleteCalendarObjectOptions{
+			pre: func(string) webdav.Preconditions {
+				return webdav.Preconditions{
 					IfNoneMatch: webdav.ConditionalMatch(`"missing"`),
 				}
 			},
@@ -272,12 +269,11 @@ func TestDeleteCalendarObjectPreconditions(t *testing.T) {
 		},
 		{
 			name: "if-none-match wildcard",
-			opts: func(string) *caldav.DeleteCalendarObjectOptions {
-				return &caldav.DeleteCalendarObjectOptions{
+			pre: func(string) webdav.Preconditions {
+				return webdav.Preconditions{
 					IfNoneMatch: webdav.ConditionalMatch("*"),
 				}
 			},
-			wantStatus: http.StatusPreconditionFailed,
 		},
 	}
 
@@ -288,19 +284,19 @@ func TestDeleteCalendarObjectPreconditions(t *testing.T) {
 			b := newTestBackend(t)
 			created := putTestObject(t, b)
 
-			err := b.DeleteCalendarObject(testContext(), testObjectPath, tt.opts(created.ETag))
+			err := b.DeleteCalendarObject(testContext(), testObjectPath, tt.pre(created.ETag))
 			if tt.wantDeleted {
 				require.NoError(t, err)
 
-				_, err = b.GetCalendarObject(testContext(), testObjectPath, nil)
+				_, _, err = b.GetCalendarObject(testContext(), testObjectPath, nil, webdav.Preconditions{})
 				require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 
 				return
 			}
 
-			requireHTTPStatus(t, err, tt.wantStatus)
+			require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 
-			stored, err := b.GetCalendarObject(testContext(), testObjectPath, nil)
+			stored, _, err := b.GetCalendarObject(testContext(), testObjectPath, nil, webdav.Preconditions{})
 			require.NoError(t, err)
 			require.Equal(t, created.ETag, stored.ETag)
 		})
@@ -312,12 +308,12 @@ func TestDeleteCalendarObjectIfMatchMissing(t *testing.T) {
 
 	b := newTestBackend(t)
 
-	opts := &caldav.DeleteCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch("*"),
 	}
 
-	err := b.DeleteCalendarObject(testContext(), testObjectPath, opts)
-	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+	err := b.DeleteCalendarObject(testContext(), testObjectPath, pre)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 }
 
 func TestQueryCalendarObjects(t *testing.T) {
@@ -335,7 +331,7 @@ func TestQueryCalendarObjects(t *testing.T) {
 		"Inside the range",
 		time.Date(2026, time.January, 4, 12, 0, 0, 0, time.UTC),
 		time.Date(2026, time.January, 4, 13, 0, 0, 0, time.UTC),
-	), nil)
+	), webdav.Preconditions{})
 	require.NoError(t, err)
 
 	_, _, err = b.PutCalendarObject(ctx, outside, newTestEvent(
@@ -344,7 +340,7 @@ func TestQueryCalendarObjects(t *testing.T) {
 		"Outside the range",
 		time.Date(2026, time.January, 6, 12, 0, 0, 0, time.UTC),
 		time.Date(2026, time.January, 6, 13, 0, 0, 0, time.UTC),
-	), nil)
+	), webdav.Preconditions{})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -429,48 +425,15 @@ func TestPutCalendarObjectIfMatchWrongETag(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	_, _, err := b.PutCalendarObject(ctx, path, cal, nil)
+	_, _, err := b.PutCalendarObject(ctx, path, cal, webdav.Preconditions{})
 	require.NoError(t, err)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(`"not-the-current-etag"`),
 	}
 
-	_, _, err = b.PutCalendarObject(ctx, path, cal, opts)
-	require.ErrorIs(t, err, ErrETagDidNotMatch)
-
-	httpErr := &daverr.HTTPError{}
-	require.ErrorAs(t, err, &httpErr)
-	require.Equal(t, http.StatusPreconditionFailed, httpErr.Code)
-}
-
-func TestPutCalendarObjectIfMatchMalformedETag(t *testing.T) {
-	t.Parallel()
-
-	ctx := testContext()
-	b := newTestBackend(t)
-
-	path := testObjectPath
-	cal := newTestEvent(
-		t,
-		"event-1",
-		"Event 1",
-		time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
-		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
-	)
-
-	_, _, err := b.PutCalendarObject(ctx, path, cal, nil)
-	require.NoError(t, err)
-
-	opts := &caldav.PutCalendarObjectOptions{
-		IfMatch: webdav.ConditionalMatch("not-a-quoted-etag"),
-	}
-
-	_, _, err = b.PutCalendarObject(ctx, path, cal, opts)
-
-	httpErr := &daverr.HTTPError{}
-	require.ErrorAs(t, err, &httpErr)
-	require.Equal(t, http.StatusPreconditionFailed, httpErr.Code)
+	_, _, err = b.PutCalendarObject(ctx, path, cal, pre)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 }
 
 func TestPutCalendarObjectIfNoneMatchWildcardExisting(t *testing.T) {
@@ -488,19 +451,15 @@ func TestPutCalendarObjectIfNoneMatchWildcardExisting(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	_, _, err := b.PutCalendarObject(ctx, path, cal, nil)
+	_, _, err := b.PutCalendarObject(ctx, path, cal, webdav.Preconditions{})
 	require.NoError(t, err)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfNoneMatch: webdav.ConditionalMatch("*"),
 	}
 
-	_, _, err = b.PutCalendarObject(ctx, path, cal, opts)
-	require.ErrorIs(t, err, ErrETagDidNotMatch)
-
-	httpErr := &daverr.HTTPError{}
-	require.ErrorAs(t, err, &httpErr)
-	require.Equal(t, http.StatusPreconditionFailed, httpErr.Code)
+	_, _, err = b.PutCalendarObject(ctx, path, cal, pre)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 }
 
 func TestPutCalendarObjectIfNoneMatchWildcardNew(t *testing.T) {
@@ -518,17 +477,17 @@ func TestPutCalendarObjectIfNoneMatchWildcardNew(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfNoneMatch: webdav.ConditionalMatch("*"),
 	}
 
-	created, wasCreated, err := b.PutCalendarObject(ctx, path, cal, opts)
+	created, wasCreated, err := b.PutCalendarObject(ctx, path, cal, pre)
 	require.NoError(t, err)
 	require.True(t, wasCreated)
 	require.Equal(t, path, created.Path)
 	require.NotEmpty(t, created.ETag)
 
-	stored, err := b.GetCalendarObject(ctx, path, nil)
+	stored, _, err := b.GetCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.Equal(t, created.ETag, stored.ETag)
 }
@@ -547,12 +506,12 @@ func TestPutCalendarObjectUpdateWithMatchingETag(t *testing.T) {
 		ctx,
 		path,
 		newTestEvent(t, "event-1", "Event 1", start, end),
-		nil,
+		webdav.Preconditions{},
 	)
 	require.NoError(t, err)
 	require.True(t, wasCreated)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", created.ETag)),
 	}
 
@@ -560,14 +519,14 @@ func TestPutCalendarObjectUpdateWithMatchingETag(t *testing.T) {
 		ctx,
 		path,
 		newTestEvent(t, "event-1", "Event 1 updated", start, end),
-		opts,
+		pre,
 	)
 	require.NoError(t, err)
 	require.False(t, wasCreated)
 	require.NotEqual(t, created.ETag, updated.ETag)
 	require.Equal(t, "Event 1 updated", updated.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
 
-	stored, err := b.GetCalendarObject(ctx, path, nil)
+	stored, _, err := b.GetCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.Equal(t, updated.ETag, stored.ETag)
 	require.Equal(t, "Event 1 updated", stored.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
@@ -588,14 +547,14 @@ func TestPutCalendarObjectIfMatchMissing(t *testing.T) {
 		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 	)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(`"missing"`),
 	}
 
-	_, _, err := b.PutCalendarObject(ctx, path, cal, opts)
-	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+	_, _, err := b.PutCalendarObject(ctx, path, cal, pre)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 
-	_, err = b.GetCalendarObject(ctx, path, nil)
+	_, _, err = b.GetCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 }
 
@@ -614,11 +573,74 @@ func testEvent(t *testing.T, summary string) *ics.Calendar {
 func putTestObject(t *testing.T, b *Backend) *caldav.CalendarObject {
 	t.Helper()
 
-	created, wasCreated, err := b.PutCalendarObject(testContext(), testObjectPath, testEvent(t, "Event 1"), nil)
+	created, wasCreated, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1"),
+		webdav.Preconditions{},
+	)
 	require.NoError(t, err)
 	require.True(t, wasCreated)
 
 	return created
+}
+
+func TestGetCalendarObjectPreconditions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		pre     func(etag string) webdav.Preconditions
+		outcome webdav.Outcome
+	}{
+		{
+			name: "if-match matches",
+			pre: func(etag string) webdav.Preconditions {
+				return webdav.Preconditions{IfMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", etag))}
+			},
+			outcome: webdav.Proceed,
+		},
+		{
+			name: "if-match does not match",
+			pre: func(string) webdav.Preconditions {
+				return webdav.Preconditions{IfMatch: webdav.ConditionalMatch(`"missing"`)}
+			},
+			outcome: webdav.PreconditionFailed,
+		},
+		{
+			name: "if-none-match matches",
+			pre: func(etag string) webdav.Preconditions {
+				return webdav.Preconditions{IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", etag))}
+			},
+			outcome: webdav.NotModified,
+		},
+		{
+			name: "if-none-match does not match",
+			pre: func(string) webdav.Preconditions {
+				return webdav.Preconditions{IfNoneMatch: webdav.ConditionalMatch(`"missing"`)}
+			},
+			outcome: webdav.Proceed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			b := newTestBackend(t)
+			created := putTestObject(t, b)
+
+			got, outcome, err := b.GetCalendarObject(
+				testContext(),
+				testObjectPath,
+				nil,
+				tt.pre(created.ETag),
+			)
+			require.NoError(t, err)
+			require.Equal(t, tt.outcome, outcome)
+			require.Equal(t, created.ETag, got.ETag)
+		})
+	}
 }
 
 func TestPutCalendarObjectIfMatchETagList(t *testing.T) {
@@ -627,7 +649,7 @@ func TestPutCalendarObjectIfMatchETagList(t *testing.T) {
 	b := newTestBackend(t)
 	created := putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(fmt.Sprintf(`"missing", %q`, created.ETag)),
 	}
 
@@ -635,7 +657,7 @@ func TestPutCalendarObjectIfMatchETagList(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
 	require.NoError(t, err)
 	require.False(t, wasCreated)
@@ -648,7 +670,7 @@ func TestPutCalendarObjectIfMatchWeakETag(t *testing.T) {
 	b := newTestBackend(t)
 	created := putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(fmt.Sprintf("W/%q", created.ETag)),
 	}
 
@@ -656,9 +678,9 @@ func TestPutCalendarObjectIfMatchWeakETag(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
-	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 }
 
 func TestPutCalendarObjectIfNoneMatchETagList(t *testing.T) {
@@ -667,7 +689,7 @@ func TestPutCalendarObjectIfNoneMatchETagList(t *testing.T) {
 	b := newTestBackend(t)
 	created := putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf(`"missing", %q`, created.ETag)),
 	}
 
@@ -675,11 +697,11 @@ func TestPutCalendarObjectIfNoneMatchETagList(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
-	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 
-	stored, err := b.GetCalendarObject(testContext(), testObjectPath, nil)
+	stored, _, err := b.GetCalendarObject(testContext(), testObjectPath, nil, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.Equal(t, created.ETag, stored.ETag)
 	require.Equal(t, "Event 1", stored.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
@@ -691,7 +713,7 @@ func TestPutCalendarObjectIfNoneMatchETagListNoMatch(t *testing.T) {
 	b := newTestBackend(t)
 	putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfNoneMatch: webdav.ConditionalMatch(`"missing", "other"`),
 	}
 
@@ -699,7 +721,7 @@ func TestPutCalendarObjectIfNoneMatchETagListNoMatch(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
 	require.NoError(t, err)
 }
@@ -710,7 +732,7 @@ func TestPutCalendarObjectIfNoneMatchWeakETag(t *testing.T) {
 	b := newTestBackend(t)
 	created := putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf("W/%q", created.ETag)),
 	}
 
@@ -718,11 +740,11 @@ func TestPutCalendarObjectIfNoneMatchWeakETag(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
-	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 
-	stored, err := b.GetCalendarObject(testContext(), testObjectPath, nil)
+	stored, _, err := b.GetCalendarObject(testContext(), testObjectPath, nil, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.Equal(t, created.ETag, stored.ETag)
 	require.Equal(t, "Event 1", stored.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
@@ -734,7 +756,7 @@ func TestPutCalendarObjectIfMatchETagListNoMatch(t *testing.T) {
 	b := newTestBackend(t)
 	putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(`"missing", "other"`),
 	}
 
@@ -742,9 +764,9 @@ func TestPutCalendarObjectIfMatchETagListNoMatch(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
-	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+	require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 }
 
 func TestPutCalendarObjectIfMatchWeakThenStrongETag(t *testing.T) {
@@ -753,7 +775,7 @@ func TestPutCalendarObjectIfMatchWeakThenStrongETag(t *testing.T) {
 	b := newTestBackend(t)
 	created := putTestObject(t, b)
 
-	opts := &caldav.PutCalendarObjectOptions{
+	pre := webdav.Preconditions{
 		IfMatch: webdav.ConditionalMatch(fmt.Sprintf(`W/"missing", %q`, created.ETag)),
 	}
 
@@ -761,7 +783,7 @@ func TestPutCalendarObjectIfMatchWeakThenStrongETag(t *testing.T) {
 		testContext(),
 		testObjectPath,
 		testEvent(t, "Event 1 updated"),
-		opts,
+		pre,
 	)
 	require.NoError(t, err)
 }
@@ -775,7 +797,7 @@ func TestPutCalendarObjectIfMatchWildcard(t *testing.T) {
 		b := newTestBackend(t)
 		putTestObject(t, b)
 
-		opts := &caldav.PutCalendarObjectOptions{
+		pre := webdav.Preconditions{
 			IfMatch: webdav.ConditionalMatch("*"),
 		}
 
@@ -783,7 +805,7 @@ func TestPutCalendarObjectIfMatchWildcard(t *testing.T) {
 			testContext(),
 			testObjectPath,
 			testEvent(t, "Event 1 updated"),
-			opts,
+			pre,
 		)
 		require.NoError(t, err)
 	})
@@ -793,7 +815,7 @@ func TestPutCalendarObjectIfMatchWildcard(t *testing.T) {
 
 		b := newTestBackend(t)
 
-		opts := &caldav.PutCalendarObjectOptions{
+		pre := webdav.Preconditions{
 			IfMatch: webdav.ConditionalMatch("*"),
 		}
 
@@ -801,11 +823,11 @@ func TestPutCalendarObjectIfMatchWildcard(t *testing.T) {
 			testContext(),
 			testObjectPath,
 			testEvent(t, "Event 1"),
-			opts,
+			pre,
 		)
-		requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+		require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 
-		_, err = b.GetCalendarObject(testContext(), testObjectPath, nil)
+		_, _, err = b.GetCalendarObject(testContext(), testObjectPath, nil, webdav.Preconditions{})
 		require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 	})
 }
@@ -834,7 +856,7 @@ func TestPutCalendarObjectIfMatchAndIfNoneMatch(t *testing.T) {
 				ifNoneMatch = fmt.Sprintf("%q", created.ETag)
 			}
 
-			opts := &caldav.PutCalendarObjectOptions{
+			pre := webdav.Preconditions{
 				IfMatch:     webdav.ConditionalMatch(fmt.Sprintf("%q", created.ETag)),
 				IfNoneMatch: webdav.ConditionalMatch(ifNoneMatch),
 			}
@@ -849,11 +871,11 @@ func TestPutCalendarObjectIfMatchAndIfNoneMatch(t *testing.T) {
 					time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
 					time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
 				),
-				opts,
+				pre,
 			)
 
 			if tt.wantError {
-				requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+				require.ErrorIs(t, err, webdav.ErrPreconditionFailed)
 			} else {
 				require.NoError(t, err)
 			}
@@ -871,13 +893,23 @@ func TestPutCalendarObjectUpdateWithDifferentUID(t *testing.T) {
 	start := time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC)
 	end := time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC)
 
-	_, _, err := b.PutCalendarObject(ctx, path, newTestEvent(t, "event-1", "Event 1", start, end), nil)
+	_, _, err := b.PutCalendarObject(
+		ctx,
+		path,
+		newTestEvent(t, "event-1", "Event 1", start, end),
+		webdav.Preconditions{},
+	)
 	require.NoError(t, err)
 
-	_, _, err = b.PutCalendarObject(ctx, path, newTestEvent(t, "event-2", "Event 2", start, end), nil)
+	_, _, err = b.PutCalendarObject(
+		ctx,
+		path,
+		newTestEvent(t, "event-2", "Event 2", start, end),
+		webdav.Preconditions{},
+	)
 	requireHTTPStatus(t, err, http.StatusConflict)
 
-	stored, err := b.GetCalendarObject(ctx, path, nil)
+	stored, _, err := b.GetCalendarObject(ctx, path, nil, webdav.Preconditions{})
 	require.NoError(t, err)
 	require.Equal(t, "event-1", stored.Data.Events()[0].Id())
 }

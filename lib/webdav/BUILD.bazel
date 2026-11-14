@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "etag.go",
         "method.go",
+        "preconditions.go",
         "server.go",
         "webdav.go",
     ],
@@ -20,6 +21,7 @@ go_test(
     name = "webdav_test",
     srcs = [
         "etag_test.go",
+        "preconditions_test.go",
         "webdav_test.go",
     ],
     embed = [":webdav"],

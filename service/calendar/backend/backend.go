@@ -25,7 +25,6 @@ const MaxDecodesInParallel = 32
 var (
 	ErrUnexpectedNilCalendar = errors.New("unexpected nil calendar")
 	ErrUnexpectedNilObject   = errors.New("unexpected nil object")
-	ErrETagDidNotMatch       = errors.New("etag did not match")
 
 	SupportedComponentSet = []string{"VEVENT", "VTODO", "VJOURNAL", "VFREEBUSY"}
 )
@@ -201,7 +200,7 @@ func (b *Backend) PutCalendarObject(
 	ctx context.Context,
 	objectPath string,
 	calendar *ics.Calendar,
-	opts *caldav.PutCalendarObjectOptions,
+	pre webdav.Preconditions,
 ) (object *caldav.CalendarObject, created bool, err error) {
 	ctx, we, handle := wideevent.Start[PutCalendarObjectWideEvent](ctx, "PutCalendarObject")
 	defer func() { handle.End(err) }()
@@ -213,17 +212,23 @@ func (b *Backend) PutCalendarObject(
 	storePath := normalizePath(objectPath)
 	we.Path = objectPath
 
+	we.MatchETag = string(pre.IfMatch)
+	we.NoneMatchETag = string(pre.IfNoneMatch)
+
 	existing, err := b.store.GetCalendarObject(ctx, storePath)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return nil, false, fmt.Errorf("error while checking for previous object at path %q: %w", objectPath, err)
 	}
 
 	exists := err == nil
+
+	etag := ""
 	if exists {
-		we.ETag = existing.ETag
+		etag = existing.ETag
+		we.ETag = etag
 	}
 
-	if err := checkPutPreconditions(existing, exists, opts, we); err != nil {
+	if err := pre.CheckWrite(exists, etag); err != nil {
 		return nil, false, err
 	}
 
@@ -286,7 +291,8 @@ func (b *Backend) GetCalendarObject(
 	ctx context.Context,
 	path string,
 	req *caldav.CalendarCompRequest,
-) (object *caldav.CalendarObject, err error) {
+	pre webdav.Preconditions,
+) (object *caldav.CalendarObject, outcome webdav.Outcome, err error) {
 	ctx, we, handle := wideevent.Start[GetCalendarObjectWideEvent](ctx, "GetCalendarObject")
 	defer func() { handle.End(err) }()
 
@@ -297,25 +303,34 @@ func (b *Backend) GetCalendarObject(
 	if err != nil {
 		err = fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 		if errors.Is(err, store.ErrNotFound) {
-			return nil, &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
+			return nil, webdav.Proceed, &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
 		}
 
-		return nil, err
+		return nil, webdav.Proceed, err
+	}
+
+	outcome, err = pre.Evaluate(true, obj.ETag)
+	if err != nil {
+		return nil, webdav.Proceed, err
 	}
 
 	object, err = storeObjectToCaldavObject(ctx, *obj)
 	if err != nil {
-		return nil, fmt.Errorf("error while converting object at path %q to a caldav CalendarObject: %w", obj.Path, err)
+		return nil, outcome, fmt.Errorf(
+			"error while converting object at path %q to a caldav CalendarObject: %w",
+			obj.Path,
+			err,
+		)
 	}
 
 	we.withCalendarObject(object)
 
 	// object, err = mapCalendarObject(object, req)
 	// if err != nil {
-	// 	return nil, fmt.Errorf("error while applying filters and maps to calendar object: %w", err)
+	// 	return nil, outcome, fmt.Errorf("error while applying filters and maps to calendar object: %w", err)
 	// }
 
-	return object, nil
+	return object, outcome, nil
 }
 
 func (b *Backend) ListCalendarObjects(
@@ -400,41 +415,33 @@ func (b *Backend) QueryCalendarObjects(
 func (b *Backend) DeleteCalendarObject(
 	ctx context.Context,
 	path string,
-	opts *caldav.DeleteCalendarObjectOptions,
+	pre webdav.Preconditions,
 ) (err error) {
 	ctx, we, handle := wideevent.Start[DeleteCalendarObjectWideEvent](ctx, "DeleteCalendarObject")
 	defer func() { handle.End(err) }()
 
-	if opts == nil {
-		opts = &caldav.DeleteCalendarObjectOptions{}
-	}
-
 	storePath := normalizePath(path)
 	we.Path = storePath
 
-	if opts.IfMatch.IsSet() {
-		we.MatchETag = string(opts.IfMatch)
-	}
+	we.MatchETag = string(pre.IfMatch)
+	we.NoneMatchETag = string(pre.IfNoneMatch)
 
-	if opts.IfNoneMatch.IsSet() {
-		we.NoneMatchETag = string(opts.IfNoneMatch)
-	}
-
-	obj, err := b.store.GetCalendarObject(ctx, storePath)
+	existing, err := b.store.GetCalendarObject(ctx, storePath)
 	if err != nil {
-		err = fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 		if errors.Is(err, store.ErrNotFound) {
-			if err := checkETagPreconditions(nil, false, opts.IfMatch, opts.IfNoneMatch); err != nil {
+			if err := pre.CheckWrite(false, ""); err != nil {
 				return err
 			}
+
+			err = fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 
 			return &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
 		}
 
-		return err
+		return fmt.Errorf("error while fetching calendar object at path %q from storage: %w", path, err)
 	}
 
-	if err := checkETagPreconditions(obj, true, opts.IfMatch, opts.IfNoneMatch); err != nil {
+	if err := pre.CheckWrite(true, existing.ETag); err != nil {
 		return err
 	}
 
@@ -445,79 +452,6 @@ func (b *Backend) DeleteCalendarObject(
 		}
 
 		return err
-	}
-
-	return nil
-}
-
-func checkPutPreconditions(
-	existing *store.Object,
-	exists bool,
-	opts *caldav.PutCalendarObjectOptions,
-	we *PutCalendarObjectWideEvent,
-) error {
-	if opts == nil {
-		return nil
-	}
-
-	if opts.IfMatch.IsSet() {
-		we.MatchETag = string(opts.IfMatch)
-	}
-
-	if opts.IfNoneMatch.IsSet() {
-		we.NoneMatchETag = string(opts.IfNoneMatch)
-	}
-
-	return checkETagPreconditions(existing, exists, opts.IfMatch, opts.IfNoneMatch)
-}
-
-func checkETagPreconditions(
-	existing *store.Object,
-	exists bool,
-	ifMatch webdav.ConditionalMatch,
-	ifNoneMatch webdav.ConditionalMatch,
-) error {
-	if ifMatch.IsSet() {
-		if !exists {
-			return &daverr.HTTPError{
-				Code: http.StatusPreconditionFailed,
-				Err:  ErrETagDidNotMatch,
-			}
-		}
-
-		match, err := ETagMatcher(ifMatch.MatchETag)(existing.ETag)
-		if err != nil {
-			return &daverr.HTTPError{
-				Code: http.StatusPreconditionFailed,
-				Err:  fmt.Errorf("error while matching etag: %w", err),
-			}
-		}
-
-		if !match {
-			return &daverr.HTTPError{
-				Code: http.StatusPreconditionFailed,
-				Err:  ErrETagDidNotMatch,
-			}
-		}
-	}
-
-	if ifNoneMatch.IsSet() {
-		if exists {
-			match, err := NegateETagMatch(ETagMatcher(ifNoneMatch.MatchETagWeak))(existing.ETag)
-			if err != nil {
-				return &daverr.HTTPError{
-					Code: http.StatusPreconditionFailed,
-					Err:  fmt.Errorf("error while matching etag: %w", err),
-				}
-			}
-
-			if !match {
-				return &daverr.HTTPError{
-					Code: http.StatusPreconditionFailed,
-					Err:  ErrETagDidNotMatch,
-				}
-			}
-		}
 	}
 
 	return nil
