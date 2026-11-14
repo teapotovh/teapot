@@ -25,6 +25,10 @@ call via a struct.
 
 Avoid acronyms if possible. keep all error/log messages lowercase.
 
+You MUST NOT use repated strings/number constants throughout the code without
+defining an (potentially exported) constant for them. We should always use
+constants for values where it makes sense to do so.
+
 ## Testing
 
 Tests should be added only when necessary. Generally, when adding new code it's
