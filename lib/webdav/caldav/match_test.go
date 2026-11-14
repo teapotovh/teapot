@@ -17,6 +17,8 @@ const (
 	testEventComponent    = "VEVENT"
 	testTodoComponent     = "VTODO"
 	testAlarmComponent    = "VALARM"
+
+	abcd3Path = "/bernard/work/abcd3.ics"
 )
 
 type appendixBFixture struct {
@@ -151,7 +153,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					End:   mustICSTime(t, "20060105T000000Z"),
 				}},
 			},
-			want: []string{"/bernard/work/abcd2.ics", "/bernard/work/abcd3.ics"},
+			want: []string{"/bernard/work/abcd2.ics", abcd3Path},
 		},
 		{
 			name: "7.8.6 event by UID",
@@ -165,7 +167,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{"/bernard/work/abcd3.ics"},
+			want: []string{abcd3Path},
 		},
 		{
 			name: "7.8.7 events by PARTSTAT",
@@ -183,7 +185,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{"/bernard/work/abcd3.ics"},
+			want: []string{abcd3Path},
 		},
 		{
 			name: "7.8.8 events only",
@@ -194,11 +196,11 @@ func TestFilterRFC4791Examples(t *testing.T) {
 			want: []string{
 				"/bernard/work/abcd1.ics",
 				"/bernard/work/abcd2.ics",
-				"/bernard/work/abcd3.ics",
+				abcd3Path,
 			},
 		},
 		{
-			name: "7.8.10 unsupported property filter",
+			name: "non-standard property filter with no match",
 			query: &CompFilter{
 				Name: testCalendarComponent,
 				Comps: []CompFilter{{
@@ -211,6 +213,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 			},
 			want: []string{},
 		},
+
 		{
 			name: "negated text-match",
 			query: &CompFilter{
@@ -251,7 +254,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 			want: []string{
 				"/bernard/work/abcd1.ics",
 				"/bernard/work/abcd2.ics",
-				"/bernard/work/abcd3.ics",
+				abcd3Path,
 			},
 		},
 		{
@@ -266,7 +269,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 			want: []string{
 				"/bernard/work/abcd1.ics",
 				"/bernard/work/abcd2.ics",
-				"/bernard/work/abcd3.ics",
+				abcd3Path,
 			},
 		},
 		{
@@ -292,7 +295,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 					}},
 				}},
 			},
-			want: []string{"/bernard/work/abcd3.ics"},
+			want: []string{abcd3Path},
 		},
 	}
 
