@@ -26,10 +26,7 @@ go_library(
 
 go_test(
     name = "calendar_test",
-    srcs = [
-        "calendar_test.go",
-        "fixtures_test.go",
-    ],
+    srcs = ["calendar_test.go"],
     data = glob(["testdata/**"]),
     embed = [":calendar"],
     embedsrcs = [

@@ -20,6 +20,8 @@ import (
 	"github.com/teapotovh/teapot/lib/wellknown"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
+
+	_ "embed"
 )
 
 const (
@@ -35,6 +37,15 @@ const (
 	calendarResourcePath = "/testuser/calendars/personal"
 	eventPath            = calendarPath + "event.ics"
 )
+
+//go:embed testdata/calendar-query.xml
+var calendarQueryXML string
+
+//go:embed testdata/mkcalendar.xml
+var mkcalendarXML string
+
+//go:embed testdata/teapot-event.ics
+var teapotEvent string
 
 type fakeAuthenticator struct {
 	users map[string]string
