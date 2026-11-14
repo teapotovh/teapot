@@ -17,6 +17,7 @@ import (
 	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/lib/wellknown"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
@@ -214,7 +215,7 @@ func propFind(t *testing.T, srv *httptest.Server, path string, props string) (in
 
 	body := fmt.Sprintf(`<D:propfind xmlns:D="DAV:"><D:prop>%s</D:prop></D:propfind>`, props)
 
-	status, _, respBody := doAuthenticatedRequest(t, srv, "PROPFIND", path, calendarRequest{
+	status, _, respBody := doAuthenticatedRequest(t, srv, webdav.MethodPropFind, path, calendarRequest{
 		body:        body,
 		contentType: "application/xml",
 		depth:       "0",
@@ -253,7 +254,7 @@ func TestCalendarHandlerPropFindWrongPassword(t *testing.T) {
 
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
-	status, headers, _ := doCalendarRequest(t, srv, "PROPFIND", principalPath, calendarRequest{
+	status, headers, _ := doCalendarRequest(t, srv, webdav.MethodPropFind, principalPath, calendarRequest{
 		body:        `<D:propfind xmlns:D="DAV:"><D:prop><D:current-user-principal/></D:prop></D:propfind>`,
 		contentType: "application/xml",
 		depth:       "0",
@@ -340,7 +341,7 @@ func TestCalendarHandlerMKCalendar(t *testing.T) {
 
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
-	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
+	status, _, _ := doAuthenticatedRequest(t, srv, webdav.MethodMkcalendar, calendarPath, calendarRequest{
 		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
@@ -361,7 +362,7 @@ func TestCalendarHandlerMKCalendarSupportedComponents(t *testing.T) {
 
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
-	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
+	status, _, _ := doAuthenticatedRequest(t, srv, webdav.MethodMkcalendar, calendarPath, calendarRequest{
 		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
@@ -388,13 +389,13 @@ func TestCalendarHandlerMKCalendarDuplicate(t *testing.T) {
 
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
-	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
+	status, _, _ := doAuthenticatedRequest(t, srv, webdav.MethodMkcalendar, calendarPath, calendarRequest{
 		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
 	require.Equal(t, http.StatusCreated, status)
 
-	status, _, _ = doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
+	status, _, _ = doAuthenticatedRequest(t, srv, webdav.MethodMkcalendar, calendarPath, calendarRequest{
 		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
@@ -421,7 +422,7 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 
 	srv := newTestServer(t, map[string]string{testUsername: testPassword})
 
-	status, _, _ := doAuthenticatedRequest(t, srv, "MKCALENDAR", calendarPath, calendarRequest{
+	status, _, _ := doAuthenticatedRequest(t, srv, webdav.MethodMkcalendar, calendarPath, calendarRequest{
 		body:        mkcalendarXML,
 		contentType: `application/xml; charset="utf-8"`,
 	})
@@ -443,7 +444,7 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	require.Contains(t, body, "UID:event1")
 	require.Contains(t, body, "SUMMARY:Test event")
 
-	status, _, body = doAuthenticatedRequest(t, srv, "REPORT", calendarPath, calendarRequest{
+	status, _, body = doAuthenticatedRequest(t, srv, webdav.MethodReport, calendarPath, calendarRequest{
 		body:        calendarQueryXML,
 		contentType: "application/xml",
 		depth:       "1",

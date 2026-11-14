@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/teapotovh/teapot/lib/webdav"
 )
 
 func TestAppleOptions(t *testing.T) {
@@ -39,7 +41,7 @@ func TestAppleOptions(t *testing.T) {
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/options.xml#L68-L92
 		{
 			name:    "propfind on calendar home",
-			method:  "PROPFIND",
+			method:  webdav.MethodPropFind,
 			path:    calendarHome(userOne),
 			body:    loadAppleFixture(t, "Resource/Common/PROPFIND/props.xml", nil),
 			depth:   "0",
@@ -50,7 +52,7 @@ func TestAppleOptions(t *testing.T) {
 		// The Apple description says principal, but the script requests calendar home.
 		{
 			name:    "propfind on principal",
-			method:  "PROPFIND",
+			method:  webdav.MethodPropFind,
 			path:    calendarHome(userOne),
 			body:    loadAppleFixture(t, "Resource/Common/PROPFIND/props.xml", nil),
 			depth:   "0",
@@ -102,7 +104,7 @@ func TestOptionsAndPropFindOnPrincipal(t *testing.T) {
 		// PROPFIND on the principal path, as the Apple descriptions state.
 		{
 			name:    "propfind",
-			method:  "PROPFIND",
+			method:  webdav.MethodPropFind,
 			body:    loadAppleFixture(t, "Resource/Common/PROPFIND/props.xml", nil),
 			depth:   "0",
 			wantDAV: false,

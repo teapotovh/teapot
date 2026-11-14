@@ -19,6 +19,7 @@ import (
 
 	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	"github.com/teapotovh/teapot/service/calendar/backend"
 	"github.com/teapotovh/teapot/service/calendar/store"
@@ -241,7 +242,7 @@ func doRequest(
 func createCalendar(t *testing.T, srv *httptest.Server, user string, path string) httpResponse {
 	t.Helper()
 
-	return doRequest(t, srv, "MKCALENDAR", path, asUser(user), withContentType(xmlContentType))
+	return doRequest(t, srv, webdav.MethodMkcalendar, path, asUser(user), withContentType(xmlContentType))
 }
 
 func putObject(t *testing.T, srv *httptest.Server, user string, path string, data string) httpResponse {
@@ -269,7 +270,7 @@ func propFind(t *testing.T, srv *httptest.Server, path string, options ...reques
 
 	options = append([]requestOption{withContentType(xmlContentType)}, options...)
 
-	return doRequest(t, srv, "PROPFIND", path, options...)
+	return doRequest(t, srv, webdav.MethodPropFind, path, options...)
 }
 
 func report(
@@ -283,7 +284,7 @@ func report(
 
 	options = append([]requestOption{withContentType(xmlContentType), withBody(body)}, options...)
 
-	return doRequest(t, srv, "REPORT", path, options...)
+	return doRequest(t, srv, webdav.MethodReport, path, options...)
 }
 
 type multiStatus struct {

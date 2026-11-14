@@ -38,6 +38,7 @@ go_test(
         "//lib/httpauth",
         "//lib/httplog",
         "//lib/ldap",
+        "//lib/webdav",
         "//lib/wellknown",
         "//service/calendar/backend",
         "//service/calendar/store",

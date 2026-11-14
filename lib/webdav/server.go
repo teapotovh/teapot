@@ -65,7 +65,7 @@ type backend struct {
 func (b *backend) Options(r *http.Request) (caps []string, allow []string, err error) {
 	fi, err := b.FileSystem.Stat(r.Context(), r.URL.Path)
 	if daverr.IsNotFound(err) {
-		return nil, []string{http.MethodOptions, http.MethodPut, "MKCOL"}, nil
+		return nil, []string{http.MethodOptions, http.MethodPut, MethodMkcol}, nil
 	} else if err != nil {
 		return nil, nil, err
 	}
@@ -73,9 +73,9 @@ func (b *backend) Options(r *http.Request) (caps []string, allow []string, err e
 	allow = []string{
 		http.MethodOptions,
 		http.MethodDelete,
-		"PROPFIND",
-		"COPY",
-		"MOVE",
+		MethodPropFind,
+		MethodCopy,
+		MethodMove,
 	}
 
 	if !fi.IsDir {
@@ -382,12 +382,12 @@ func ServePrincipal(w http.ResponseWriter, r *http.Request, options *ServePrinci
 			caps = append(caps, string(c))
 		}
 
-		allow := []string{http.MethodOptions, "PROPFIND", "REPORT", "DELETE", "MKCOL"}
+		allow := []string{http.MethodOptions, MethodPropFind, MethodReport, http.MethodDelete, MethodMkcol}
 
 		w.Header().Add("DAV", strings.Join(caps, ", "))
 		w.Header().Add("Allow", strings.Join(allow, ", "))
 		w.WriteHeader(http.StatusNoContent)
-	case "PROPFIND":
+	case MethodPropFind:
 		if err := servePrincipalPropfind(w, r, options); err != nil {
 			internal.ServeError(w, err)
 		}

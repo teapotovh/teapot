@@ -50,8 +50,6 @@ func TestAppleDelete(t *testing.T) {
 	t.Run("delete missing object", func(t *testing.T) {
 		t.Parallel()
 
-		t.Skip("blocked by missing protocol fix; covered by follow-up PR")
-
 		res := deleteObject(t, srv, userOne, calendarPath(userOne)+"2.ics")
 		require.Equal(t, http.StatusNotFound, res.Status, "body: %s", res.Body)
 	})
