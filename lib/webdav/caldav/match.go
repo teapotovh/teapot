@@ -203,18 +203,14 @@ func matchPropDateFilter(
 		return false, fmt.Errorf("error while getting dates for property %q: %w", string(prop), err)
 	}
 
-	if len(dates) == 0 {
-		return false, nil
-	}
-
+	// RFC 4791, section 9.7.2 matches if a property value is in the range.
 	for _, date := range dates {
-		if !matchPropTimeRange(filter.Start, filter.End, date) {
-			return false, nil
+		if matchPropTimeRange(filter.Start, filter.End, date) {
+			return true, nil
 		}
 	}
 
-	// All dates match
-	return true, nil
+	return false, nil
 }
 
 // intervalsOverlap reports whether the event interval overlaps the time

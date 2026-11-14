@@ -52,6 +52,9 @@ var teapotExdate string
 //go:embed testdata/teapot-invalid-duration.ics
 var teapotInvalidDuration string
 
+//go:embed testdata/teapot-multiple-exdate.ics
+var teapotMultipleExdate string
+
 //go:embed testdata/teapot-overlapping.ics
 var teapotOverlapping string
 
@@ -638,6 +641,54 @@ func TestMatchCalendarRecurrence(t *testing.T) {
 
 			cal := mustParseICS(t, tt.data)
 			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, match)
+		})
+	}
+}
+
+func TestMatchCalendarPropDateFilterAnyMatch(t *testing.T) {
+	t.Parallel()
+
+	cal := mustParseICS(t, teapotMultipleExdate)
+
+	tests := []struct {
+		name  string
+		start string
+		end   string
+		want  bool
+	}{
+		{
+			name:  "one excluded date in range",
+			start: "20060103T000000Z",
+			end:   "20060104T000000Z",
+			want:  true,
+		},
+		{
+			name:  "no excluded date in range",
+			start: "20060106T000000Z",
+			end:   "20060107T000000Z",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			query := &CompFilter{
+				Name: testCalendarComponent,
+				Comps: []CompFilter{{
+					Name: testEventComponent,
+					Props: []PropFilter{{
+						Name:  "EXDATE",
+						Start: mustICSTime(t, tt.start),
+						End:   mustICSTime(t, tt.end),
+					}},
+				}},
+			}
+
+			match, err := MatchCalendar(*query, cal)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
