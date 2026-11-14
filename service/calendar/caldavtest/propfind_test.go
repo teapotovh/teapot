@@ -17,6 +17,12 @@ func assertCollectionResponse(t *testing.T, res httpResponse, path string, calen
 	assertResourceType(t, prop, calendar)
 }
 
+func assertNotFound(t *testing.T, res httpResponse) {
+	t.Helper()
+
+	require.Equal(t, http.StatusNotFound, res.Status, "body: %s", res.Body)
+}
+
 func TestApplePropfind(t *testing.T) {
 	t.Parallel()
 
@@ -117,7 +123,7 @@ func TestApplePropfind(t *testing.T) {
 			path:    calendarHome(userOne) + "foobar/",
 			depth:   "1",
 			fixture: fixturePropfinds1,
-			skip:    "RFC 4918 9.1: PROPFIND on a missing resource must return 404.",
+			check:   assertNotFound,
 		},
 		{
 			// Ported from:
@@ -126,7 +132,7 @@ func TestApplePropfind(t *testing.T) {
 			path:    calendarHome(userOne) + "foobar/foo.ics",
 			depth:   "1",
 			fixture: fixturePropfinds1,
-			skip:    "RFC 4918 9.1: PROPFIND on a missing resource must return 404.",
+			check:   assertNotFound,
 		},
 		{
 			// Ported from:
@@ -135,7 +141,7 @@ func TestApplePropfind(t *testing.T) {
 			path:    calendarHome(userOne) + "foobar/example/",
 			depth:   "1",
 			fixture: fixturePropfinds1,
-			skip:    "RFC 4918 9.1: PROPFIND on a missing resource must return 404.",
+			check:   assertNotFound,
 		},
 		{
 			// Ported from:

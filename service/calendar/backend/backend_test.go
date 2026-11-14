@@ -110,6 +110,16 @@ func TestCalendarLifecycle(t *testing.T) {
 	require.ErrorIs(t, err, store.ErrCalendarNotFound)
 }
 
+func TestGetCalendarMissing(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+
+	_, err := b.GetCalendar(testContext(), "/user/calendars/missing/")
+	require.ErrorIs(t, err, store.ErrCalendarNotFound)
+	requireHTTPStatus(t, err, http.StatusNotFound)
+}
+
 func TestCalendarObjectRoundTrip(t *testing.T) {
 	t.Parallel()
 
