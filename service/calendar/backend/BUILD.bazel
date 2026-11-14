@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "backend",
@@ -20,5 +20,23 @@ go_library(
         "//service/calendar/store",
         "@com_github_arran4_golang_ical//:golang-ical",
         "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "backend_test",
+    srcs = [
+        "backend_test.go",
+        "etag_test.go",
+    ],
+    embed = [":backend"],
+    deps = [
+        "//lib/httpauth",
+        "//lib/webdav",
+        "//lib/webdav/caldav",
+        "//lib/webdav/error",
+        "//service/calendar/store",
+        "@com_github_arran4_golang_ical//:golang-ical",
+        "@com_github_stretchr_testify//require",
     ],
 )
