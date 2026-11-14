@@ -76,6 +76,8 @@ func (val *RawXMLValue) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 
 	switch tok := val.tok.(type) {
 	case xml.StartElement:
+		tok.Attr = withoutNamespaceAttrs(tok.Attr)
+
 		if err := e.EncodeToken(tok); err != nil {
 			return err
 		}
@@ -93,6 +95,22 @@ func (val *RawXMLValue) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 	default:
 		return e.EncodeToken(tok)
 	}
+}
+
+// withoutNamespaceAttrs removes namespace declarations. The encoder writes
+// them again from the element and attribute namespaces.
+func withoutNamespaceAttrs(attrs []xml.Attr) []xml.Attr {
+	filtered := make([]xml.Attr, 0, len(attrs))
+
+	for _, attr := range attrs {
+		if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
+			continue
+		}
+
+		filtered = append(filtered, attr)
+	}
+
+	return filtered
 }
 
 var _ xml.Marshaler = (*RawXMLValue)(nil)

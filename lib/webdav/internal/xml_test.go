@@ -81,11 +81,44 @@ func TestEncodeRawXMLElement(t *testing.T) {
 func TestRawXMLValueRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	input := `<resourcetype xmlns="DAV:"><collection></collection></resourcetype>`
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "nested elements",
+			input: `<resourcetype xmlns="DAV:"><collection xmlns="DAV:"></collection></resourcetype>`,
+		},
+		{
+			name:  "namespace and attribute",
+			input: `<displayname xmlns="DAV:" xml:lang="en">home</displayname>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var val RawXMLValue
+
+			require.NoError(t, xml.Unmarshal([]byte(tt.input), &val))
+
+			got, err := xml.Marshal(&val)
+			require.NoError(t, err)
+			assert.Equal(t, tt.input, string(got))
+		})
+	}
+}
+
+func TestRawXMLValueDecodeResourceType(t *testing.T) {
+	t.Parallel()
 
 	var val RawXMLValue
 
-	require.NoError(t, xml.Unmarshal([]byte(input), &val))
+	require.NoError(
+		t,
+		xml.Unmarshal([]byte(`<resourcetype xmlns="DAV:"><collection></collection></resourcetype>`), &val),
+	)
 
 	name, ok := val.XMLName()
 	require.True(t, ok)
@@ -95,12 +128,6 @@ func TestRawXMLValueRoundTrip(t *testing.T) {
 
 	require.NoError(t, val.Decode(&rt))
 	assert.True(t, rt.Is(CollectionName))
-
-	got, err := xml.Marshal(NewRawXMLElement(ResourceTypeName, nil, []RawXMLValue{
-		*NewRawXMLElement(CollectionName, nil, nil),
-	}))
-	require.NoError(t, err)
-	assert.Equal(t, `<resourcetype xmlns="DAV:"><collection xmlns="DAV:"></collection></resourcetype>`, string(got))
 }
 
 func TestRawXMLValueDecode(t *testing.T) {
