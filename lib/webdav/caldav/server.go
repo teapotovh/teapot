@@ -589,8 +589,7 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	if t != MIMEType {
-		// TODO: send CALDAV:supported-calendar-data error
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unsupported Content-Type %q", t)
+		return NewPreconditionError(PreconditionSupportedCalendarData)
 	}
 
 	// TODO: check CALDAV:max-resource-size precondition
@@ -607,8 +606,7 @@ func (b *backend) Put(w http.ResponseWriter, r *http.Request) (err error) {
 
 	cal, err := ics.ParseCalendar(bytes.NewReader(data))
 	if err != nil {
-		// TODO: send CALDAV:valid-calendar-data error
-		return daverr.HTTPErrorf(http.StatusBadRequest, "caldav: failed to parse iCalendar: %v", err)
+		return NewPreconditionError(PreconditionValidCalendarData)
 	}
 
 	if len(cal.Components) == 0 {
@@ -1024,12 +1022,18 @@ const (
 	PreconditionMaxAttendeesPerInstance      PreconditionType = "max-attendees-per-instance"
 )
 
-func NewPreconditionError(err PreconditionType) error {
-	name := xml.Name{Space: "urn:ietf:params:xml:ns:caldav", Local: string(err)}
+// NewPreconditionError returns a method error for a CalDAV precondition.
+func NewPreconditionError(precondition PreconditionType) error {
+	code := http.StatusForbidden
+	if precondition == PreconditionNoUIDConflict {
+		code = http.StatusConflict
+	}
+
+	name := xml.Name{Space: "urn:ietf:params:xml:ns:caldav", Local: string(precondition)}
 	elem := internal.NewRawXMLElement(name, nil, nil)
 
 	return &daverr.HTTPError{
-		Code: 409,
+		Code: code,
 		Err: &internal.Error{
 			Raw: []internal.RawXMLValue{*elem},
 		},
