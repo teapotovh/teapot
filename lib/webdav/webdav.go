@@ -3,11 +3,7 @@
 // WebDAV is defined in RFC 4918.
 package webdav
 
-import (
-	"time"
-
-	"github.com/teapotovh/teapot/lib/webdav/internal"
-)
+import "time"
 
 // FileInfo holds information about a WebDAV file.
 type FileInfo struct {
@@ -36,40 +32,4 @@ type CopyOptions struct {
 
 type MoveOptions struct {
 	NoOverwrite bool
-}
-
-// ConditionalMatch represents the value of a conditional header
-// according to RFC 2068 section 14.25 and RFC 2068 section 14.26
-// The (optional) value can either be a wildcard or an ETag.
-type ConditionalMatch string
-
-func (val ConditionalMatch) IsSet() bool {
-	return val != ""
-}
-
-func (val ConditionalMatch) IsWildcard() bool {
-	return val == "*"
-}
-
-func (val ConditionalMatch) ETag() (string, error) {
-	var e internal.ETag
-	if err := e.UnmarshalText([]byte(val)); err != nil {
-		return "", err
-	}
-
-	return string(e), nil
-}
-
-func (val ConditionalMatch) MatchETag(etag string) (bool, error) {
-	if val == "" {
-		return false, nil
-	}
-
-	if val.IsWildcard() {
-		return true, nil
-	}
-
-	t, err := val.ETag()
-
-	return t == etag, err
 }

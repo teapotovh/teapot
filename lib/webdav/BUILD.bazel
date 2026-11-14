@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "webdav",
     srcs = [
+        "etag.go",
         "method.go",
         "server.go",
         "webdav.go",
@@ -17,7 +18,10 @@ go_library(
 
 go_test(
     name = "webdav_test",
-    srcs = ["webdav_test.go"],
+    srcs = [
+        "etag_test.go",
+        "webdav_test.go",
+    ],
     embed = [":webdav"],
     deps = [
         "//lib/webdav/error",

@@ -36,6 +36,8 @@ const (
 	headerDate        = "Last-Modified"
 	headerDepth       = "Depth"
 	headerETag        = "ETag"
+	headerIfMatch     = "If-Match"
+	headerIfNoneMatch = "If-None-Match"
 
 	caldavNamespace = "urn:ietf:params:xml:ns:caldav"
 )
@@ -513,15 +515,174 @@ func TestPutCalendarObjectConditional(t *testing.T) {
 
 	res := doRequest(t, srv, http.MethodPut, objectPath, teapotEvent1Updated, map[string]string{
 		headerContentType: contentTypeCalendar,
-		"If-Match":        `"current"`,
-		"If-None-Match":   `"other"`,
+		headerIfMatch:     `"current", "other"`,
+		headerIfNoneMatch: `W/"other"`,
 	})
 	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
 
 	opts, ok := b.lastPutOptions()
 	require.True(t, ok, "PutCalendarObject was not called")
-	assert.Equal(t, `"current"`, string(opts.IfMatch))
-	assert.Equal(t, `"other"`, string(opts.IfNoneMatch))
+	assert.Equal(t, `"current", "other"`, string(opts.IfMatch))
+	assert.Equal(t, `W/"other"`, string(opts.IfNoneMatch))
+}
+
+func TestCalendarObjectConditionalGet(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	createCalendar(t, srv)
+
+	res := putCalendarObject(t, srv, objectPath, teapotEvent1)
+	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+	res = doRequest(t, srv, http.MethodGet, objectPath, "", nil)
+	require.Equal(t, http.StatusOK, res.Status, "body: %s", res.Body)
+
+	etag := res.Header.Get(headerETag)
+	require.NotEmpty(t, etag)
+
+	tests := []struct {
+		name    string
+		method  string
+		headers map[string]string
+		want    int
+	}{
+		{
+			name:    "if-none-match matches",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: etag},
+			want:    http.StatusNotModified,
+		},
+		{
+			name:    "if-none-match weak matches",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: "W/" + etag},
+			want:    http.StatusNotModified,
+		},
+		{
+			name:    "if-none-match list matches",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: `"missing", ` + etag},
+			want:    http.StatusNotModified,
+		},
+		{
+			name:    "if-none-match does not match",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: `"missing"`},
+			want:    http.StatusOK,
+		},
+		{
+			name:    "if-none-match list does not match",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: `"missing", "other"`},
+			want:    http.StatusOK,
+		},
+		{
+			name:    "if-none-match wildcard",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: "*"},
+			want:    http.StatusNotModified,
+		},
+		{
+			name:    "head if-none-match matches",
+			method:  http.MethodHead,
+			headers: map[string]string{headerIfNoneMatch: etag},
+			want:    http.StatusNotModified,
+		},
+		{
+			name:    "if-match matches",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfMatch: etag},
+			want:    http.StatusOK,
+		},
+		{
+			name:    "if-match wildcard",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfMatch: "*"},
+			want:    http.StatusOK,
+		},
+		{
+			name:    "if-match does not match",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfMatch: `"missing"`},
+			want:    http.StatusPreconditionFailed,
+		},
+		{
+			name:   "if-match failure wins over if-none-match match",
+			method: http.MethodGet,
+			headers: map[string]string{
+				headerIfMatch:     `"missing"`,
+				headerIfNoneMatch: etag,
+			},
+			want: http.StatusPreconditionFailed,
+		},
+		{
+			name:   "if-match and if-none-match pass",
+			method: http.MethodGet,
+			headers: map[string]string{
+				headerIfMatch:     etag,
+				headerIfNoneMatch: `"missing"`,
+			},
+			want: http.StatusOK,
+		},
+		{
+			name:    "malformed if-none-match",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfNoneMatch: "not-a-quoted-etag"},
+			want:    http.StatusBadRequest,
+		},
+		{
+			name:    "malformed if-match",
+			method:  http.MethodGet,
+			headers: map[string]string{headerIfMatch: "not-a-quoted-etag"},
+			want:    http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			res := doRequest(t, srv, tt.method, objectPath, "", tt.headers)
+			require.Equal(t, tt.want, res.Status, "body: %s", res.Body)
+
+			if tt.want == http.StatusNotModified {
+				assert.Empty(t, res.Body)
+				assert.Equal(t, etag, res.Header.Get(headerETag))
+				assert.NotEmpty(t, res.Header.Get(headerDate))
+			}
+		})
+	}
+}
+
+func TestCalendarObjectMultipleConditionalHeaders(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	createCalendar(t, srv)
+
+	res := putCalendarObject(t, srv, objectPath, teapotEvent1)
+	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+	res = doRequest(t, srv, http.MethodGet, objectPath, "", nil)
+	require.Equal(t, http.StatusOK, res.Status, "body: %s", res.Body)
+
+	etag := res.Header.Get(headerETag)
+	require.NotEmpty(t, etag)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+objectPath, nil)
+	require.NoError(t, err)
+
+	req.Header.Add(headerIfNoneMatch, `"missing"`)
+	req.Header.Add(headerIfNoneMatch, etag)
+
+	resp, err := srv.Client().Do(req)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusNotModified, resp.StatusCode)
+	assert.Equal(t, etag, resp.Header.Get(headerETag))
 }
 
 func TestPropFindRoot(t *testing.T) {

@@ -444,6 +444,268 @@ func TestPutCalendarObjectIfMatchMissing(t *testing.T) {
 	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 }
 
+func testEvent(t *testing.T, summary string) *ics.Calendar {
+	t.Helper()
+
+	return newTestEvent(
+		t,
+		"event-1",
+		summary,
+		time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
+	)
+}
+
+func putTestObject(t *testing.T, b *Backend) *caldav.CalendarObject {
+	t.Helper()
+
+	created, wasCreated, err := b.PutCalendarObject(testContext(), testObjectPath, testEvent(t, "Event 1"), nil)
+	require.NoError(t, err)
+	require.True(t, wasCreated)
+
+	return created
+}
+
+func TestPutCalendarObjectIfMatchETagList(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	created := putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfMatch: webdav.ConditionalMatch(fmt.Sprintf(`"missing", %q`, created.ETag)),
+	}
+
+	updated, wasCreated, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	require.NoError(t, err)
+	require.False(t, wasCreated)
+	require.NotEqual(t, created.ETag, updated.ETag)
+}
+
+func TestPutCalendarObjectIfMatchWeakETag(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	created := putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfMatch: webdav.ConditionalMatch(fmt.Sprintf("W/%q", created.ETag)),
+	}
+
+	_, _, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+}
+
+func TestPutCalendarObjectIfNoneMatchETagList(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	created := putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf(`"missing", %q`, created.ETag)),
+	}
+
+	_, _, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+
+	stored, err := b.GetCalendarObject(testContext(), testObjectPath, nil)
+	require.NoError(t, err)
+	require.Equal(t, created.ETag, stored.ETag)
+	require.Equal(t, "Event 1", stored.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
+}
+
+func TestPutCalendarObjectIfNoneMatchETagListNoMatch(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfNoneMatch: webdav.ConditionalMatch(`"missing", "other"`),
+	}
+
+	_, _, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	require.NoError(t, err)
+}
+
+func TestPutCalendarObjectIfNoneMatchWeakETag(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	created := putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf("W/%q", created.ETag)),
+	}
+
+	_, _, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+
+	stored, err := b.GetCalendarObject(testContext(), testObjectPath, nil)
+	require.NoError(t, err)
+	require.Equal(t, created.ETag, stored.ETag)
+	require.Equal(t, "Event 1", stored.Data.Events()[0].GetProperty(ics.ComponentPropertySummary).Value)
+}
+
+func TestPutCalendarObjectIfMatchETagListNoMatch(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfMatch: webdav.ConditionalMatch(`"missing", "other"`),
+	}
+
+	_, _, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+}
+
+func TestPutCalendarObjectIfMatchWeakThenStrongETag(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+	created := putTestObject(t, b)
+
+	opts := &caldav.PutCalendarObjectOptions{
+		IfMatch: webdav.ConditionalMatch(fmt.Sprintf(`W/"missing", %q`, created.ETag)),
+	}
+
+	_, _, err := b.PutCalendarObject(
+		testContext(),
+		testObjectPath,
+		testEvent(t, "Event 1 updated"),
+		opts,
+	)
+	require.NoError(t, err)
+}
+
+func TestPutCalendarObjectIfMatchWildcard(t *testing.T) {
+	t.Parallel()
+
+	t.Run("existing object", func(t *testing.T) {
+		t.Parallel()
+
+		b := newTestBackend(t)
+		putTestObject(t, b)
+
+		opts := &caldav.PutCalendarObjectOptions{
+			IfMatch: webdav.ConditionalMatch("*"),
+		}
+
+		_, _, err := b.PutCalendarObject(
+			testContext(),
+			testObjectPath,
+			testEvent(t, "Event 1 updated"),
+			opts,
+		)
+		require.NoError(t, err)
+	})
+
+	t.Run("missing object", func(t *testing.T) {
+		t.Parallel()
+
+		b := newTestBackend(t)
+
+		opts := &caldav.PutCalendarObjectOptions{
+			IfMatch: webdav.ConditionalMatch("*"),
+		}
+
+		_, _, err := b.PutCalendarObject(
+			testContext(),
+			testObjectPath,
+			testEvent(t, "Event 1"),
+			opts,
+		)
+		requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+
+		_, err = b.GetCalendarObject(testContext(), testObjectPath, nil)
+		require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
+	})
+}
+
+func TestPutCalendarObjectIfMatchAndIfNoneMatch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		sameETag  bool
+		wantError bool
+	}{
+		{name: "both match", sameETag: true, wantError: true},
+		{name: "only if-match matches", sameETag: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			b := newTestBackend(t)
+			created := putTestObject(t, b)
+
+			ifNoneMatch := `"missing"`
+			if tt.sameETag {
+				ifNoneMatch = fmt.Sprintf("%q", created.ETag)
+			}
+
+			opts := &caldav.PutCalendarObjectOptions{
+				IfMatch:     webdav.ConditionalMatch(fmt.Sprintf("%q", created.ETag)),
+				IfNoneMatch: webdav.ConditionalMatch(ifNoneMatch),
+			}
+
+			_, _, err := b.PutCalendarObject(
+				testContext(),
+				testObjectPath,
+				newTestEvent(
+					t,
+					"event-1",
+					"Event 1 updated",
+					time.Date(2026, time.January, 16, 12, 0, 0, 0, time.UTC),
+					time.Date(2026, time.January, 16, 13, 0, 0, 0, time.UTC),
+				),
+				opts,
+			)
+
+			if tt.wantError {
+				requireHTTPStatus(t, err, http.StatusPreconditionFailed)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestPutCalendarObjectUpdateWithDifferentUID(t *testing.T) {
 	t.Parallel()
 
