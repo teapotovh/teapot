@@ -23,6 +23,12 @@ func assertNotFound(t *testing.T, res httpResponse) {
 	require.Equal(t, http.StatusNotFound, res.Status, "body: %s", res.Body)
 }
 
+func assertBadRequest(t *testing.T, res httpResponse) {
+	t.Helper()
+
+	require.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
+}
+
 func TestApplePropfind(t *testing.T) {
 	t.Parallel()
 
@@ -216,7 +222,7 @@ func TestApplePropfind(t *testing.T) {
 			path:    calendarPath(userOne),
 			depth:   "0",
 			fixture: "Resource/CalDAV/propfinds/4.txt",
-			skip:    "RFC 4918 9.1: PROPFIND with both allprop and propname is invalid and should fail.",
+			check:   assertBadRequest,
 		},
 		{
 			// Ported from:
@@ -225,7 +231,7 @@ func TestApplePropfind(t *testing.T) {
 			path:    calendarPath(userOne),
 			depth:   "0",
 			fixture: "Resource/CalDAV/propfinds/5.txt",
-			skip:    "RFC 4918 9.1: PROPFIND with an unknown request element should fail.",
+			check:   assertBadRequest,
 		},
 		{
 			// Ported from:

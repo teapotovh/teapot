@@ -179,6 +179,35 @@ func (h *Handler) handleOptions(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func validatePropFind(propfind *PropFind) error {
+	count := 0
+
+	if propfind.Prop != nil {
+		count++
+	}
+
+	if propfind.AllProp != nil {
+		count++
+	}
+
+	if propfind.PropName != nil {
+		count++
+	}
+
+	if count > 1 {
+		return daverr.HTTPErrorf(
+			http.StatusBadRequest,
+			"webdav: propfind must contain only one of prop, allprop or propname",
+		)
+	}
+
+	if len(propfind.Any) > 0 {
+		return daverr.HTTPErrorf(http.StatusBadRequest, "webdav: propfind contains an unknown element")
+	}
+
+	return nil
+}
+
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) error {
 	var propfind PropFind
 	if IsRequestBodyEmpty(r) {
@@ -187,6 +216,10 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) error {
 		propfind.AllProp = &struct{}{}
 	} else if isContentXML(r.Header) {
 		if err := DecodeXMLRequest(r, &propfind); err != nil {
+			return err
+		}
+
+		if err := validatePropFind(&propfind); err != nil {
 			return err
 		}
 	} else {
