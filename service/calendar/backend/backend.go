@@ -199,7 +199,7 @@ func storeObjectToCaldavObject(ctx context.Context, obj store.Object) (co *calda
 
 func (b *Backend) PutCalendarObject(
 	ctx context.Context,
-	path string,
+	objectPath string,
 	calendar *ics.Calendar,
 	opts *caldav.PutCalendarObjectOptions,
 ) (object *caldav.CalendarObject, created bool, err error) {
@@ -210,12 +210,12 @@ func (b *Backend) PutCalendarObject(
 		return nil, false, ErrUnexpectedNilObject
 	}
 
-	storePath := normalizePath(path)
-	we.Path = path
+	storePath := normalizePath(objectPath)
+	we.Path = objectPath
 
 	existing, err := b.store.GetCalendarObject(ctx, storePath)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
-		return nil, false, fmt.Errorf("error while checking for previous object at path %q: %w", path, err)
+		return nil, false, fmt.Errorf("error while checking for previous object at path %q: %w", objectPath, err)
 	}
 
 	exists := err == nil
@@ -242,16 +242,34 @@ func (b *Backend) PutCalendarObject(
 		}
 	}
 
-	objPtr, err := caldavObjectToStoreObject(path, calendar)
+	// A calendar object is a direct child of a calendar collection (RFC 4791 section 4.2).
+	calendarPath := path.Dir(string(storePath))
+	if cal, err := b.GetCalendar(ctx, calendarPath); err != nil {
+		if !daverr.IsNotFound(err) {
+			return nil, false, fmt.Errorf("error while getting calendar at path %q: %w", calendarPath, err)
+		}
+	} else if err := checkSupportedComponents(cal.SupportedComponentSet, calendar); err != nil {
+		return nil, false, fmt.Errorf(
+			"calendar object at path %q contains a component outside the calendar component set: %w",
+			storePath,
+			err,
+		)
+	}
+
+	objPtr, err := caldavObjectToStoreObject(objectPath, calendar)
 	if err != nil {
-		return nil, false, fmt.Errorf("could not convert caldav Object at path %q into store Object: %w", path, err)
+		return nil, false, fmt.Errorf(
+			"could not convert caldav Object at path %q into store Object: %w",
+			objectPath,
+			err,
+		)
 	}
 
 	obj := *objPtr
 
 	created, err = b.store.PutCalendarObject(ctx, obj)
 	if err != nil {
-		return nil, false, fmt.Errorf("error while storing calendar object at path %q in storage: %w", path, err)
+		return nil, false, fmt.Errorf("error while storing calendar object at path %q in storage: %w", objectPath, err)
 	}
 
 	object, err = storeObjectToCaldavObject(ctx, obj)
