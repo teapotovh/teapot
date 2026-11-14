@@ -148,7 +148,12 @@ func (b *Backend) GetCalendar(ctx context.Context, path string) (calendar *calda
 
 	cal, err := b.store.GetCalendar(ctx, storePath)
 	if err != nil {
-		return nil, fmt.Errorf("error while getting calendar at path %q in storage: %w", path, err)
+		err = fmt.Errorf("error while getting calendar at path %q in storage: %w", path, err)
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, &daverr.HTTPError{Code: http.StatusNotFound, Err: err}
+		}
+
+		return nil, err
 	}
 
 	c := storeCalendarToCaldavCalendar(*cal)
