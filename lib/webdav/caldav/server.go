@@ -117,6 +117,13 @@ func (h *Handler) handleReport(w http.ResponseWriter, r *http.Request) error {
 	)
 }
 
+func decodeTextMatch(el *textMatch) *TextMatch {
+	return &TextMatch{
+		Text:            el.Text,
+		NegateCondition: bool(el.NegateCondition),
+	}
+}
+
 func decodeParamFilter(el *paramFilter) (*ParamFilter, error) {
 	pf := &ParamFilter{Name: el.Name}
 	if el.IsNotDefined != nil {
@@ -128,10 +135,7 @@ func decodeParamFilter(el *paramFilter) (*ParamFilter, error) {
 	}
 
 	if el.TextMatch != nil {
-		pf.TextMatch = &TextMatch{
-			Text:            el.TextMatch.Text,
-			NegateCondition: bool(el.TextMatch.NegateCondition),
-		}
+		pf.TextMatch = decodeTextMatch(el.TextMatch)
 	}
 
 	return pf, nil
@@ -148,10 +152,7 @@ func decodePropFilter(el *propFilter) (*PropFilter, error) {
 	}
 
 	if el.TextMatch != nil {
-		pf.TextMatch = &TextMatch{
-			Text:            el.TextMatch.Text,
-			NegateCondition: bool(el.TextMatch.NegateCondition),
-		}
+		pf.TextMatch = decodeTextMatch(el.TextMatch)
 	}
 
 	if el.TimeRange != nil {
@@ -248,21 +249,18 @@ func decodeComp(comp *comp) (*CalendarCompRequest, error) {
 }
 
 func decodeCalendarDataReq(calendarData *calendarDataReq) (*CalendarCompRequest, error) {
-	var (
-		req *CalendarCompRequest
-		err error
-	)
+	req := &CalendarCompRequest{
+		AllProps: true,
+		AllComps: true,
+	}
 
-	if calendarData.Comp == nil {
-		req = &CalendarCompRequest{
-			AllProps: true,
-			AllComps: true,
-		}
-	} else {
-		req, err = decodeComp(calendarData.Comp)
+	if calendarData.Comp != nil {
+		decoded, err := decodeComp(calendarData.Comp)
 		if err != nil {
 			return nil, err
 		}
+
+		req = decoded
 	}
 
 	if calendarData.Expand != nil {
