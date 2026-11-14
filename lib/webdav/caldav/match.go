@@ -3,8 +3,6 @@ package caldav
 import (
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,8 +13,6 @@ import (
 var (
 	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
 	ErrInvalidTopLevel  = errors.New("invalid top level filter")
-
-	ErrInvalidDuration = errors.New("invalid iCalendar duration")
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -245,115 +241,6 @@ func intervalsOverlap(
 	}
 
 	return rangeEnd.IsZero() || eventStart.Before(rangeEnd)
-}
-
-// eventEndFromDuration computes the effective end of an event that does not
-// define DTEND, using its DURATION property as described in RFC 4791,
-// section 9.9. Events without DURATION have zero duration.
-func eventEndFromDuration(comp *ics.VEvent, eventStart time.Time) (time.Time, error) {
-	prop := comp.GetProperty(ics.ComponentPropertyDuration)
-	if prop == nil {
-		return eventStart, nil
-	}
-
-	duration, err := parseICalDuration(prop.Value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("while parsing event duration: %w", err)
-	}
-
-	if duration.negative {
-		return time.Time{}, fmt.Errorf("%w: %q", ErrInvalidDuration, prop.Value)
-	}
-
-	return duration.addTo(eventStart), nil
-}
-
-var icalDurationRegexp = regexp.MustCompile(
-	`^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$`,
-)
-
-// icalDuration is a duration as defined in RFC 5545, section 3.3.6. Weeks and
-// days are nominal: they keep the wall clock time across DST transitions.
-// Hours, minutes and seconds are exact.
-type icalDuration struct {
-	negative bool
-	weeks    int
-	days     int
-	exact    time.Duration
-}
-
-func (d icalDuration) addTo(t time.Time) time.Time {
-	days := 7*d.weeks + d.days
-	exact := d.exact
-
-	if d.negative {
-		days = -days
-		exact = -exact
-	}
-
-	return t.AddDate(0, 0, days).Add(exact)
-}
-
-// parseICalDuration parses a duration value as defined in RFC 5545, section
-// 3.3.6.
-func parseICalDuration(value string) (icalDuration, error) {
-	matches := icalDurationRegexp.FindStringSubmatch(value)
-	if matches == nil {
-		return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
-	}
-
-	var duration icalDuration
-
-	if matches[2] != "" {
-		weeks, err := strconv.Atoi(matches[2])
-		if err != nil {
-			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
-		}
-
-		duration.weeks = weeks
-	}
-
-	if matches[3] != "" {
-		days, err := strconv.Atoi(matches[3])
-		if err != nil {
-			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
-		}
-
-		duration.days = days
-	}
-
-	if matches[4] != "" {
-		hours, err := strconv.Atoi(matches[4])
-		if err != nil {
-			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
-		}
-
-		duration.exact += time.Duration(hours) * time.Hour
-	}
-
-	if matches[5] != "" {
-		minutes, err := strconv.Atoi(matches[5])
-		if err != nil {
-			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
-		}
-
-		duration.exact += time.Duration(minutes) * time.Minute
-	}
-
-	if matches[6] != "" {
-		seconds, err := strconv.Atoi(matches[6])
-		if err != nil {
-			return icalDuration{}, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
-		}
-
-		duration.exact += time.Duration(seconds) * time.Second
-	}
-
-	if matches[1] == "-" {
-		duration.negative = true
-	}
-
-	return duration, nil
 }
 
 //nolint:gocyclo
