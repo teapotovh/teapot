@@ -56,36 +56,51 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 	// TODO checks other properties of VCALENDAR component
 	// TODO checks components != VEVENT and VTODO too
 
+	// RFC 4791, section 9.7.1 requires every component filter to match.
 	for _, childFilter := range query.Comps {
-		switch {
-		case strings.EqualFold(childFilter.Name, string(ics.ComponentVEvent)):
-			for _, child := range cal.Events() {
-				childMatches, err := matchEvent(childFilter, child)
-				if err != nil {
-					return false, fmt.Errorf("matching event component: %w", err)
-				}
-
-				if childMatches {
-					return true, nil // early exit if one of the children matches
-				}
-			}
-
-		case strings.EqualFold(childFilter.Name, string(ics.ComponentVTodo)):
-			for _, child := range cal.Todos() {
-				childMatches, err := matchTodo(childFilter, child)
-				if err != nil {
-					return false, fmt.Errorf("matching todo component: %w", err)
-				}
-
-				if childMatches {
-					return true, nil // early exit if one of the children matches
-				}
-			}
-
-		default:
-			// Filter-in unsupported component types
-			return true, nil
+		childMatches, err := matchCalendarChild(childFilter, cal)
+		if err != nil {
+			return false, err
 		}
+
+		if !childMatches {
+			return false, nil
+		}
+	}
+
+	return len(query.Comps) > 0, nil
+}
+
+// matchCalendarChild reports whether a child of the VCALENDAR filter matches the calendar.
+func matchCalendarChild(filter CompFilter, cal *ics.Calendar) (bool, error) {
+	switch {
+	case strings.EqualFold(filter.Name, string(ics.ComponentVEvent)):
+		for _, child := range cal.Events() {
+			childMatches, err := matchEvent(filter, child)
+			if err != nil {
+				return false, fmt.Errorf("matching event component: %w", err)
+			}
+
+			if childMatches {
+				return true, nil
+			}
+		}
+
+	case strings.EqualFold(filter.Name, string(ics.ComponentVTodo)):
+		for _, child := range cal.Todos() {
+			childMatches, err := matchTodo(filter, child)
+			if err != nil {
+				return false, fmt.Errorf("matching todo component: %w", err)
+			}
+
+			if childMatches {
+				return true, nil
+			}
+		}
+
+	default:
+		// Filter-in unsupported component types
+		return true, nil
 	}
 
 	return false, nil
