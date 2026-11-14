@@ -33,6 +33,17 @@ func (val ConditionalMatch) IsWildcard() bool {
 	return strings.TrimSpace(string(val)) == "*"
 }
 
+// Validate reports an error when the value is not a wildcard or an entity tag list.
+func (val ConditionalMatch) Validate() error {
+	if !val.IsSet() || val.IsWildcard() {
+		return nil
+	}
+
+	_, err := parseEntityTags(string(val))
+
+	return err
+}
+
 // MatchETag reports if the value matches the ETag with strong comparison.
 func (val ConditionalMatch) MatchETag(etag string) (bool, error) {
 	return val.match(etag, true)
