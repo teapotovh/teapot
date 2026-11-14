@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"path/filepath"
+	"path"
 	"sync/atomic"
 	"time"
 
@@ -82,7 +82,7 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 		handler = http.StripPrefix(prefix, handler)
 	}
 
-	h.mux.Handle(filepath.Join(prefix, "{path...}"), handler)
+	h.mux.Handle(path.Join(prefix, "{path...}"), handler)
 }
 
 // Run implements run.Runnable.
