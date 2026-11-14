@@ -368,6 +368,75 @@ func (stubBackend) Copy(*http.Request, *Href, bool, bool) (bool, error) { return
 
 func (stubBackend) Move(*http.Request, *Href, bool) (bool, error) { return false, nil }
 
+type recordingPropFindBackend struct {
+	stubBackend
+
+	called bool
+}
+
+func (b *recordingPropFindBackend) PropFind(*http.Request, *PropFind, Depth) (*MultiStatus, error) {
+	b.called = true
+
+	return NewMultiStatus(), nil
+}
+
+func TestHandlePropfindValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		body      string
+		wantCode  int
+		wantCalls bool
+	}{
+		{
+			name:     "allprop and propname",
+			body:     `<propfind xmlns="DAV:"><allprop/><propname/></propfind>`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:     "allprop and prop",
+			body:     `<propfind xmlns="DAV:"><allprop/><prop><displayname/></prop></propfind>`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:     "prop and propname",
+			body:     `<propfind xmlns="DAV:"><prop><displayname/></prop><propname/></propfind>`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:     "unknown element",
+			body:     `<propfind xmlns="DAV:"><undefined/></propfind>`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:      "allprop with include",
+			body:      `<propfind xmlns="DAV:"><allprop/><include><displayname/></include></propfind>`,
+			wantCode:  http.StatusMultiStatus,
+			wantCalls: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			backend := &recordingPropFindBackend{}
+			h := &Handler{Backend: backend}
+
+			req := httptest.NewRequest(MethodPropFind, "/calendars/user", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/xml")
+
+			w := httptest.NewRecorder()
+
+			h.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantCode, w.Code)
+			assert.Equal(t, tt.wantCalls, backend.called)
+		})
+	}
+}
+
 func TestMethodNotAllowedSetsAllow(t *testing.T) {
 	t.Parallel()
 

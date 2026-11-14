@@ -324,11 +324,12 @@ func (p *Prop) Decode(v any) error {
 
 // PropFind implements https://tools.ietf.org/html/rfc4918#section-14.20
 type PropFind struct {
-	XMLName  xml.Name  `xml:"DAV: propfind"`
-	Prop     *Prop     `xml:"prop,omitempty"`
-	AllProp  *struct{} `xml:"allprop,omitempty"`
-	Include  *Include  `xml:"include,omitempty"`
-	PropName *struct{} `xml:"propname,omitempty"`
+	XMLName  xml.Name      `xml:"DAV: propfind"`
+	Prop     *Prop         `xml:"prop,omitempty"`
+	AllProp  *struct{}     `xml:"allprop,omitempty"`
+	Include  *Include      `xml:"include,omitempty"`
+	PropName *struct{}     `xml:"propname,omitempty"`
+	Any      []RawXMLValue `xml:",any"`
 }
 
 func xmlNamesToRaw(names []xml.Name) []RawXMLValue {
