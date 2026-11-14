@@ -50,6 +50,8 @@ go_test(
         "testdata/rfc4791-todo-completed.ics",
         "testdata/rfc4791-todo-due-jan-4.ics",
         "testdata/rfc4791-todo-due-jan-6.ics",
+        "testdata/teapot-event-duration-dst.ics",
+        "testdata/teapot-event-zero-length.ics",
     ],
     deps = [
         "//lib/webdav/internal",

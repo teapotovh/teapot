@@ -438,6 +438,96 @@ func TestMatchCalendarInvalidDuration(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidDuration)
 }
 
+func TestMatchCalendarNominalDurationAcrossDST(t *testing.T) {
+	t.Parallel()
+
+	cal := mustParseICS(t, testdata(t, "teapot-event-duration-dst.ics"))
+
+	loc, err := time.LoadLocation("US/Eastern")
+	require.NoError(t, err)
+
+	at := func(hour, minute int) time.Time {
+		return time.Date(2006, time.April, 2, hour, minute, 0, 0, loc)
+	}
+
+	query := func(start, end time.Time) CompFilter {
+		return CompFilter{
+			Name: testCalendarComponent,
+			Comps: []CompFilter{{
+				Name:  testEventComponent,
+				Start: start,
+				End:   end,
+			}},
+		}
+	}
+
+	tests := []struct {
+		name  string
+		start time.Time
+		end   time.Time
+		want  bool
+	}{
+		{
+			name:  "range after nominal end",
+			start: at(12, 30),
+			end:   at(13, 30),
+			want:  false,
+		},
+		{
+			name:  "range before nominal end",
+			start: at(11, 30),
+			end:   at(12, 30),
+			want:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			match, err := MatchCalendar(query(tt.start, tt.end), cal)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, match)
+		})
+	}
+}
+
+func TestMatchCalendarExplicitZeroLength(t *testing.T) {
+	t.Parallel()
+
+	cal := mustParseICS(t, testdata(t, "teapot-event-zero-length.ics"))
+
+	tests := []struct {
+		name  string
+		start string
+		end   string
+		want  bool
+	}{
+		{
+			name:  "range contains event instant",
+			start: "20060104T090000Z",
+			end:   "20060104T110000Z",
+			want:  true,
+		},
+		{
+			name:  "range starts at event instant",
+			start: "20060104T100000Z",
+			end:   "20060104T110000Z",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, match)
+		})
+	}
+}
+
 func TestMatchCalendarRecurrence(t *testing.T) {
 	t.Parallel()
 
