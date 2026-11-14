@@ -49,6 +49,7 @@ go_test(
         "testdata/teapot-overlapping.ics",
         "testdata/teapot-rdate.ics",
         "testdata/teapot-zero-duration.ics",
+        "testdata/teapot-invalid-duration.ics",
     ],
     deps = [
         "//lib/webdav/internal",

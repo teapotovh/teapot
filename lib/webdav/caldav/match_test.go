@@ -424,6 +424,15 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 	}
 }
 
+func TestMatchCalendarInvalidDuration(t *testing.T) {
+	t.Parallel()
+
+	cal := mustParseICS(t, testdata(t, "teapot-invalid-duration.ics"))
+
+	_, err := MatchCalendar(timeRangeQuery(t, "20060104T000000Z", "20060105T000000Z"), cal)
+	require.ErrorIs(t, err, ErrInvalidDuration)
+}
+
 func TestMatchCalendarRecurrence(t *testing.T) {
 	t.Parallel()
 

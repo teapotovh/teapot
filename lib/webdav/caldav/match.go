@@ -16,7 +16,7 @@ var (
 	ErrMatchEmptyObject = errors.New("request to process empty calendar object")
 	ErrInvalidTopLevel  = errors.New("invalid top level filter")
 
-	errInvalidDuration = errors.New("invalid iCalendar duration")
+	ErrInvalidDuration = errors.New("invalid iCalendar duration")
 )
 
 // Filter returns the filtered list of calendar objects matching the provided query.
@@ -258,7 +258,7 @@ func eventEndFromDuration(comp *ics.VEvent, eventStart time.Time) (time.Time, er
 	}
 
 	if duration < 0 {
-		return time.Time{}, fmt.Errorf("%w: %q", errInvalidDuration, prop.Value)
+		return time.Time{}, fmt.Errorf("%w: %q", ErrInvalidDuration, prop.Value)
 	}
 
 	return eventStart.Add(duration), nil
@@ -273,7 +273,7 @@ var icalDurationRegexp = regexp.MustCompile(
 func parseICalDuration(value string) (time.Duration, error) {
 	matches := icalDurationRegexp.FindStringSubmatch(value)
 	if matches == nil {
-		return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+		return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 	}
 
 	var duration time.Duration
@@ -281,7 +281,7 @@ func parseICalDuration(value string) (time.Duration, error) {
 	if matches[2] != "" {
 		weeks, err := strconv.Atoi(matches[2])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
 		duration += time.Duration(weeks) * 7 * 24 * time.Hour
@@ -290,7 +290,7 @@ func parseICalDuration(value string) (time.Duration, error) {
 	if matches[3] != "" {
 		days, err := strconv.Atoi(matches[3])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
 		duration += time.Duration(days) * 24 * time.Hour
@@ -299,7 +299,7 @@ func parseICalDuration(value string) (time.Duration, error) {
 	if matches[4] != "" {
 		hours, err := strconv.Atoi(matches[4])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
 		duration += time.Duration(hours) * time.Hour
@@ -308,7 +308,7 @@ func parseICalDuration(value string) (time.Duration, error) {
 	if matches[5] != "" {
 		minutes, err := strconv.Atoi(matches[5])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
 		duration += time.Duration(minutes) * time.Minute
@@ -317,7 +317,7 @@ func parseICalDuration(value string) (time.Duration, error) {
 	if matches[6] != "" {
 		seconds, err := strconv.Atoi(matches[6])
 		if err != nil {
-			return 0, fmt.Errorf("%w: %q", errInvalidDuration, value)
+			return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, value)
 		}
 
 		duration += time.Duration(seconds) * time.Second
