@@ -430,7 +430,7 @@ func TestCalendarHandlerCalendarObjectLifecycle(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status)
 
 	status, headers, _ := doAuthenticatedRequest(t, srv, http.MethodPut, eventPath, calendarRequest{
-		body:        testdata(t, "event.ics"),
+		body:        testdata(t, "teapot-event.ics"),
 		contentType: "text/calendar; charset=utf-8",
 	})
 	require.Equal(t, http.StatusCreated, status)
