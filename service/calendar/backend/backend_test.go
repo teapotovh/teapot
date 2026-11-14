@@ -151,9 +151,9 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	_, _, err = b.PutCalendarObject(ctx, path, nil, nil)
 	require.ErrorIs(t, err, ErrUnexpectedNilObject)
 
-	require.NoError(t, b.DeleteCalendarObject(ctx, path))
+	require.NoError(t, b.DeleteCalendarObject(ctx, path, nil))
 
-	err = b.DeleteCalendarObject(ctx, path)
+	err = b.DeleteCalendarObject(ctx, path, nil)
 	require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
 	require.Equal(t, http.StatusNotFound, daverr.HTTPErrorFromError(err).Code)
 
@@ -163,6 +163,110 @@ func TestCalendarObjectRoundTrip(t *testing.T) {
 	objects, err = b.ListCalendarObjects(ctx, "/user/calendars/test/", nil)
 	require.NoError(t, err)
 	require.Empty(t, objects)
+}
+
+func TestDeleteCalendarObjectPreconditions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		opts        func(etag string) *caldav.DeleteCalendarObjectOptions
+		wantStatus  int
+		wantDeleted bool
+	}{
+		{
+			name: "if-match matches",
+			opts: func(etag string) *caldav.DeleteCalendarObjectOptions {
+				return &caldav.DeleteCalendarObjectOptions{
+					IfMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", etag)),
+				}
+			},
+			wantDeleted: true,
+		},
+		{
+			name: "if-match does not match",
+			opts: func(string) *caldav.DeleteCalendarObjectOptions {
+				return &caldav.DeleteCalendarObjectOptions{
+					IfMatch: webdav.ConditionalMatch(`"missing"`),
+				}
+			},
+			wantStatus: http.StatusPreconditionFailed,
+		},
+		{
+			name: "if-match wildcard",
+			opts: func(string) *caldav.DeleteCalendarObjectOptions {
+				return &caldav.DeleteCalendarObjectOptions{
+					IfMatch: webdav.ConditionalMatch("*"),
+				}
+			},
+			wantDeleted: true,
+		},
+		{
+			name: "if-none-match matches",
+			opts: func(etag string) *caldav.DeleteCalendarObjectOptions {
+				return &caldav.DeleteCalendarObjectOptions{
+					IfNoneMatch: webdav.ConditionalMatch(fmt.Sprintf("%q", etag)),
+				}
+			},
+			wantStatus: http.StatusPreconditionFailed,
+		},
+		{
+			name: "if-none-match does not match",
+			opts: func(string) *caldav.DeleteCalendarObjectOptions {
+				return &caldav.DeleteCalendarObjectOptions{
+					IfNoneMatch: webdav.ConditionalMatch(`"missing"`),
+				}
+			},
+			wantDeleted: true,
+		},
+		{
+			name: "if-none-match wildcard",
+			opts: func(string) *caldav.DeleteCalendarObjectOptions {
+				return &caldav.DeleteCalendarObjectOptions{
+					IfNoneMatch: webdav.ConditionalMatch("*"),
+				}
+			},
+			wantStatus: http.StatusPreconditionFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			b := newTestBackend(t)
+			created := putTestObject(t, b)
+
+			err := b.DeleteCalendarObject(testContext(), testObjectPath, tt.opts(created.ETag))
+			if tt.wantDeleted {
+				require.NoError(t, err)
+
+				_, err = b.GetCalendarObject(testContext(), testObjectPath, nil)
+				require.ErrorIs(t, err, store.ErrCalendarObjectNotFound)
+
+				return
+			}
+
+			requireHTTPStatus(t, err, tt.wantStatus)
+
+			stored, err := b.GetCalendarObject(testContext(), testObjectPath, nil)
+			require.NoError(t, err)
+			require.Equal(t, created.ETag, stored.ETag)
+		})
+	}
+}
+
+func TestDeleteCalendarObjectIfMatchMissing(t *testing.T) {
+	t.Parallel()
+
+	b := newTestBackend(t)
+
+	opts := &caldav.DeleteCalendarObjectOptions{
+		IfMatch: webdav.ConditionalMatch("*"),
+	}
+
+	err := b.DeleteCalendarObject(testContext(), testObjectPath, opts)
+	requireHTTPStatus(t, err, http.StatusPreconditionFailed)
 }
 
 func TestQueryCalendarObjects(t *testing.T) {

@@ -23,8 +23,10 @@ type fakeBackend struct {
 	calendars map[string]caldav.Calendar
 	objects   map[string]caldav.CalendarObject
 
-	hasPut     bool
-	putOptions caldav.PutCalendarObjectOptions
+	hasPut        bool
+	putOptions    caldav.PutCalendarObjectOptions
+	hasDelete     bool
+	deleteOptions caldav.DeleteCalendarObjectOptions
 }
 
 var _ caldav.Backend = (*fakeBackend)(nil)
@@ -180,7 +182,11 @@ func (b *fakeBackend) PutCalendarObject(
 	return &object, !exists, nil
 }
 
-func (b *fakeBackend) DeleteCalendarObject(_ context.Context, objectPath string) error {
+func (b *fakeBackend) DeleteCalendarObject(
+	_ context.Context,
+	objectPath string,
+	opts *caldav.DeleteCalendarObjectOptions,
+) error {
 	key := path.Clean(objectPath)
 
 	b.mu.Lock()
@@ -189,6 +195,12 @@ func (b *fakeBackend) DeleteCalendarObject(_ context.Context, objectPath string)
 	if _, ok := b.objects[key]; !ok {
 		return daverr.HTTPErrorf(http.StatusNotFound, "fake: calendar object %q not found", objectPath)
 	}
+
+	if opts != nil {
+		b.deleteOptions = *opts
+	}
+
+	b.hasDelete = true
 
 	delete(b.objects, key)
 
@@ -200,4 +212,11 @@ func (b *fakeBackend) lastPutOptions() (caldav.PutCalendarObjectOptions, bool) {
 	defer b.mu.Unlock()
 
 	return b.putOptions, b.hasPut
+}
+
+func (b *fakeBackend) lastDeleteOptions() (caldav.DeleteCalendarObjectOptions, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.deleteOptions, b.hasDelete
 }

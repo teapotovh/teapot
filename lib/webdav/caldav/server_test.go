@@ -556,6 +556,59 @@ func TestPutCalendarObjectMalformedConditionalHeaders(t *testing.T) {
 	}
 }
 
+func TestDeleteCalendarObjectConditional(t *testing.T) {
+	t.Parallel()
+
+	srv, b := newTestServerWithBackend(t)
+	createCalendar(t, srv)
+
+	res := putCalendarObject(t, srv, objectPath, teapotEvent1)
+	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+	res = doRequest(t, srv, http.MethodDelete, objectPath, "", map[string]string{
+		headerIfMatch:     `"current", "other"`,
+		headerIfNoneMatch: `W/"other"`,
+	})
+	require.Equal(t, http.StatusNoContent, res.Status, "body: %s", res.Body)
+
+	opts, ok := b.lastDeleteOptions()
+	require.True(t, ok, "DeleteCalendarObject was not called")
+	assert.Equal(t, `"current", "other"`, string(opts.IfMatch))
+	assert.Equal(t, `W/"other"`, string(opts.IfNoneMatch))
+}
+
+func TestDeleteCalendarObjectMalformedConditionalHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		header string
+	}{
+		{name: "malformed if-match", header: headerIfMatch},
+		{name: "malformed if-none-match", header: headerIfNoneMatch},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv, b := newTestServerWithBackend(t)
+			createCalendar(t, srv)
+
+			res := putCalendarObject(t, srv, objectPath, teapotEvent1)
+			require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+			res = doRequest(t, srv, http.MethodDelete, objectPath, "", map[string]string{
+				tt.header: "not-a-quoted-etag",
+			})
+			require.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
+
+			_, ok := b.lastDeleteOptions()
+			assert.False(t, ok, "DeleteCalendarObject was not called")
+		})
+	}
+}
+
 func TestCalendarObjectConditionalGet(t *testing.T) {
 	t.Parallel()
 
