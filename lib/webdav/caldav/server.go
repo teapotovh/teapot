@@ -774,10 +774,20 @@ func (b *backend) Mkcol(r *http.Request) error {
 
 func (b *backend) Mkcalendar(r *http.Request) error {
 	if b.resourceTypeAtPath(r.URL.Path) != resourceTypeCalendar {
-		return daverr.HTTPErrorf(http.StatusForbidden, "caldav: calendar creation not allowed at given location")
+		return NewPreconditionError(PreconditionCalendarCollectionLocationOk)
 	}
 
 	ctx := r.Context()
+
+	if _, err := b.Backend.GetCalendar(ctx, r.URL.Path); err == nil {
+		return newDAVError(
+			http.StatusForbidden,
+			xml.Name{Space: internal.Namespace, Local: "resource-must-be-null"},
+		)
+	} else if !daverr.IsNotFound(err) {
+		return err
+	}
+
 	cal := Calendar{
 		Path: r.URL.Path,
 	}
