@@ -397,6 +397,7 @@ func TestPutCalendarObjectRejectsInvalidRequests(t *testing.T) {
 		contentType string
 		body        string
 		want        int
+		wantBody    string
 	}{
 		{
 			name:        "wrong content type",
@@ -410,6 +411,13 @@ func TestPutCalendarObjectRejectsInvalidRequests(t *testing.T) {
 			body:        "this is not a calendar",
 			want:        http.StatusBadRequest,
 		},
+		{
+			name:        "empty body",
+			contentType: contentTypeCalendar,
+			body:        "",
+			want:        http.StatusConflict,
+			wantBody:    "valid-calendar-data",
+		},
 	}
 
 	for i, tt := range tests {
@@ -422,6 +430,10 @@ func TestPutCalendarObjectRejectsInvalidRequests(t *testing.T) {
 				headerContentType: tt.contentType,
 			})
 			assert.Equal(t, tt.want, res.Status, "body: %s", res.Body)
+
+			if tt.wantBody != "" {
+				assert.Contains(t, res.Body, tt.wantBody)
+			}
 		})
 	}
 }
