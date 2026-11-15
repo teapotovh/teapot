@@ -47,22 +47,6 @@ func (b *fakeBackend) CalendarHomeSetPath(_ context.Context) (string, error) {
 	return "/user/calendars/", nil
 }
 
-func (b *fakeBackend) CreateCalendar(_ context.Context, calendar *caldav.Calendar) error {
-	if calendar == nil {
-		return daverr.HTTPErrorf(http.StatusBadRequest, "fake: nil calendar")
-	}
-
-	stored := *calendar
-	stored.Path = path.Clean(stored.Path)
-
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.calendars[stored.Path] = stored
-
-	return nil
-}
-
 func (b *fakeBackend) ListCalendars(_ context.Context) ([]caldav.Calendar, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -87,6 +71,23 @@ func (b *fakeBackend) GetCalendar(_ context.Context, calendarPath string) (*cald
 	}
 
 	return &calendar, nil
+}
+
+func (b *fakeBackend) PutCalendar(_ context.Context, calendar *caldav.Calendar) (bool, error) {
+	if calendar == nil {
+		return false, daverr.HTTPErrorf(http.StatusBadRequest, "fake: nil calendar")
+	}
+
+	stored := *calendar
+	stored.Path = path.Clean(stored.Path)
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	_, exists := b.calendars[stored.Path]
+	b.calendars[stored.Path] = stored
+
+	return !exists, nil
 }
 
 func (b *fakeBackend) GetCalendarObject(

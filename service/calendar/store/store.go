@@ -15,9 +15,7 @@ import (
 var (
 	ErrInvalidBackend = errors.New("invalid backend")
 
-	ErrAlreadyExists          = errors.New("already exists")
 	ErrNotFound               = errors.New("not found")
-	ErrCalendarAlreadyExists  = fmt.Errorf("calendar: %w", ErrAlreadyExists)
 	ErrCalendarNotFound       = fmt.Errorf("calendar: %w", ErrNotFound)
 	ErrCalendarObjectNotFound = fmt.Errorf("calendar object: %w", ErrNotFound)
 )
@@ -32,14 +30,16 @@ type Store interface {
 	// Ping allows pinging the store to verify that it is ready to accept requests.
 	Ping(ctx context.Context) error
 
-	// CreateCalendar saves a calendar in the store.
-	CreateCalendar(ctx context.Context, calendar Calendar) error
-
 	// ListCalendars returns a list of all calendar resources below the given path.
 	ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error)
 
 	// GetCalendar fetches a single calendar from the store.
 	GetCalendar(ctx context.Context, path Path) (*Calendar, error)
+
+	// PutCalendar inserts a calendar into the store, or replaces it when a
+	// calendar already exists at the same path. It reports whether the calendar
+	// was created.
+	PutCalendar(ctx context.Context, calendar Calendar) (created bool, err error)
 
 	// PutCalendarObject inserts a calendar object into the store, or replaces it
 	// when an object already exists at the same path. It reports whether the
