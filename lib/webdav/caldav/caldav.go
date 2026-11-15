@@ -85,7 +85,8 @@ type TextMatch struct {
 type CalendarQuery struct {
 	CompRequest CalendarCompRequest
 	CompFilter  CompFilter
-	// TimeZone interprets floating and DATE values in the filter; UTC is the default.
+	// TimeZone interprets floating and DATE values in the filter. A nil value
+	// means resolve from the calendar property, then UTC.
 	TimeZone *time.Location
 }
 

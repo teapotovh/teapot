@@ -9,7 +9,7 @@ import (
 func TestFreeBusyVerifier(t *testing.T) {
 	t.Parallel()
 
-	year := strconv.Itoa(time.Now().Year())
+	year := strconv.Itoa(time.Now().Year() + 1)
 
 	body := "BEGIN:VCALENDAR\n" +
 		"BEGIN:VFREEBUSY\n" +

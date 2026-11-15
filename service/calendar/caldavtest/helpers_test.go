@@ -40,7 +40,6 @@ const (
 		"on PROPFIND."
 	skipPermissiveParsing = "Apple compatibility: permissive parsing is not an RFC requirement."
 	skipDuplicateAlarms   = "Apple extension: duplicate alarm removal is not planned."
-	skipFreeBusy          = "RFC 4791 7.10: free-busy-query is required and not implemented."
 )
 
 func putAppleFixture(t *testing.T, srv *httptest.Server, user string, objectPath string, fixture string) httpResponse {
@@ -148,7 +147,8 @@ func assertOKHrefs(t *testing.T, res httpResponse, hrefs []string) {
 func assertFreeBusy(t *testing.T, body string, busy []string, tentative []string, unavailable []string) {
 	t.Helper()
 
-	year := strconv.Itoa(time.Now().Year())
+	// The fixtures schedule events with the "$now.year.1:" substitution.
+	year := strconv.Itoa(time.Now().Year() + 1)
 
 	got := parseFreeBusy(body)
 

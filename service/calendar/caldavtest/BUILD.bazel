@@ -270,6 +270,8 @@ go_test(
         "testdata/apple/Resource/CalDAV/reports/timerangequery/206.xml",
         "testdata/apple/Resource/CalDAV/reports/timerangequery/7.txt",
         "testdata/apple/Resource/Common/PROPFIND/resourcetype.xml",
+        "testdata/apple/Resource/CalDAV/reports/freebusy/1.txt",
+        "testdata/apple/Resource/CalDAV/reports/freebusy/2.txt",
     ],
     deps = [
         "//lib/httpauth",

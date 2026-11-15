@@ -122,7 +122,11 @@ func TestSupportedReportSet(t *testing.T) {
 		require.True(t, ok, "missing 200 propstat")
 		require.NotNil(t, propstat.Prop.SupportedReportSet)
 
-		assertReports(t, propstat.Prop.SupportedReportSet)
+		assertReports(t, propstat.Prop.SupportedReportSet, []string{
+			"calendar-query",
+			"calendar-multiget",
+			"free-busy-query",
+		})
 	})
 
 	t.Run("calendar object", func(t *testing.T) {
@@ -147,11 +151,14 @@ func TestSupportedReportSet(t *testing.T) {
 		require.True(t, ok, "missing 200 propstat")
 		require.NotNil(t, propstat.Prop.SupportedReportSet)
 
-		assertReports(t, propstat.Prop.SupportedReportSet)
+		assertReports(t, propstat.Prop.SupportedReportSet, []string{
+			"calendar-query",
+			"calendar-multiget",
+		})
 	})
 }
 
-func assertReports(t *testing.T, set *supportedReportSet) {
+func assertReports(t *testing.T, set *supportedReportSet, want []string) {
 	t.Helper()
 
 	names := set.names()
@@ -162,10 +169,9 @@ func assertReports(t *testing.T, set *supportedReportSet) {
 		locals = append(locals, name.Local)
 	}
 
-	assert.ElementsMatch(t, []string{"calendar-query", "calendar-multiget"}, locals)
+	assert.ElementsMatch(t, want, locals)
 
 	for _, name := range []string{
-		"free-busy-query",
 		"sync-collection",
 		"expand-property",
 	} {
@@ -173,15 +179,12 @@ func assertReports(t *testing.T, set *supportedReportSet) {
 	}
 }
 
-// RFC 4791, section 7.10: https://www.rfc-editor.org/rfc/rfc4791#section-7.10
 func TestUnsupportedReport(t *testing.T) {
 	t.Parallel()
 
 	srv := newTestServer(t)
 
-	body := `<C:free-busy-query xmlns:C="urn:ietf:params:xml:ns:caldav">` +
-		`<C:time-range start="20060104T000000Z" end="20060105T000000Z"/>` +
-		`</C:free-busy-query>`
+	body := `<D:sync-collection xmlns:D="DAV:"><D:sync-token/></D:sync-collection>`
 
 	res := report(t, srv, calendarPath(userOne), body)
 	require.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)

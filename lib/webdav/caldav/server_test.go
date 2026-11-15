@@ -1025,6 +1025,69 @@ func TestReportCalendarQueryMultipleTextMatch(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, res.Status, "body: %s", res.Body)
 }
 
+func TestReportCalendarQueryCalendarTimeZone(t *testing.T) {
+	t.Parallel()
+
+	const floatingEvent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+UID:floating@example.com
+DTSTAMP:20060102T000000Z
+DTSTART:20060102T100000
+DTEND:20060102T110000
+END:VEVENT
+END:VCALENDAR`
+
+	const query = `<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop><D:getetag/></D:prop>
+  <C:filter>
+    <C:comp-filter name="VCALENDAR">
+      <C:comp-filter name="VEVENT">
+        <C:time-range start="20060102T140000Z" end="20060102T160000Z"/>
+      </C:comp-filter>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>`
+
+	t.Run("calendar timezone", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newTestServer(t)
+
+		res := doRequest(t, srv, webdav.MethodMkcalendar, calendarPath, mkcalendarDeadProperty, map[string]string{
+			headerContentType: contentTypeXML,
+		})
+		require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+		res = putCalendarObject(t, srv, calendarPath+"floating.ics", floatingEvent)
+		require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+		res = report(t, srv, calendarPath, query)
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+		assert.ElementsMatch(
+			t,
+			[]string{calendarPath + "floating.ics"},
+			hrefs(parseMultiStatus(t, res.Body)),
+		)
+	})
+
+	t.Run("utc", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newTestServer(t)
+		createCalendar(t, srv)
+
+		res := putCalendarObject(t, srv, calendarPath+"floating.ics", floatingEvent)
+		require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+		res = report(t, srv, calendarPath, query)
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+		assert.Empty(t, hrefs(parseMultiStatus(t, res.Body)))
+	})
+}
+
 func TestReportMultiget(t *testing.T) {
 	t.Parallel()
 
@@ -1064,9 +1127,29 @@ func TestReportUnsupportedRoot(t *testing.T) {
 	srv := newTestServer(t)
 	createCalendar(t, srv)
 
-	res := report(t, srv, calendarPath, reportFreeBusy)
+	body := `<D:sync-collection xmlns:D="DAV:"><D:sync-token/></D:sync-collection>`
+
+	res := report(t, srv, calendarPath, body)
 	assert.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)
 	assert.Contains(t, res.Body, "supported-report")
+}
+
+func TestReportFreeBusy(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	createCalendar(t, srv)
+	seedRFCFixtures(t, srv)
+
+	res := report(t, srv, calendarPath, reportFreeBusy)
+	require.Equal(t, http.StatusOK, res.Status, "body: %s", res.Body)
+	assert.Equal(t, "text/calendar; charset=utf-8", res.Header.Get(headerContentType))
+	assert.Contains(t, res.Body, "BEGIN:VFREEBUSY")
+	assert.Contains(t, res.Body, "UID:")
+	assert.Contains(t, res.Body, "DTSTAMP:")
+	assert.Contains(t, res.Body, "DTSTART:20060101T000000Z")
+	assert.Contains(t, res.Body, "DTEND:20060102T000000Z")
+	assert.NotContains(t, res.Body, "multistatus")
 }
 
 const (
@@ -1120,6 +1203,31 @@ const (
     <D:prop>
       <D:getetag>"abc"</D:getetag>
       <D:displayname>Work</D:displayname>
+      <C:calendar-timezone>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VTIMEZONE
+TZID:US/Eastern
+END:VTIMEZONE
+END:VCALENDAR
+</C:calendar-timezone>
+    </D:prop>
+  </D:set>
+</C:mkcalendar>`
+
+	mkcalendarDeadProperty = `<?xml version="1.0" encoding="utf-8" ?>
+<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:set>
+    <D:prop>
+      <D:displayname>Work</D:displayname>
+      <C:calendar-timezone>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VTIMEZONE
+TZID:US/Eastern
+END:VTIMEZONE
+END:VCALENDAR
+</C:calendar-timezone>
     </D:prop>
   </D:set>
 </C:mkcalendar>`
@@ -1244,6 +1352,21 @@ func TestMkcalendarProtectedProperty(t *testing.T) {
 
 	_, err := backend.GetCalendar(t.Context(), calendarPath)
 	require.Error(t, err)
+}
+
+func TestMkcalendarStoresDeadProperty(t *testing.T) {
+	t.Parallel()
+
+	srv, backend := newTestServerWithBackend(t)
+
+	res := doRequest(t, srv, webdav.MethodMkcalendar, calendarPath, mkcalendarDeadProperty, map[string]string{
+		headerContentType: contentTypeXML,
+	})
+	require.Equal(t, http.StatusCreated, res.Status, "body: %s", res.Body)
+
+	cal, err := backend.GetCalendar(t.Context(), calendarPath)
+	require.NoError(t, err)
+	assert.Contains(t, cal.DeadProperties, xml.Name{Space: caldavNamespace, Local: "calendar-timezone"})
 }
 
 func TestUnsupportedMethods(t *testing.T) {
