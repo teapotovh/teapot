@@ -35,6 +35,20 @@ func (m *MatchingRuleAssertion) readComponents(bytes *Bytes) (err error) {
 		return LdapError{"readComponents: " + err.Error()}
 	}
 
+	// dnAttributes has DEFAULT FALSE and is absent unless the client sets it.
+	if !bytes.HasMoreData() {
+		return nil
+	}
+
+	tagAndLength, err := bytes.PreviewTagAndLength()
+	if err != nil {
+		return LdapError{"readComponents: " + err.Error()}
+	}
+
+	if tagAndLength.Tag != TagMatchingRuleAssertionDnAttributes {
+		return nil
+	}
+
 	m.dnAttributes, err = readTaggedBOOLEAN(
 		bytes,
 		classContextSpecific,
@@ -44,7 +58,7 @@ func (m *MatchingRuleAssertion) readComponents(bytes *Bytes) (err error) {
 		return LdapError{"readComponents: " + err.Error()}
 	}
 
-	return
+	return err
 }
 
 func (m *MatchingRuleAssertion) readMatchingRule(bytes *Bytes) (err error) {
