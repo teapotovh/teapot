@@ -7,11 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const skipDNMultiValued = "RFC 4514: multi-valued RDNs are not implemented by the DN parser"
-
 // TestParseDN uses the distinguished name examples from RFC 4514 section 4.
-// Multi-valued RDNs need a data model change, so that case is skipped with a
-// reason and covered by a follow-up.
+// Multi-valued RDNs are not supported by design, so that case must fail.
 func TestParseDN(t *testing.T) {
 	t.Parallel()
 
@@ -19,7 +16,6 @@ func TestParseDN(t *testing.T) {
 		name    string
 		raw     string
 		want    DN
-		skip    string
 		wantErr bool
 	}{
 		{
@@ -50,9 +46,9 @@ func TestParseDN(t *testing.T) {
 			},
 		},
 		{
-			name: "multi-valued rdn",
-			raw:  `OU=Sales+CN=J. Smith,O=Widget Inc.,C=US`,
-			skip: skipDNMultiValued,
+			name:    "multi-valued rdn",
+			raw:     `OU=Sales+CN=J. Smith,O=Widget Inc.,C=US`,
+			wantErr: true,
 		},
 		{
 			name: "escaped comma",
@@ -145,10 +141,6 @@ func TestParseDN(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-
-			if test.skip != "" {
-				t.Skip(test.skip)
-			}
 
 			dn, err := ParseDN(test.raw)
 			if test.wantErr {

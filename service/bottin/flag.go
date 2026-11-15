@@ -12,6 +12,7 @@ var (
 	DefaultACL    = []string{
 		"ANONYMOUS::bind:*,ou=users,dc=teapot,dc=ovh:",
 		"ANONYMOUS::bind:dc=teapot,dc=ovh:",
+		"*::read::*",
 		"*,dc=teapot,dc=ovh::read:*:* !userpassword",
 		"*::read modify:SELF:*",
 		"dc=teapot,dc=ovh::read add modify delete:*:*",

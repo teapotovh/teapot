@@ -98,6 +98,10 @@ func (server *Bottin) Search(ctx context.Context, state State, r ldap.SearchRequ
 		return nil, state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
 	}
 
+	if baseObject.Level() == 0 && r.Scope() != ldap.SearchRequestScopeBaseObject {
+		return nil, state, nil
+	}
+
 	server.logger.InfoContext(
 		ctx,
 		"searching for entries",
