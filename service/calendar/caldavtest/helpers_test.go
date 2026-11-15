@@ -40,7 +40,6 @@ const (
 		"on PROPFIND."
 	skipPermissiveParsing = "Apple compatibility: permissive parsing is not an RFC requirement."
 	skipDuplicateAlarms   = "Apple extension: duplicate alarm removal is not planned."
-	skipProppatch         = "RFC 4918 9.2: PROPPATCH is not implemented."
 	skipFreeBusy          = "RFC 4791 7.10: free-busy-query is required and not implemented."
 )
 

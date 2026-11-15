@@ -239,9 +239,11 @@ type multiStatusProp struct {
 	CalendarHomeSetHref *string `xml:"calendar-home-set>href"`
 	CurrentPrincipal    *string `xml:"current-user-principal>href"`
 
-	SupportedComponents []struct {
-		Name string `xml:"name,attr"`
-	} `xml:"supported-calendar-component-set>comp"`
+	SupportedComponents *struct {
+		Comp []struct {
+			Name string `xml:"name,attr"`
+		} `xml:"comp"`
+	} `xml:"supported-calendar-component-set"`
 
 	ResourceType struct {
 		Collection *struct{} `xml:"collection"`
@@ -846,8 +848,10 @@ func TestPropFindCalendar(t *testing.T) {
 	assert.NotNil(t, ps.Prop.ResourceType.Collection)
 	assert.NotNil(t, ps.Prop.ResourceType.Calendar)
 
-	components := make([]string, 0, len(ps.Prop.SupportedComponents))
-	for _, comp := range ps.Prop.SupportedComponents {
+	require.NotNil(t, ps.Prop.SupportedComponents)
+
+	components := make([]string, 0, len(ps.Prop.SupportedComponents.Comp))
+	for _, comp := range ps.Prop.SupportedComponents.Comp {
 		components = append(components, comp.Name)
 	}
 
@@ -1087,6 +1091,38 @@ const (
     </D:prop>
   </D:remove>
 </D:propertyupdate>`
+
+	proppatchProtectedProperty = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:">
+  <D:set>
+    <D:prop>
+      <D:displayname>Work</D:displayname>
+      <D:getetag>"abc"</D:getetag>
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`
+
+	proppatchSupportedComponentSet = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:set>
+    <D:prop>
+      <D:displayname>Work</D:displayname>
+      <C:supported-calendar-component-set>
+        <C:comp name="VEVENT"/>
+      </C:supported-calendar-component-set>
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`
+
+	mkcalendarProtectedProperty = `<?xml version="1.0" encoding="utf-8" ?>
+<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:set>
+    <D:prop>
+      <D:getetag>"abc"</D:getetag>
+      <D:displayname>Work</D:displayname>
+    </D:prop>
+  </D:set>
+</C:mkcalendar>`
 )
 
 func TestPropPatchLiveProperties(t *testing.T) {
@@ -1134,6 +1170,80 @@ func TestPropPatchLiveProperties(t *testing.T) {
 		assert.Empty(t, cal.Color)
 		assert.Empty(t, cal.DeadProperties)
 	})
+}
+
+func TestPropPatchProtectedProperty(t *testing.T) {
+	t.Parallel()
+
+	srv, backend := newTestServerWithBackend(t)
+	createCalendar(t, srv)
+
+	res := doRequest(t, srv, webdav.MethodPropPatch, calendarPath, proppatchProtectedProperty, map[string]string{
+		headerContentType: contentTypeXML,
+	})
+	require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+	ms := parseMultiStatus(t, res.Body)
+	require.Len(t, ms.Responses, 1)
+
+	_, ok := ms.Responses[0].propStat(http.StatusOK)
+	assert.False(t, ok, "atomic failure must not report applied properties")
+
+	dependent := ms.Responses[0].requirePropStat(t, http.StatusFailedDependency)
+	require.NotNil(t, dependent.Prop.DisplayName)
+
+	forbidden := ms.Responses[0].requirePropStat(t, http.StatusForbidden)
+	require.NotNil(t, forbidden.Prop.GetETag)
+
+	cal, err := backend.GetCalendar(t.Context(), calendarPath)
+	require.NoError(t, err)
+	assert.Empty(t, cal.Name)
+	assert.Empty(t, cal.DeadProperties)
+}
+
+func TestPropPatchSupportedCalendarComponentSet(t *testing.T) {
+	t.Parallel()
+
+	srv, backend := newTestServerWithBackend(t)
+	createCalendar(t, srv)
+
+	res := doRequest(
+		t,
+		srv,
+		webdav.MethodPropPatch,
+		calendarPath,
+		proppatchSupportedComponentSet,
+		map[string]string{headerContentType: contentTypeXML},
+	)
+	require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+	ms := parseMultiStatus(t, res.Body)
+	require.Len(t, ms.Responses, 1)
+
+	dependent := ms.Responses[0].requirePropStat(t, http.StatusFailedDependency)
+	require.NotNil(t, dependent.Prop.DisplayName)
+
+	forbidden := ms.Responses[0].requirePropStat(t, http.StatusForbidden)
+	require.NotNil(t, forbidden.Prop.SupportedComponents)
+
+	cal, err := backend.GetCalendar(t.Context(), calendarPath)
+	require.NoError(t, err)
+	assert.Empty(t, cal.Name)
+	assert.Empty(t, cal.DeadProperties)
+}
+
+func TestMkcalendarProtectedProperty(t *testing.T) {
+	t.Parallel()
+
+	srv, backend := newTestServerWithBackend(t)
+
+	res := doRequest(t, srv, webdav.MethodMkcalendar, calendarPath, mkcalendarProtectedProperty, map[string]string{
+		headerContentType: contentTypeXML,
+	})
+	require.Equal(t, http.StatusForbidden, res.Status, "body: %s", res.Body)
+
+	_, err := backend.GetCalendar(t.Context(), calendarPath)
+	require.Error(t, err)
 }
 
 func TestUnsupportedMethods(t *testing.T) {

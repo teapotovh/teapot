@@ -116,11 +116,31 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L127-L169
-		t.Skip(skipProppatch)
-
 		srv := newTestServer(t)
 
+		// The Apple test runs after the set and remove tests, so set the details
+		// first and then remove them.
 		res := doRequest(
+			t,
+			srv,
+			webdav.MethodPropPatch,
+			calendarPath(userOne),
+			withContentType(xmlContentType),
+			withBody(loadAppleFixture(t, "Resource/CalDAV/proppatches/1.xml", nil)),
+		)
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		res = doRequest(
+			t,
+			srv,
+			webdav.MethodPropPatch,
+			calendarPath(userOne),
+			withContentType(xmlContentType),
+			withBody(loadAppleFixture(t, "Resource/CalDAV/proppatches/3.xml", nil)),
+		)
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		res = doRequest(
 			t,
 			srv,
 			webdav.MethodPropPatch,
@@ -129,14 +149,22 @@ func TestAppleProppatch(t *testing.T) {
 			withBody(loadAppleFixture(t, "Resource/CalDAV/proppatches/5.xml", nil)),
 		)
 		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+		// The Apple verifier marks all three properties as bad. RFC 4918 9.2
+		// uses 424 for the properties that depend on the protected one.
 		assertPropNames(
 			t,
 			res.Body,
 			calendarPath(userOne),
 			http.StatusForbidden,
+			xml.Name{Space: davNamespace, Local: "resourcetype"},
+		)
+		assertPropNames(
+			t,
+			res.Body,
+			calendarPath(userOne),
+			http.StatusFailedDependency,
 			detailsProperty,
 			details2Property,
-			xml.Name{Space: davNamespace, Local: "resourcetype"},
 		)
 
 		res = propFind(
