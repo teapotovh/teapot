@@ -201,7 +201,7 @@ func parseBool(bytes []byte) (ret bool, err error) {
 		err = SyntaxError{"invalid boolean: should be encoded on one byte only"}
 		return
 	} else if len(bytes) == 0 {
-		err = SyntaxError{"invalid boolean: no data to read"}
+		return false, SyntaxError{"invalid boolean: no data to read"}
 	}
 
 	// DER demands that "If the encoding represents the boolean value TRUE,
@@ -646,6 +646,11 @@ type RawContent []byte
 // don't distinguish between ordered and unordered objects in this code.
 func parseTagAndLength(bytes []byte, initOffset int) (ret TagAndLength, offset int, err error) {
 	offset = initOffset
+	if offset >= len(bytes) {
+		err = SyntaxError{"truncated tag or length"}
+		return ret, offset, err
+	}
+
 	b := bytes[offset]
 	offset++
 	ret.Class = int(b >> 6)
