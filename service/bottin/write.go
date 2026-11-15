@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/google/uuid"
@@ -297,8 +298,9 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 		delMembers []store.DN
 	)
 
-	// Produce new entry values to be saved
-	attrs := make(store.Attributes)
+	// Produce new entry values to be saved. Start from the previous entry
+	// so attributes that are not part of the change list are preserved.
+	attrs := maps.Clone(prevEntry.Attributes)
 
 	for _, change := range r.Changes() {
 		attr := store.NewAttributeKey(string(change.Modification().Type_()))

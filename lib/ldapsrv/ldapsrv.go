@@ -65,6 +65,16 @@ func NewServer[T any](config LDAPSrvConfig, logger *slog.Logger) (*LDAPSrv[T], e
 	return &srv, nil
 }
 
+// Addr returns the address the server is listening on, or nil if it is not
+// running. It is intended for tests that bind to an ephemeral port.
+func (s *LDAPSrv[T]) Addr() net.Addr {
+	if s.listener == nil {
+		return nil
+	}
+
+	return s.listener.Addr()
+}
+
 // Register registers the handler for the server.
 func (s *LDAPSrv[T]) Register(h Handler[T]) {
 	if s.handler != nil {
@@ -89,15 +99,29 @@ func (s *LDAPSrv[T]) Run(ctx context.Context, notify run.Notify) (err error) {
 
 	s.running.Store(true)
 
+	closeListener := sync.OnceValue(func() error {
+		return s.listener.Close()
+	})
+
 	defer func() {
 		s.running.Store(false)
 
-		if lisErr := s.listener.Close(); lisErr != nil && err == nil {
-			err = fmt.Errorf("error while closing ldap listener: %w", err)
+		if lisErr := closeListener(); lisErr != nil && err == nil {
+			err = fmt.Errorf("error while closing ldap listener: %w", lisErr)
 		}
 	}()
 
 	notify.Notify()
+
+	// Unblock Accept when the context is canceled. Without this the loop
+	// stays in Accept and never observes the shutdown signal.
+	go func() {
+		<-ctx.Done()
+
+		if err := closeListener(); err != nil {
+			s.logger.DebugContext(ctx, "error while closing listener during shutdown", "err", err)
+		}
+	}()
 
 	i := 0
 

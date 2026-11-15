@@ -24,19 +24,20 @@ var (
 )
 
 type client[T any] struct {
-	rwc         net.Conn
-	chanOut     chan *ldap.LDAPMessage
-	srv         *LDAPSrv[T]
-	br          *bufio.Reader
-	bw          *bufio.Writer
-	logger      *slog.Logger
-	closing     chan bool
-	requestList map[int]*Message[T]
-	writeDone   chan bool
-	rawData     []byte
-	wg          sync.WaitGroup
-	id          int
-	mutex       sync.Mutex
+	rwc          net.Conn
+	chanOut      chan *ldap.LDAPMessage
+	srv          *LDAPSrv[T]
+	br           *bufio.Reader
+	bw           *bufio.Writer
+	logger       *slog.Logger
+	closing      chan bool
+	requestList  map[int]*Message[T]
+	writeDone    chan bool
+	shutdownDone chan struct{}
+	rawData      []byte
+	wg           sync.WaitGroup
+	id           int
+	mutex        sync.Mutex
 }
 
 func (c *client[T]) GetConn() net.Conn {
@@ -100,6 +101,7 @@ func (c *client[T]) serve(serveCtx context.Context) {
 	// Handlers will stop to send more respones
 	c.chanOut = make(chan *ldap.LDAPMessage)
 	c.writeDone = make(chan bool)
+	c.shutdownDone = make(chan struct{})
 	// for each message in c.chanOut send it to client
 	go func() {
 		for msg := range c.chanOut {
@@ -112,6 +114,8 @@ func (c *client[T]) serve(serveCtx context.Context) {
 
 	// Listen for server signal to shutdown
 	go func() {
+		defer close(c.shutdownDone)
+
 		for {
 			select {
 			case <-serveCtx.Done(): // server signals shutdown process
@@ -311,6 +315,10 @@ func (c *client[T]) writeMessage(ctx context.Context, msg *ldap.LDAPMessage) err
 func (c *client[T]) close(ctx context.Context) error {
 	c.logger.DebugContext(ctx, "closing connection")
 	close(c.closing)
+
+	// Wait for the shutdown watcher before closing the output channel; it
+	// may still be sending a Notice of Disconnection.
+	<-c.shutdownDone
 
 	// stop reading from client
 	if err := c.rwc.SetReadDeadline(time.Now().Add(time.Millisecond)); err != nil {
