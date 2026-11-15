@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -35,50 +36,59 @@ type Calendar struct {
 	Metadata CalendarMetadata
 }
 
-// DeadProperties holds client-defined WebDAV properties stored as opaque XML,
-// unlike live properties that the server computes or enforces. Known
-// properties with server behavior stay as typed fields.
-type DeadProperties map[xml.Name]string
+// CalendarProperties stores full XML values for calendar properties.
+type CalendarProperties = map[xml.Name]string
 
 type calendarProperty struct {
 	Name  xml.Name `json:"name"`
 	Value string   `json:"value"`
 }
 
+type calendarMetadata struct {
+	Properties []calendarProperty `json:"properties"`
+}
+
+type CalendarMetadata struct {
+	Properties CalendarProperties `json:"-"`
+}
+
 // MarshalJSON implements json.Marshaler.
-func (p DeadProperties) MarshalJSON() ([]byte, error) {
-	properties := make([]calendarProperty, 0, len(p))
-	for name, value := range p {
+func (m CalendarMetadata) MarshalJSON() ([]byte, error) {
+	properties := make([]calendarProperty, 0, len(m.Properties))
+	for name, value := range m.Properties {
 		properties = append(properties, calendarProperty{Name: name, Value: value})
 	}
 
-	return json.Marshal(properties)
+	return json.Marshal(calendarMetadata{Properties: properties})
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (p *DeadProperties) UnmarshalJSON(data []byte) error {
-	var properties []calendarProperty
-	if err := json.Unmarshal(data, &properties); err != nil {
+func (m *CalendarMetadata) UnmarshalJSON(data []byte) error {
+	var metadata calendarMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
 		return err
 	}
 
-	*p = make(DeadProperties, len(properties))
-	for _, property := range properties {
-		(*p)[property.Name] = property.Value
+	m.Properties = make(CalendarProperties, len(metadata.Properties))
+	for _, property := range metadata.Properties {
+		m.Properties[property.Name] = property.Value
 	}
 
 	return nil
 }
 
-//nolint:tagliatelle
-type CalendarMetadata struct {
-	Name                  string         `json:"name,omitempty"`
-	Description           string         `json:"description,omitempty"`
-	SupportedComponentSet []string       `json:"supported-component-set,omitempty"`
-	MaxResourceSize       int64          `json:"max-resource-size,omitempty"`
-	Color                 string         `json:"color,omitempty"`
-	Tag                   string         `json:"tag,omitempty"`
-	DeadProperties        DeadProperties `json:"dead-properties,omitempty"`
+// Clone returns a copy that does not share the properties map.
+func (m CalendarMetadata) Clone() CalendarMetadata {
+	m.Properties = maps.Clone(m.Properties)
+
+	return m
+}
+
+// Clone returns a copy that does not share the properties map.
+func (c Calendar) Clone() Calendar {
+	c.Metadata = c.Metadata.Clone()
+
+	return c
 }
 
 // Key implements pgcache.Object.

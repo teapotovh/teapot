@@ -630,10 +630,6 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 
 // applyPropertyUpdate applies the set and remove operations to the calendar.
 func applyPropertyUpdate(update *internal.PropertyUpdate, cal *Calendar) ([]xml.Name, error) {
-	if len(update.Set) > 0 && cal.DeadProperties == nil {
-		cal.DeadProperties = map[xml.Name]string{}
-	}
-
 	setNames, err := applySetProperties(update.Set, cal)
 	if err != nil {
 		return nil, err
@@ -654,20 +650,12 @@ func applySetProperties(sets []internal.Set, cal *Calendar) ([]xml.Name, error) 
 				continue
 			}
 
-			live, err := setLiveProperty(raw, name, cal)
+			value, err := marshalProperty(raw)
 			if err != nil {
 				return nil, err
 			}
 
-			if !live {
-				value, err := marshalProperty(raw)
-				if err != nil {
-					return nil, err
-				}
-
-				cal.DeadProperties[name] = value
-			}
-
+			cal.Properties.Set(name, value)
 			names = append(names, name)
 		}
 	}
@@ -685,10 +673,7 @@ func applyRemoveProperties(removes []internal.Remove, cal *Calendar) []xml.Name 
 				continue
 			}
 
-			if !clearLiveProperty(name, cal) {
-				delete(cal.DeadProperties, name)
-			}
-
+			cal.Properties.Remove(name)
 			names = append(names, name)
 		}
 	}
@@ -712,55 +697,6 @@ func unmarshalProperty(value string) (*internal.RawXMLValue, error) {
 	}
 
 	return &raw, nil
-}
-
-// setLiveProperty stores a known live property in its typed calendar field.
-// It reports whether the property is a known live property.
-func setLiveProperty(raw *internal.RawXMLValue, name xml.Name, cal *Calendar) (bool, error) {
-	switch name {
-	case internal.DisplayNameName:
-		var displayName internal.DisplayName
-		if err := raw.Decode(&displayName); err != nil {
-			return true, fmt.Errorf("caldav: failed to decode displayname: %w", err)
-		}
-
-		cal.Name = displayName.Name
-	case calendarDescriptionName:
-		var description calendarDescription
-		if err := raw.Decode(&description); err != nil {
-			return true, fmt.Errorf("caldav: failed to decode calendar-description: %w", err)
-		}
-
-		cal.Description = description.Description
-	case calendarColorName:
-		var color calendarColor
-		if err := raw.Decode(&color); err != nil {
-			return true, fmt.Errorf("caldav: failed to decode calendar-color: %w", err)
-		}
-
-		cal.Color = color.Color
-	default:
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// clearLiveProperty clears the typed field of a known live property.
-// It reports whether the property is a known live property.
-func clearLiveProperty(name xml.Name, cal *Calendar) bool {
-	switch name {
-	case internal.DisplayNameName:
-		cal.Name = ""
-	case calendarDescriptionName:
-		cal.Description = ""
-	case calendarColorName:
-		cal.Color = ""
-	default:
-		return false
-	}
-
-	return true
 }
 
 func mapPreconditionError(err error) error {
@@ -872,10 +808,15 @@ func (b *backend) Mkcol(r *http.Request) error {
 			return daverr.HTTPErrorf(http.StatusBadRequest, "carddav: unexpected resource type")
 		}
 
-		cal.Name = m.DisplayName
-		cal.Description = m.Description
-		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = componentNames(m.SupportedComponents)
+		if err := setCreationProperties(
+			&cal,
+			m.DisplayName,
+			m.Description,
+			m.SupportedComponents,
+			m.MaxResourceSize,
+		); err != nil {
+			return err
+		}
 	}
 
 	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
@@ -890,6 +831,40 @@ func (b *backend) Mkcol(r *http.Request) error {
 	_, err = b.Backend.PutCalendar(ctx, &cal)
 
 	return err
+}
+
+func setCreationProperties(
+	cal *Calendar,
+	displayName string,
+	description string,
+	components []comp,
+	maxResourceSize int64,
+) error {
+	if displayName != "" {
+		if err := cal.Properties.SetDisplayName(displayName); err != nil {
+			return err
+		}
+	}
+
+	if description != "" {
+		if err := cal.Properties.SetDescription(description); err != nil {
+			return err
+		}
+	}
+
+	if len(components) > 0 {
+		if err := cal.Properties.SetSupportedComponentSet(componentNames(components)); err != nil {
+			return err
+		}
+	}
+
+	if maxResourceSize > 0 {
+		if err := cal.Properties.SetMaxResourceSize(maxResourceSize); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b *backend) Mkcalendar(r *http.Request) error {
@@ -922,10 +897,15 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 			)
 		}
 
-		cal.Name = m.DisplayName
-		cal.Description = m.Description
-		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = componentNames(m.SupportedComponents)
+		if err := setCreationProperties(
+			&cal,
+			m.DisplayName,
+			m.Description,
+			m.SupportedComponents,
+			m.MaxResourceSize,
+		); err != nil {
+			return err
+		}
 	}
 
 	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
@@ -1060,21 +1040,6 @@ func (b *backend) propFindCalendar(
 				{ContentType: MIMEType, Version: "2.0"},
 			},
 		}),
-		supportedCalendarComponentSetName: func(*internal.RawXMLValue) (any, error) {
-			components := []comp{}
-
-			if cal.SupportedComponentSet != nil {
-				for _, name := range cal.SupportedComponentSet {
-					components = append(components, comp{Name: name})
-				}
-			} else {
-				components = append(components, comp{Name: string(ics.ComponentVEvent)})
-			}
-
-			return &supportedCalendarComponentSet{
-				Comp: components,
-			}, nil
-		},
 		// TODO: Gather UserPrivilege from backend to control read-and-write
 		internal.CurrentUserPrivilegeSetName: internal.PropFindValue(&internal.CurrentUserPrivilegeSet{
 			Privilege: []internal.Privilege{{
@@ -1084,31 +1049,7 @@ func (b *backend) propFindCalendar(
 		}),
 	}
 
-	if cal.Name != "" {
-		props[internal.DisplayNameName] = internal.PropFindValue(&internal.DisplayName{
-			Name: cal.Name,
-		})
-	}
-
-	if cal.Description != "" {
-		props[calendarDescriptionName] = internal.PropFindValue(&calendarDescription{
-			Description: cal.Description,
-		})
-	}
-
-	if cal.MaxResourceSize > 0 {
-		props[maxResourceSizeName] = internal.PropFindValue(&maxResourceSize{
-			Size: cal.MaxResourceSize,
-		})
-	}
-
-	if cal.Color != "" {
-		props[calendarColorName] = internal.PropFindValue(&calendarColor{
-			Color: cal.Color,
-		})
-	}
-
-	for name, value := range cal.DeadProperties {
+	for name, value := range cal.Properties.All() {
 		if _, exists := props[name]; exists {
 			continue
 		}

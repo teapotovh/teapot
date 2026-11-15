@@ -8,37 +8,66 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeadPropertiesJSONRoundTrip(t *testing.T) {
+func TestCalendarPropertiesJSONRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	name := xml.Name{Space: "DAV:", Local: "details"}
-	properties := DeadProperties{
-		name: `<details xmlns="DAV:">My Name</details>`,
+	name := xml.Name{Space: "DAV:", Local: "displayname"}
+	properties := CalendarProperties{
+		name: `<displayname xmlns="DAV:">Work</displayname>`,
 	}
 
-	data, err := json.Marshal(properties)
+	data, err := json.Marshal(CalendarMetadata{Properties: properties})
 	require.NoError(t, err)
 	require.JSONEq(
 		t,
-		`[{"name":{"Space":"DAV:","Local":"details"},"value":"<details xmlns=\"DAV:\">My Name</details>"}]`,
+		`{"properties":[{"name":{"Space":"DAV:","Local":"displayname"},"value":"<displayname xmlns=\"DAV:\">Work</displayname>"}]}`,
 		string(data),
 	)
 
-	var got DeadProperties
+	var got CalendarMetadata
 	require.NoError(t, json.Unmarshal(data, &got))
-	require.Equal(t, properties, got)
+	require.Equal(t, properties, got.Properties)
 }
 
-func TestDeadPropertiesUnmarshalKeepsUniqueKeys(t *testing.T) {
+func TestCalendarPropertiesUnmarshalKeepsUniqueKeys(t *testing.T) {
 	t.Parallel()
 
 	name := xml.Name{Space: "DAV:", Local: "details"}
-	data := `[` +
+	data := `{"properties":[` +
 		`{"name":{"Space":"DAV:","Local":"details"},"value":"first"},` +
 		`{"name":{"Space":"DAV:","Local":"details"},"value":"second"}` +
-		`]`
+		`]}`
 
-	var properties DeadProperties
-	require.NoError(t, json.Unmarshal([]byte(data), &properties))
-	require.Equal(t, DeadProperties{name: "second"}, properties)
+	var metadata CalendarMetadata
+	require.NoError(t, json.Unmarshal([]byte(data), &metadata))
+	require.Equal(t, CalendarProperties{name: "second"}, metadata.Properties)
+}
+
+func TestCalendarCloneCopiesProperties(t *testing.T) {
+	t.Parallel()
+
+	name := xml.Name{Space: "DAV:", Local: "displayname"}
+	calendar := Calendar{
+		Path: "/calendars/alice/work/",
+		Metadata: CalendarMetadata{
+			Properties: CalendarProperties{
+				name: `<displayname xmlns="DAV:">Work</displayname>`,
+			},
+		},
+	}
+
+	cloned := calendar.Clone()
+	cloned.Metadata.Properties[name] = `<displayname xmlns="DAV:">Other</displayname>`
+
+	require.Equal(t, `<displayname xmlns="DAV:">Work</displayname>`, calendar.Metadata.Properties[name])
+	require.Equal(t, `<displayname xmlns="DAV:">Other</displayname>`, cloned.Metadata.Properties[name])
+}
+
+func TestCalendarCloneKeepsNilProperties(t *testing.T) {
+	t.Parallel()
+
+	calendar := Calendar{Path: "/calendars/alice/work/"}
+
+	cloned := calendar.Clone()
+	require.Nil(t, cloned.Metadata.Properties)
 }

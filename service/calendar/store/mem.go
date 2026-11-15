@@ -46,7 +46,7 @@ func (m *Mem) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, err
 	var calendars []Calendar
 	for _, calendar := range m.calendars {
 		if strings.HasPrefix(string(calendar.Path), string(basePath)) {
-			calendars = append(calendars, calendar)
+			calendars = append(calendars, calendar.Clone())
 		}
 	}
 
@@ -59,6 +59,7 @@ func (m *Mem) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
 	defer m.mu.Unlock()
 
 	if calendar, exists := m.calendars[path]; exists {
+		calendar = calendar.Clone()
 		return &calendar, nil
 	}
 
@@ -71,7 +72,7 @@ func (m *Mem) PutCalendar(ctx context.Context, calendar Calendar) (bool, error) 
 	defer m.mu.Unlock()
 
 	_, exists := m.calendars[calendar.Path]
-	m.calendars[calendar.Path] = calendar
+	m.calendars[calendar.Path] = calendar.Clone()
 
 	return !exists, nil
 }

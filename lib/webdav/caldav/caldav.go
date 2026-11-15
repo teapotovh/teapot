@@ -4,7 +4,6 @@
 package caldav
 
 import (
-	"encoding/xml"
 	"errors"
 	"time"
 
@@ -27,16 +26,8 @@ func NewCalendarHomeSet(path string) webdav.BackendSuppliedHomeSet {
 }
 
 type Calendar struct {
-	Path                  string
-	Name                  string
-	Description           string
-	MaxResourceSize       int64
-	SupportedComponentSet []string
-	Color                 string
-	// DeadProperties holds client-defined WebDAV properties stored as opaque XML,
-	// unlike live properties that the server computes or enforces. Known
-	// properties with server behavior stay as typed fields.
-	DeadProperties map[xml.Name]string
+	Path       string
+	Properties CalendarProperties
 }
 
 type CalendarCompRequest struct {

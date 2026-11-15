@@ -22,11 +22,15 @@ type CalendarWideEvent struct {
 }
 
 func wideEventCalendarFromCaldav(cal *caldav.Calendar) CalendarWideEvent {
+	name := cal.Properties.DisplayName()
+	description := cal.Properties.Description()
+	components, _ := cal.Properties.SupportedComponentSet()
+
 	return CalendarWideEvent{
 		Path:                  cal.Path,
-		Name:                  cal.Name,
-		Description:           cal.Description,
-		SupportedComponentSet: cal.SupportedComponentSet,
+		Name:                  name,
+		Description:           description,
+		SupportedComponentSet: components,
 	}
 }
 
