@@ -6,21 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sync/atomic"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/teapotovh/teapot/lib/pgnotify"
 )
 
 var (
-	ErrClosing = errors.New("reconnecting connection is closing down")
-
-	ConnectionKeepaliveCheckTime = 10 * time.Minute
-	PingTimeout                  = 5 * time.Second
+	ErrUnexpectedEvenType = errors.New("unexpected event type")
 )
-
-var ErrUnexpectedEvenType = errors.New("unexpected event type")
 
 type EvenType uint8
 
@@ -52,13 +47,10 @@ func (e Event[K]) String() string {
 type notificationManager[K Key[K]] struct {
 	logger *slog.Logger
 
-	id uuid.UUID
-	// listenConn is a single connection used to receive notifications for cache invalidations.
-	listenConn   *pgx.Conn
-	listenCancel context.CancelFunc
-	channel      string
-	fromString   FromString[K]
-	listening    atomic.Bool
+	id         uuid.UUID
+	channel    string
+	conn       *pgnotify.Connection
+	fromString FromString[K]
 }
 
 func newNotificationManager[K Key[K]](
@@ -72,22 +64,20 @@ func newNotificationManager[K Key[K]](
 		return nil, fmt.Errorf("error while generating uuid: %w", err)
 	}
 
-	listenConn, err := pgx.ConnectConfig(context.Background(), config)
+	channel := "teapot_invalidate_" + table
+
+	conn, err := pgnotify.NewConnection(config, channel, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error while opening listen connection: %w", err)
+		return nil, err
 	}
 
-	name := "teapot_invalidate_" + table
-	nm := notificationManager[K]{
-		logger: logger,
-
+	return &notificationManager[K]{
+		logger:     logger,
 		id:         id,
-		listenConn: listenConn,
-		channel:    name,
+		channel:    channel,
+		conn:       conn,
 		fromString: fromString,
-	}
-
-	return &nm, nil
+	}, nil
 }
 
 // This is keyed by key (string) so if we have multiple updates for a single key,
@@ -95,7 +85,7 @@ func newNotificationManager[K Key[K]](
 // "key1: store, delete, store, store" it results in store, which will
 // invalidate caches on other watchers and have them re-fetch the updated value.
 // This implies that the ordering of events has to match the order in which they
-// were applied to the database in the trasaction.
+// were applied to the database in the transaction.
 type keymap map[string]EvenType
 
 type payload struct {
@@ -124,7 +114,7 @@ func (nm *notificationManager[K]) encode(events []Event[K]) (string, error) {
 	return string(bytes), nil
 }
 
-func (nm *notificationManager[K]) decode(raw string) (uuid.UUID, []Event[K], error) {
+func (nm *notificationManager[K]) decode(raw string, fromString FromString[K]) (uuid.UUID, []Event[K], error) {
 	var payload payload
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
 		return uuid.UUID{}, nil, fmt.Errorf("error while unmarshaling keys: %w", err)
@@ -133,7 +123,7 @@ func (nm *notificationManager[K]) decode(raw string) (uuid.UUID, []Event[K], err
 	var events []Event[K]
 
 	for str, t := range payload.KeyMap {
-		key, err := nm.fromString(str)
+		key, err := fromString(str)
 		if err != nil {
 			return uuid.UUID{}, nil, fmt.Errorf("error while building key from encoded %q: %w", str, err)
 		}
@@ -148,58 +138,29 @@ func (nm *notificationManager[K]) decode(raw string) (uuid.UUID, []Event[K], err
 }
 
 func (nm *notificationManager[K]) IsListening() bool {
-	return nm.listening.Load()
+	return nm.conn.IsListening()
 }
 
 func (nm *notificationManager[K]) Listen(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-
-	_, err := nm.listenConn.Exec(ctx, "LISTEN "+nm.channel+";")
-	if err != nil {
-		defer cancel()
-		return fmt.Errorf("error while listening: %w", err)
-	}
-
-	nm.listenCancel = cancel
-	nm.listening.Store(true)
-
-	return nil
+	return nm.conn.Listen(ctx)
 }
 
 func (nm *notificationManager[K]) Next(ctx context.Context) ([]Event[K], error) {
 	for {
-		waitCtx, cancel := context.WithTimeout(ctx, ConnectionKeepaliveCheckTime)
-		msg, err := nm.listenConn.WaitForNotification(waitCtx)
-
-		cancel()
-
+		raw, err := nm.conn.Next(ctx)
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				pingCtx, cancel := context.WithTimeout(ctx, PingTimeout)
-				err := nm.listenConn.Ping(pingCtx)
-
-				cancel()
-
-				if err != nil {
-					return nil, fmt.Errorf("listen connection ping failed: %w", err)
-				}
-
-				continue // connection is alive; keep waiting
-			}
-
-			return nil, fmt.Errorf("unexpected error while waiting for notification: %w", err)
+			return nil, err
 		}
 
-		if msg.Channel == nm.channel {
-			id, events, err := nm.decode(msg.Payload)
-			if err != nil {
-				return nil, fmt.Errorf("error while decoding notification payload: %w", err)
-			}
+		id, events, err := nm.decode(raw, nm.fromString)
+		if err != nil {
+			return nil, fmt.Errorf("error while decoding notification payload: %w", err)
+		}
 
-			if id != nm.id {
-				nm.logger.InfoContext(ctx, "received events", "id", nm.id, "events", len(events))
-				return events, nil
-			}
+		if id != nm.id {
+			nm.logger.InfoContext(ctx, "received events", "id", nm.id, "events", len(events))
+
+			return events, nil
 		}
 	}
 }
@@ -214,9 +175,8 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, tx pgx.Tx, events 
 		return fmt.Errorf("error while encoding notification events: %w", err)
 	}
 
-	_, err = tx.Exec(ctx, "SELECT pg_notify($1, $2);", nm.channel, payload)
-	if err != nil {
-		return fmt.Errorf("error while sending notification: %w", err)
+	if err := nm.conn.Notify(ctx, tx, payload); err != nil {
+		return err
 	}
 
 	nm.logger.InfoContext(ctx, "sent notification", "id", nm.id, "events", len(events))
@@ -225,13 +185,5 @@ func (nm *notificationManager[K]) Notify(ctx context.Context, tx pgx.Tx, events 
 }
 
 func (nm *notificationManager[K]) Close(ctx context.Context) error {
-	if nm.listenCancel != nil {
-		nm.listenCancel()
-	}
-
-	if err := nm.listenConn.Close(ctx); err != nil {
-		return fmt.Errorf("error while closing listen connection: %w", err)
-	}
-
-	return nil
+	return nm.conn.Close(ctx)
 }

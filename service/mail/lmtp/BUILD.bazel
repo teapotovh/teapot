@@ -1,0 +1,38 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "lmtp",
+    srcs = [
+        "flag.go",
+        "lmtp.go",
+        "metrics.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/mail/lmtp",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "//lib/run",
+        "//service/mail",
+        "//service/mail/store",
+        "@com_github_emersion_go_smtp//:go-smtp",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_test(
+    name = "lmtp_test",
+    srcs = [
+        "lmtp_test.go",
+        "run_test.go",
+    ],
+    embed = [":lmtp"],
+    deps = [
+        "//lib/ldap",
+        "//service/mail",
+        "//service/mail/mailtest",
+        "//service/mail/store",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_stretchr_testify//require",
+    ],
+)

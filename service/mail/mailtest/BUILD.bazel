@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mailtest",
+    srcs = [
+        "notifications.go",
+        "pipe.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/mail/mailtest",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_google_uuid//:uuid",
+        "@com_github_jackc_pgx_v5//:pgx",
+    ],
+)

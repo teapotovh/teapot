@@ -14,6 +14,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/observability",
+        "//lib/pgnotify",
         "//lib/run",
         "@com_github_cenkalti_backoff_v5//:backoff",
         "@com_github_google_btree//:btree",

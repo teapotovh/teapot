@@ -14,6 +14,9 @@ require (
 	github.com/coreos/go-iptables v0.8.0
 	github.com/daulet/tokenizers v1.27.0
 	github.com/dustin/go-humanize v1.1.0
+	github.com/emersion/go-imap/v2 v2.0.0-beta.9
+	github.com/emersion/go-message v0.18.2
+	github.com/emersion/go-smtp v0.26.0
 	github.com/go-asn1-ber/asn1-ber v1.5.8
 	github.com/go-ldap/ldap/v3 v3.4.14
 	github.com/go-logr/logr v1.4.4
@@ -36,8 +39,8 @@ require (
 	github.com/prometheus/client_golang v1.25.0
 	github.com/rs/cors v1.11.1
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.12.1
 	github.com/sqids/sqids-go v0.4.1
+	github.com/stretchr/testify v1.12.1
 	github.com/teambition/rrule-go v1.8.2
 	github.com/vishvananda/netlink v1.3.1
 	github.com/yalue/onnxruntime_go v1.36.0
@@ -71,6 +74,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
