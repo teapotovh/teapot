@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/go-ldap/ldap/v3"
 )
 
 const (
@@ -15,8 +17,10 @@ const (
 )
 
 var (
-	ErrMissingEquals    = errors.New("missing = in DN, expected exactly one")
+	// ErrInvalidComponent means the input is not a single RDN component.
 	ErrInvalidComponent = errors.New("invalid component")
+	// ErrMultiValuedRDN means an RDN has more than one value.
+	ErrMultiValuedRDN = errors.New("multi-valued RDNs are not supported")
 )
 
 func reverse[T any](slice []T) []T {
@@ -36,37 +40,44 @@ func NewComponent(typ, value string) Component {
 }
 
 func (seg Component) String() string {
-	return fmt.Sprintf("%s=%s", seg.Type, seg.Value)
+	attr := ldap.AttributeTypeAndValue{Type: seg.Type, Value: seg.Value}
+
+	return strings.ReplaceAll(attr.String(), prefixSeparator, `\2F`)
 }
 
+// ParseComponent parses a single RDN component and normalizes the attribute
+// type and value to lower case.
 func ParseComponent(rawComp string) (Component, error) {
-	splits := strings.Split(rawComp, "=")
-	if len(splits) != 2 {
-		err := fmt.Errorf("error parsing component %q: %w", rawComp, ErrInvalidComponent)
-		return Component{}, errors.Join(err, ErrMissingEquals)
+	dn, err := parseDN(rawComp)
+	if err != nil {
+		return Component{}, err
 	}
 
-	return Component{
-		Type:  strings.ToLower(strings.TrimSpace(splits[0])),
-		Value: strings.ToLower(strings.TrimSpace(splits[1])),
-	}, nil
+	if len(dn) != 1 {
+		return Component{}, ErrInvalidComponent
+	}
+
+	return dn[0], nil
 }
 
-func parseComponentSlice(raw, separator string) ([]Component, error) {
-	strs := strings.Split(raw, separator)
+func parseDN(rawDN string) (DN, error) {
+	parsed, err := ldap.ParseDN(rawDN)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing DN %q: %w", rawDN, err)
+	}
 
-	var components []Component
+	dn := make(DN, 0, len(parsed.RDNs))
 
-	for _, str := range strs {
-		component, err := ParseComponent(str)
-		if err != nil {
-			return nil, err
+	for _, rdn := range parsed.RDNs {
+		if len(rdn.Attributes) != 1 {
+			return nil, ErrMultiValuedRDN
 		}
 
-		components = append(components, component)
+		attr := rdn.Attributes[0]
+		dn = append(dn, NewComponent(strings.ToLower(attr.Type), strings.ToLower(attr.Value)))
 	}
 
-	return components, nil
+	return dn, nil
 }
 
 func joinComponentSlice(comps []Component, separator string) string {
@@ -106,11 +117,15 @@ func (dn DN) Sub(comps ...Component) DN {
 }
 
 func (dn DN) Parent() DN {
+	if len(dn) == 0 {
+		return DN{}
+	}
+
 	return dn.Clone()[1:]
 }
 
 func ParseDN(rawDN string) (DN, error) {
-	return parseComponentSlice(rawDN, dnSeparator)
+	return parseDN(rawDN)
 }
 
 // Prefix is the reverse of a DN and can be used to recursively enumerate the directory.
@@ -165,7 +180,15 @@ func (prefix Prefix) IsPrefixOf(prf Prefix) bool {
 }
 
 func ParsePrefix(rawPrefix string) (Prefix, error) {
-	return parseComponentSlice(rawPrefix, prefixSeparator)
+	// Values escape the slash as \2F, so every remaining slash is a separator.
+	rawDN := strings.ReplaceAll(rawPrefix, prefixSeparator, dnSeparator)
+
+	prefix, err := parseDN(rawDN)
+	if err != nil {
+		return nil, err
+	}
+
+	return Prefix(prefix), nil
 }
 
 type (

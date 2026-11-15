@@ -7,19 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	skipDNEmpty         = "RFC 4514: the empty DN is valid and denotes the root DSE"
-	skipDNEscapedComma  = "RFC 4514: escaped separators are not implemented by the DN parser"
-	skipDNHexEscape     = "RFC 4514: hex escapes are not implemented by the DN parser"
-	skipDNMultiValued   = "RFC 4514: multi-valued RDNs are not implemented by the DN parser"
-	skipDNQuotedValue   = "RFC 4514: quoted values are not implemented by the DN parser"
-	skipDNLeadingHash   = "RFC 4514: a leading # must be escaped; the parser accepts it literally"
-	skipDNTrailingSpace = "RFC 4514: escaping a trailing space is not implemented by the DN parser"
-)
+const skipDNMultiValued = "RFC 4514: multi-valued RDNs are not implemented by the DN parser"
 
-// TestParseDN uses the distinguished name examples from RFC 4514 section 3.
-// Cases that the current parser does not support are skipped with a reason so
-// the gap remains visible without breaking the build.
+// TestParseDN uses the distinguished name examples from RFC 4514 section 4.
+// Multi-valued RDNs need a data model change, so that case is skipped with a
+// reason and covered by a follow-up.
 func TestParseDN(t *testing.T) {
 	t.Parallel()
 
@@ -65,37 +57,69 @@ func TestParseDN(t *testing.T) {
 		{
 			name: "escaped comma",
 			raw:  `CN=L. Eagle,O=Sue\, Grabbit and Runn,C=GB`,
-			skip: skipDNEscapedComma,
+			want: DN{
+				NewComponent("cn", "l. eagle"),
+				NewComponent("o", "sue, grabbit and runn"),
+				NewComponent("c", "gb"),
+			},
 		},
 		{
 			name: "hex escaped carriage return",
 			raw:  `CN=Before\0DAfter,O=Test,C=GB`,
-			skip: skipDNHexEscape,
+			want: DN{
+				NewComponent("cn", "before\rafter"),
+				NewComponent("o", "test"),
+				NewComponent("c", "gb"),
+			},
 		},
 		{
 			name: "utf8 hex escape",
 			raw:  `SN=Lu\C4\8Di\C4\87`,
-			skip: skipDNHexEscape,
+			want: DN{
+				NewComponent("sn", "lu\u010di\u0107"),
+			},
 		},
 		{
-			name: "leading hash",
-			raw:  `CN=#hash,O=Test,C=GB`,
-			skip: skipDNLeadingHash,
+			name:    "leading hash",
+			raw:     `CN=#hash,O=Test,C=GB`,
+			wantErr: true,
 		},
 		{
-			name: "quoted value",
-			raw:  `CN="Steve Kille",O=Test,C=GB`,
-			skip: skipDNQuotedValue,
+			name: "escaped leading hash",
+			raw:  `CN=\#hash,O=Test,C=GB`,
+			want: DN{
+				NewComponent("cn", "#hash"),
+				NewComponent("o", "test"),
+				NewComponent("c", "gb"),
+			},
+		},
+		{
+			name: "escaped quotes and comma",
+			raw:  `CN=James \"Jim\" Smith\, III,DC=example,DC=net`,
+			want: DN{
+				NewComponent("cn", `james "jim" smith, iii`),
+				NewComponent("dc", "example"),
+				NewComponent("dc", "net"),
+			},
+		},
+		{
+			name:    "quoted value",
+			raw:     `CN="Steve Kille",O=Test,C=GB`,
+			wantErr: true,
 		},
 		{
 			name: "escaped trailing space",
 			raw:  `CN=Steve\ ,O=Test,C=GB`,
-			skip: skipDNTrailingSpace,
+			want: DN{
+				NewComponent("cn", "steve "),
+				NewComponent("o", "test"),
+				NewComponent("c", "gb"),
+			},
 		},
 		{
 			name: "empty dn",
 			raw:  "",
-			skip: skipDNEmpty,
+			want: DN{},
 		},
 		{
 			name:    "missing equals",
@@ -103,9 +127,13 @@ func TestParseDN(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "multiple equals",
-			raw:     "CN=Steve=Kille,O=Test,C=GB",
-			wantErr: true,
+			name: "unescaped equals",
+			raw:  "CN=Steve=Kille,O=Test,C=GB",
+			want: DN{
+				NewComponent("cn", "steve=kille"),
+				NewComponent("o", "test"),
+				NewComponent("c", "gb"),
+			},
 		},
 		{
 			name:    "empty component",
@@ -145,6 +173,31 @@ func TestDNStringRoundTrip(t *testing.T) {
 	roundTripped, err := ParseDN(dn.String())
 	require.NoError(t, err)
 	assert.True(t, dn.Equal(roundTripped))
+
+	tests := []string{
+		`CN=L. Eagle,O=Sue\, Grabbit and Runn,C=GB`,
+		`CN=James \"Jim\" Smith\, III,DC=example,DC=net`,
+		`CN=Before\0DAfter,O=Test,C=GB`,
+		`SN=Lu\C4\8Di\C4\87`,
+		`CN=\#hash,O=Test,C=GB`,
+		`CN=Steve\ ,O=Test,C=GB`,
+		`CN=a\+b,O=Test,C=GB`,
+		`CN=a\=b,O=Test,C=GB`,
+	}
+
+	for _, raw := range tests {
+		t.Run(raw, func(t *testing.T) {
+			t.Parallel()
+
+			dn, err := ParseDN(raw)
+			require.NoError(t, err)
+
+			roundTripped, err := ParseDN(dn.String())
+			require.NoError(t, err)
+
+			assert.True(t, dn.Equal(roundTripped), "want %q, got %q", dn, roundTripped)
+		})
+	}
 }
 
 func TestPrefixOperations(t *testing.T) {
@@ -161,4 +214,13 @@ func TestPrefixOperations(t *testing.T) {
 	assert.Equal(t, "dc=ovh/dc=teapot/ou=users", child.Prefix().String())
 	assert.Equal(t, "dc=teapot,dc=ovh", child.Parent().String())
 	assert.Equal(t, "ou=users,dc=teapot,dc=ovh", child.String())
+
+	slash, err := ParseDN(`cn=a/b,dc=teapot,dc=ovh`)
+	require.NoError(t, err)
+
+	assert.Equal(t, `dc=ovh/dc=teapot/cn=a\2Fb`, slash.Prefix().String())
+
+	prefix, err := ParsePrefix(slash.Prefix().String())
+	require.NoError(t, err)
+	assert.True(t, prefix.Equal(slash.Prefix()))
 }
