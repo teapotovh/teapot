@@ -30,6 +30,13 @@ go_library(
 
 go_test(
     name = "store_test",
-    srcs = ["fuzz_test.go"],
+    srcs = [
+        "fuzz_test.go",
+        "types_test.go",
+    ],
     embed = [":store"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )
