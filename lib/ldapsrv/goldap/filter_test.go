@@ -209,29 +209,13 @@ func TestRFC4515FilterExamples(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			filter, err := readFilter(NewBytes(0, compileFilter(t, test.filter)))
+			packet, err := ldap.CompileFilter(test.filter)
+			require.NoError(t, err)
+
+			filter, err := readFilter(NewBytes(0, packet.Bytes()))
 			require.NoError(t, err)
 
 			test.check(t, filter)
 		})
 	}
-}
-
-// compileFilter uses go-ldap to encode a filter. go-ldap writes BOOLEAN TRUE
-// as 0x01, but RFC 4511 requires 0xFF, so fix the optional dnAttributes field.
-func compileFilter(t *testing.T, raw string) []byte {
-	t.Helper()
-
-	packet, err := ldap.CompileFilter(raw)
-	require.NoError(t, err)
-
-	data := packet.Bytes()
-	if len(data) >= 3 &&
-		data[len(data)-3] == 0x84 &&
-		data[len(data)-2] == 0x01 &&
-		data[len(data)-1] == 0x01 {
-		data[len(data)-1] = 0xff
-	}
-
-	return data
 }

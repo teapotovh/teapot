@@ -9,9 +9,6 @@ import (
 // Modify DN:
 // https://github.com/rumba-id/bauble/blob/ce079b46a8996ea0b8a1ec5bd07def580944579b/src/bauble/suites/rfc4511/moddn.py
 //
-// Controls:
-// https://github.com/rumba-id/bauble/blob/ce079b46a8996ea0b8a1ec5bd07def580944579b/src/bauble/suites/rfc4511/controls.py
-//
 // Who Am I:
 // https://github.com/rumba-id/bauble/blob/ce079b46a8996ea0b8a1ec5bd07def580944579b/src/bauble/suites/extended/rfc4532.py
 //
@@ -28,7 +25,6 @@ func TestBaubleUnsupportedFeatures(t *testing.T) {
 		skip string
 	}{
 		{name: "modify dn", skip: skipModifyDN},
-		{name: "controls", skip: skipControls},
 		{name: "who am i", skip: skipWhoAmI},
 		{name: "paged results", skip: skipPagedResults},
 		{name: "malformed pdu", skip: skipMalformedPDU},

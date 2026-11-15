@@ -15,7 +15,6 @@ const (
 	skipDerefAliases = "RFC 4511 4.5.1: alias dereferencing is not implemented"
 	skipSubstring    = "RFC 4511 4.5.1: substring filters are not implemented"
 	skipModifyDN     = "RFC 4511 4.9: Modify DN is not implemented"
-	skipControls     = "RFC 4511 4.1.11: request controls are not implemented"
 	skipWhoAmI       = "RFC 4532: Who Am I is not implemented" //nolint:gosec
 	skipPagedResults = "RFC 2696: paged results are not implemented"
 	skipOldPassword  = "RFC 3062: Bottin does not validate oldPasswd" //nolint:gosec

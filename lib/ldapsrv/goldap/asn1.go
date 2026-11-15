@@ -204,19 +204,9 @@ func parseBool(bytes []byte) (ret bool, err error) {
 		return false, SyntaxError{"invalid boolean: no data to read"}
 	}
 
-	// DER demands that "If the encoding represents the boolean value TRUE,
-	// its single contents octet shall have all eight bits set to one."
-	// Thus only 0 and 255 are valid encoded values.
-	switch bytes[0] {
-	case 0:
-		ret = false
-	case 0xff:
-		ret = true
-	default:
-		err = SyntaxError{"invalid boolean: should be 0x00 of 0xFF"}
-	}
-
-	return
+	// BER allows any non-zero octet for TRUE. Some clients encode TRUE as
+	// 0x01 instead of the DER form 0xFF, so accept both.
+	return bytes[0] != 0, nil
 }
 
 func sizeBool() int {

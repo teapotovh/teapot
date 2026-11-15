@@ -3,7 +3,41 @@ package goldap
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestParseBool(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		raw     []byte
+		want    bool
+		wantErr bool
+	}{
+		{name: "false", raw: []byte{0x00}},
+		{name: "true", raw: []byte{0xff}, want: true},
+		{name: "true as one", raw: []byte{0x01}, want: true},
+		{name: "empty", raw: nil, wantErr: true},
+		{name: "too long", raw: []byte{0x00, 0x00}, wantErr: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseBool(test.raw)
+			if test.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
 
 func TestSizeInt64(t *testing.T) {
 	t.Parallel()
