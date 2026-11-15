@@ -16,7 +16,16 @@ func TestBaubleBind(t *testing.T) {
 
 	t.Run("anonymous", func(t *testing.T) {
 		t.Parallel()
-		t.Skip(skipAnonymousBind)
+
+		conn := server.dial(t)
+		require.NoError(t, conn.UnauthenticatedBind(""))
+	})
+
+	t.Run("anonymous with password", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dial(t)
+		requireLDAPError(t, conn.Bind("", "secret"), ldap.LDAPResultInvalidCredentials)
 	})
 
 	t.Run("root", func(t *testing.T) {

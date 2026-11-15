@@ -14,6 +14,19 @@ import (
 var ErrUnsupportedExtendedRequest = errors.New("unsupported extended request, we only support PasswordModify")
 
 func (server *Bottin) Bind(ctx context.Context, state State, r ldap.BindRequest) (State, error) {
+	if string(r.Name()) == "" {
+		if len(r.AuthenticationSimple()) > 0 {
+			return state, fmt.Errorf(
+				"(%w) anonymous bind cannot have a password",
+				ldapsrv.ErrInvalidCredentials,
+			)
+		}
+
+		server.logger.InfoContext(ctx, "anonymous bind")
+
+		return State{}, nil
+	}
+
 	dn, err := server.parseDN(string(r.Name()), false)
 	if err != nil {
 		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
