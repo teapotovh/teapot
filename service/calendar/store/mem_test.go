@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/xml"
 	"testing"
 	"time"
 
@@ -50,9 +51,9 @@ func TestMemCalendarLifecycle(t *testing.T) {
 	calendar := Calendar{
 		Path: "/user/calendars/test",
 		Metadata: CalendarMetadata{
-			Name:        "Test calendar",
-			Description: "A calendar used in tests",
-			Color:       "#ff0000",
+			Properties: CalendarProperties{
+				{Space: "DAV:", Local: "displayname"}: `<displayname xmlns="DAV:">Test calendar</displayname>`,
+			},
 		},
 	}
 
@@ -79,6 +80,35 @@ func TestMemCalendarLifecycle(t *testing.T) {
 	calendars, err = st.ListCalendars(ctx, "/other")
 	require.NoError(t, err)
 	require.Empty(t, calendars)
+}
+
+func TestMemCalendarPropertiesAreCopied(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	st := NewMem()
+	name := xml.Name{Space: "DAV:", Local: "displayname"}
+	calendar := Calendar{
+		Path: "/user/calendars/test",
+		Metadata: CalendarMetadata{
+			Properties: CalendarProperties{
+				name: `<displayname xmlns="DAV:">Work</displayname>`,
+			},
+		},
+	}
+
+	_, err := st.PutCalendar(ctx, calendar)
+	require.NoError(t, err)
+
+	calendar.Metadata.Properties[name] = "changed input"
+	got, err := st.GetCalendar(ctx, calendar.Path)
+	require.NoError(t, err)
+	require.Equal(t, `<displayname xmlns="DAV:">Work</displayname>`, got.Metadata.Properties[name])
+
+	got.Metadata.Properties[name] = "changed output"
+	got, err = st.GetCalendar(ctx, calendar.Path)
+	require.NoError(t, err)
+	require.Equal(t, `<displayname xmlns="DAV:">Work</displayname>`, got.Metadata.Properties[name])
 }
 
 func TestMemObjectLifecycle(t *testing.T) {

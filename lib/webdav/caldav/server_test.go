@@ -1105,10 +1105,9 @@ func TestPropPatchLiveProperties(t *testing.T) {
 
 		cal, err := backend.GetCalendar(t.Context(), calendarPath)
 		require.NoError(t, err)
-		assert.Equal(t, "Work", cal.Name)
-		assert.Equal(t, "Team calendar", cal.Description)
-		assert.Equal(t, "#FF0000", cal.Color)
-		assert.Empty(t, cal.DeadProperties)
+		assert.Equal(t, "Work", cal.Properties.DisplayName())
+		assert.Equal(t, "Team calendar", cal.Properties.Description())
+		assert.Equal(t, "#FF0000", cal.Properties.Color())
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -1129,10 +1128,9 @@ func TestPropPatchLiveProperties(t *testing.T) {
 
 		cal, err := backend.GetCalendar(t.Context(), calendarPath)
 		require.NoError(t, err)
-		assert.Empty(t, cal.Name)
-		assert.Empty(t, cal.Description)
-		assert.Empty(t, cal.Color)
-		assert.Empty(t, cal.DeadProperties)
+		assert.Empty(t, cal.Properties.DisplayName())
+		assert.Empty(t, cal.Properties.Description())
+		assert.Empty(t, cal.Properties.Color())
 	})
 }
 

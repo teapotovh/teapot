@@ -85,6 +85,19 @@ func (b *fakeBackend) PutCalendar(_ context.Context, calendar *caldav.Calendar) 
 	defer b.mu.Unlock()
 
 	_, exists := b.calendars[stored.Path]
+	if !exists {
+		components, err := stored.Properties.SupportedComponentSet()
+		if err != nil {
+			return false, err
+		}
+
+		if len(components) == 0 {
+			if err := stored.Properties.SetSupportedComponentSet([]string{"VEVENT"}); err != nil {
+				return false, err
+			}
+		}
+	}
+
 	b.calendars[stored.Path] = stored
 
 	return !exists, nil

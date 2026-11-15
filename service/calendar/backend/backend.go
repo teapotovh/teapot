@@ -2,11 +2,9 @@ package backend
 
 import (
 	"context"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/http"
 	"path"
 	"strings"
@@ -62,39 +60,18 @@ func (b *Backend) CalendarHomeSetPath(ctx context.Context) (path string, err err
 }
 
 func caldavCalendarToStoreCalendar(cal *caldav.Calendar) store.Calendar {
-	var deadProperties store.DeadProperties
-	if len(cal.DeadProperties) > 0 {
-		deadProperties = make(store.DeadProperties, len(cal.DeadProperties))
-		maps.Copy(deadProperties, cal.DeadProperties)
-	}
-
 	return store.Calendar{
 		Path: normalizePath(cal.Path),
 		Metadata: store.CalendarMetadata{
-			Name:                  cal.Name,
-			Description:           cal.Description,
-			Color:                 cal.Color,
-			SupportedComponentSet: cal.SupportedComponentSet,
-			MaxResourceSize:       cal.MaxResourceSize,
-			DeadProperties:        deadProperties,
+			Properties: cal.Properties.Values(),
 		},
 	}
 }
 
 func storeCalendarToCaldavCalendar(cal store.Calendar) caldav.Calendar {
-	var deadProperties map[xml.Name]string
-	if len(cal.Metadata.DeadProperties) > 0 {
-		deadProperties = make(map[xml.Name]string, len(cal.Metadata.DeadProperties))
-		maps.Copy(deadProperties, cal.Metadata.DeadProperties)
-	}
-
 	return caldav.Calendar{
-		Path:                  string(cal.Path),
-		Name:                  cal.Metadata.Name,
-		Description:           cal.Metadata.Description,
-		Color:                 cal.Metadata.Color,
-		SupportedComponentSet: cal.Metadata.SupportedComponentSet,
-		DeadProperties:        deadProperties,
+		Path:       string(cal.Path),
+		Properties: caldav.NewCalendarProperties(cal.Metadata.Properties),
 	}
 }
 
@@ -160,8 +137,24 @@ func (b *Backend) PutCalendar(ctx context.Context, calendar *caldav.Calendar) (c
 		return false, ErrUnexpectedNilCalendar
 	}
 
-	if len(calendar.SupportedComponentSet) <= 0 {
-		calendar.SupportedComponentSet = SupportedComponentSet
+	_, getErr := b.store.GetCalendar(ctx, normalizePath(calendar.Path))
+
+	isNew := errors.Is(getErr, store.ErrNotFound)
+	if getErr != nil && !isNew {
+		return false, fmt.Errorf("error while checking calendar at path %q in storage: %w", calendar.Path, getErr)
+	}
+
+	if isNew {
+		components, err := calendar.Properties.SupportedComponentSet()
+		if err != nil {
+			return false, err
+		}
+
+		if len(components) == 0 {
+			if err := calendar.Properties.SetSupportedComponentSet(SupportedComponentSet); err != nil {
+				return false, err
+			}
+		}
 	}
 
 	we.withCalendar(calendar)
@@ -260,16 +253,8 @@ func (b *Backend) PutCalendarObject(
 
 	// A calendar object is a direct child of a calendar collection (RFC 4791 section 4.2).
 	calendarPath := path.Dir(string(storePath))
-	if cal, err := b.GetCalendar(ctx, calendarPath); err != nil {
-		if !daverr.IsNotFound(err) {
-			return nil, false, fmt.Errorf("error while getting calendar at path %q: %w", calendarPath, err)
-		}
-	} else if err := checkSupportedComponents(cal.SupportedComponentSet, calendar); err != nil {
-		return nil, false, fmt.Errorf(
-			"calendar object at path %q contains a component outside the calendar component set: %w",
-			storePath,
-			err,
-		)
+	if err := b.checkCalendarComponents(ctx, calendarPath, storePath, calendar); err != nil {
+		return nil, false, err
 	}
 
 	objPtr, err := caldavObjectToStoreObject(objectPath, calendar)
@@ -463,6 +448,41 @@ func (b *Backend) DeleteCalendarObject(
 		}
 
 		return err
+	}
+
+	return nil
+}
+
+func (b *Backend) checkCalendarComponents(
+	ctx context.Context,
+	calendarPath string,
+	objectPath store.Path,
+	calendar *ics.Calendar,
+) error {
+	cal, err := b.GetCalendar(ctx, calendarPath)
+	if err != nil {
+		if daverr.IsNotFound(err) {
+			return nil
+		}
+
+		return fmt.Errorf("error while getting calendar at path %q: %w", calendarPath, err)
+	}
+
+	components, err := cal.Properties.SupportedComponentSet()
+	if err != nil {
+		return fmt.Errorf(
+			"error while reading supported calendar components at path %q: %w",
+			calendarPath,
+			err,
+		)
+	}
+
+	if err := checkSupportedComponents(components, calendar); err != nil {
+		return fmt.Errorf(
+			"calendar object at path %q contains a component outside the calendar component set: %w",
+			objectPath,
+			err,
+		)
 	}
 
 	return nil

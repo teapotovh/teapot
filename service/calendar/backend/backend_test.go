@@ -81,11 +81,11 @@ func TestCalendarLifecycle(t *testing.T) {
 	b := newTestBackend(t)
 
 	calendar := &caldav.Calendar{
-		Path:        "/user/calendars/test/",
-		Name:        "Test calendar",
-		Description: "A calendar used in tests",
-		Color:       "#ff0000",
+		Path: "/user/calendars/test/",
 	}
+	require.NoError(t, calendar.Properties.SetDisplayName("Test calendar"))
+	require.NoError(t, calendar.Properties.SetDescription("A calendar used in tests"))
+	require.NoError(t, calendar.Properties.SetColor("#ff0000"))
 
 	_, err := b.PutCalendar(ctx, nil)
 	require.ErrorIs(t, err, ErrUnexpectedNilCalendar)
@@ -93,20 +93,32 @@ func TestCalendarLifecycle(t *testing.T) {
 	created, err := b.PutCalendar(ctx, calendar)
 	require.NoError(t, err)
 	require.True(t, created)
-	require.Equal(t, SupportedComponentSet, calendar.SupportedComponentSet)
+
+	components, err := calendar.Properties.SupportedComponentSet()
+	require.NoError(t, err)
+	require.Equal(t, SupportedComponentSet, components)
 
 	got, err := b.GetCalendar(ctx, "/user/calendars/test/")
 	require.NoError(t, err)
 	require.Equal(t, "/user/calendars/test", got.Path)
-	require.Equal(t, "Test calendar", got.Name)
-	require.Equal(t, "A calendar used in tests", got.Description)
-	require.Equal(t, "#ff0000", got.Color)
-	require.Equal(t, SupportedComponentSet, got.SupportedComponentSet)
+	name := got.Properties.DisplayName()
+	require.Equal(t, "Test calendar", name)
+
+	description := got.Properties.Description()
+	require.Equal(t, "A calendar used in tests", description)
+
+	color := got.Properties.Color()
+	require.Equal(t, "#ff0000", color)
+
+	components, err = got.Properties.SupportedComponentSet()
+	require.NoError(t, err)
+	require.Equal(t, SupportedComponentSet, components)
 
 	calendars, err := b.ListCalendars(ctx)
 	require.NoError(t, err)
 	require.Len(t, calendars, 1)
-	require.Equal(t, "Test calendar", calendars[0].Name)
+	name = calendars[0].Properties.DisplayName()
+	require.Equal(t, "Test calendar", name)
 	require.Equal(t, "/user/calendars/test", calendars[0].Path)
 
 	created, err = b.PutCalendar(ctx, calendar)
@@ -139,11 +151,11 @@ func TestPutCalendar(t *testing.T) {
 
 	calendar := &caldav.Calendar{
 		Path: calendarPath,
-		Name: "Test calendar",
-		DeadProperties: map[xml.Name]string{
-			details:  `<details xmlns="DAV:">My Name</details>`,
-			details2: `<details2 xmlns="DAV:">My Name 2</details2>`,
-		},
+		Properties: caldav.NewCalendarProperties(map[xml.Name]string{
+			{Space: "DAV:", Local: "displayname"}: `<displayname xmlns="DAV:">Test calendar</displayname>`,
+			details:                               `<details xmlns="DAV:">My Name</details>`,
+			details2:                              `<details2 xmlns="DAV:">My Name 2</details2>`,
+		}),
 	}
 	created, err := b.PutCalendar(ctx, calendar)
 	require.NoError(t, err)
@@ -151,15 +163,17 @@ func TestPutCalendar(t *testing.T) {
 
 	got, err := b.GetCalendar(ctx, calendarPath)
 	require.NoError(t, err)
-	require.Equal(t, "Test calendar", got.Name)
-	require.Equal(t, calendar.DeadProperties, got.DeadProperties)
+
+	name := got.Properties.DisplayName()
+	require.Equal(t, "Test calendar", name)
+	require.Equal(t, calendar.Properties, got.Properties)
 
 	replacement := &caldav.Calendar{
 		Path: calendarPath,
-		Name: "Renamed calendar",
-		DeadProperties: map[xml.Name]string{
-			details2: `<details2 xmlns="DAV:">My Name 3</details2>`,
-		},
+		Properties: caldav.NewCalendarProperties(map[xml.Name]string{
+			{Space: "DAV:", Local: "displayname"}: `<displayname xmlns="DAV:">Renamed calendar</displayname>`,
+			details2:                              `<details2 xmlns="DAV:">My Name 3</details2>`,
+		}),
 	}
 	created, err = b.PutCalendar(ctx, replacement)
 	require.NoError(t, err)
@@ -167,8 +181,10 @@ func TestPutCalendar(t *testing.T) {
 
 	got, err = b.GetCalendar(ctx, calendarPath)
 	require.NoError(t, err)
-	require.Equal(t, "Renamed calendar", got.Name)
-	require.Equal(t, replacement.DeadProperties, got.DeadProperties)
+
+	name = got.Properties.DisplayName()
+	require.Equal(t, "Renamed calendar", name)
+	require.Equal(t, replacement.Properties, got.Properties)
 }
 
 func TestCalendarObjectRoundTrip(t *testing.T) {
@@ -232,10 +248,9 @@ func TestPutCalendarObjectSupportedComponentSet(t *testing.T) {
 	ctx := testContext()
 	b := newTestBackend(t)
 
-	_, err := b.PutCalendar(ctx, &caldav.Calendar{
-		Path:                  "/user/calendars/test/",
-		SupportedComponentSet: []string{string(ics.ComponentVEvent)},
-	})
+	calendar := &caldav.Calendar{Path: "/user/calendars/test/"}
+	require.NoError(t, calendar.Properties.SetSupportedComponentSet([]string{string(ics.ComponentVEvent)}))
+	_, err := b.PutCalendar(ctx, calendar)
 	require.NoError(t, err)
 
 	todo := ics.NewCalendar()
