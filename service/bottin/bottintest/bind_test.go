@@ -14,11 +14,6 @@ func TestBaubleBind(t *testing.T) {
 
 	server := newTestServer(t)
 
-	t.Run("anonymous", func(t *testing.T) {
-		t.Parallel()
-		t.Skip(skipAnonymousBind)
-	})
-
 	t.Run("root", func(t *testing.T) {
 		t.Parallel()
 

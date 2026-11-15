@@ -68,10 +68,7 @@ func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []En
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	start := mementryFromPrefix(prefix)
-	end := mementryFromPrefix(prefixEnd(prefix))
-
-	m.tr.AscendRange(start, end, func(entry mementry) bool {
+	collect := func(entry mementry) bool {
 		// For non-exact matches, continue looping and collect all results
 		if !exact {
 			entries = append(entries, entry.entry)
@@ -85,7 +82,19 @@ func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []En
 		}
 
 		return true
-	})
+	}
+
+	// An empty prefix has no upper bound, so scan the whole tree.
+	if len(prefix) == 0 {
+		m.tr.Ascend(collect)
+
+		return entries, nil
+	}
+
+	start := mementryFromPrefix(prefix)
+	end := mementryFromPrefix(prefixEnd(prefix))
+
+	m.tr.AscendRange(start, end, collect)
 
 	return entries, nil
 }

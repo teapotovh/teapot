@@ -48,13 +48,19 @@ func noopNotify() notifyFunc {
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 
+	return newTestServerWithACL(t, []string{"*::bind read add modify delete compare:*:*"})
+}
+
+func newTestServerWithACL(t *testing.T, acl []string) *testServer {
+	t.Helper()
+
 	logger := slog.New(slog.DiscardHandler)
 
 	server, err := bottin.NewBottin(bottin.BottinConfig{
 		Store:  store.StoreConfig{Type: "mem"},
 		BaseDN: baseDN,
 		Passwd: rootPasswd,
-		ACL:    []string{"*::bind read add modify delete compare:*:*"},
+		ACL:    acl,
 	}, logger)
 	require.NoError(t, err)
 

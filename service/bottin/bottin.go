@@ -30,6 +30,14 @@ const (
 	AttrObjectClass  store.AttributeKey = "objectclass"
 	AttrMember       store.AttributeKey = "member"
 	AttrUserPassword store.AttributeKey = "userpassword"
+
+	// Root DSE attributes.
+
+	AttrNamingContexts       store.AttributeKey = "namingcontexts"
+	AttrSupportedLDAPVersion store.AttributeKey = "supportedldapversion"
+	AttrSupportedExtension   store.AttributeKey = "supportedextension"
+
+	ldapVersion = "3"
 )
 
 var (
@@ -135,29 +143,20 @@ func (server *Bottin) Run(ctx context.Context, notify run.Notify) error {
 }
 
 func (server *Bottin) initialize(ctx context.Context) error {
-	// Check that root object exists.
-	// If it does, we're done. Otherwise, we have some initialization to do.
-	exists, err := server.existsEntry(ctx, server.baseDN)
+	// Check that the root object and the root DSE exist.
+	// If they do, we're done. Otherwise, we have some initialization to do.
+	baseExists, err := server.existsEntry(ctx, server.baseDN)
 	if err != nil {
 		return fmt.Errorf("error while checking for root object existence: %w", err)
 	}
 
-	if exists {
-		return nil
-	}
-
-	uuid, err := uuid.NewRandom()
+	rootDSEExists, err := server.existsEntry(ctx, store.DN{})
 	if err != nil {
-		return fmt.Errorf("error while generating random uuid: %w", err)
+		return fmt.Errorf("error while checking for root DSE existence: %w", err)
 	}
 
-	// We have to initialize the server. Create a root object.
-	baseAttributes := store.Attributes{
-		AttrObjectClass:         store.AttributeValue{"top", "dcObject", "organization"},
-		"structuralobjectclass": store.AttributeValue{"organization"},
-		AttrCreatorsName:        store.AttributeValue{server.baseDN.String()},
-		AttrCreateTimestamp:     store.AttributeValue{genTimestamp()},
-		AttrEntryUUID:           store.AttributeValue{uuid.String()},
+	if baseExists && rootDSEExists {
+		return nil
 	}
 
 	tx, err := server.store.Begin(ctx)
@@ -165,16 +164,52 @@ func (server *Bottin) initialize(ctx context.Context) error {
 		return fmt.Errorf("error while beginning store transaction: %w", err)
 	}
 
-	entry := store.NewEntry(server.baseDN, baseAttributes)
-	if err = tx.Store(ctx, entry); err != nil {
-		return fmt.Errorf("error while storing base entry: %w", err)
+	if !rootDSEExists {
+		rootDSEAttributes := store.Attributes{
+			AttrObjectClass:          store.AttributeValue{"top"},
+			AttrNamingContexts:       store.AttributeValue{server.baseDN.String()},
+			AttrSupportedLDAPVersion: store.AttributeValue{ldapVersion},
+			AttrSupportedExtension:   store.AttributeValue{string(ldapsrv.NoticeOfPasswordModify)},
+		}
+
+		rootDSE := store.NewEntry(store.DN{}, rootDSEAttributes)
+		if err = tx.Store(ctx, rootDSE); err != nil {
+			return fmt.Errorf("error while storing root DSE: %w", err)
+		}
+	}
+
+	if !baseExists {
+		uuid, err := uuid.NewRandom()
+		if err != nil {
+			return fmt.Errorf("error while generating random uuid: %w", err)
+		}
+
+		// We have to initialize the server. Create a root object.
+		baseAttributes := store.Attributes{
+			AttrObjectClass:         store.AttributeValue{"top", "dcObject", "organization"},
+			"structuralobjectclass": store.AttributeValue{"organization"},
+			AttrCreatorsName:        store.AttributeValue{server.baseDN.String()},
+			AttrCreateTimestamp:     store.AttributeValue{genTimestamp()},
+			AttrEntryUUID:           store.AttributeValue{uuid.String()},
+		}
+
+		entry := store.NewEntry(server.baseDN, baseAttributes)
+		if err = tx.Store(ctx, entry); err != nil {
+			return fmt.Errorf("error while storing base entry: %w", err)
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("could not commit store transaction: %w", err)
 	}
 
-	server.logger.InfoContext(ctx, "initialized base entry", "dn", server.baseDN)
+	if !baseExists {
+		server.logger.InfoContext(ctx, "initialized base entry", "dn", server.baseDN)
+	}
+
+	if !rootDSEExists {
+		server.logger.InfoContext(ctx, "initialized root DSE")
+	}
 
 	return nil
 }
@@ -183,6 +218,10 @@ func (server *Bottin) parseDN(rawDN string, allowPrefix bool) (store.DN, error) 
 	dn, err := store.ParseDN(rawDN)
 	if err != nil {
 		return nil, err
+	}
+
+	if dn.Level() == 0 && allowPrefix {
+		return dn, nil
 	}
 
 	baseDN := server.baseDN

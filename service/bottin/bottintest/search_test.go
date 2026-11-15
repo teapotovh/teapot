@@ -6,6 +6,9 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/teapotovh/teapot/lib/ldapsrv"
+	"github.com/teapotovh/teapot/service/bottin"
 )
 
 // Adapted from:
@@ -189,5 +192,101 @@ func TestBaubleSearchAttributeSelection(t *testing.T) {
 	t.Run("operational attributes", func(t *testing.T) {
 		t.Parallel()
 		t.Skip(skipOperational)
+	})
+}
+
+// Adapted from:
+// https://github.com/rumba-id/bauble/blob/ce079b46a8996ea0b8a1ec5bd07def580944579b/src/bauble/suites/rfc4512.py
+func TestRootDSE(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer(t)
+
+	t.Run("base scope", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dialRoot(t)
+
+		result := search(t, conn, "", ldap.ScopeBaseObject, "(objectClass=*)", nil)
+		require.Len(t, result.Entries, 1)
+
+		entry := result.Entries[0]
+		assert.Empty(t, entry.DN)
+		assert.Equal(t, baseDN, entry.GetEqualFoldAttributeValue("namingContexts"))
+		assert.Equal(t, "3", entry.GetEqualFoldAttributeValue("supportedLDAPVersion"))
+		assert.Equal(
+			t,
+			string(ldapsrv.NoticeOfPasswordModify),
+			entry.GetEqualFoldAttributeValue("supportedExtension"),
+		)
+	})
+
+	t.Run("selected attribute", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dialRoot(t)
+
+		result := search(t, conn, "", ldap.ScopeBaseObject, "(objectClass=*)", []string{"namingContexts"})
+		require.Len(t, result.Entries, 1)
+
+		entry := result.Entries[0]
+		assert.Equal(t, baseDN, entry.GetEqualFoldAttributeValue("namingContexts"))
+		assert.Empty(t, entry.GetEqualFoldAttributeValue("supportedLDAPVersion"))
+	})
+
+	t.Run("no attributes", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dialRoot(t)
+
+		result := search(t, conn, "", ldap.ScopeBaseObject, "(objectClass=*)", []string{"1.1"})
+		require.Len(t, result.Entries, 1)
+		assert.Empty(t, result.Entries[0].Attributes)
+	})
+
+	t.Run("subtree scope", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dialRoot(t)
+
+		result := search(t, conn, "", ldap.ScopeWholeSubtree, "(objectClass=*)", nil)
+		assert.Empty(t, result.Entries)
+	})
+
+	t.Run("user attributes", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dialRoot(t)
+
+		result := search(t, conn, "", ldap.ScopeBaseObject, "(objectClass=*)", []string{"*"})
+		require.Len(t, result.Entries, 1)
+
+		entry := result.Entries[0]
+		assert.Equal(t, "top", entry.GetEqualFoldAttributeValue("objectClass"))
+		assert.Empty(t, entry.GetEqualFoldAttributeValue("namingContexts"))
+	})
+
+	t.Run("operational attributes", func(t *testing.T) {
+		t.Parallel()
+
+		conn := server.dialRoot(t)
+
+		result := search(t, conn, "", ldap.ScopeBaseObject, "(objectClass=*)", []string{"+"})
+		require.Len(t, result.Entries, 1)
+
+		entry := result.Entries[0]
+		assert.Equal(t, baseDN, entry.GetEqualFoldAttributeValue("namingContexts"))
+		assert.Empty(t, entry.GetEqualFoldAttributeValue("objectClass"))
+	})
+
+	t.Run("default acl", func(t *testing.T) {
+		t.Parallel()
+
+		defaultServer := newTestServerWithACL(t, bottin.DefaultACL)
+		conn := defaultServer.dial(t)
+
+		result := search(t, conn, "", ldap.ScopeBaseObject, "(objectClass=*)", []string{"namingContexts"})
+		require.Len(t, result.Entries, 1)
+		assert.Equal(t, baseDN, result.Entries[0].GetEqualFoldAttributeValue("namingContexts"))
 	})
 }

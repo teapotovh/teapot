@@ -17,6 +17,9 @@ var (
 		AttrCreateTimestamp,
 		AttrModifiersName,
 		AttrModifyTimestamp,
+		AttrNamingContexts,
+		AttrSupportedLDAPVersion,
+		AttrSupportedExtension,
 		"entrycsn",
 	}
 
