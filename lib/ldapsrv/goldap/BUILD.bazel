@@ -83,6 +83,7 @@ go_test(
     srcs = [
         "asn1_test.go",
         "bytes_test.go",
+        "filter_test.go",
         "fuzz_test.go",
         "message_test.go",
         "read_error_test.go",
@@ -91,5 +92,9 @@ go_test(
         "write_test.go",
     ],
     embed = [":goldap"],
-    deps = ["@com_github_go_ldap_ldap_v3//:ldap"],
+    deps = [
+        "@com_github_go_ldap_ldap_v3//:ldap",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )
