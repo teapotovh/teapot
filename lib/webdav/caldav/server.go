@@ -33,6 +33,9 @@ var (
 	ErrMany2IncompatibleWithIfNotDefined = errors.New(
 		"if is-not-defined is provided, time-range, prop-filter, or comp-filter can't be provided",
 	)
+
+	// ErrInvalidTimeZone reports a malformed CALDAV:timezone element.
+	ErrInvalidTimeZone = errors.New("invalid timezone element")
 )
 
 // Backend is a CalDAV server backend.
@@ -216,6 +219,36 @@ func decodeCompFilter(el *compFilter) (*CompFilter, error) {
 	return cf, nil
 }
 
+// decodeTimeZone parses the CALDAV:timezone element, as defined in RFC 4791,
+// section 9.8. It returns UTC when the element is absent.
+func decodeTimeZone(el *calendarTimeZone) (*time.Location, error) {
+	if el == nil || strings.TrimSpace(el.Data) == "" {
+		return time.UTC, nil
+	}
+
+	cal, err := ics.ParseCalendar(strings.NewReader(el.Data))
+	if err != nil {
+		return nil, fmt.Errorf("caldav: failed to parse timezone: %w: %w", ErrInvalidTimeZone, err)
+	}
+
+	timezones := cal.Timezones()
+	if len(timezones) == 0 {
+		return nil, fmt.Errorf("caldav: failed to parse timezone: %w: no VTIMEZONE", ErrInvalidTimeZone)
+	}
+
+	prop := timezones[0].GetProperty(ics.ComponentPropertyTzid)
+	if prop == nil {
+		return nil, fmt.Errorf("caldav: failed to parse timezone: %w: no TZID", ErrInvalidTimeZone)
+	}
+
+	location, err := time.LoadLocation(unquoteValue(prop.Value))
+	if err != nil {
+		return nil, fmt.Errorf("caldav: failed to parse timezone: %w: %w", ErrInvalidTimeZone, err)
+	}
+
+	return location, nil
+}
+
 func decodeComp(comp *comp) (*CalendarCompRequest, error) {
 	if comp == nil {
 		return nil, daverr.HTTPErrorf(http.StatusBadRequest, "caldav: unexpected empty calendar-data in request")
@@ -304,6 +337,11 @@ func (h *Handler) handleQuery(r *http.Request, w http.ResponseWriter, query *cal
 	}
 
 	q.CompFilter = *cf
+
+	q.TimeZone, err = decodeTimeZone(query.TimeZone)
+	if err != nil {
+		return err
+	}
 
 	cos, err := h.Backend.QueryCalendarObjects(r.Context(), r.URL.Path, &q)
 	if err != nil {

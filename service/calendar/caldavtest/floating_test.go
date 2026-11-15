@@ -68,7 +68,6 @@ func TestAppleFloating(t *testing.T) {
 			name    string
 			fixture string
 			want    []string
-			reason  string
 		}{
 			{
 				// Ported from:
@@ -76,7 +75,6 @@ func TestAppleFloating(t *testing.T) {
 				name:    "us eastern",
 				fixture: fixtureFloating1,
 				want:    []string{"1.ics", "3.ics", "5.ics", "6.ics"},
-				reason:  "RFC 4791 7.8.4: floating-time and calendar-timezone query semantics are not implemented.",
 			},
 			{
 				// Ported from:
@@ -84,7 +82,6 @@ func TestAppleFloating(t *testing.T) {
 				name:    "us pacific",
 				fixture: fixtureFloating2,
 				want:    []string{"1.ics", "3.ics", "6.ics"},
-				reason:  "RFC 4791 7.8.4: floating-time and calendar-timezone query semantics are not implemented.",
 			},
 			{
 				// Ported from:
@@ -92,15 +89,12 @@ func TestAppleFloating(t *testing.T) {
 				name:    "gmt",
 				fixture: "Resource/CalDAV/floating/3.txt",
 				want:    []string{"1.ics", "3.ics", "5.ics", "6.ics", "7.ics"},
-				reason:  "RFC 4791 7.8.4: floating-time and calendar-timezone query semantics are not implemented.",
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
-
-				t.Skip(tt.reason)
 
 				srv := newFloatingServer(t)
 				path := calendarHome(userOne) + "calendar-none/"
@@ -145,8 +139,6 @@ func TestAppleFloating(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
-
-				t.Skip("RFC 4791 7.8.4: calendar-timezone property semantics are not implemented.")
 
 				srv := newFloatingServer(t)
 				path := calendarHome(userOne) + "calendar-us/"

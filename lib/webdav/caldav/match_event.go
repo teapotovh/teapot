@@ -10,17 +10,18 @@ import (
 
 // eventMatcher matches a filter against a VEVENT component.
 type eventMatcher struct {
-	comp  *ics.VEvent
-	times eventTimes
+	comp     *ics.VEvent
+	times    eventTimes
+	location *time.Location
 }
 
-func newEventMatcher(comp *ics.VEvent) (componentMatcher, error) {
-	times, err := newEventTimes(comp)
+func newEventMatcher(comp *ics.VEvent, location *time.Location) (componentMatcher, error) {
+	times, err := newEventTimes(comp, location)
 	if err != nil {
 		return nil, err
 	}
 
-	return eventMatcher{comp: comp, times: times}, nil
+	return eventMatcher{comp: comp, times: times, location: location}, nil
 }
 
 func (m eventMatcher) match(filter CompFilter) (bool, error) {
@@ -29,7 +30,7 @@ func (m eventMatcher) match(filter CompFilter) (bool, error) {
 	}
 
 	if !filter.Start.IsZero() || !filter.End.IsZero() {
-		match, err := matchEventTimeRange(filter.Start, filter.End, m.comp, m.times)
+		match, err := matchEventTimeRange(filter.Start, filter.End, m.comp, m.times, m.location)
 		if err != nil {
 			return false, fmt.Errorf("error while matching time: %w", err)
 		}
@@ -39,11 +40,17 @@ func (m eventMatcher) match(filter CompFilter) (bool, error) {
 		}
 	}
 
-	return matchComponentFilters(filter, &m.comp.ComponentBase, m.times.start, m.times.end)
+	return matchComponentFilters(
+		filter,
+		&m.comp.ComponentBase,
+		m.times.start,
+		m.times.end,
+		m.location,
+	)
 }
 
-func matchEvent(filter CompFilter, comp *ics.VEvent) (bool, error) {
-	matcher, err := newEventMatcher(comp)
+func matchEvent(filter CompFilter, comp *ics.VEvent, location *time.Location) (bool, error) {
+	matcher, err := newEventMatcher(comp, location)
 	if err != nil {
 		return false, fmt.Errorf("while parsing event: %w", err)
 	}
@@ -78,8 +85,8 @@ type eventTimes struct {
 	point      bool
 }
 
-func newEventTimes(comp *ics.VEvent) (eventTimes, error) {
-	start, err := comp.GetStartAt()
+func newEventTimes(comp *ics.VEvent, location *time.Location) (eventTimes, error) {
+	start, err := parseTimeProperty(&comp.ComponentBase, ics.ComponentPropertyDtStart, location)
 	if err != nil {
 		return eventTimes{}, fmt.Errorf("while parsing event start time: %w", err)
 	}
@@ -97,7 +104,7 @@ func newEventTimes(comp *ics.VEvent) (eventTimes, error) {
 
 	switch {
 	case eventEndProp != nil:
-		times.end, err = comp.GetEndAt()
+		times.end, err = parseTimeProperty(&comp.ComponentBase, ics.ComponentPropertyDtEnd, location)
 		if err != nil {
 			return eventTimes{}, fmt.Errorf("while parsing event end time: %w", err)
 		}
@@ -112,10 +119,15 @@ func newEventTimes(comp *ics.VEvent) (eventTimes, error) {
 	return times, nil
 }
 
-func matchEventTimeRange(start, end time.Time, comp *ics.VEvent, times eventTimes) (bool, error) {
+func matchEventTimeRange(
+	start, end time.Time,
+	comp *ics.VEvent,
+	times eventTimes,
+	location *time.Location,
+) (bool, error) {
 	duration := times.end.Sub(times.start)
 
-	occurrences, err := recurrenceStarts(&comp.ComponentBase, times.start, duration, start, end)
+	occurrences, err := recurrenceStarts(&comp.ComponentBase, times.start, duration, start, end, location)
 	if err != nil {
 		return false, err
 	}

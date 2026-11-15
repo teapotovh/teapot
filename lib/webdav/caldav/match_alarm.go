@@ -13,16 +13,19 @@ import (
 type alarmMatcher struct {
 	comp                   *ics.VAlarm
 	parentStart, parentEnd time.Time
+	location               *time.Location
 }
 
 func newAlarmMatcher(
 	comp *ics.VAlarm,
 	parentStart, parentEnd time.Time,
+	location *time.Location,
 ) componentMatcher {
 	return alarmMatcher{
 		comp:        comp,
 		parentStart: parentStart,
 		parentEnd:   parentEnd,
+		location:    location,
 	}
 }
 
@@ -42,7 +45,13 @@ func (m alarmMatcher) match(filter CompFilter) (bool, error) {
 		}
 	}
 
-	return matchComponentFilters(filter, &m.comp.ComponentBase, time.Time{}, time.Time{})
+	return matchComponentFilters(
+		filter,
+		&m.comp.ComponentBase,
+		time.Time{},
+		time.Time{},
+		m.location,
+	)
 }
 
 func matchAlarmTimeRange(

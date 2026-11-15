@@ -344,7 +344,7 @@ func TestFilterRFC4791Examples(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := Filter(tt.query, cos)
+			got, err := Filter(tt.query, cos, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, objectPaths(got))
 		})
@@ -356,7 +356,7 @@ func TestFilterNilQuery(t *testing.T) {
 
 	cos := appendixBCalendarObjects(t)
 
-	got, err := Filter(nil, cos)
+	got, err := Filter(nil, cos, time.UTC)
 	require.NoError(t, err)
 	assert.Equal(t, cos, got)
 }
@@ -366,7 +366,7 @@ func TestFilterInvalidTopLevel(t *testing.T) {
 
 	cos := appendixBCalendarObjects(t)
 
-	_, err := Filter(&CompFilter{Name: testEventComponent}, cos)
+	_, err := Filter(&CompFilter{Name: testEventComponent}, cos, time.UTC)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrInvalidTopLevel)
 }
@@ -374,10 +374,10 @@ func TestFilterInvalidTopLevel(t *testing.T) {
 func TestMatchCalendarEmptyObject(t *testing.T) {
 	t.Parallel()
 
-	_, err := MatchCalendar(CompFilter{Name: testCalendarComponent}, nil)
+	_, err := MatchCalendar(CompFilter{Name: testCalendarComponent}, nil, time.UTC)
 	assert.ErrorIs(t, err, ErrMatchEmptyObject)
 
-	_, err = MatchCalendar(CompFilter{Name: testCalendarComponent}, &ics.Calendar{})
+	_, err = MatchCalendar(CompFilter{Name: testCalendarComponent}, &ics.Calendar{}, time.UTC)
 	assert.ErrorIs(t, err, ErrMatchEmptyObject)
 }
 
@@ -425,7 +425,7 @@ func TestMatchCalendarMultipleComponentFilters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			match, err := MatchCalendar(tt.query, tt.cal)
+			match, err := MatchCalendar(tt.query, tt.cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
@@ -473,7 +473,7 @@ func TestMatchCalendarPropDateFilterAnyMatch(t *testing.T) {
 				}},
 			}
 
-			match, err := MatchCalendar(*query, cal)
+			match, err := MatchCalendar(*query, cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
