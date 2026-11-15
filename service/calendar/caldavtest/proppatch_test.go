@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/teapotovh/teapot/lib/webdav"
@@ -157,7 +156,6 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L170-L206
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 
@@ -194,7 +192,6 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L207-L224
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 
@@ -214,7 +211,6 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L228-L271
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 
@@ -237,7 +233,7 @@ func TestAppleProppatch(t *testing.T) {
 		)
 		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
 		assertPropValue(t, res.Body, calendarPath(userOne), http.StatusOK, detailsProperty, "My Name")
-		assert.Contains(t, res.Body, "details xml:lang='en'")
+		assertPropAttribute(t, res.Body, calendarPath(userOne), http.StatusOK, detailsProperty, "lang", "en")
 	})
 
 	t.Run("remove property with attribute", func(t *testing.T) {
@@ -245,11 +241,21 @@ func TestAppleProppatch(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/proppatch.xml#L272-L312
-		t.Skip(skipProppatch)
 
 		srv := newTestServer(t)
 
+		// The Apple test runs after the set tests, so set the details first.
 		res := doRequest(
+			t,
+			srv,
+			webdav.MethodPropPatch,
+			calendarPath(userOne),
+			withContentType(xmlContentType),
+			withBody(loadAppleFixture(t, "Resource/CalDAV/proppatches/1.xml", nil)),
+		)
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		res = doRequest(
 			t,
 			srv,
 			webdav.MethodPropPatch,

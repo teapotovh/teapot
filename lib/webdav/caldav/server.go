@@ -608,41 +608,9 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 		return nil, err
 	}
 
-	if len(update.Set) > 0 && cal.DeadProperties == nil {
-		cal.DeadProperties = map[xml.Name]string{}
-	}
-
-	var names []xml.Name
-
-	for _, set := range update.Set {
-		for i := range set.Prop.Raw {
-			raw := &set.Prop.Raw[i]
-
-			name, ok := raw.XMLName()
-			if !ok {
-				continue
-			}
-
-			value, err := marshalProperty(raw)
-			if err != nil {
-				return nil, err
-			}
-
-			cal.DeadProperties[name] = value
-			names = append(names, name)
-		}
-	}
-
-	for _, remove := range update.Remove {
-		for i := range remove.Prop.Raw {
-			name, ok := remove.Prop.Raw[i].XMLName()
-			if !ok {
-				continue
-			}
-
-			delete(cal.DeadProperties, name)
-			names = append(names, name)
-		}
+	names, err := applyPropertyUpdate(update, cal)
+	if err != nil {
+		return nil, err
 	}
 
 	if _, err := b.Backend.PutCalendar(r.Context(), cal); err != nil {
@@ -658,6 +626,74 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 	}
 
 	return resp, nil
+}
+
+// applyPropertyUpdate applies the set and remove operations to the calendar.
+func applyPropertyUpdate(update *internal.PropertyUpdate, cal *Calendar) ([]xml.Name, error) {
+	if len(update.Set) > 0 && cal.DeadProperties == nil {
+		cal.DeadProperties = map[xml.Name]string{}
+	}
+
+	setNames, err := applySetProperties(update.Set, cal)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(setNames, applyRemoveProperties(update.Remove, cal)...), nil
+}
+
+func applySetProperties(sets []internal.Set, cal *Calendar) ([]xml.Name, error) {
+	var names []xml.Name
+
+	for _, set := range sets {
+		for i := range set.Prop.Raw {
+			raw := &set.Prop.Raw[i]
+
+			name, ok := raw.XMLName()
+			if !ok {
+				continue
+			}
+
+			live, err := setLiveProperty(raw, name, cal)
+			if err != nil {
+				return nil, err
+			}
+
+			if !live {
+				value, err := marshalProperty(raw)
+				if err != nil {
+					return nil, err
+				}
+
+				cal.DeadProperties[name] = value
+			}
+
+			names = append(names, name)
+		}
+	}
+
+	return names, nil
+}
+
+func applyRemoveProperties(removes []internal.Remove, cal *Calendar) []xml.Name {
+	var names []xml.Name
+
+	for _, remove := range removes {
+		for i := range remove.Prop.Raw {
+			name, ok := remove.Prop.Raw[i].XMLName()
+			if !ok {
+				continue
+			}
+
+			if !clearLiveProperty(name, cal) {
+				delete(cal.DeadProperties, name)
+			}
+
+			names = append(names, name)
+		}
+	}
+
+	return names
 }
 
 func marshalProperty(raw *internal.RawXMLValue) (string, error) {
@@ -676,6 +712,55 @@ func unmarshalProperty(value string) (*internal.RawXMLValue, error) {
 	}
 
 	return &raw, nil
+}
+
+// setLiveProperty stores a known live property in its typed calendar field.
+// It reports whether the property is a known live property.
+func setLiveProperty(raw *internal.RawXMLValue, name xml.Name, cal *Calendar) (bool, error) {
+	switch name {
+	case internal.DisplayNameName:
+		var displayName internal.DisplayName
+		if err := raw.Decode(&displayName); err != nil {
+			return true, fmt.Errorf("caldav: failed to decode displayname: %w", err)
+		}
+
+		cal.Name = displayName.Name
+	case calendarDescriptionName:
+		var description calendarDescription
+		if err := raw.Decode(&description); err != nil {
+			return true, fmt.Errorf("caldav: failed to decode calendar-description: %w", err)
+		}
+
+		cal.Description = description.Description
+	case calendarColorName:
+		var color calendarColor
+		if err := raw.Decode(&color); err != nil {
+			return true, fmt.Errorf("caldav: failed to decode calendar-color: %w", err)
+		}
+
+		cal.Color = color.Color
+	default:
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// clearLiveProperty clears the typed field of a known live property.
+// It reports whether the property is a known live property.
+func clearLiveProperty(name xml.Name, cal *Calendar) bool {
+	switch name {
+	case internal.DisplayNameName:
+		cal.Name = ""
+	case calendarDescriptionName:
+		cal.Description = ""
+	case calendarColorName:
+		cal.Color = ""
+	default:
+		return false
+	}
+
+	return true
 }
 
 func mapPreconditionError(err error) error {
