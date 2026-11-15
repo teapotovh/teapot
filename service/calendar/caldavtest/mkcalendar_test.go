@@ -171,8 +171,6 @@ func TestAppleMkcalendar(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L124-L154
-		t.Skip("RFC 4918 9.3.1: MKCALENDAR must reject properties it cannot set.")
-
 		srv := newTestServer(t)
 
 		res := doRequest(

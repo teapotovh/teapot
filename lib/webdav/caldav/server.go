@@ -608,6 +608,20 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 		return nil, err
 	}
 
+	protected, dependent := partitionProperties(update)
+	if len(protected) > 0 {
+		resp := &internal.Response{Hrefs: []internal.Href{{Path: r.URL.Path}}}
+		if err := encodeProps(resp, http.StatusForbidden, protected); err != nil {
+			return nil, err
+		}
+
+		if err := encodeProps(resp, http.StatusFailedDependency, dependent); err != nil {
+			return nil, err
+		}
+
+		return resp, nil
+	}
+
 	names, err := applyPropertyUpdate(update, cal)
 	if err != nil {
 		return nil, err
@@ -618,14 +632,95 @@ func (b *backend) PropPatch(r *http.Request, update *internal.PropertyUpdate) (*
 	}
 
 	resp := &internal.Response{Hrefs: []internal.Href{{Path: r.URL.Path}}}
-
-	for _, name := range names {
-		if err := resp.EncodeProp(http.StatusOK, internal.NewRawXMLElement(name, nil, nil)); err != nil {
-			return nil, err
-		}
+	if err := encodeProps(resp, http.StatusOK, names); err != nil {
+		return nil, err
 	}
 
 	return resp, nil
+}
+
+type unit struct{}
+
+// protectedProperties lists the properties the server computes or controls.
+var protectedProperties = map[xml.Name]unit{
+	internal.ResourceTypeName:            {},
+	internal.GetETagName:                 {},
+	internal.GetContentLengthName:        {},
+	internal.GetLastModifiedName:         {},
+	internal.CreationDateName:            {},
+	internal.SupportedReportSetName:      {},
+	internal.CurrentUserPrincipalName:    {},
+	internal.CurrentUserPrivilegeSetName: {},
+	supportedCalendarDataName:            {},
+	supportedCalendarComponentSetName:    {},
+	maxResourceSizeName:                  {},
+}
+
+func isProtectedProperty(name xml.Name) bool {
+	_, ok := protectedProperties[name]
+	return ok
+}
+
+func hasProtectedProperty(props []internal.RawXMLValue) bool {
+	for i := range props {
+		if name, ok := props[i].XMLName(); ok && isProtectedProperty(name) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func requestedProperties(update *internal.PropertyUpdate) []xml.Name {
+	var names []xml.Name
+
+	for _, set := range update.Set {
+		for i := range set.Prop.Raw {
+			name, ok := set.Prop.Raw[i].XMLName()
+			if !ok {
+				continue
+			}
+
+			names = append(names, name)
+		}
+	}
+
+	for _, remove := range update.Remove {
+		for i := range remove.Prop.Raw {
+			name, ok := remove.Prop.Raw[i].XMLName()
+			if !ok {
+				continue
+			}
+
+			names = append(names, name)
+		}
+	}
+
+	return names
+}
+
+// partitionProperties splits the requested properties into protected
+// properties and dependent properties.
+func partitionProperties(update *internal.PropertyUpdate) (protected, dependent []xml.Name) {
+	for _, name := range requestedProperties(update) {
+		if isProtectedProperty(name) {
+			protected = append(protected, name)
+		} else {
+			dependent = append(dependent, name)
+		}
+	}
+
+	return protected, dependent
+}
+
+func encodeProps(resp *internal.Response, status int, names []xml.Name) error {
+	for _, name := range names {
+		if err := resp.EncodeProp(status, internal.NewRawXMLElement(name, nil, nil)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // applyPropertyUpdate applies the set and remove operations to the calendar.
@@ -922,10 +1017,14 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 			)
 		}
 
-		cal.Name = m.DisplayName
-		cal.Description = m.Description
-		cal.MaxResourceSize = m.MaxResourceSize
-		cal.SupportedComponentSet = componentNames(m.SupportedComponents)
+		if hasProtectedProperty(m.Prop.Raw) {
+			return daverr.HTTPErrorf(http.StatusForbidden, "caldav: cannot set protected property")
+		}
+
+		cal.Name = m.Prop.DisplayName
+		cal.Description = m.Prop.Description
+		cal.MaxResourceSize = m.Prop.MaxResourceSize
+		cal.SupportedComponentSet = componentNames(m.Prop.SupportedComponents)
 	}
 
 	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)

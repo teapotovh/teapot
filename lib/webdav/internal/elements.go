@@ -29,6 +29,7 @@ var (
 	GetContentTypeName   = xml.Name{Space: Namespace, Local: "getcontenttype"}
 	GetLastModifiedName  = xml.Name{Space: Namespace, Local: "getlastmodified"}
 	GetETagName          = xml.Name{Space: Namespace, Local: "getetag"}
+	CreationDateName     = xml.Name{Space: Namespace, Local: "creationdate"}
 
 	CollectionName = xml.Name{Space: Namespace, Local: "collection"}
 	PrincipalName  = xml.Name{Space: Namespace, Local: "principal"}

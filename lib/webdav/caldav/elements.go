@@ -267,9 +267,14 @@ type mkcolReq struct {
 }
 
 type mkcalendarReq struct {
-	XMLName             xml.Name `xml:"urn:ietf:params:xml:ns:caldav mkcalendar"`
-	DisplayName         string   `xml:"set>prop>displayname"`
-	Description         string   `xml:"set>prop>calendar-description"`
-	SupportedComponents []comp   `xml:"set>prop>supported-calendar-component-set>comp"`
-	MaxResourceSize     int64    `xml:"set>prop>max-resource-size"`
+	XMLName xml.Name       `xml:"urn:ietf:params:xml:ns:caldav mkcalendar"`
+	Prop    mkcalendarProp `xml:"set>prop"`
+}
+
+type mkcalendarProp struct {
+	DisplayName         string                 `xml:"displayname"`
+	Description         string                 `xml:"calendar-description"`
+	SupportedComponents []comp                 `xml:"supported-calendar-component-set>comp"`
+	MaxResourceSize     int64                  `xml:"max-resource-size"`
+	Raw                 []internal.RawXMLValue `xml:",any"`
 }
