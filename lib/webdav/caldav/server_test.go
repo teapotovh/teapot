@@ -1065,6 +1065,77 @@ func TestReportUnsupportedRoot(t *testing.T) {
 	assert.Contains(t, res.Body, "supported-report")
 }
 
+const (
+	proppatchLiveProperties = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
+  <D:set>
+    <D:prop>
+      <D:displayname>Work</D:displayname>
+      <C:calendar-description>Team calendar</C:calendar-description>
+      <A:calendar-color>#FF0000</A:calendar-color>
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`
+
+	proppatchRemoveLiveProperties = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
+  <D:remove>
+    <D:prop>
+      <D:displayname/>
+      <C:calendar-description/>
+      <A:calendar-color/>
+    </D:prop>
+  </D:remove>
+</D:propertyupdate>`
+)
+
+func TestPropPatchLiveProperties(t *testing.T) {
+	t.Parallel()
+
+	t.Run("set", func(t *testing.T) {
+		t.Parallel()
+
+		srv, backend := newTestServerWithBackend(t)
+		createCalendar(t, srv)
+
+		res := doRequest(t, srv, webdav.MethodPropPatch, calendarPath, proppatchLiveProperties, map[string]string{
+			headerContentType: contentTypeXML,
+		})
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		cal, err := backend.GetCalendar(t.Context(), calendarPath)
+		require.NoError(t, err)
+		assert.Equal(t, "Work", cal.Name)
+		assert.Equal(t, "Team calendar", cal.Description)
+		assert.Equal(t, "#FF0000", cal.Color)
+		assert.Empty(t, cal.DeadProperties)
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		t.Parallel()
+
+		srv, backend := newTestServerWithBackend(t)
+		createCalendar(t, srv)
+
+		res := doRequest(t, srv, webdav.MethodPropPatch, calendarPath, proppatchLiveProperties, map[string]string{
+			headerContentType: contentTypeXML,
+		})
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		res = doRequest(t, srv, webdav.MethodPropPatch, calendarPath, proppatchRemoveLiveProperties, map[string]string{
+			headerContentType: contentTypeXML,
+		})
+		require.Equal(t, http.StatusMultiStatus, res.Status, "body: %s", res.Body)
+
+		cal, err := backend.GetCalendar(t.Context(), calendarPath)
+		require.NoError(t, err)
+		assert.Empty(t, cal.Name)
+		assert.Empty(t, cal.Description)
+		assert.Empty(t, cal.Color)
+		assert.Empty(t, cal.DeadProperties)
+	})
+}
+
 func TestUnsupportedMethods(t *testing.T) {
 	t.Parallel()
 

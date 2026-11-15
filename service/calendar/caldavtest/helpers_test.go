@@ -395,7 +395,8 @@ func assertCalendarDataEqual(t *testing.T, got string, want string) {
 
 type genericProp struct {
 	XMLName xml.Name
-	Value   string `xml:",chardata"`
+	Value   string     `xml:",chardata"`
+	Attrs   []xml.Attr `xml:",any,attr"`
 }
 
 type genericPropValues struct {
@@ -480,6 +481,51 @@ func assertPropValue(t *testing.T, body string, href string, status int, name xm
 				assert.Equal(t, want, strings.TrimSpace(prop.Value))
 
 				return
+			}
+		}
+	}
+
+	require.FailNowf(t, "missing property", "no %s in %d propstat for %q", name.Local, status, href)
+}
+
+func assertPropAttribute(
+	t *testing.T,
+	body string,
+	href string,
+	status int,
+	name xml.Name,
+	attr string,
+	want string,
+) {
+	t.Helper()
+
+	var ms genericMultiStatus
+	require.NoError(t, xml.Unmarshal([]byte(body), &ms))
+
+	for _, response := range ms.Responses {
+		if !slicesContain(response.Hrefs, href) {
+			continue
+		}
+
+		for _, propstat := range response.PropStats {
+			if statusCode(t, propstat.Status) != status {
+				continue
+			}
+
+			for _, prop := range propstat.Prop.Props {
+				if prop.XMLName != name {
+					continue
+				}
+
+				for _, attribute := range prop.Attrs {
+					if attribute.Name.Local == attr {
+						assert.Equal(t, want, attribute.Value)
+
+						return
+					}
+				}
+
+				require.FailNowf(t, "missing attribute", "property %s has no %s attribute", name.Local, attr)
 			}
 		}
 	}
