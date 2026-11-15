@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "bottintest_test",
+    srcs = [
+        "add_test.go",
+        "bind_test.go",
+        "compare_test.go",
+        "delete_test.go",
+        "extended_test.go",
+        "group_test.go",
+        "harness_test.go",
+        "helpers_test.go",
+        "modify_test.go",
+        "search_test.go",
+        "unsupported_test.go",
+    ],
+    deps = [
+        "//lib/ldapsrv",
+        "//service/bottin",
+        "//service/bottin/store",
+        "@com_github_go_ldap_ldap_v3//:ldap",
+        "@com_github_jsimonetti_pwscheme//ssha512",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -131,7 +131,7 @@ func (server *Bottin) Search(ctx context.Context, state State, r ldap.SearchRequ
 	var results []ldap.SearchResultEntry
 	for _, entry := range entries {
 		if r.Scope() == ldap.SearchRequestScopeBaseObject {
-			if entry.DN.Equal(baseObject) {
+			if !entry.DN.Equal(baseObject) {
 				continue
 			}
 		} else if r.Scope() == ldap.SearchRequestSingleLevel {
