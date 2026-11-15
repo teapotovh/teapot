@@ -10,17 +10,18 @@ import (
 
 // todoMatcher matches a filter against a VTODO component.
 type todoMatcher struct {
-	comp  *ics.VTodo
-	state todoState
+	comp     *ics.VTodo
+	state    todoState
+	location *time.Location
 }
 
-func newTodoMatcher(comp *ics.VTodo) (componentMatcher, error) {
-	state, err := newTodoState(comp)
+func newTodoMatcher(comp *ics.VTodo, location *time.Location) (componentMatcher, error) {
+	state, err := newTodoState(comp, location)
 	if err != nil {
 		return nil, err
 	}
 
-	return todoMatcher{comp: comp, state: state}, nil
+	return todoMatcher{comp: comp, state: state, location: location}, nil
 }
 
 func (m todoMatcher) match(filter CompFilter) (bool, error) {
@@ -29,7 +30,7 @@ func (m todoMatcher) match(filter CompFilter) (bool, error) {
 	}
 
 	if !filter.Start.IsZero() || !filter.End.IsZero() {
-		match, err := matchTodoTimeRange(filter.Start, filter.End, m.comp, m.state)
+		match, err := matchTodoTimeRange(filter.Start, filter.End, m.comp, m.state, m.location)
 		if err != nil {
 			return false, fmt.Errorf("error while matching time: %w", err)
 		}
@@ -44,11 +45,12 @@ func (m todoMatcher) match(filter CompFilter) (bool, error) {
 		&m.comp.ComponentBase,
 		m.state.alarmStart(),
 		m.state.alarmEnd(),
+		m.location,
 	)
 }
 
-func matchTodo(filter CompFilter, comp *ics.VTodo) (bool, error) {
-	matcher, err := newTodoMatcher(comp)
+func matchTodo(filter CompFilter, comp *ics.VTodo, location *time.Location) (bool, error) {
+	matcher, err := newTodoMatcher(comp, location)
 	if err != nil {
 		return false, fmt.Errorf("while parsing todo: %w", err)
 	}
@@ -66,7 +68,12 @@ type todoState struct {
 
 // matchTodoTimeRange reports whether a VTODO overlaps the time range, as
 // defined in RFC 4791, section 9.9.
-func matchTodoTimeRange(start, end time.Time, comp *ics.VTodo, state todoState) (bool, error) {
+func matchTodoTimeRange(
+	start, end time.Time,
+	comp *ics.VTodo,
+	state todoState,
+	location *time.Location,
+) (bool, error) {
 	if !state.hasStart && !state.hasDue {
 		return state.matches(start, end), nil
 	}
@@ -76,7 +83,7 @@ func matchTodoTimeRange(start, end time.Time, comp *ics.VTodo, state todoState) 
 		seed = state.due
 	}
 
-	occurrences, err := recurrenceStarts(&comp.ComponentBase, seed, state.duration, start, end)
+	occurrences, err := recurrenceStarts(&comp.ComponentBase, seed, state.duration, start, end, location)
 	if err != nil {
 		return false, err
 	}
@@ -90,7 +97,7 @@ func matchTodoTimeRange(start, end time.Time, comp *ics.VTodo, state todoState) 
 	return false, nil
 }
 
-func newTodoState(comp *ics.VTodo) (todoState, error) {
+func newTodoState(comp *ics.VTodo, location *time.Location) (todoState, error) {
 	base := &comp.ComponentBase
 
 	state := todoState{
@@ -104,14 +111,14 @@ func newTodoState(comp *ics.VTodo) (todoState, error) {
 	var err error
 
 	if state.hasStart {
-		state.start, err = comp.GetStartAt()
+		state.start, err = parseTimeProperty(base, ics.ComponentPropertyDtStart, location)
 		if err != nil {
 			return todoState{}, fmt.Errorf("while parsing todo start time: %w", err)
 		}
 	}
 
 	if state.hasDue {
-		state.due, err = comp.GetDueAt()
+		state.due, err = parseTimeProperty(base, ics.ComponentPropertyDue, location)
 		if err != nil {
 			return todoState{}, fmt.Errorf("while parsing todo due time: %w", err)
 		}

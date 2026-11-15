@@ -413,7 +413,7 @@ func (b *Backend) QueryCalendarObjects(
 
 	we.All = len(objects)
 
-	objects, err = caldav.Filter(&query.CompFilter, objects)
+	objects, err = caldav.Filter(&query.CompFilter, objects, query.TimeZone)
 	if err != nil {
 		return nil, fmt.Errorf("error while filtering down calendar objects: %w", err)
 	}

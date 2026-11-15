@@ -3,6 +3,7 @@ package caldav
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestMatchCalendarVTodoTimeRange(t *testing.T) {
 		}},
 	}
 
-	got, err := Filter(query, cos)
+	got, err := Filter(query, cos, time.UTC)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"/bernard/work/todo-due-jan-4.ics"}, objectPaths(got))
 }
@@ -290,7 +291,7 @@ func TestMatchCalendarVTodoTimeRangeStates(t *testing.T) {
 			query := timeRangeQuery(t, tt.start, tt.end)
 			query.Comps[0].Name = testTodoComponent
 
-			match, err := MatchCalendar(query, cal)
+			match, err := MatchCalendar(query, cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
@@ -381,7 +382,7 @@ func TestMatchCalendarVTodoRecurrence(t *testing.T) {
 			query := timeRangeQuery(t, tt.start, tt.end)
 			query.Comps[0].Name = testTodoComponent
 
-			match, err := MatchCalendar(query, cal)
+			match, err := MatchCalendar(query, cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})

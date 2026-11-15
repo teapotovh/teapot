@@ -2,6 +2,7 @@ package caldav
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,7 +77,7 @@ func TestMatchCalendarValarmTimeRange(t *testing.T) {
 				}},
 			}
 
-			match, err := MatchCalendar(*query, mustParseICS(t, tt.data))
+			match, err := MatchCalendar(*query, mustParseICS(t, tt.data), time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})

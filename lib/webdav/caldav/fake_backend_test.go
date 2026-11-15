@@ -152,7 +152,7 @@ func (b *fakeBackend) QueryCalendarObjects(
 		return objects, nil
 	}
 
-	return caldav.Filter(&query.CompFilter, objects)
+	return caldav.Filter(&query.CompFilter, objects, query.TimeZone)
 }
 
 func (b *fakeBackend) PutCalendarObject(

@@ -162,6 +162,67 @@ func TestDecodeCalendarQueryTimeRange(t *testing.T) {
 	assert.Empty(t, compReq.Comps[1].Props)
 }
 
+func calendarQueryWithTimeZone(tzid string) string {
+	return `<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <C:filter>
+    <C:comp-filter name="VCALENDAR"/>
+  </C:filter>
+  <C:timezone>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example Inc.//Example Calendar//EN
+BEGIN:VTIMEZONE
+TZID:` + tzid + `
+BEGIN:STANDARD
+DTSTART:20001026T020000
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+END:STANDARD
+END:VTIMEZONE
+END:VCALENDAR
+</C:timezone>
+</C:calendar-query>`
+}
+
+func TestDecodeCalendarQueryTimeZone(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "absent",
+			body: rfc4791CalendarQuery786,
+			want: "UTC",
+		},
+		{
+			name: "us eastern",
+			body: calendarQueryWithTimeZone("US/Eastern"),
+			want: "US/Eastern",
+		},
+		{
+			name: "quoted us eastern",
+			body: calendarQueryWithTimeZone(`"US/Eastern"`),
+			want: "US/Eastern",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := unmarshalReport(t, tt.body)
+			require.NotNil(t, req.Query)
+
+			location, err := decodeTimeZone(req.Query.TimeZone)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, location.String())
+		})
+	}
+}
+
 func TestDecodeCalendarDataLimitRecurrenceSet(t *testing.T) {
 	t.Parallel()
 

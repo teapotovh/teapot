@@ -84,12 +84,18 @@ type maxResourceSize struct {
 
 // https://tools.ietf.org/html/rfc4791#section-9.5
 type calendarQuery struct {
-	XMLName  xml.Name       `xml:"urn:ietf:params:xml:ns:caldav calendar-query"`
-	Prop     *internal.Prop `xml:"DAV: prop,omitempty"`
-	AllProp  *struct{}      `xml:"DAV: allprop,omitempty"`
-	PropName *struct{}      `xml:"DAV: propname,omitempty"`
-	Filter   filter         `xml:"filter"`
-	// TODO: timezone
+	XMLName  xml.Name          `xml:"urn:ietf:params:xml:ns:caldav calendar-query"`
+	Prop     *internal.Prop    `xml:"DAV: prop,omitempty"`
+	AllProp  *struct{}         `xml:"DAV: allprop,omitempty"`
+	PropName *struct{}         `xml:"DAV: propname,omitempty"`
+	Filter   filter            `xml:"filter"`
+	TimeZone *calendarTimeZone `xml:"urn:ietf:params:xml:ns:caldav timezone,omitempty"`
+}
+
+// https://tools.ietf.org/html/rfc4791#section-9.8
+type calendarTimeZone struct {
+	XMLName xml.Name `xml:"urn:ietf:params:xml:ns:caldav timezone"`
+	Data    string   `xml:",chardata"`
 }
 
 // https://tools.ietf.org/html/rfc4791#section-9.10

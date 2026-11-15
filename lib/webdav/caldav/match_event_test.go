@@ -124,11 +124,39 @@ func TestMatchCalendarTimeRangeBoundaries(t *testing.T) {
 			t.Parallel()
 
 			cal := mustParseICS(t, tt.data)
-			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
+			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
 	}
+}
+
+func TestMatchCalendarFloatingEventWithQueryTimeZone(t *testing.T) {
+	t.Parallel()
+
+	cal := mustParseICS(t, `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example Corp.//CalDAV Client//EN
+BEGIN:VEVENT
+UID:floating@example.com
+DTSTAMP:20060101T000000Z
+DTSTART:20060104T100000
+DTEND:20060104T110000
+END:VEVENT
+END:VCALENDAR`)
+
+	eastern, err := time.LoadLocation("US/Eastern")
+	require.NoError(t, err)
+
+	query := timeRangeQuery(t, "20060104T140000Z", "20060104T160000Z")
+
+	match, err := MatchCalendar(query, cal, eastern)
+	require.NoError(t, err)
+	assert.True(t, match, "the floating event is at 15:00 UTC in US/Eastern")
+
+	match, err = MatchCalendar(query, cal, time.UTC)
+	require.NoError(t, err)
+	assert.False(t, match, "the floating event is at 10:00 UTC without a query timezone")
 }
 
 func TestMatchCalendarInvalidDuration(t *testing.T) {
@@ -136,7 +164,7 @@ func TestMatchCalendarInvalidDuration(t *testing.T) {
 
 	cal := mustParseICS(t, teapotInvalidDuration)
 
-	_, err := MatchCalendar(timeRangeQuery(t, "20060104T000000Z", "20060105T000000Z"), cal)
+	_, err := MatchCalendar(timeRangeQuery(t, "20060104T000000Z", "20060105T000000Z"), cal, time.UTC)
 	require.ErrorIs(t, err, ErrInvalidDuration)
 }
 
@@ -187,7 +215,7 @@ func TestMatchCalendarNominalDurationAcrossDST(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			match, err := MatchCalendar(query(tt.start, tt.end), cal)
+			match, err := MatchCalendar(query(tt.start, tt.end), cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
@@ -223,7 +251,7 @@ func TestMatchCalendarExplicitZeroLength(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
+			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})
@@ -289,7 +317,7 @@ func TestMatchCalendarRecurrence(t *testing.T) {
 			t.Parallel()
 
 			cal := mustParseICS(t, tt.data)
-			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal)
+			match, err := MatchCalendar(timeRangeQuery(t, tt.start, tt.end), cal, time.UTC)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, match)
 		})

@@ -17,7 +17,7 @@ var (
 
 // Filter returns the filtered list of calendar objects matching the provided query.
 // A nil query will return the full list of calendar objects.
-func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
+func Filter(query *CompFilter, cos []CalendarObject, location *time.Location) ([]CalendarObject, error) {
 	if query == nil {
 		// FIXME: should we always return a copy of the provided slice?
 		return cos, nil
@@ -26,7 +26,7 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 	var out []CalendarObject
 
 	for _, co := range cos {
-		ok, err := MatchCalendar(*query, co.Data)
+		ok, err := MatchCalendar(*query, co.Data, location)
 		if err != nil {
 			return nil, fmt.Errorf("error while matching object at %q: %w", co.Path, err)
 		}
@@ -43,7 +43,7 @@ func Filter(query *CompFilter, cos []CalendarObject) ([]CalendarObject, error) {
 }
 
 // MatchCalendar reports whether the provided [*ics.Calendar] matches the query.
-func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
+func MatchCalendar(query CompFilter, cal *ics.Calendar, location *time.Location) (bool, error) {
 	if cal == nil || len(cal.Components) <= 0 {
 		return false, ErrMatchEmptyObject
 	}
@@ -58,7 +58,7 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 
 	// RFC 4791, section 9.7.1 requires every component filter to match.
 	for _, childFilter := range query.Comps {
-		childMatches, err := matchCalendarChild(childFilter, cal)
+		childMatches, err := matchCalendarChild(childFilter, cal, location)
 		if err != nil {
 			return false, err
 		}
@@ -72,11 +72,11 @@ func MatchCalendar(query CompFilter, cal *ics.Calendar) (bool, error) {
 }
 
 // matchCalendarChild reports whether a child of the VCALENDAR filter matches the calendar.
-func matchCalendarChild(filter CompFilter, cal *ics.Calendar) (bool, error) {
+func matchCalendarChild(filter CompFilter, cal *ics.Calendar, location *time.Location) (bool, error) {
 	switch {
 	case strings.EqualFold(filter.Name, string(ics.ComponentVEvent)):
 		for _, child := range cal.Events() {
-			childMatches, err := matchEvent(filter, child)
+			childMatches, err := matchEvent(filter, child, location)
 			if err != nil {
 				return false, fmt.Errorf("matching event component: %w", err)
 			}
@@ -88,7 +88,7 @@ func matchCalendarChild(filter CompFilter, cal *ics.Calendar) (bool, error) {
 
 	case strings.EqualFold(filter.Name, string(ics.ComponentVTodo)):
 		for _, child := range cal.Todos() {
-			childMatches, err := matchTodo(filter, child)
+			childMatches, err := matchTodo(filter, child, location)
 			if err != nil {
 				return false, fmt.Errorf("matching todo component: %w", err)
 			}
@@ -115,9 +115,10 @@ func matchComponentFilters(
 	filter CompFilter,
 	comp *ics.ComponentBase,
 	alarmStart, alarmEnd time.Time,
+	location *time.Location,
 ) (bool, error) {
 	for _, compFilter := range filter.Comps {
-		match, err := matchCompFilter(compFilter, comp, alarmStart, alarmEnd)
+		match, err := matchCompFilter(compFilter, comp, alarmStart, alarmEnd, location)
 		if err != nil {
 			return false, fmt.Errorf("error while matching component filter: %w", err)
 		}
@@ -128,7 +129,7 @@ func matchComponentFilters(
 	}
 
 	for _, propFilter := range filter.Props {
-		match, err := matchPropFilter(propFilter, comp)
+		match, err := matchPropFilter(propFilter, comp, location)
 		if err != nil {
 			return false, fmt.Errorf("error while matching filter props: %w", err)
 		}
@@ -145,6 +146,7 @@ func matchCompFilter(
 	filter CompFilter,
 	comp *ics.ComponentBase,
 	alarmStart, alarmEnd time.Time,
+	location *time.Location,
 ) (bool, error) {
 	for _, child := range comp.Components {
 		var (
@@ -154,13 +156,13 @@ func matchCompFilter(
 
 		switch child := child.(type) {
 		case *ics.VEvent:
-			matcher, err = newEventMatcher(child)
+			matcher, err = newEventMatcher(child, location)
 
 		case *ics.VTodo:
-			matcher, err = newTodoMatcher(child)
+			matcher, err = newTodoMatcher(child, location)
 
 		case *ics.VAlarm:
-			matcher = newAlarmMatcher(child, alarmStart, alarmEnd)
+			matcher = newAlarmMatcher(child, alarmStart, alarmEnd, location)
 
 		default:
 			continue
@@ -183,7 +185,7 @@ func matchCompFilter(
 	return filter.IsNotDefined, nil
 }
 
-func matchPropFilter(filter PropFilter, comp *ics.ComponentBase) (bool, error) {
+func matchPropFilter(filter PropFilter, comp *ics.ComponentBase, location *time.Location) (bool, error) {
 	prop := ics.ComponentProperty(filter.Name)
 	properties := comp.GetProperties(prop)
 
@@ -196,7 +198,7 @@ func matchPropFilter(filter PropFilter, comp *ics.ComponentBase) (bool, error) {
 	}
 
 	if !filter.Start.IsZero() {
-		return matchPropDateFilter(filter, comp, prop)
+		return matchPropDateFilter(filter, comp, prop, location)
 	}
 
 	// A prop-filter matches if any of the property values satisfies all the
@@ -224,6 +226,7 @@ func matchPropDateFilter(
 	filter PropFilter,
 	comp *ics.ComponentBase,
 	prop ics.ComponentProperty,
+	location *time.Location,
 ) (bool, error) {
 	var (
 		dates []time.Time
@@ -232,10 +235,10 @@ func matchPropDateFilter(
 
 	switch prop { //nolint:exhaustive
 	case ics.ComponentPropertyRdate:
-		dates, err = comp.GetRDates()
+		dates, err = multiTimeProperty(comp, prop, location)
 
 	case ics.ComponentPropertyExdate:
-		dates, err = comp.GetExDates()
+		dates, err = multiTimeProperty(comp, prop, location)
 
 	default:
 		// Matching a date against a non-date prop, invalid
@@ -263,18 +266,19 @@ func recurrenceStarts(
 	seed time.Time,
 	duration time.Duration,
 	start, end time.Time,
+	location *time.Location,
 ) ([]time.Time, error) {
 	rules, err := comp.GetRRules()
 	if err != nil {
 		return nil, fmt.Errorf("while parsing recurrence rules: %w", err)
 	}
 
-	rDates, err := comp.GetRDates()
+	rDates, err := multiTimeProperty(comp, ics.ComponentPropertyRdate, location)
 	if err != nil {
 		return nil, fmt.Errorf("while parsing recurrence dates: %w", err)
 	}
 
-	exDates, err := comp.GetExDates()
+	exDates, err := multiTimeProperty(comp, ics.ComponentPropertyExdate, location)
 	if err != nil {
 		return nil, fmt.Errorf("while parsing exclude dates: %w", err)
 	}
