@@ -1,0 +1,44 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "store",
+    srcs = [
+        "flag.go",
+        "mem.go",
+        "metrics.go",
+        "psql.go",
+        "s3.go",
+        "store.go",
+        "types.go",
+        "util.go",
+    ],
+    embedsrcs = [
+        "migrations/00001_mail.sql",
+        "migrations/00002_special_use.sql",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/mail/store",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/httptrace",
+        "//lib/observability",
+        "//lib/run",
+        "//lib/s3cache",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_jackc_pgx_v5//:pgx",
+        "@com_github_jackc_pgx_v5//pgxpool",
+        "@com_github_jackc_pgx_v5//stdlib",
+        "@com_github_minio_minio_go_v7//:minio-go",
+        "@com_github_minio_minio_go_v7//pkg/credentials",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+        "@ht_sr_git__bitfehler_brant//:brant",
+        "@ht_sr_git__bitfehler_brant//database/dialect",
+    ],
+)
+
+go_test(
+    name = "store_test",
+    srcs = ["store_test.go"],
+    embed = [":store"],
+    deps = ["@com_github_stretchr_testify//require"],
+)

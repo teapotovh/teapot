@@ -1,0 +1,54 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "imap",
+    srcs = [
+        "flag.go",
+        "search.go",
+        "server.go",
+        "session.go",
+        "view.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/mail/imap",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/ldap",
+        "//lib/observability",
+        "//lib/run",
+        "//service/mail",
+        "//service/mail/store",
+        "@com_github_emersion_go_imap_v2//:go-imap",
+        "@com_github_emersion_go_imap_v2//imapserver",
+        "@com_github_emersion_go_message//:go-message",
+        "@com_github_emersion_go_message//mail",
+        "@com_github_emersion_go_message//textproto",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_test(
+    name = "imap_test",
+    srcs = [
+        "e2e_test.go",
+        "helpers_test.go",
+        "idle_test.go",
+        "list_test.go",
+        "run_test.go",
+        "search_test.go",
+        "session_multi_test.go",
+        "side_effects_test.go",
+        "view_test.go",
+    ],
+    embed = [":imap"],
+    deps = [
+        "//lib/ldap",
+        "//service/mail",
+        "//service/mail/mailtest",
+        "//service/mail/store",
+        "@com_github_emersion_go_imap_v2//:go-imap",
+        "@com_github_emersion_go_imap_v2//imapclient",
+        "@com_github_stretchr_testify//require",
+    ],
+)

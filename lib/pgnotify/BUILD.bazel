@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pgnotify",
+    srcs = ["pgnotify.go"],
+    importpath = "github.com/teapotovh/teapot/lib/pgnotify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/run",
+        "@com_github_jackc_pgx_v5//:pgx",
+    ],
+)
