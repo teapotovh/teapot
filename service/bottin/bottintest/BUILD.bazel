@@ -6,6 +6,7 @@ go_test(
         "add_test.go",
         "bind_test.go",
         "compare_test.go",
+        "controls_test.go",
         "delete_test.go",
         "extended_test.go",
         "group_test.go",

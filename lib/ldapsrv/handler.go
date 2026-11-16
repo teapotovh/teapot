@@ -3,6 +3,7 @@ package ldapsrv
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -133,12 +134,19 @@ func (s *LDAPSrv[T]) runHandler(
 	code = ldap.ResultCodeSuccess
 
 	ctx, span := observability.TracerFromContext(ctx).Start(ctx, r.ProtocolOpName())
-	defer func() { observability.SpanEnd(span, err) }()
+	defer func() {
+		span.SetAttributes(attribute.Int("code", code.Int()))
+		observability.SpanEnd(span, err)
+	}()
 
 	span.SetAttributes(
 		attribute.String("operation", r.ProtocolOpName()),
 		attribute.String("x-request-id", RequestID(ctx).String()),
 	)
+
+	if err = checkControls(r); err != nil {
+		return state, s.errorCode(ctx, r, err), err
+	}
 
 	switch r.ProtocolOpName() {
 	case operationBind:
@@ -173,24 +181,40 @@ func (s *LDAPSrv[T]) runHandler(
 		err = ErrUnsupported
 	}
 
-	// If the error is not nil, extract the status code from the error type, if available,
-	// let's use the unknown error code 'Other'.
 	if err != nil {
-		s.logger.ErrorContext(ctx, "error while handling operation", "operation", r.ProtocolOpName(), "err", err)
+		code = s.errorCode(ctx, r, err)
+	}
 
-		type withErrorCode interface {
-			error
-			LDAPCode() ldap.ENUMERATED
-		}
+	return state, code, err
+}
 
-		if ec, ok := errors.AsType[withErrorCode](err); ok {
-			code = ec.LDAPCode()
-		} else {
-			code = ldap.ResultCodeOther
+// errorCode logs the handler error and returns the LDAP result code.
+func (s *LDAPSrv[T]) errorCode(ctx context.Context, r *Message[T], err error) ldap.ENUMERATED {
+	s.logger.ErrorContext(ctx, "error while handling operation", "operation", r.ProtocolOpName(), "err", err)
+
+	type withErrorCode interface {
+		error
+		LDAPCode() ldap.ENUMERATED
+	}
+
+	if ec, ok := errors.AsType[withErrorCode](err); ok {
+		return ec.LDAPCode()
+	}
+
+	return ldap.ResultCodeOther
+}
+
+func checkControls[T any](r *Message[T]) error {
+	controls := r.Controls()
+	if controls == nil {
+		return nil
+	}
+
+	for _, control := range *controls {
+		if control.Criticality() {
+			return fmt.Errorf("%w: %q", ErrUnavailableCriticalExtension, control.ControlType())
 		}
 	}
 
-	span.SetAttributes(attribute.Int("code", code.Int()))
-
-	return state, code, err
+	return nil
 }
