@@ -18,6 +18,7 @@ type Handler[T any] interface {
 	Add(ctx context.Context, state T, r ldap.AddRequest) (T, error)
 	Del(ctx context.Context, state T, r ldap.DelRequest) (T, error)
 	Modify(ctx context.Context, state T, r ldap.ModifyRequest) (T, error)
+	ModifyDN(ctx context.Context, state T, r ldap.ModifyDNRequest) (T, error)
 	Compare(ctx context.Context, state T, r ldap.CompareRequest) (bool, T, error)
 	Extended(ctx context.Context, state T, r ldap.ExtendedRequest) (T, error)
 }
@@ -49,6 +50,10 @@ func (u *UnimplementedHandler[T]) Modify(ctx context.Context, state T, r ldap.Mo
 	return state, ErrUnimplemented
 }
 
+func (u *UnimplementedHandler[T]) ModifyDN(ctx context.Context, state T, r ldap.ModifyDNRequest) (T, error) {
+	return state, ErrUnimplemented
+}
+
 func (u *UnimplementedHandler[T]) Compare(ctx context.Context, state T, r ldap.CompareRequest) (bool, T, error) {
 	return false, state, ErrUnimplemented
 }
@@ -67,6 +72,7 @@ const (
 	operationAdd      = "AddRequest"
 	operationDel      = "DelRequest"
 	operationModify   = "ModifyRequest"
+	operationModifyDN = "ModifyDNRequest"
 	operationCompare  = "CompareRequest"
 	operationExtended = "ExtendedRequest"
 )
@@ -111,6 +117,8 @@ func (s *LDAPSrv[T]) handle(ctx context.Context, state T, w ResponseWriter, r *M
 		w.Write(ldap.DelResponse(res))
 	case operationModify:
 		w.Write(ldap.ModifyResponse(res))
+	case operationModifyDN:
+		w.Write(ldap.ModifyDNResponse(res))
 	case operationCompare:
 		w.Write(ldap.CompareResponse(res))
 	case operationExtended:
@@ -165,6 +173,8 @@ func (s *LDAPSrv[T]) runHandler(
 		state, err = s.handler.Del(ctx, is, r.GetDeleteRequest())
 	case operationModify:
 		state, err = s.handler.Modify(ctx, is, r.GetModifyRequest())
+	case operationModifyDN:
+		state, err = s.handler.ModifyDN(ctx, is, r.GetModifyDNRequest())
 	case operationCompare:
 		var matched bool
 

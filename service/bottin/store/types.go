@@ -235,6 +235,13 @@ func (attrs Attributes) Get(key AttributeKey) AttributeValue {
 	return value
 }
 
+// ContainsFold reports whether values contains value, ignoring case.
+func ContainsFold(values []string, value string) bool {
+	return slices.ContainsFunc(values, func(v string) bool {
+		return strings.EqualFold(v, value)
+	})
+}
+
 func (e *Entry) Get(key AttributeKey) AttributeValue {
 	return e.Attributes.Get(key)
 }

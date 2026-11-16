@@ -3,7 +3,6 @@ package bottin
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
@@ -21,7 +20,7 @@ func (server *Bottin) membershipAdd(
 	}
 
 	membership := entity.Get(attr)
-	if slices.Contains(membership, group.String()) {
+	if store.ContainsFold(membership, group.String()) {
 		return nil
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -368,16 +369,22 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 		// Apply effective modification on entry[attr]
 		if change.Operation() == ldapsrv.ModifyRequestChangeOperationAdd {
 			for _, val := range changeValues {
-				if !slices.Contains(attrs[attr], val) {
-					attrs[attr] = append(attrs[attr], val)
-					if attr.EqualFold(AttrMember) {
-						valDN, err := server.parseDN(val, false)
-						if err != nil {
-							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
-						}
-
-						addMembers = append(addMembers, valDN)
+				if attr.EqualFold(AttrMember) {
+					if store.ContainsFold(attrs[attr], val) {
+						continue
 					}
+				} else if slices.Contains(attrs[attr], val) {
+					continue
+				}
+
+				attrs[attr] = append(attrs[attr], val)
+				if attr.EqualFold(AttrMember) {
+					valDN, err := server.parseDN(val, false)
+					if err != nil {
+						return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+					}
+
+					addMembers = append(addMembers, valDN)
 				}
 			}
 		} else if change.Operation() == ldapsrv.ModifyRequestChangeOperationDelete {
@@ -400,7 +407,12 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 				newList := []string{}
 
 				for _, prevVal := range attrs[attr] {
-					if !slices.Contains(changeValues, prevVal) {
+					matched := slices.Contains(changeValues, prevVal)
+					if attr.EqualFold(AttrMember) {
+						matched = store.ContainsFold(changeValues, prevVal)
+					}
+
+					if !matched {
 						newList = append(newList, prevVal)
 					} else {
 						if attr.EqualFold(AttrMember) {
@@ -419,7 +431,7 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 		} else if change.Operation() == ldapsrv.ModifyRequestChangeOperationReplace {
 			if attr.EqualFold(AttrMember) {
 				for _, newMem := range changeValues {
-					if !slices.Contains(attrs[attr], newMem) {
+					if !store.ContainsFold(attrs[attr], newMem) {
 						valDN, err := server.parseDN(newMem, false)
 						if err != nil {
 							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
@@ -430,7 +442,7 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 				}
 
 				for _, prevMem := range attrs[attr] {
-					if !slices.Contains(changeValues, prevMem) {
+					if !store.ContainsFold(changeValues, prevMem) {
 						valDN, err := server.parseDN(prevMem, false)
 						if err != nil {
 							return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
@@ -501,4 +513,189 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 	}
 
 	return state, nil
+}
+
+//nolint:gocyclo
+func (server *Bottin) ModifyDN(ctx context.Context, state State, r ldap.ModifyDNRequest) (State, error) {
+	dn, err := server.parseDN(string(r.Entry()), false)
+	if err != nil {
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+	}
+
+	if dn.Equal(server.baseDN) {
+		return state, fmt.Errorf("(%w) cannot rename the base entry", ldapsrv.ErrUnwillingToPerform)
+	}
+
+	newRDN, err := store.ParseDN(string(r.NewRDN()))
+	if err != nil {
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+	}
+
+	if len(newRDN) != 1 {
+		return state, fmt.Errorf("(%w) invalid new RDN %q", ldapsrv.ErrInvalidDNSyntax, r.NewRDN())
+	}
+
+	newComponent := newRDN[0]
+
+	parent := dn.Parent()
+
+	if superior := r.NewSuperior(); superior != nil {
+		parent, err = server.parseDN(string(*superior), false)
+		if err != nil {
+			return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
+		}
+	}
+
+	if dn.Prefix().IsPrefixOf(parent.Prefix()) {
+		return state, fmt.Errorf("(%w) cannot move an entry below itself", ldapsrv.ErrUnwillingToPerform)
+	}
+
+	newDN := parent.Sub(newComponent)
+
+	if !server.acl.Check(state.User(), "modify", dn, []store.AttributeKey{}) {
+		return state, fmt.Errorf("cannot modify %q: %w", dn, ldapsrv.ErrInsufficientAccessRights)
+	}
+
+	if !server.acl.Check(state.User(), "delete", dn, []store.AttributeKey{}) {
+		return state, fmt.Errorf("cannot delete %q: %w", dn, ldapsrv.ErrInsufficientAccessRights)
+	}
+
+	if !server.acl.Check(state.User(), "add", newDN, []store.AttributeKey{}) {
+		return state, fmt.Errorf("cannot add %q: %w", newDN, ldapsrv.ErrInsufficientAccessRights)
+	}
+
+	server.logger.InfoContext(ctx, "renaming entry", "dn", dn, "newdn", newDN)
+
+	prevEntry, err := server.getEntry(ctx, dn)
+	if err != nil {
+		return state, err
+	}
+
+	children, err := server.store.List(ctx, dn.Prefix(), false)
+	if err != nil {
+		return state, fmt.Errorf("(%w) error while listing children: %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if len(children) != 1 {
+		return state, fmt.Errorf("(%w) %q: %w", ldapsrv.ErrNotAllowedOnNonLeaf, dn, ErrHasChildren)
+	}
+
+	exists, err := server.existsEntry(ctx, newDN)
+	if err != nil {
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if exists {
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrEntryAlreadyExists, ErrAlreadyExists)
+	}
+
+	parentExists, err := server.existsEntry(ctx, parent)
+	if err != nil {
+		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if !parentExists {
+		return state, fmt.Errorf(
+			"(%w) parent object with DN %q does not exist",
+			ldapsrv.ErrNoSuchObject,
+			parent,
+		)
+	}
+
+	attrs := maps.Clone(prevEntry.Attributes)
+	oldRDN := prevEntry.DN[0]
+	oldKey := store.NewAttributeKey(oldRDN.Type)
+	newKey := store.NewAttributeKey(newComponent.Type)
+
+	if r.DeleteOldRDN() {
+		values := slices.DeleteFunc(attrs[oldKey], func(value string) bool {
+			return strings.EqualFold(value, oldRDN.Value)
+		})
+
+		if len(values) == 0 {
+			delete(attrs, oldKey)
+		} else {
+			attrs[oldKey] = values
+		}
+	}
+
+	values := attrs[newKey]
+	if !store.ContainsFold(values, newComponent.Value) {
+		values = append(values, newComponent.Value)
+	}
+
+	attrs[newKey] = values
+	attrs[AttrModifiersName] = store.AttributeValue{state.User().user}
+	attrs[AttrModifyTimestamp] = store.AttributeValue{genTimestamp()}
+
+	tx, err := server.store.Begin(ctx)
+	if err != nil {
+		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if err := tx.Store(ctx, store.Entry{DN: newDN, Attributes: attrs}); err != nil {
+		return state, fmt.Errorf("(%w) error while storing renamed entry: %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if err := server.renameReferences(ctx, tx, dn, newDN); err != nil {
+		return state, fmt.Errorf("(%w) error while updating references: %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if err := tx.Delete(ctx, dn); err != nil {
+		return state, fmt.Errorf("(%w) error while deleting old entry: %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return state, fmt.Errorf("(%w) could not commit transaction: %w", ldapsrv.ErrOperationsError, err)
+	}
+
+	return state, nil
+}
+
+func (server *Bottin) renameReferences(
+	ctx context.Context,
+	tx store.Transaction,
+	oldDN store.DN,
+	newDN store.DN,
+) error {
+	entries, err := server.store.List(ctx, server.baseDN.Prefix(), false)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.DN.Equal(oldDN) {
+			continue
+		}
+
+		attrs := maps.Clone(entry.Attributes)
+		changed := false
+
+		// Member values are stored as canonical DNs.
+		for _, attr := range []store.AttributeKey{AttrMember, AttrMemberOf} {
+			values, ok := attrs[attr]
+			if !ok {
+				continue
+			}
+
+			for i, value := range values {
+				if strings.EqualFold(value, oldDN.String()) {
+					values[i] = newDN.String()
+					changed = true
+				}
+			}
+
+			attrs[attr] = values
+		}
+
+		if !changed {
+			continue
+		}
+
+		if err := tx.Store(ctx, store.Entry{DN: entry.DN, Attributes: attrs}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

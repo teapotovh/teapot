@@ -6,9 +6,6 @@ import (
 
 // Adapted from the Bauble assertions for features Bottin does not implement.
 //
-// Modify DN:
-// https://github.com/rumba-id/bauble/blob/ce079b46a8996ea0b8a1ec5bd07def580944579b/src/bauble/suites/rfc4511/moddn.py
-//
 // Who Am I:
 // https://github.com/rumba-id/bauble/blob/ce079b46a8996ea0b8a1ec5bd07def580944579b/src/bauble/suites/extended/rfc4532.py
 //
@@ -24,7 +21,6 @@ func TestBaubleUnsupportedFeatures(t *testing.T) {
 		name string
 		skip string
 	}{
-		{name: "modify dn", skip: skipModifyDN},
 		{name: "who am i", skip: skipWhoAmI},
 		{name: "paged results", skip: skipPagedResults},
 		{name: "malformed pdu", skip: skipMalformedPDU},

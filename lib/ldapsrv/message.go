@@ -47,6 +47,10 @@ func (m *Message[T]) GetModifyRequest() ldap.ModifyRequest {
 	return m.ProtocolOp().(ldap.ModifyRequest)
 }
 
+func (m *Message[T]) GetModifyDNRequest() ldap.ModifyDNRequest {
+	return m.ProtocolOp().(ldap.ModifyDNRequest)
+}
+
 func (m *Message[T]) GetCompareRequest() ldap.CompareRequest {
 	return m.ProtocolOp().(ldap.CompareRequest)
 }
