@@ -216,3 +216,14 @@ func TestPrefixOperations(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, prefix.Equal(slash.Prefix()))
 }
+
+func TestContainsFold(t *testing.T) {
+	t.Parallel()
+
+	values := []string{"Alice", "bob"}
+
+	assert.True(t, ContainsFold(values, "alice"))
+	assert.True(t, ContainsFold(values, "BOB"))
+	assert.False(t, ContainsFold(values, "carol"))
+	assert.False(t, ContainsFold(nil, "alice"))
+}

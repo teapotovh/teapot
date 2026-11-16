@@ -32,7 +32,8 @@ const (
 )
 
 type testServer struct {
-	addr string
+	addr   string
+	bottin *bottin.Bottin
 }
 
 type notifyFunc func()
@@ -113,7 +114,7 @@ func newTestServerWithACL(t *testing.T, acl []string) *testServer {
 	addr := ldapServer.Addr()
 	require.NotNil(t, addr)
 
-	return &testServer{addr: addr.String()}
+	return &testServer{addr: addr.String(), bottin: server}
 }
 
 func seed(t *testing.T, server *bottin.Bottin) {
@@ -126,14 +127,14 @@ func seed(t *testing.T, server *bottin.Bottin) {
 
 	entries := []store.Entry{
 		store.NewEntry(mustParseDN(t, peopleDN), store.Attributes{
-			store.NewAttributeKey("objectclass"): store.AttributeValue{"top", "organizationalUnit"},
+			store.NewAttributeKey("objectclass"): store.AttributeValue{objectClassTop, "organizationalUnit"},
 		}),
 		store.NewEntry(mustParseDN(t, groupsDN), store.Attributes{
-			store.NewAttributeKey("objectclass"): store.AttributeValue{"top", "organizationalUnit"},
+			store.NewAttributeKey("objectclass"): store.AttributeValue{objectClassTop, "organizationalUnit"},
 		}),
 		store.NewEntry(mustParseDN(t, aliceDN), store.Attributes{
 			store.NewAttributeKey("objectclass"): store.AttributeValue{
-				"top",
+				objectClassTop,
 				"person",
 				"organizationalPerson",
 				"inetOrgPerson",
@@ -147,7 +148,7 @@ func seed(t *testing.T, server *bottin.Bottin) {
 		}),
 		store.NewEntry(mustParseDN(t, bobDN), store.Attributes{
 			store.NewAttributeKey("objectclass"): store.AttributeValue{
-				"top",
+				objectClassTop,
 				"person",
 				"organizationalPerson",
 				"inetOrgPerson",
@@ -159,7 +160,7 @@ func seed(t *testing.T, server *bottin.Bottin) {
 			store.NewAttributeKey("userpassword"): store.AttributeValue{bobHash},
 		}),
 		store.NewEntry(mustParseDN(t, "cn=admins,"+groupsDN), store.Attributes{
-			store.NewAttributeKey("objectclass"): store.AttributeValue{"top", "groupOfNames"},
+			store.NewAttributeKey("objectclass"): store.AttributeValue{objectClassTop, "groupOfNames"},
 			store.NewAttributeKey("member"):      store.AttributeValue{aliceDN},
 		}),
 	}

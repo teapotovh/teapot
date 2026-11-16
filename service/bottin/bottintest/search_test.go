@@ -262,7 +262,7 @@ func TestRootDSE(t *testing.T) {
 		require.Len(t, result.Entries, 1)
 
 		entry := result.Entries[0]
-		assert.Equal(t, "top", entry.GetEqualFoldAttributeValue("objectClass"))
+		assert.Equal(t, objectClassTop, entry.GetEqualFoldAttributeValue("objectClass"))
 		assert.Empty(t, entry.GetEqualFoldAttributeValue("namingContexts"))
 	})
 

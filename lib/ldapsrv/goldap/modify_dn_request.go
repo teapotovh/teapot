@@ -1,10 +1,28 @@
 package goldap
 
+//
 //	ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
 //	     entry           LDAPDN,
 //	     newrdn          RelativeLDAPDN,
 //	     deleteoldrdn    BOOLEAN,
 //	     newSuperior     [0] LDAPDN OPTIONAL }
+
+func (m *ModifyDNRequest) Entry() LDAPDN {
+	return m.entry
+}
+
+func (m *ModifyDNRequest) NewRDN() RelativeLDAPDN {
+	return m.newrdn
+}
+
+func (m *ModifyDNRequest) DeleteOldRDN() bool {
+	return bool(m.deleteoldrdn)
+}
+
+func (m *ModifyDNRequest) NewSuperior() *LDAPDN {
+	return m.newSuperior
+}
+
 func readModifyDNRequest(bytes *Bytes) (ret ModifyDNRequest, err error) {
 	err = bytes.ReadSubBytes(classApplication, TagModifyDNRequest, ret.readComponents)
 	if err != nil {

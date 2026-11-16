@@ -1,11 +1,15 @@
 package bottintest
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/teapotovh/teapot/service/bottin/store"
 )
 
 // Adapted from:
@@ -68,4 +72,43 @@ func TestBaubleModify(t *testing.T) {
 		request.Replace("cn", []string{"Missing"})
 		requireLDAPError(t, conn.Modify(request), ldap.LDAPResultNoSuchObject)
 	})
+}
+
+// Local test. Member values are DNs and must match without case.
+func TestModifyMemberCase(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer(t)
+	groupDN := "cn=mixed-member," + groupsDN
+
+	dn, err := store.ParseDN(groupDN)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	tx, err := server.bottin.Store().Begin(ctx)
+	require.NoError(t, err)
+	require.NoError(t, tx.Store(ctx, store.NewEntry(dn, store.Attributes{
+		store.NewAttributeKey("objectclass"): store.AttributeValue{objectClassTop, "groupOfNames"},
+		store.NewAttributeKey("member"):      store.AttributeValue{strings.ToUpper(aliceDN)},
+	})))
+	require.NoError(t, tx.Commit(ctx))
+
+	conn := server.dialRoot(t)
+
+	add := ldap.NewModifyRequest(groupDN, nil)
+	add.Add("member", []string{aliceDN})
+	require.NoError(t, conn.Modify(add))
+
+	result := search(t, conn, groupDN, ldap.ScopeBaseObject, "(objectClass=*)", []string{"member"})
+	require.Len(t, result.Entries, 1)
+	assert.Len(t, result.Entries[0].GetEqualFoldAttributeValues("member"), 1)
+
+	del := ldap.NewModifyRequest(groupDN, nil)
+	del.Delete("member", []string{aliceDN})
+	require.NoError(t, conn.Modify(del))
+
+	result = search(t, conn, groupDN, ldap.ScopeBaseObject, "(objectClass=*)", []string{"member"})
+	require.Len(t, result.Entries, 1)
+	assert.Empty(t, result.Entries[0].GetEqualFoldAttributeValues("member"))
 }
