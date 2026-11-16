@@ -98,6 +98,18 @@ func matchCalendarChild(filter CompFilter, cal *ics.Calendar, location *time.Loc
 			}
 		}
 
+	case strings.EqualFold(filter.Name, string(ics.ComponentVFreeBusy)):
+		for _, child := range cal.Busys() {
+			childMatches, err := matchFreebusy(filter, child)
+			if err != nil {
+				return false, fmt.Errorf("matching freebusy component: %w", err)
+			}
+
+			if childMatches {
+				return true, nil
+			}
+		}
+
 	default:
 		// Filter-in unsupported component types
 		return true, nil
@@ -161,6 +173,9 @@ func matchCompFilter(
 		case *ics.VTodo:
 			matcher, err = newTodoMatcher(child, location)
 
+		case *ics.VBusy:
+			matcher = newFreebusyMatcher(child)
+
 		case *ics.VAlarm:
 			matcher = newAlarmMatcher(child, alarmStart, alarmEnd, location)
 
@@ -197,7 +212,7 @@ func matchPropFilter(filter PropFilter, comp *ics.ComponentBase, location *time.
 		return false, nil
 	}
 
-	if !filter.Start.IsZero() {
+	if !filter.Start.IsZero() || !filter.End.IsZero() {
 		return matchPropDateFilter(filter, comp, prop, location)
 	}
 
@@ -234,11 +249,17 @@ func matchPropDateFilter(
 	)
 
 	switch prop { //nolint:exhaustive
-	case ics.ComponentPropertyRdate:
+	case ics.ComponentPropertyRdate, ics.ComponentPropertyExdate:
 		dates, err = multiTimeProperty(comp, prop, location)
 
-	case ics.ComponentPropertyExdate:
-		dates, err = multiTimeProperty(comp, prop, location)
+	case ics.ComponentPropertyCompleted, ics.ComponentPropertyCreated,
+		ics.ComponentPropertyDtEnd, ics.ComponentPropertyDtstamp,
+		ics.ComponentPropertyDtStart, ics.ComponentPropertyDue,
+		ics.ComponentPropertyLastModified, ics.ComponentPropertyRecurrenceId:
+		var date time.Time
+
+		date, err = parseTimeProperty(comp, prop, location)
+		dates = []time.Time{date}
 
 	default:
 		// Matching a date against a non-date prop, invalid
@@ -251,7 +272,7 @@ func matchPropDateFilter(
 
 	// RFC 4791, section 9.7.2 matches if a property value is in the range.
 	for _, date := range dates {
-		if matchPropTimeRange(filter.Start, filter.End, date) {
+		if timeInRange(filter.Start, filter.End, date) {
 			return true, nil
 		}
 	}
@@ -327,14 +348,6 @@ func recurrenceStarts(
 	}
 
 	return rset.Between(searchStart, end, true), nil
-}
-
-func matchPropTimeRange(start, end, ptime time.Time) bool {
-	if ptime.After(start) && (end.IsZero() || ptime.Before(end)) {
-		return true
-	}
-
-	return false
 }
 
 func matchParamFilter(filter ParamFilter, field *ics.IANAProperty) bool {
