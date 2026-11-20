@@ -27,10 +27,10 @@ var (
 	ErrValueTooLarge = errors.New("value too large")
 	// ErrDiskFull reports that the configured disk size would be exceeded.
 	ErrDiskFull = errors.New("disk size exceeded")
-	// ErrClosed reports an operation on a closed store.
-	ErrClosed = errors.New("store is closed")
-	// ErrAlreadyRunning reports a second call to Run.
-	ErrAlreadyRunning = errors.New("already running")
+	// ErrDirtyPagesFull reports that the dirty page limit was reached.
+	ErrDirtyPagesFull = errors.New("dirty page limit reached")
+	// ErrNotRunning reports an operation before Run.
+	ErrNotRunning = errors.New("store is not running")
 )
 
 // Config controls the store file and its memory budget.
@@ -41,19 +41,21 @@ type Config struct {
 	Memory int64
 	// Disk is the maximum file size in bytes. Zero means no limit.
 	Disk int64
+	// DirtyPages is the maximum number of dirty pages. Zero means no limit.
+	DirtyPages int
 }
 
 // Bytes is the byte-level B+tree store.
 type Bytes struct {
-	memory int64
-	disk   int64
+	memory     int64
+	disk       int64
+	dirtyPages int
 
-	file *os.File
+	path string
+	fs   FS
+	file File
 
-	writeMu sync.Mutex
-	metaMu  sync.Mutex
-
-	lifecycleMu sync.Mutex
+	metaMu sync.Mutex
 
 	pageCount  uint64
 	freeHead   uint64
@@ -65,14 +67,21 @@ type Bytes struct {
 
 	cache *pageCache
 
-	writerSignal chan struct{}
-	stop         chan struct{}
-	done         chan struct{}
-	running      atomic.Bool
-	started      atomic.Bool
-	closed       atomic.Bool
-	closeOnce    sync.Once
-	closeErr     error
+	state   atomic.Pointer[storeState]
+	done    chan struct{}
+	updates chan update
+}
+
+type storeState struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+type update struct {
+	key     string
+	value   []byte
+	delete  bool
+	barrier chan struct{}
 }
 
 type pathEntry struct {
@@ -85,42 +94,29 @@ type leafPage struct {
 	entries []leafEntry
 }
 
-// Open opens or creates a byte-level store.
-func Open(cfg Config) (*Bytes, error) {
-	if cfg.Path == "" || cfg.Memory < 0 {
+// Open creates a byte-level store. The file is opened by Run.
+func Open(fs FS, cfg Config) (*Bytes, error) {
+	if fs == nil || cfg.Path == "" || cfg.Memory < 0 {
 		return nil, ErrInvalidConfig
 	}
 
-	memory := cfg.Memory
-
-	file, err := os.OpenFile(cfg.Path, os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("could not open store file: %w", err)
-	}
-
-	b := &Bytes{
-		memory:       memory,
-		disk:         cfg.Disk,
-		file:         file,
-		cache:        newPageCache(memory),
-		pendingSet:   make(map[uint64]struct{}),
-		writerSignal: make(chan struct{}, 1),
-		stop:         make(chan struct{}),
-		done:         make(chan struct{}),
-	}
-
-	if err := b.load(); err != nil {
-		_ = file.Close()
-		return nil, err
-	}
-
-	return b, nil
+	return &Bytes{
+		memory:     cfg.Memory,
+		disk:       cfg.Disk,
+		dirtyPages: cfg.DirtyPages,
+		path:       cfg.Path,
+		fs:         fs,
+		cache:      newPageCache(cfg.Memory),
+		pendingSet: make(map[uint64]struct{}),
+		done:       make(chan struct{}),
+		updates:    make(chan update),
+	}, nil
 }
 
 // Load returns the value for key.
 func (b *Bytes) Load(key string) ([]byte, bool, error) {
-	if b.closed.Load() {
-		return nil, false, ErrClosed
+	if err := b.contextErr(); err != nil {
+		return nil, false, err
 	}
 
 	b.readers.Add(1)
@@ -158,17 +154,96 @@ func (b *Bytes) Load(key string) ([]byte, bool, error) {
 
 // Store writes a value for key.
 func (b *Bytes) Store(key string, value []byte) error {
-	if b.closed.Load() {
-		return ErrClosed
+	if err := b.contextErr(); err != nil {
+		return err
 	}
 
 	if len(key) > maxKeyLength {
 		return ErrKeyTooLarge
 	}
 
-	b.writeMu.Lock()
-	defer b.writeMu.Unlock()
+	return b.send(update{key: key, value: value})
+}
 
+func (b *Bytes) All() iter.Seq2[string, []byte] {
+	return b.scan("", "", false)
+}
+
+// From iterates over entries with a key greater than or equal to from.
+func (b *Bytes) From(from string) iter.Seq2[string, []byte] {
+	return b.scan(from, "", false)
+}
+
+// Between iterates over entries with a key in [from, to).
+func (b *Bytes) Between(from, to string) iter.Seq2[string, []byte] {
+	return b.scan(from, to, true)
+}
+
+// Run implements run.Runnable.
+func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
+	stateCtx, cancel := context.WithCancel(context.Background())
+	state := &storeState{ctx: stateCtx, cancel: cancel}
+
+	defer func() {
+		cancel()
+		b.waitReaders()
+
+		if b.file != nil {
+			err = errors.Join(err, b.file.Close())
+			b.file = nil
+		}
+
+		close(b.done)
+	}()
+
+	b.file, err = b.fs.OpenFile(b.path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+
+	if err := b.load(); err != nil {
+		return err
+	}
+
+	b.state.Store(state)
+	notify.Notify()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-stateCtx.Done():
+			return nil
+		case u := <-b.updates:
+			if u.barrier != nil {
+				close(u.barrier)
+
+				continue
+			}
+
+			var updateErr error
+			if u.delete {
+				updateErr = b.applyDelete(u.key)
+			} else {
+				updateErr = b.applyStore(u.key, u.value)
+			}
+
+			if updateErr != nil {
+				return updateErr
+			}
+		}
+	}
+}
+
+func (b *Bytes) Delete(key string) error {
+	if err := b.contextErr(); err != nil {
+		return err
+	}
+
+	return b.send(update{key: key, delete: true})
+}
+
+func (b *Bytes) applyStore(key string, value []byte) error {
 	root := b.root.Load()
 	if root == 0 {
 		return b.storeFirst(key, value)
@@ -177,15 +252,44 @@ func (b *Bytes) Store(key string, value []byte) error {
 	return b.storeExisting(root, key, value)
 }
 
-// Delete removes key from the store.
-func (b *Bytes) Delete(key string) error {
-	if b.closed.Load() {
-		return ErrClosed
+func (b *Bytes) send(u update) error {
+	state, err := b.stateOrErr()
+	if err != nil {
+		return err
 	}
 
-	b.writeMu.Lock()
-	defer b.writeMu.Unlock()
+	select {
+	case b.updates <- u:
+		return nil
+	case <-state.ctx.Done():
+		return state.ctx.Err()
+	}
+}
 
+func (b *Bytes) wait() error {
+	state, err := b.stateOrErr()
+	if err != nil {
+		return err
+	}
+
+	barrier := make(chan struct{})
+
+	select {
+	case b.updates <- update{barrier: barrier}:
+	case <-state.ctx.Done():
+		return state.ctx.Err()
+	}
+
+	select {
+	case <-barrier:
+		return nil
+	case <-state.ctx.Done():
+		return state.ctx.Err()
+	}
+}
+
+// Delete removes key from the store.
+func (b *Bytes) applyDelete(key string) error {
 	root := b.root.Load()
 	if root == 0 {
 		return nil
@@ -234,101 +338,76 @@ func (b *Bytes) Delete(key string) error {
 
 	newRoot, err := b.copyUp(cur.path, leftID, leftFirst, rightID, rightFirst, true)
 	if err != nil {
+		b.discardPending()
+
 		return err
 	}
 
-	b.root.Store(newRoot)
+	return b.commitRoot(newRoot)
+}
 
-	if err := b.releasePending(); err != nil {
+func (b *Bytes) contextErr() error {
+	_, err := b.stateOrErr()
+	return err
+}
+
+func (b *Bytes) stateOrErr() (*storeState, error) {
+	state := b.state.Load()
+	if state == nil {
+		return nil, ErrNotRunning
+	}
+
+	if err := state.ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return state, nil
+}
+
+func (b *Bytes) commitRoot(root uint64) error {
+	if err := b.contextErr(); err != nil {
+		b.discardPending()
+
 		return err
 	}
 
-	b.signalWriter()
+	if err := b.checkDirtyLimit(); err != nil {
+		b.discardPending()
+
+		if flushErr := b.flushLocked(); flushErr != nil {
+			return errors.Join(err, flushErr)
+		}
+
+		return err
+	}
+
+	b.root.Store(root)
+
+	if err := b.reclaimPending(); err != nil {
+		return err
+	}
+
+	return b.flushLocked()
+}
+
+func (b *Bytes) checkDirtyLimit() error {
+	if b.dirtyPages <= 0 {
+		return nil
+	}
+
+	if b.cache.dirtyCount() > b.dirtyPages {
+		return ErrDirtyPagesFull
+	}
 
 	return nil
 }
 
+func (b *Bytes) discardPending() {
+	b.pending = nil
+	b.pendingSet = make(map[uint64]struct{})
+}
+
 // All iterates over all entries in key order.
-func (b *Bytes) All() iter.Seq2[string, []byte] {
-	return b.scan("", "", false)
-}
-
-// From iterates over entries with a key greater than or equal to from.
-func (b *Bytes) From(from string) iter.Seq2[string, []byte] {
-	return b.scan(from, "", false)
-}
-
-// Between iterates over entries with a key in [from, to).
-func (b *Bytes) Between(from, to string) iter.Seq2[string, []byte] {
-	return b.scan(from, to, true)
-}
-
-// Run implements run.Runnable.
-func (b *Bytes) Run(ctx context.Context, notify run.Notify) error {
-	b.lifecycleMu.Lock()
-
-	if b.closed.Load() {
-		b.lifecycleMu.Unlock()
-
-		return ErrClosed
-	}
-
-	if b.running.Load() || b.started.Load() {
-		b.lifecycleMu.Unlock()
-
-		return ErrAlreadyRunning
-	}
-
-	b.started.Store(true)
-	b.running.Store(true)
-	b.lifecycleMu.Unlock()
-
-	defer func() {
-		b.running.Store(false)
-		close(b.done)
-	}()
-
-	if err := b.flushAll(); err != nil {
-		return err
-	}
-
-	notify.Notify()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return b.flushAll()
-		case <-b.stop:
-			return b.flushAll()
-		case <-b.writerSignal:
-			if err := b.flushAll(); err != nil {
-				return err
-			}
-		}
-	}
-}
-
-// Close stops the writer and writes all dirty pages.
-func (b *Bytes) Close() error {
-	b.closeOnce.Do(func() {
-		b.lifecycleMu.Lock()
-		b.closed.Store(true)
-		close(b.stop)
-		running := b.running.Load()
-		b.lifecycleMu.Unlock()
-
-		if running {
-			<-b.done
-		}
-
-		err := b.flushAll()
-		err = errors.Join(err, b.file.Close())
-		b.closeErr = err
-	})
-
-	return b.closeErr
-}
-
 func (b *Bytes) storeFirst(key string, value []byte) error {
 	entry, err := b.makeEntry(key, value)
 	if err != nil {
@@ -340,10 +419,7 @@ func (b *Bytes) storeFirst(key string, value []byte) error {
 		return err
 	}
 
-	b.root.Store(root)
-	b.signalWriter()
-
-	return nil
+	return b.commitRoot(root)
 }
 
 func (b *Bytes) storeExisting(root uint64, key string, value []byte) error {
@@ -397,18 +473,12 @@ func (b *Bytes) storeExisting(root uint64, key string, value []byte) error {
 
 	newRoot, err := b.copyUp(cur.path, leftID, leftFirst, rightID, rightFirst, true)
 	if err != nil {
+		b.discardPending()
+
 		return err
 	}
 
-	b.root.Store(newRoot)
-
-	if err := b.releasePending(); err != nil {
-		return err
-	}
-
-	b.signalWriter()
-
-	return nil
+	return b.commitRoot(newRoot)
 }
 
 func (b *Bytes) load() error {
@@ -484,10 +554,6 @@ func (b *Bytes) writeHeader() error {
 
 	if _, err := b.file.WriteAt(encodeHeader(header), 0); err != nil {
 		return fmt.Errorf("could not write store header: %w", err)
-	}
-
-	if err := b.file.Sync(); err != nil {
-		return fmt.Errorf("could not sync store header: %w", err)
 	}
 
 	return nil
@@ -608,12 +674,10 @@ func (b *Bytes) addPendingFree(ids ...uint64) {
 	}
 }
 
-func (b *Bytes) releasePending() error {
-	if len(b.pending) == 0 {
+func (b *Bytes) reclaimPending() error {
+	if len(b.pending) == 0 || b.readers.Load() != 0 {
 		return nil
 	}
-
-	b.waitForReaders()
 
 	pending := b.pending
 	b.pending = nil
@@ -639,14 +703,13 @@ func (b *Bytes) releasePending() error {
 	return nil
 }
 
-func (b *Bytes) flushAll() error {
-	b.writeMu.Lock()
-	defer b.writeMu.Unlock()
-
-	return b.flushAllLocked()
+func (b *Bytes) waitReaders() {
+	for b.readers.Load() != 0 {
+		time.Sleep(100 * time.Microsecond)
+	}
 }
 
-func (b *Bytes) flushAllLocked() error {
+func (b *Bytes) flushLocked() error {
 	for _, p := range b.cache.dirtyPages() {
 		if err := b.writePage(p); err != nil {
 			return err
@@ -654,19 +717,6 @@ func (b *Bytes) flushAllLocked() error {
 	}
 
 	return b.writeHeader()
-}
-
-func (b *Bytes) waitForReaders() {
-	for b.readers.Load() != 0 {
-		time.Sleep(100 * time.Microsecond)
-	}
-}
-
-func (b *Bytes) signalWriter() {
-	select {
-	case b.writerSignal <- struct{}{}:
-	default:
-	}
 }
 
 func (b *Bytes) makeEntry(key string, value []byte) (leafEntry, error) {
@@ -693,10 +743,18 @@ func (b *Bytes) makeEntry(key string, value []byte) (leafEntry, error) {
 }
 
 func (b *Bytes) writeOverflow(value []byte) (uint64, error) {
+	if err := b.contextErr(); err != nil {
+		return 0, err
+	}
+
 	chunks := (len(value) + pagePayloadSize - 1) / pagePayloadSize
 	ids := make([]uint64, chunks)
 
 	for i := range ids {
+		if err := b.contextErr(); err != nil {
+			return 0, err
+		}
+
 		id, err := b.allocatePage()
 		if err != nil {
 			return 0, err
@@ -706,6 +764,10 @@ func (b *Bytes) writeOverflow(value []byte) (uint64, error) {
 	}
 
 	for i, id := range ids {
+		if err := b.contextErr(); err != nil {
+			return 0, err
+		}
+
 		start := i * pagePayloadSize
 		end := min(start+pagePayloadSize, len(value))
 
@@ -735,6 +797,10 @@ func (b *Bytes) readEntryValue(entry leafEntry) ([]byte, error) {
 	id := entry.overflow
 
 	for id != 0 {
+		if err := b.contextErr(); err != nil {
+			return nil, err
+		}
+
 		p, err := b.loadPage(id)
 		if err != nil {
 			return nil, err
@@ -767,9 +833,17 @@ func (b *Bytes) readEntryValue(entry leafEntry) ([]byte, error) {
 }
 
 func (b *Bytes) overflowChain(first uint64) ([]uint64, error) {
+	if err := b.contextErr(); err != nil {
+		return nil, err
+	}
+
 	ids := []uint64{}
 
 	for id := first; id != 0; {
+		if err := b.contextErr(); err != nil {
+			return nil, err
+		}
+
 		ids = append(ids, id)
 
 		if len(ids) > toInt(b.pageCount)+1 {
@@ -803,10 +877,18 @@ type cursor struct {
 }
 
 func (b *Bytes) seek(root uint64, key string) (cursor, error) {
+	if err := b.contextErr(); err != nil {
+		return cursor{}, err
+	}
+
 	c := cursor{store: b}
 	id := root
 
 	for range maxDepth {
+		if err := b.contextErr(); err != nil {
+			return cursor{}, err
+		}
+
 		p, err := b.loadPage(id)
 		if err != nil {
 			return cursor{}, err
@@ -850,6 +932,10 @@ func (b *Bytes) seek(root uint64, key string) (cursor, error) {
 
 func (c *cursor) next() (bool, error) {
 	for i := len(c.path) - 1; i >= 0; i-- {
+		if err := c.store.contextErr(); err != nil {
+			return false, err
+		}
+
 		p, err := c.store.loadPage(c.path[i].id)
 		if err != nil {
 			return false, err
@@ -1227,7 +1313,7 @@ func (b *Bytes) copyUp(
 
 func (b *Bytes) scan(from, to string, bounded bool) iter.Seq2[string, []byte] {
 	return func(yield func(string, []byte) bool) {
-		if b.closed.Load() {
+		if b.contextErr() != nil {
 			return
 		}
 
@@ -1245,6 +1331,10 @@ func (b *Bytes) scan(from, to string, bounded bool) iter.Seq2[string, []byte] {
 		}
 
 		for cur.leaf != 0 {
+			if b.contextErr() != nil {
+				return
+			}
+
 			leaf, err := b.loadLeaf(cur.leaf)
 			if err != nil {
 				return

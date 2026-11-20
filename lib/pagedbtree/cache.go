@@ -9,6 +9,7 @@ type pageCache struct {
 	mu     sync.Mutex
 	budget int64
 	used   int64
+	dirty  int
 	pages  map[uint64]*page
 	order  *list.List
 	hand   *list.Element
@@ -85,7 +86,19 @@ func (c *pageCache) dirtyPages() []*page {
 }
 
 func (c *pageCache) markClean(p *page) {
-	p.dirty.Store(false)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if p.dirty.CompareAndSwap(true, false) {
+		c.dirty--
+	}
+}
+
+func (c *pageCache) dirtyCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.dirty
 }
 
 func (c *pageCache) addLocked(p *page) {
@@ -93,6 +106,10 @@ func (c *pageCache) addLocked(p *page) {
 	c.pages[p.id] = p
 
 	c.used += int64(len(p.data))
+	if p.dirty.Load() {
+		c.dirty++
+	}
+
 	if c.hand == nil {
 		c.hand = p.elem
 	}
@@ -102,7 +119,11 @@ func (c *pageCache) addLocked(p *page) {
 
 func (c *pageCache) removeLocked(p *page) {
 	delete(c.pages, p.id)
+
 	c.used -= int64(len(p.data))
+	if p.dirty.Load() {
+		c.dirty--
+	}
 
 	if p.elem == nil {
 		return

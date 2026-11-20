@@ -55,12 +55,8 @@ func TestTypedTree(t *testing.T) {
 	t.Parallel()
 	cfg := testConfig(t)
 
-	tree, err := OpenTree(cfg, jsonCodec[typedValue]{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { _ = tree.Close() })
+	store, _ := openTestStore(t, cfg)
+	tree := &Tree[typedValue]{store: store, codec: jsonCodec[typedValue]{}}
 
 	values := []typedValue{
 		{key: "a", data: "one"},
@@ -72,6 +68,8 @@ func TestTypedTree(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	waitTestStore(t, store)
 
 	got, ok, err := tree.Load("b")
 	if err != nil {
@@ -94,6 +92,8 @@ func TestTypedTree(t *testing.T) {
 	if err := tree.Delete("a"); err != nil {
 		t.Fatal(err)
 	}
+
+	waitTestStore(t, store)
 
 	if _, ok, err := tree.Load("a"); err != nil || ok {
 		t.Fatalf("Load(a) after Delete = ok %v, err %v", ok, err)
