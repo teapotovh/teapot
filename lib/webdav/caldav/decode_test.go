@@ -37,6 +37,9 @@ var rfc4791CalendarMultiget791 string
 //go:embed testdata/teapot-report-calendar-query-multiple-text-match.xml
 var reportCalendarQueryMultipleTextMatch string
 
+//go:embed testdata/report_free_busy.xml
+var rfc4791FreeBusyQuery string
+
 func unmarshalReport(t *testing.T, body string) *reportReq {
 	t.Helper()
 
@@ -93,13 +96,28 @@ func TestReportReqUnmarshalXML(t *testing.T) {
 		assert.NotNil(t, req.Multiget)
 	})
 
+	t.Run("free-busy-query", func(t *testing.T) {
+		t.Parallel()
+
+		req := unmarshalReport(t, rfc4791FreeBusyQuery)
+		require.NotNil(t, req.FreeBusy)
+		assert.Nil(t, req.Query)
+		assert.Nil(t, req.Multiget)
+
+		start := time.Date(2006, 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC)
+
+		assert.Equal(t, start, time.Time(req.FreeBusy.TimeRange.Start))
+		assert.Equal(t, end, time.Time(req.FreeBusy.TimeRange.End))
+	})
+
 	t.Run("unsupported caldav root", func(t *testing.T) {
 		t.Parallel()
 
 		var req reportReq
 
 		err := xml.Unmarshal(
-			[]byte(`<C:free-busy-query xmlns:C="urn:ietf:params:xml:ns:caldav"/>`),
+			[]byte(`<C:unknown-report xmlns:C="urn:ietf:params:xml:ns:caldav"/>`),
 			&req,
 		)
 		require.Error(t, err)

@@ -223,7 +223,7 @@ func TestAppleMkcalendar(t *testing.T) {
 
 		// Ported from:
 		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/mkcalendar.xml#L176-L207
-		t.Skip("RFC 4791 7.10: free-busy-query is not implemented.")
+		t.Skip("CALDAV:read-free-busy is not exposed in current-user-privilege-set and is not checked.")
 
 		srv := newTestServer(t)
 

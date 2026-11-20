@@ -1293,6 +1293,75 @@ func TestAppleReportsAlarmTimeRange(t *testing.T) {
 	runReportCases(t, tests)
 }
 
+func TestAppleReportsFreeBusy(t *testing.T) {
+	t.Parallel()
+
+	t.Run("free busy 1", func(t *testing.T) {
+		t.Parallel()
+
+		// Ported from:
+		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2795-L2830
+		t.Skip("RFC 5545 3.8.4.4: RECURRENCE-ID override handling is not implemented.")
+
+		srv := newReportsServer(t)
+
+		res := report(
+			t,
+			srv,
+			calendarPath(userOne),
+			loadAppleFixture(t, "Resource/CalDAV/reports/freebusy/1.txt", nil),
+		)
+		require.Equal(t, http.StatusOK, res.Status, "body: %s", res.Body)
+
+		assertFreeBusy(t, res.Body, []string{
+			"0101T150000Z/0101T160000Z",
+			"0101T180000Z/0101T190000Z",
+			"0101T210000Z/0101T220000Z",
+			"0101T230000Z/0102T000000Z",
+			"0102T150000Z/0102T160000Z",
+			"0103T150000Z/0103T160000Z",
+			"0104T150000Z/0104T160000Z",
+			"0102T190000Z/0102T200000Z",
+			"0103T190000Z/0103T200000Z",
+			"0104T210000Z/0104T220000Z",
+			"0102T230000Z/0103T000000Z",
+			"0103T230000Z/0104T000000Z",
+		}, nil, nil)
+		assert.NotContains(t, res.Body, "METHOD:REPLY")
+	})
+
+	t.Run("free busy 2", func(t *testing.T) {
+		t.Parallel()
+
+		// Ported from:
+		// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L2831-L2861
+		// The require-feature split-calendars variant is not ported because split calendars are not planned.
+		t.Skip("RFC 5545 3.8.4.4: RECURRENCE-ID override handling is not implemented.")
+
+		srv := newReportsServer(t)
+
+		res := report(
+			t,
+			srv,
+			calendarPath(userOne),
+			loadAppleFixture(t, "Resource/CalDAV/reports/freebusy/2.txt", nil),
+		)
+		require.Equal(t, http.StatusOK, res.Status, "body: %s", res.Body)
+
+		assertFreeBusy(t, res.Body, []string{
+			"0107T010000Z/0107T020000Z",
+			"0107T150000Z/0107T163000Z",
+			"0108T150000Z/0108T180000Z",
+			"0108T190000Z/0108T193000Z",
+		}, []string{
+			"0108T160000Z/0108T170000Z",
+			"0108T210000Z/0108T213000Z",
+		}, []string{
+			"0108T130000Z/0108T150000Z",
+		})
+	})
+}
+
 func TestAppleReportsLimitExpand(t *testing.T) {
 	t.Parallel()
 

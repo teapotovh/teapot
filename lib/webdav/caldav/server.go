@@ -112,11 +112,13 @@ func (h *Handler) handleReport(w http.ResponseWriter, r *http.Request) error {
 		return h.handleQuery(r, w, report.Query)
 	} else if report.Multiget != nil {
 		return h.handleMultiget(r.Context(), w, report.Multiget)
+	} else if report.FreeBusy != nil {
+		return h.handleFreeBusy(r, w, report.FreeBusy)
 	}
 
 	return daverr.HTTPErrorf(
 		http.StatusBadRequest,
-		"caldav: expected calendar-query or calendar-multiget element in REPORT request",
+		"caldav: expected calendar-query, calendar-multiget or free-busy-query element in REPORT request",
 	)
 }
 
@@ -220,13 +222,23 @@ func decodeCompFilter(el *compFilter) (*CompFilter, error) {
 }
 
 // decodeTimeZone parses the CALDAV:timezone element, as defined in RFC 4791,
-// section 9.8. It returns UTC when the element is absent.
+// section 9.8. It returns nil when the element is absent.
 func decodeTimeZone(el *calendarTimeZone) (*time.Location, error) {
-	if el == nil || strings.TrimSpace(el.Data) == "" {
+	if el == nil {
+		return nil, nil //nolint:nilnil // A nil location means the element is absent.
+	}
+
+	return parseTimeZone(el.Data)
+}
+
+// parseTimeZone parses a VTIMEZONE iCalendar value. It returns UTC when the
+// value is empty.
+func parseTimeZone(data string) (*time.Location, error) {
+	if strings.TrimSpace(data) == "" {
 		return time.UTC, nil
 	}
 
-	cal, err := ics.ParseCalendar(strings.NewReader(el.Data))
+	cal, err := ics.ParseCalendar(strings.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("caldav: failed to parse timezone: %w: %w", ErrInvalidTimeZone, err)
 	}
@@ -343,6 +355,13 @@ func (h *Handler) handleQuery(r *http.Request, w http.ResponseWriter, query *cal
 		return err
 	}
 
+	if q.TimeZone == nil {
+		q.TimeZone, err = h.defaultTimeZone(r.Context(), r.URL.Path)
+		if err != nil {
+			return err
+		}
+	}
+
 	cos, err := h.Backend.QueryCalendarObjects(r.Context(), r.URL.Path, &q)
 	if err != nil {
 		return err
@@ -423,6 +442,89 @@ func (h *Handler) handleMultiget(ctx context.Context, w http.ResponseWriter, mul
 	ms := internal.NewMultiStatus(resps...)
 
 	return internal.ServeMultiStatus(w, ms)
+}
+
+func (h *Handler) handleFreeBusy(r *http.Request, w http.ResponseWriter, query *freeBusyQuery) error {
+	start := time.Time(query.TimeRange.Start)
+	end := time.Time(query.TimeRange.End)
+
+	if start.IsZero() || end.IsZero() {
+		return daverr.HTTPErrorf(
+			http.StatusBadRequest,
+			"caldav: free-busy-query requires a time-range with start and end",
+		)
+	}
+
+	if !end.After(start) {
+		return daverr.HTTPErrorf(
+			http.StatusBadRequest,
+			"caldav: free-busy-query time-range end must be after start",
+		)
+	}
+
+	cal, err := h.Backend.GetCalendar(r.Context(), r.URL.Path)
+	if err != nil {
+		return err
+	}
+
+	location, err := calendarLocation(cal)
+	if err != nil {
+		return err
+	}
+
+	cos, err := h.Backend.ListCalendarObjects(r.Context(), r.URL.Path, &CalendarCompRequest{})
+	if err != nil {
+		return err
+	}
+
+	periods, err := computeFreeBusy(cos, start, end, location)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set("Content-Type", freeBusyContentType)
+
+	return writeFreeBusy(w, start, end, periods)
+}
+
+// calendarLocation returns the time zone of the calendar collection. It returns
+// UTC when the CALDAV:calendar-timezone property is absent.
+func calendarLocation(cal *Calendar) (*time.Location, error) {
+	if cal == nil {
+		return time.UTC, nil
+	}
+
+	value, ok := cal.DeadProperties[calendarTimeZoneName]
+	if !ok {
+		return time.UTC, nil
+	}
+
+	raw, err := unmarshalProperty(value)
+	if err != nil {
+		return nil, err
+	}
+
+	var prop calendarTimeZoneProp
+	if err := raw.Decode(&prop); err != nil {
+		return nil, fmt.Errorf("caldav: failed to decode calendar-timezone: %w", err)
+	}
+
+	return parseTimeZone(prop.Data)
+}
+
+// defaultTimeZone returns the time zone of the calendar collection. It returns
+// UTC when the collection does not exist or has no calendar-timezone property.
+func (h *Handler) defaultTimeZone(ctx context.Context, calendarPath string) (*time.Location, error) {
+	cal, err := h.Backend.GetCalendar(ctx, calendarPath)
+	if err != nil {
+		if daverr.IsNotFound(err) {
+			return time.UTC, nil
+		}
+
+		return nil, err
+	}
+
+	return calendarLocation(cal)
 }
 
 type backend struct {
@@ -838,9 +940,36 @@ func marshalProperty(raw *internal.RawXMLValue) (string, error) {
 	return string(data), nil
 }
 
+// storeDeadProperties stores the properties of a MKCALENDAR request that the
+// server does not handle directly.
+func storeDeadProperties(props []internal.RawXMLValue, cal *Calendar) error {
+	for i := range props {
+		raw := &props[i]
+
+		name, ok := raw.XMLName()
+		if !ok {
+			continue
+		}
+
+		value, err := marshalProperty(raw)
+		if err != nil {
+			return err
+		}
+
+		if cal.DeadProperties == nil {
+			cal.DeadProperties = map[xml.Name]string{}
+		}
+
+		cal.DeadProperties[name] = value
+	}
+
+	return nil
+}
+
 func unmarshalProperty(value string) (*internal.RawXMLValue, error) {
 	var raw internal.RawXMLValue
-	if err := xml.Unmarshal([]byte(value), &raw); err != nil {
+	// The decoder only accepts XML and returns an error for malformed input.
+	if err := xml.Unmarshal([]byte(value), &raw); err != nil { //nolint:gosec
 		return nil, fmt.Errorf("caldav: failed to decode property: %w", err)
 	}
 
@@ -1063,6 +1192,10 @@ func (b *backend) Mkcalendar(r *http.Request) error {
 		cal.Description = m.Prop.Description
 		cal.MaxResourceSize = m.Prop.MaxResourceSize
 		cal.SupportedComponentSet = componentNames(m.Prop.SupportedComponents)
+
+		if err := storeDeadProperties(m.Prop.Raw, &cal); err != nil {
+			return err
+		}
 	}
 
 	homeSetPath, err := b.Backend.CalendarHomeSetPath(ctx)
@@ -1190,7 +1323,7 @@ func (b *backend) propFindCalendar(
 			internal.NewResourceType(internal.CollectionName, calendarName),
 		),
 		internal.SupportedReportSetName: internal.PropFindValue(
-			internal.NewSupportedReportSet(calendarQueryName, calendarMultigetName),
+			internal.NewSupportedReportSet(calendarQueryName, calendarMultigetName, freeBusyQueryName),
 		),
 		supportedCalendarDataName: internal.PropFindValue(&supportedCalendarData{
 			Types: []calendarDataType{
@@ -1255,7 +1388,7 @@ func (b *backend) propFindCalendar(
 		}
 	}
 
-	// TODO: CALDAV:calendar-timezone, CALDAV:min-date-time, CALDAV:max-date-time,
+	// TODO: CALDAV:min-date-time, CALDAV:max-date-time,
 	// CALDAV:max-instances, CALDAV:max-attendees-per-instance
 
 	return internal.NewPropFindResponse(cal.Path, propfind, props)

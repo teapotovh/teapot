@@ -27,9 +27,11 @@ var (
 	supportedCalendarComponentSetName = xml.Name{Space: caldavNS, Local: "supported-calendar-component-set"}
 	maxResourceSizeName               = xml.Name{Space: caldavNS, Local: "max-resource-size"}
 	calendarColorName                 = xml.Name{Space: appleNS, Local: "calendar-color"}
+	calendarTimeZoneName              = xml.Name{Space: caldavNS, Local: "calendar-timezone"}
 
 	calendarQueryName    = xml.Name{Space: caldavNS, Local: "calendar-query"}
 	calendarMultigetName = xml.Name{Space: caldavNS, Local: "calendar-multiget"}
+	freeBusyQueryName    = xml.Name{Space: caldavNS, Local: "free-busy-query"}
 
 	calendarName     = xml.Name{Space: caldavNS, Local: "calendar"}
 	calendarDataName = xml.Name{Space: caldavNS, Local: "calendar-data"}
@@ -82,6 +84,12 @@ type maxResourceSize struct {
 	Size    int64    `xml:",chardata"`
 }
 
+// https://tools.ietf.org/html/rfc4791#section-5.2.4
+type calendarTimeZoneProp struct {
+	XMLName xml.Name `xml:"urn:ietf:params:xml:ns:caldav calendar-timezone"`
+	Data    string   `xml:",chardata"`
+}
+
 // https://tools.ietf.org/html/rfc4791#section-9.5
 type calendarQuery struct {
 	XMLName  xml.Name          `xml:"urn:ietf:params:xml:ns:caldav calendar-query"`
@@ -96,6 +104,12 @@ type calendarQuery struct {
 type calendarTimeZone struct {
 	XMLName xml.Name `xml:"urn:ietf:params:xml:ns:caldav timezone"`
 	Data    string   `xml:",chardata"`
+}
+
+// https://tools.ietf.org/html/rfc4791#section-9.9
+type freeBusyQuery struct {
+	XMLName   xml.Name  `xml:"urn:ietf:params:xml:ns:caldav free-busy-query"`
+	TimeRange timeRange `xml:"time-range"`
 }
 
 // https://tools.ietf.org/html/rfc4791#section-9.10
@@ -243,7 +257,7 @@ type calendarDataResp struct {
 type reportReq struct {
 	Query    *calendarQuery
 	Multiget *calendarMultiget
-	// TODO: CALDAV:free-busy-query
+	FreeBusy *freeBusyQuery
 }
 
 func (r *reportReq) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
@@ -256,6 +270,9 @@ func (r *reportReq) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	case calendarMultigetName:
 		r.Multiget = &calendarMultiget{}
 		v = r.Multiget
+	case freeBusyQueryName:
+		r.FreeBusy = &freeBusyQuery{}
+		v = r.FreeBusy
 	default:
 		return fmt.Errorf("caldav: %w %q %q", ErrUnsupportedREPORTRoot, start.Name.Space, start.Name.Local)
 	}
