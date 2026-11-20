@@ -69,8 +69,8 @@ type Tree[T Keyed] struct {
 }
 
 // OpenTree opens or creates a typed store.
-func OpenTree[T Keyed](cfg Config, codec Codec[T]) (*Tree[T], error) {
-	store, err := Open(cfg)
+func OpenTree[T Keyed](fs FS, cfg Config, codec Codec[T]) (*Tree[T], error) {
+	store, err := Open(fs, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -128,11 +128,6 @@ func (t *Tree[T]) Between(from, to string) iter.Seq2[string, T] {
 // Run implements run.Runnable.
 func (t *Tree[T]) Run(ctx context.Context, notify run.Notify) error {
 	return t.store.Run(ctx, notify)
-}
-
-// Close stops the writer and writes all dirty pages.
-func (t *Tree[T]) Close() error {
-	return t.store.Close()
 }
 
 func (t *Tree[T]) scan(seq iter.Seq2[string, []byte]) iter.Seq2[string, T] {
