@@ -432,6 +432,66 @@ func TestMatchCalendarMultipleComponentFilters(t *testing.T) {
 	}
 }
 
+func TestMatchCalendarPropDateFilterSingleValue(t *testing.T) {
+	t.Parallel()
+
+	cal := mustParseICS(t, rfc4791EventSingle)
+
+	tests := []struct {
+		name  string
+		start string
+		end   string
+		want  bool
+	}{
+		{
+			name:  "dtstamp in range",
+			start: "20060206T000000Z",
+			end:   "20060207T000000Z",
+			want:  true,
+		},
+		{
+			name:  "range start equals dtstamp",
+			start: "20060206T001102Z",
+			end:   "20060207T000000Z",
+			want:  true,
+		},
+		{
+			name:  "range end equals dtstamp",
+			start: "20060205T000000Z",
+			end:   "20060206T001102Z",
+			want:  false,
+		},
+		{
+			name:  "dtstamp out of range",
+			start: "20060207T000000Z",
+			end:   "20060208T000000Z",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			query := CompFilter{
+				Name: testCalendarComponent,
+				Comps: []CompFilter{{
+					Name: testEventComponent,
+					Props: []PropFilter{{
+						Name:  "DTSTAMP",
+						Start: mustICSTime(t, tt.start),
+						End:   mustICSTime(t, tt.end),
+					}},
+				}},
+			}
+
+			match, err := MatchCalendar(query, cal, time.UTC)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, match)
+		})
+	}
+}
+
 func TestMatchCalendarPropDateFilterAnyMatch(t *testing.T) {
 	t.Parallel()
 

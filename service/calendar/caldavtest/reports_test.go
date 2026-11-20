@@ -844,10 +844,9 @@ func TestAppleReportsTimeRange(t *testing.T) {
 		{
 			// Ported from:
 			// https://github.com/apple/ccs-caldavtester/blob/bed21e5924275552c1561febc8203a9f194cf737/scripts/tests/CalDAV/reports.xml#L1781-L1794
-			name:       "time range 2",
-			path:       calendarPath(userOne),
-			fixture:    "Resource/CalDAV/reports/timerangequery/2.txt",
-			skipReason: "RFC 4791 9.9: time-range filters on VFREEBUSY are not implemented.",
+			name:    "time range 2",
+			path:    calendarPath(userOne),
+			fixture: "Resource/CalDAV/reports/timerangequery/2.txt",
 		},
 		{
 			// Ported from:
