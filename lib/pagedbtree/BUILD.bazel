@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pagedbtree",
+    srcs = [
+        "btree.go",
+        "cache.go",
+        "file.go",
+        "page.go",
+        "typed.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/pagedbtree",
+    visibility = ["//visibility:public"],
+    deps = ["//lib/run"],
+)
+
+go_test(
+    name = "pagedbtree_test",
+    srcs = [
+        "btree_test.go",
+        "cache_test.go",
+        "file_test.go",
+        "page_test.go",
+        "typed_test.go",
+    ],
+    embed = [":pagedbtree"],
+)
