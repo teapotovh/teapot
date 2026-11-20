@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pgnotify",
+    srcs = [
+        "frame.go",
+        "manager.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/pgnotify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_google_uuid//:uuid",
+        "@com_github_jackc_pgx_v5//:pgx",
+        "@com_github_jackc_pgx_v5//pgconn",
+    ],
+)
+
+go_test(
+    name = "pgnotify_test",
+    srcs = [
+        "frame_test.go",
+        "manager_test.go",
+    ],
+    embed = [":pgnotify"],
+    deps = [
+        "@com_github_google_uuid//:uuid",
+        "@com_github_jackc_pgx_v5//pgconn",
+    ],
+)
