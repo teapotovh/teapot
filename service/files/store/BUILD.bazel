@@ -13,6 +13,7 @@ go_library(
         "name.go",
         "path.go",
         "psql.go",
+        "snapshot.go",
         "store.go",
         "types.go",
     ],
@@ -20,6 +21,7 @@ go_library(
     importpath = "github.com/teapotovh/teapot/service/files/store",
     visibility = ["//visibility:public"],
     deps = [
+        "//lib/broker",
         "//lib/httptrace",
         "//lib/pagedbtree",
         "//lib/pgnotify",
@@ -39,7 +41,10 @@ go_library(
 
 go_test(
     name = "store_test",
-    srcs = ["store_test.go"],
+    srcs = [
+        "store_test.go",
+        "watch_test.go",
+    ],
     embed = [":store"],
     deps = ["//lib/pgnotify"],
 )

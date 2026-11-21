@@ -101,6 +101,10 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader, _ os.FileMode) (
 		return ErrNotDirectory
 	}
 
+	if err := f.ensureRoot(ctx); err != nil {
+		return err
+	}
+
 	childID, ok, err := f.store.cache.child(f.uid, parentInode.NodeID, name)
 	if err != nil {
 		return err
@@ -132,10 +136,6 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader, _ os.FileMode) (
 	}
 
 	defer rollbackOnError(ctx, tx, &err)
-
-	if err := f.ensureRoot(ctx, tx, parentInode); err != nil {
-		return err
-	}
 
 	inode := Inode{
 		UID:      f.uid,
@@ -175,6 +175,10 @@ func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
 		return ErrNotDirectory
 	}
 
+	if err := f.ensureRoot(ctx); err != nil {
+		return err
+	}
+
 	if _, ok, err := f.store.cache.child(f.uid, parentInode.NodeID, name); err != nil {
 		return err
 	} else if ok {
@@ -187,10 +191,6 @@ func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
 	}
 
 	defer rollbackOnError(ctx, tx, &err)
-
-	if err := f.ensureRoot(ctx, tx, parentInode); err != nil {
-		return err
-	}
 
 	inode := Inode{
 		UID:      f.uid,
@@ -205,8 +205,7 @@ func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
 
 // Delete implements MutableFileSystem.
 func (f *FS) Delete(ctx context.Context, path string) (err error) {
-	_, name, err := splitPath(path)
-	if err != nil {
+	if _, _, err := splitPath(path); err != nil {
 		return err
 	}
 
@@ -233,11 +232,7 @@ func (f *FS) Delete(ctx context.Context, path string) (err error) {
 
 	defer rollbackOnError(ctx, tx, &err)
 
-	inode.Name = name
-	inode.Deleted = true
-	inode.ModTime = time.Now().UTC()
-
-	return f.commit(ctx, tx, inode)
+	return f.deleteCommit(ctx, tx, inode)
 }
 
 // Rename implements MutableFileSystem.
@@ -289,24 +284,20 @@ func (f *FS) Rename(ctx context.Context, oldPath, newPath string) (err error) {
 	return f.commit(ctx, tx, inode)
 }
 
-func (f *FS) ensureRoot(ctx context.Context, tx Tx, inode Inode) error {
-	if inode.NodeID != RootNodeID {
-		return nil
-	}
-
+func (f *FS) ensureRoot(ctx context.Context) (err error) {
 	_, ok, err := f.store.cache.get(f.uid, RootNodeID)
 	if err != nil || ok {
 		return err
 	}
 
-	root := syntheticRoot(f.uid)
-	root.Revision = tx.Revision()
-
-	if _, err := tx.Put(ctx, root); err != nil {
+	tx, err := f.store.db.Begin(ctx, f.store.Revision())
+	if err != nil {
 		return err
 	}
 
-	return nil
+	defer rollbackOnError(ctx, tx, &err)
+
+	return f.commit(ctx, tx, syntheticRoot(f.uid))
 }
 
 func (f *FS) commit(ctx context.Context, tx Tx, inode Inode) error {
@@ -326,6 +317,27 @@ func (f *FS) commit(ctx context.Context, tx Tx, inode Inode) error {
 
 	if err := tx.Commit(ctx, payload); err != nil {
 		return fmt.Errorf("error while committing the write: %w", err)
+	}
+
+	return f.store.apply(ctx, Event{Inode: inode})
+}
+
+func (f *FS) deleteCommit(ctx context.Context, tx Tx, inode Inode) error {
+	inode.Revision = tx.Revision()
+	inode.Deleted = true
+	inode.ModTime = time.Now().UTC()
+
+	if err := tx.Delete(ctx, inode.UID, inode.NodeID); err != nil {
+		return err
+	}
+
+	payload, err := encodeEvent(Event{Inode: inode})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx, payload); err != nil {
+		return fmt.Errorf("error while committing the delete: %w", err)
 	}
 
 	return f.store.apply(ctx, Event{Inode: inode})

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"iter"
 	"strings"
 	"sync"
 
@@ -246,6 +247,30 @@ func (c *cache) deleteChildLocked(uid int64, parentID uint64, name string, nodeI
 	}
 
 	return c.children.Delete(childKeyString(uid, parentID, name))
+}
+
+func (c *cache) all() iter.Seq2[Inode, error] {
+	return func(yield func(Inode, error) bool) {
+		c.mu.RLock()
+		defer c.mu.RUnlock()
+
+		for _, data := range c.nodes.All() {
+			inode, err := decodeInode(data)
+			if err != nil {
+				yield(Inode{}, err)
+
+				return
+			}
+
+			if inode.Deleted {
+				continue
+			}
+
+			if !yield(inode, nil) {
+				return
+			}
+		}
+	}
 }
 
 func (c *cache) clear() error {

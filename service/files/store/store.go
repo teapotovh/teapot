@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/pagedbtree"
 	"github.com/teapotovh/teapot/lib/pgnotify"
 	"github.com/teapotovh/teapot/lib/run"
@@ -42,18 +43,6 @@ type Blob interface {
 	Get(ctx context.Context, key string) (io.ReadSeekCloser, error)
 }
 
-// Notifications sends and receives PostgreSQL notifications.
-type Notifications interface {
-	// Listen registers a notification channel.
-	Listen(ctx context.Context, channel string) error
-	// Next returns the next notification payload.
-	Next(ctx context.Context) (string, []byte, error)
-	// Notify sends a notification inside a transaction.
-	Notify(ctx context.Context, tx pgnotify.Executor, channel string, payload []byte) error
-	// Close closes the notification connection.
-	Close() error
-}
-
 // ErrRevisionConflict reports that another write advanced the revision.
 var ErrRevisionConflict = errors.New("revision conflict")
 
@@ -61,8 +50,6 @@ var ErrRevisionConflict = errors.New("revision conflict")
 type DB interface {
 	// Load sends all live inodes and the current revision to fn.
 	Load(ctx context.Context, fn func(revision uint64, inodes []Inode) error) error
-	// ChangedSince returns live inodes and tombstones changed after revision.
-	ChangedSince(ctx context.Context, revision uint64) ([]Inode, error)
 	// Begin starts a write transaction at expectedRevision.
 	Begin(ctx context.Context, expectedRevision uint64) (Tx, error)
 	// Close closes the database connections.
@@ -75,6 +62,8 @@ type Tx interface {
 	Revision() uint64
 	// Put stores an inode and returns its node id.
 	Put(ctx context.Context, inode Inode) (uint64, error)
+	// Delete removes an inode.
+	Delete(ctx context.Context, uid int64, nodeID uint64) error
 	// Commit commits the transaction and sends the notification payload.
 	Commit(ctx context.Context, payload []byte) error
 	// Rollback rolls back the transaction.
@@ -95,9 +84,10 @@ type Store struct {
 
 	db            DB
 	blob          Blob
-	notifications Notifications
+	notifications pgnotify.Notifications
 
-	cache *cache
+	cache  *cache
+	events *broker.Broker[Event]
 
 	revision atomic.Uint64
 	applyMu  sync.Mutex
@@ -108,7 +98,7 @@ func NewStore(
 	config Config,
 	db DB,
 	blob Blob,
-	notifications Notifications,
+	notifications pgnotify.Notifications,
 	logger *slog.Logger,
 ) (*Store, error) {
 	if config.Cache.Path == "" {
@@ -131,7 +121,8 @@ func NewStore(
 		blob:          blob,
 		notifications: notifications,
 
-		cache: cache,
+		cache:  cache,
+		events: broker.NewBroker[Event](),
 	}, nil
 }
 
@@ -229,6 +220,7 @@ func (s *Store) Run(ctx context.Context, notify run.Notify) (err error) {
 
 	return run.Combine(
 		&cacheRunner{cache: s.cache, ready: ready},
+		s.events,
 		&syncRunner{store: s, ready: ready},
 	).Run(ctx, notify)
 }
@@ -313,10 +305,13 @@ func (s *Store) listen(ctx context.Context) error {
 			continue
 		}
 
-		if _, err := s.sync(ctx, event); err != nil {
+		events, err := s.sync(ctx, event)
+		if err != nil {
 			s.logger.ErrorContext(ctx, "could not apply notification", "err", err)
 			continue
 		}
+
+		s.publish(events)
 	}
 }
 
@@ -329,52 +324,40 @@ func (s *Store) sync(ctx context.Context, incoming Event) ([]Event, error) {
 		return nil, nil
 	}
 
-	if incoming.Inode.Revision == last+1 {
-		if err := s.cache.apply(incoming.Inode); err != nil {
+	if incoming.Inode.Revision > last+1 {
+		s.logger.WarnContext(ctx, "notification gap, rebuilding cache", "last", last, "event", incoming.Inode.Revision)
+
+		if err := s.bootstrap(ctx); err != nil {
 			return nil, err
 		}
 
-		s.revision.Store(incoming.Inode.Revision)
-
-		return []Event{incoming}, nil
+		return nil, nil
 	}
 
-	return s.catchUpLocked(ctx, last, incoming.Inode.Revision)
-}
-
-// catchUpLocked applies all rows after last. The caller must hold applyMu.
-func (s *Store) catchUpLocked(ctx context.Context, last uint64, fallback uint64) ([]Event, error) {
-	inodes, err := s.db.ChangedSince(ctx, last)
-	if err != nil {
+	if err := s.cache.apply(incoming.Inode); err != nil {
 		return nil, err
 	}
 
-	events := make([]Event, 0, len(inodes))
+	s.revision.Store(incoming.Inode.Revision)
 
-	for _, inode := range inodes {
-		if inode.Revision <= s.revision.Load() {
-			continue
-		}
-
-		if err := s.cache.apply(inode); err != nil {
-			return nil, err
-		}
-
-		s.revision.Store(inode.Revision)
-		events = append(events, Event{Inode: inode})
-	}
-
-	if len(events) == 0 && fallback > s.revision.Load() {
-		s.revision.Store(fallback)
-	}
-
-	return events, nil
+	return []Event{incoming}, nil
 }
 
 func (s *Store) apply(ctx context.Context, event Event) error {
-	_, err := s.sync(ctx, event)
+	events, err := s.sync(ctx, event)
+	if err != nil {
+		return err
+	}
 
-	return err
+	s.publish(events)
+
+	return nil
+}
+
+func (s *Store) publish(events []Event) {
+	for _, event := range events {
+		s.events.Publish(event)
+	}
 }
 
 type startupNotify struct {
@@ -397,6 +380,3 @@ func (osFS) OpenFile(name string, flag int, perm os.FileMode) (pagedbtree.File, 
 
 // Ensure the store implements the run interface.
 var _ run.Runnable = (*Store)(nil)
-
-// Ensure the pgnotify manager implements Notifications.
-var _ Notifications = (*pgnotify.Manager)(nil)
