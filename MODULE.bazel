@@ -82,18 +82,19 @@ pull(
 )
 
 # --- Embed: ONNX Runtime ---
+# Telemetry-free build: https://github.com/teapotovh/onxxruntime
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "onnxruntime_prebuilt",
     build_file_content = """
 filegroup(
-    name = "lib",
-    srcs = ["lib/libonnxruntime.so"],
+    name = "libs",
+    srcs = glob(["lib/*.so*"]),
     visibility = ["//visibility:public"],
 )
     """,
-    sha256 = "c3fddc4f139a045b0c4902c57410f0694f1c2fdf9b6939fbe38b1aeae7cd14ba",
-    strip_prefix = "onnxruntime-linux-x64-1.29.0",
-    url = "https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz",
+    sha256 = "2a53390eaba9a048d86697cbdbb5d72b866a13bb7b54e2406eb5639b52eaaeb5",
+    strip_prefix = "onnxruntime-1.32.0-linux-x64",
+    url = "https://github.com/teapotovh/onxxruntime/releases/download/v1.32.0/onnxruntime-1.32.0-linux-x64.tar.gz",
 )

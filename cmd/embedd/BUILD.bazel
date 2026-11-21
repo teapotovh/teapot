@@ -37,7 +37,7 @@ image_layer(
 image_layer(
     name = "onnx_layer",
     srcs = {
-        "/lib/libonnxruntime.so": "@onnxruntime_prebuilt//:lib",
+        "/lib": "@onnxruntime_prebuilt//:libs",
     },
 )
 
@@ -45,6 +45,9 @@ image_manifest(
     name = "image",
     base = "@distroless_cc_debian13",
     entrypoint = ["/embedd"],
+    env = {
+        "LD_LIBRARY_PATH": "/lib",
+    },
     layers = [
         ":binary_layer",
         ":onnx_layer",
