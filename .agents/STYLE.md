@@ -35,6 +35,8 @@ Type assertions should always be commented. Look in the repository for examples.
 
 Changes to `.proto` files should always contain comments for every type and every field.
 
+Never return an interface when a concrete type that implements said interface can be returned.
+
 ## Metrics
 
 Add metrics to each new module when it makes sense. Follow the existing
