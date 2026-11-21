@@ -1,8 +1,9 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "s3cache",
     srcs = [
+        "client.go",
         "flag.go",
         "hash.go",
         "metadata.go",
@@ -13,7 +14,14 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_minio_minio_go_v7//:minio-go",
+        "@com_github_minio_minio_go_v7//pkg/credentials",
         "@com_github_spf13_pflag//:pflag",
-        "@org_golang_x_sync//singleflight",
     ],
+)
+
+go_test(
+    name = "s3cache_test",
+    srcs = ["download_test.go"],
+    embed = [":s3cache"],
+    deps = ["@com_github_stretchr_testify//require"],
 )

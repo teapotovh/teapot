@@ -6,13 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
@@ -36,12 +33,10 @@ type Online struct {
 	objectRefTable *pgcache.Table[Path, objectRef]
 
 	httpTrace     *httptrace.HTTPTrace
-	s3endpoint    string
-	s3credentials *credentials.Credentials
-	s3Secure      bool
+	s3URL         string
 	s3Region      string
 	s3CacheConfig s3cache.S3CacheConfig
-	objectCache   *s3cache.S3Cache
+	objectCache   s3cache.Blob
 
 	metrics metrics
 }
@@ -114,16 +109,7 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
 	}
 
-	u, err := url.Parse(s3.URL)
-	if err != nil {
-		return nil, fmt.Errorf("error while parsing the S3 connection string: %w", err)
-	}
-
 	httpTrace := httptrace.NewHTTPTrace()
-
-	key := u.User.Username()
-	secret, _ := u.User.Password()
-	credentials := credentials.NewStaticV4(key, secret, "")
 
 	p := Online{
 		logger: logger,
@@ -133,9 +119,7 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 		objectRefTable: objectTable,
 
 		httpTrace:     httpTrace,
-		s3endpoint:    u.Host,
-		s3credentials: credentials,
-		s3Secure:      u.Scheme == "https",
+		s3URL:         s3.URL,
 		s3Region:      s3.Region,
 		s3CacheConfig: s3.Cache,
 	}
@@ -187,12 +171,7 @@ func (o *Online) Run(step run.Step) (err error) {
 
 	defer o.pool.Close()
 
-	client, err := minio.New(o.s3endpoint, &minio.Options{
-		Creds:     o.s3credentials,
-		Secure:    o.s3Secure,
-		Region:    o.s3Region,
-		Transport: o.httpTrace.Transport(http.DefaultTransport),
-	})
+	client, err := s3cache.NewClient(o.s3URL, o.s3Region, o.httpTrace.Transport(http.DefaultTransport))
 	if err != nil {
 		return fmt.Errorf("error while creating the S3 client: %w", err)
 	}

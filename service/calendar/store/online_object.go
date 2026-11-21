@@ -1,8 +1,11 @@
 package store
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"time"
 	"unicode/utf8"
@@ -159,7 +162,7 @@ func (o *Online) PutCalendarObject(ctx context.Context, object Object) (bool, er
 
 	ref.ModTime = object.ModTime
 
-	etag, err := o.objectCache.Put(ctx, ref.s3Key(), object.Data)
+	etag, err := o.objectCache.Put(ctx, ref.s3Key(), bytes.NewReader(object.Data))
 	if err != nil {
 		return false, fmt.Errorf("error while storing calendar object in s3: %w", err)
 	}
@@ -243,9 +246,15 @@ func (o *Online) DeleteCalendarObject(ctx context.Context, path Path) error {
 }
 
 func (o *Online) getObjectFromRef(ctx context.Context, ref objectRef) (Object, error) {
-	data, etag, err := o.objectCache.Get(ctx, ref.s3Key(), ref.ETag)
+	reader, etag, err := o.objectCache.Get(ctx, ref.s3Key(), ref.ETag)
 	if err != nil {
 		return Object{}, fmt.Errorf("error while fetching calendar object from S3: %w", err)
+	}
+
+	data, readErr := io.ReadAll(reader)
+
+	if err := errors.Join(readErr, reader.Close()); err != nil {
+		return Object{}, fmt.Errorf("error while reading calendar object from S3: %w", err)
 	}
 
 	if etag != ref.ETag {

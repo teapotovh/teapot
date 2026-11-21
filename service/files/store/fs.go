@@ -81,11 +81,11 @@ func (f *FS) Open(ctx context.Context, path string) (result File, err error) {
 	}
 
 	blobStart := time.Now()
-	reader, err := f.store.blob.Get(ctx, inode.S3Key)
+	reader, _, err := f.store.blob.Get(ctx, inode.S3Key, inode.Hash)
 	f.store.metrics.observeBlobOperation(metricsOperationGet, blobStart, err)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read blob for %q: %w", path, err)
 	}
 
 	return &file{reader: reader, closer: reader, inode: inode}, nil
@@ -144,8 +144,10 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 	f.store.metrics.observeBlobOperation(metricsOperationPut, blobStart, err)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("could not store blob for %q: %w", path, err)
 	}
+
+	size := counter.count
 
 	tx, err := f.store.db.Begin(ctx, f.store.Revision())
 	if err != nil {
@@ -159,7 +161,7 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 		ParentID: parentInode.NodeID,
 		Name:     name,
 		Kind:     KindFile,
-		Size:     counter.count,
+		Size:     size,
 		ModTime:  time.Now().UTC(),
 		Hash:     hash,
 		S3Key:    key,
@@ -167,7 +169,7 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 
 	if ok {
 		inode = existing
-		inode.Size = counter.count
+		inode.Size = size
 		inode.Hash = hash
 		inode.S3Key = key
 		inode.ModTime = time.Now().UTC()

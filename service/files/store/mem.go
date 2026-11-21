@@ -14,6 +14,7 @@ import (
 
 	"github.com/teapotovh/teapot/lib/pagedbtree"
 	"github.com/teapotovh/teapot/lib/pgnotify"
+	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
 const (
@@ -266,7 +267,7 @@ func newMemBlob() *memBlob {
 	return &memBlob{blobs: map[string][]byte{}}
 }
 
-func (b *memBlob) Put(_ context.Context, key string, r io.Reader) (Hash, error) {
+func (b *memBlob) Put(_ context.Context, key string, r io.Reader) (s3cache.Hash, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return "", err
@@ -278,19 +279,33 @@ func (b *memBlob) Put(_ context.Context, key string, r io.Reader) (Hash, error) 
 
 	sum := md5.Sum(data) //nolint:gosec
 
-	return Hash(hex.EncodeToString(sum[:])), nil
+	return s3cache.Hash(hex.EncodeToString(sum[:])), nil
 }
 
-func (b *memBlob) Get(_ context.Context, key string) (io.ReadSeekCloser, error) {
+func (b *memBlob) Get(
+	_ context.Context,
+	key string,
+	_ s3cache.Hash,
+) (io.ReadSeekCloser, s3cache.Hash, error) {
 	b.mu.Lock()
 	data, ok := b.blobs[key]
 	b.mu.Unlock()
 
 	if !ok {
-		return nil, os.ErrNotExist
+		return nil, s3cache.ZeroHash, os.ErrNotExist
 	}
 
-	return &readSeekCloser{Reader: bytes.NewReader(data)}, nil
+	sum := md5.Sum(data) //nolint:gosec
+
+	return &readSeekCloser{Reader: bytes.NewReader(data)}, s3cache.Hash(hex.EncodeToString(sum[:])), nil
+}
+
+func (b *memBlob) Remove(_ context.Context, key string) error {
+	b.mu.Lock()
+	delete(b.blobs, key)
+	b.mu.Unlock()
+
+	return nil
 }
 
 type readSeekCloser struct {
@@ -338,8 +353,8 @@ var _ DB = (*memDB)(nil)
 // Ensure *memTx implements Tx.
 var _ Tx = (*memTx)(nil)
 
-// Ensure *memBlob implements Blob.
-var _ Blob = (*memBlob)(nil)
+// Ensure *memBlob implements s3cache.Blob.
+var _ s3cache.Blob = (*memBlob)(nil)
 
 // Ensure *memNotifications implements pgnotify.Notifications.
 var _ pgnotify.Notifications = (*memNotifications)(nil)
