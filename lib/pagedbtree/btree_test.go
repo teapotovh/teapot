@@ -50,7 +50,6 @@ func TestBytesRandomOperations(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			waitTestStore(t, store)
 			validateTree(t, store)
 
 			expected[key] = value
@@ -59,7 +58,6 @@ func TestBytesRandomOperations(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			waitTestStore(t, store)
 			validateTree(t, store)
 
 			delete(expected, key)
@@ -89,6 +87,62 @@ func TestBytesRandomOperations(t *testing.T) {
 	checkContents(t, store, expected)
 }
 
+func TestReadAfterWrite(t *testing.T) {
+	t.Parallel()
+	cfg := testConfig(t)
+
+	store, _ := openTestStore(t, cfg)
+
+	if err := store.Store("key", []byte("value")); err != nil {
+		t.Fatal(err)
+	}
+
+	value, ok, err := store.Load("key")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !ok || !bytes.Equal(value, []byte("value")) {
+		t.Fatalf("Load(key) = %q, ok %v", value, ok)
+	}
+
+	if err := store.Delete("key"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok, err := store.Load("key"); err != nil || ok {
+		t.Fatalf("Load(key) after Delete = ok %v, err %v", ok, err)
+	}
+}
+
+func TestWaitFlushes(t *testing.T) {
+	t.Parallel()
+	cfg := testConfig(t)
+
+	store, file := openTestStore(t, cfg)
+
+	if err := store.Store("key", []byte("value")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	header, err := decodeHeader(file.bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if header.Root == 0 {
+		t.Fatal("root page is zero after wait")
+	}
+
+	if dirty := store.cache.dirtyCount(); dirty != 0 {
+		t.Fatalf("dirty pages = %d, want 0", dirty)
+	}
+}
+
 func TestBytesRangeScan(t *testing.T) {
 	t.Parallel()
 	cfg := testConfig(t)
@@ -100,8 +154,6 @@ func TestBytesRangeScan(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-
-	waitTestStore(t, store)
 
 	collect := func(seq func(func(string, []byte) bool)) []string {
 		keys := []string{}
@@ -143,8 +195,6 @@ func TestCursorWalk(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-
-	waitTestStore(t, store)
 
 	cur, err := store.seek(store.root.Load(), "key-0000")
 	if err != nil {
@@ -201,8 +251,6 @@ func TestBytesLargeValues(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		waitTestStore(t, store)
-
 		got, ok, err := store.Load(key)
 		if err != nil {
 			t.Fatal(err)
@@ -217,8 +265,6 @@ func TestBytesLargeValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	waitTestStore(t, store)
-
 	got, ok, err := store.Load("large-1")
 	if err != nil {
 		t.Fatal(err)
@@ -231,8 +277,6 @@ func TestBytesLargeValues(t *testing.T) {
 	if err := store.Delete("large-4"); err != nil {
 		t.Fatal(err)
 	}
-
-	waitTestStore(t, store)
 
 	if _, ok, err := store.Load("large-4"); err != nil || ok {
 		t.Fatalf("Load after Delete = ok %v, err %v", ok, err)
@@ -252,8 +296,6 @@ func TestNoPageCache(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-
-	waitTestStore(t, store)
 
 	for i := range 200 {
 		key := fmt.Sprintf("key-%03d", i)
@@ -302,8 +344,6 @@ func TestCorruptionWipe(t *testing.T) {
 		}
 	}
 
-	waitTestStore(t, store)
-
 	stopTestStore(store)
 
 	data := file.bytes()
@@ -341,12 +381,18 @@ func TestDiskFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := store.Store("b", []byte("y")); err != nil {
-		t.Fatal(err)
+	if err := store.Store("b", []byte("y")); !errors.Is(err, ErrDiskFull) {
+		t.Fatalf("Store() error = %v, want %v", err, ErrDiskFull)
 	}
 
-	if err := <-done; !errors.Is(err, ErrDiskFull) {
-		t.Fatalf("Run() error = %v, want %v", err, ErrDiskFull)
+	if _, ok, err := store.Load("a"); err != nil || !ok {
+		t.Fatalf("Load(a) = ok %v, err %v", ok, err)
+	}
+
+	stopTestStore(store)
+
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -361,8 +407,6 @@ func TestFreeListReuse(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-
-	waitTestStore(t, store)
 
 	store.metaMu.Lock()
 	pageCount := store.pageCount
@@ -392,12 +436,18 @@ func TestDirtyPagesLimit(t *testing.T) {
 
 	large := bytes.Repeat([]byte{1}, pagePayloadSize*4)
 
-	if err := store.Store("large", large); err != nil {
-		t.Fatal(err)
+	if err := store.Store("large", large); !errors.Is(err, ErrDirtyPagesFull) {
+		t.Fatalf("Store() error = %v, want %v", err, ErrDirtyPagesFull)
 	}
 
-	if err := <-done; !errors.Is(err, ErrDirtyPagesFull) {
-		t.Fatalf("Run() error = %v, want %v", err, ErrDirtyPagesFull)
+	if _, ok, err := store.Load("large"); err != nil || ok {
+		t.Fatalf("Load(large) = ok %v, err %v", ok, err)
+	}
+
+	stopTestStore(store)
+
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 
 	reopened := openTestStoreWithFile(t, cfg, file)
@@ -472,8 +522,6 @@ func TestConcurrentAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	waitTestStore(t, store)
-
 	for writer := range writers {
 		for i := range perWriter {
 			key := fmt.Sprintf("w%d-%04d", writer, i)
@@ -485,12 +533,12 @@ func TestConcurrentAccess(t *testing.T) {
 }
 
 type testNotify struct {
-	ch chan struct{}
+	ch chan unit
 }
 
 func (n testNotify) Notify() {
 	select {
-	case n.ch <- struct{}{}:
+	case n.ch <- unit{}:
 	default:
 	}
 }
@@ -506,7 +554,7 @@ func TestRunPersists(t *testing.T) {
 	t.Cleanup(cancel)
 
 	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan struct{}, 1)}
+	notify := testNotify{ch: make(chan unit, 1)}
 
 	go func() {
 		done <- store.Run(ctx, notify)
@@ -521,8 +569,6 @@ func TestRunPersists(t *testing.T) {
 	if err := store.Store("key", []byte("value")); err != nil {
 		t.Fatal(err)
 	}
-
-	waitTestStore(t, store)
 
 	cancel()
 
@@ -554,7 +600,7 @@ func TestRunCancelStopsOperations(t *testing.T) {
 	t.Cleanup(cancel)
 
 	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan struct{}, 1)}
+	notify := testNotify{ch: make(chan unit, 1)}
 
 	go func() {
 		done <- store.Run(ctx, notify)

@@ -69,8 +69,6 @@ func TestTypedTree(t *testing.T) {
 		}
 	}
 
-	waitTestStore(t, store)
-
 	got, ok, err := tree.Load("b")
 	if err != nil {
 		t.Fatal(err)
@@ -92,8 +90,6 @@ func TestTypedTree(t *testing.T) {
 	if err := tree.Delete("a"); err != nil {
 		t.Fatal(err)
 	}
-
-	waitTestStore(t, store)
 
 	if _, ok, err := tree.Load("a"); err != nil || ok {
 		t.Fatalf("Load(a) after Delete = ok %v, err %v", ok, err)
