@@ -33,7 +33,6 @@ const (
 	BackoffMultiplier      = 1.5
 	BackoffMaxRetries      = 3
 
-	ShutdownDelay    = 2 * time.Second
 	MinimumRetryTime = 5 * time.Minute
 )
 
@@ -417,18 +416,13 @@ func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notif
 	t.logger.Info("populated initial object cache", "table", t.table, "count", len(objects))
 	t.loaded.Store(true)
 
-	poolcfg := t.pool.Config()
-
-	t.nm, err = newNotificationManager(poolcfg.ConnConfig, t.table, t.parseKey, t.logger)
+	t.nm, err = newNotificationManager(t.pool.Config().ConnConfig, t.table, t.parseKey, t.logger)
 	if err != nil {
 		return fmt.Errorf("error while building the notification manager: %w", err)
 	}
 
 	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), ShutdownDelay)
-		defer cancel()
-
-		if e := t.nm.Close(ctx); e != nil {
+		if e := t.nm.Close(); e != nil {
 			err = errors.Join(err, fmt.Errorf("closing notification manager: %w", e))
 		}
 	}()
