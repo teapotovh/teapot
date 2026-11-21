@@ -115,7 +115,7 @@ func TestReadAfterWrite(t *testing.T) {
 	}
 }
 
-func TestWaitFlushes(t *testing.T) {
+func TestFlushWrites(t *testing.T) {
 	t.Parallel()
 	cfg := testConfig(t)
 
@@ -125,7 +125,7 @@ func TestWaitFlushes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := store.wait(); err != nil {
+	if err := store.flushNow(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,7 +135,7 @@ func TestWaitFlushes(t *testing.T) {
 	}
 
 	if header.Root == 0 {
-		t.Fatal("root page is zero after wait")
+		t.Fatal("root page is zero after flush")
 	}
 
 	if dirty := store.cache.dirtyCount(); dirty != 0 {

@@ -200,10 +200,6 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 	defer func() {
 		cancel()
 
-		if err == nil {
-			err = b.wait()
-		}
-
 		b.waitReaders()
 
 		if b.file != nil {
@@ -232,7 +228,7 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 		case <-stateCtx.Done():
 			return nil
 		case <-b.flush:
-			if err := b.wait(); err != nil {
+			if err := b.flushNow(); err != nil {
 				return err
 			}
 		}
@@ -277,8 +273,8 @@ func (b *Bytes) signalFlush() {
 	}
 }
 
-// wait writes all dirty pages and the header, then returns.
-func (b *Bytes) wait() error {
+// flushNow writes all dirty pages and the header, then returns.
+func (b *Bytes) flushNow() error {
 	b.writeMu.Lock()
 	defer b.writeMu.Unlock()
 
