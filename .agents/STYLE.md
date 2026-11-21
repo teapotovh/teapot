@@ -13,7 +13,7 @@ Write all comments and all text in simple English ASD-STE100.
 
 Prefer simple, short variable names. All error variables (`errors.New`) MUST be
 exported and commented. Keep errors short but descriptive. Use only ASD-STE100
-for error messages.
+for error messages. Never swallow errors by doing `_ = fn()` if `fn` reutrns an error.
 
 Prefer simple struct abstractions. Follow the patterns already in the repository,
 such as `NewXX` initializers, interfaces for mocking and abstraction. Reuse code
