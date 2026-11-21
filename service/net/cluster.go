@@ -17,12 +17,11 @@ type ClusterConfig struct {
 }
 
 type Cluster struct {
-	logger       *slog.Logger
-	net          *Net
-	state        map[string]ClusterNode
-	broker       *broker.Broker[ClusterEvent]
-	brokerCancel context.CancelFunc
-	node         string
+	logger *slog.Logger
+	net    *Net
+	state  map[string]ClusterNode
+	broker *broker.Broker[ClusterEvent]
+	node   string
 }
 
 type ClusterNode struct {
@@ -36,11 +35,6 @@ type ClusterNode struct {
 type ClusterEvent map[string]ClusterNode
 
 func NewCluster(net *Net, config ClusterConfig, logger *slog.Logger) (*Cluster, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	broker := broker.NewBroker[ClusterEvent]()
-	go broker.Run(ctx)
-
 	return &Cluster{
 		logger: logger,
 		net:    net,
@@ -48,8 +42,7 @@ func NewCluster(net *Net, config ClusterConfig, logger *slog.Logger) (*Cluster, 
 		node:  config.LocalNode,
 		state: make(map[string]ClusterNode),
 
-		broker:       broker,
-		brokerCancel: cancel,
+		broker: broker.NewBroker[ClusterEvent](),
 	}, nil
 }
 
@@ -59,8 +52,13 @@ func (c *Cluster) Broker() *broker.Broker[ClusterEvent] {
 
 // Run implements run.Runnable.
 func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
-	defer c.brokerCancel()
+	return run.Combine(c.broker, clusterEvents{c}).Run(ctx, notify)
+}
 
+type clusterEvents struct{ *Cluster }
+
+// Run implements run.Runnable.
+func (c clusterEvents) Run(ctx context.Context, notify run.Notify) error {
 	sub := c.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 

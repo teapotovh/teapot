@@ -73,6 +73,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	run.Add("net", net, nil)
+	run.Add("local", net.Local(), nil)
+	run.Add("cluster", net.Cluster(), nil)
+
 	if slices.Contains(*components, "wireguard") {
 		wireguard, err := wireguard.NewWireguard(net, getWireguardConfig(), logger.With("sub", "wireguard"))
 		if err != nil {
@@ -102,10 +106,6 @@ func main() {
 
 		run.Add("cni", cni, nil)
 	}
-
-	run.Add("local", net.Local(), nil)
-	run.Add("cluster", net.Cluster(), nil)
-	run.Add("net", net, nil)
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running net components", "err", err)

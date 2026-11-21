@@ -3,6 +3,8 @@ package broker
 import (
 	"context"
 	"iter"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 type unit struct{}
@@ -23,8 +25,12 @@ func NewBroker[T any]() *Broker[T] {
 	}
 }
 
-func (b *Broker[T]) Run(ctx context.Context) {
+// Run implements run.Runnable.
+func (b *Broker[T]) Run(ctx context.Context, notify run.Notify) error {
 	subs := map[chan T]unit{}
+
+	notify.Notify()
+
 	doneCn := ctx.Done()
 
 	for {
@@ -34,7 +40,7 @@ func (b *Broker[T]) Run(ctx context.Context) {
 				close(msgCh)
 			}
 
-			return
+			return nil
 
 		case msgCh := <-b.subCh:
 			subs[msgCh] = unit{}
@@ -102,3 +108,6 @@ func (s *Subscriber[T]) Chan() chan T {
 func (s *Subscriber[T]) Unsubscribe() {
 	s.unsubscribe(s.msgCh)
 }
+
+// Ensure *Broker implements run.Runnable.
+var _ run.Runnable = &Broker[any]{}
