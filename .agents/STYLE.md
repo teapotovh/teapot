@@ -62,6 +62,7 @@ based on the written code.
 When writing code, always keep testing in mind. Most code should take interfaces
 as inputs for 'external systems' such as filesystems, databases, etc. Each package
 should declare its own *public* interfaces that its abstractions will consume.
+Said interfaces should appear right before the code that consumes them, in the same file.
 Each package, should also type assert that the concrete implementation type
 expected to be used implements the requested interface (i.e., a `DB` type should
 be implemented by `*pgx.Conn`).
