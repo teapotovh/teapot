@@ -153,72 +153,83 @@ func newTestBytes(t *testing.T, cfg Config, file *memoryFile) *Bytes {
 	return store
 }
 
-func stopTestStore(store *Bytes) {
-	_ = store.wait()
+type testStoreRun struct {
+	cancel context.CancelFunc
+	done   <-chan error
 
-	if state := store.state.Load(); state != nil {
-		state.cancel()
-	}
-
-	<-store.done
+	once sync.Once
+	err  error
 }
 
-func waitTestStore(t *testing.T, store *Bytes) {
-	t.Helper()
+func (r *testStoreRun) stop() error {
+	r.once.Do(func() {
+		r.cancel()
+		r.err = <-r.done
+	})
 
-	if err := store.wait(); err != nil {
-		t.Fatal(err)
+	return r.err
+}
+
+var testStoreRuns sync.Map
+
+func stopTestStore(store *Bytes) {
+	value, ok := testStoreRuns.Load(store)
+	if !ok {
+		return
 	}
+
+	// The map stores *testStoreRun only.
+	_ = value.(*testStoreRun).stop()
 }
 
 func runTestStore(t *testing.T, store *Bytes) {
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan struct{}, 1)}
-
-	go func() {
-		done <- store.Run(ctx, notify)
-	}()
-
-	select {
-	case <-notify.ch:
-	case <-time.After(5 * time.Second):
-		t.Fatal("store did not start")
-	}
-
-	t.Cleanup(func() {
-		cancel()
-
-		if err := <-done; err != nil {
-			t.Errorf("Run() error: %v", err)
-		}
-	})
+	startTestRun(t, store, true)
 }
 
 func startTestStore(t *testing.T, cfg Config, file *memoryFile) (*Bytes, <-chan error) {
 	t.Helper()
 
 	store := newTestBytes(t, cfg, file)
+	done := startTestRun(t, store, false)
+
+	return store, done
+}
+
+func startTestRun(t *testing.T, store *Bytes, report bool) <-chan error {
+	t.Helper()
+
 	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan error, 1)
 	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan struct{}, 1)}
+	notify := testNotify{ch: make(chan unit, 1)}
 
 	go func() {
-		done <- store.Run(ctx, notify)
+		err := store.Run(ctx, notify)
+		runDone <- err
+
+		done <- err
 	}()
 
 	select {
 	case <-notify.ch:
 	case <-time.After(5 * time.Second):
+		cancel()
 		t.Fatal("store did not start")
 	}
 
+	run := &testStoreRun{cancel: cancel, done: runDone}
+	testStoreRuns.Store(store, run)
+
 	t.Cleanup(func() {
-		cancel()
-		<-store.done
+		err := run.stop()
+		if report && err != nil {
+			t.Errorf("Run() error: %v", err)
+		}
+
+		testStoreRuns.Delete(store)
 	})
 
-	return store, done
+	return done
 }

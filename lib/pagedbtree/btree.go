@@ -18,6 +18,8 @@ import (
 
 const maxDepth = 64
 
+type unit = struct{}
+
 var (
 	// ErrInvalidConfig reports a missing or invalid configuration.
 	ErrInvalidConfig = errors.New("invalid config")
@@ -55,7 +57,8 @@ type Bytes struct {
 	fs   FS
 	file File
 
-	metaMu sync.Mutex
+	writeMu sync.Mutex
+	metaMu  sync.Mutex
 
 	pageCount  uint64
 	freeHead   uint64
@@ -68,21 +71,13 @@ type Bytes struct {
 	cache   *pageCache
 	metrics metrics
 
-	state   atomic.Pointer[storeState]
-	done    chan struct{}
-	updates chan update
+	state atomic.Pointer[storeState]
+	flush chan unit
 }
 
 type storeState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-}
-
-type update struct {
-	key     string
-	value   []byte
-	delete  bool
-	barrier chan struct{}
 }
 
 type pathEntry struct {
@@ -109,8 +104,7 @@ func Open(fs FS, cfg Config) (*Bytes, error) {
 		fs:         fs,
 		cache:      newPageCache(cfg.Memory),
 		pendingSet: make(map[uint64]struct{}),
-		done:       make(chan struct{}),
-		updates:    make(chan update),
+		flush:      make(chan unit, 1),
 	}
 	b.metrics.init(b.path)
 
@@ -164,15 +158,17 @@ func (b *Bytes) Store(key string, value []byte) error {
 	start := time.Now()
 	defer b.metrics.observeDuration(metricsOperationStore, start)
 
-	if err := b.contextErr(); err != nil {
-		return err
-	}
-
 	if len(key) > maxKeyLength {
 		return ErrKeyTooLarge
 	}
 
-	if err := b.send(update{key: key, value: value}); err != nil {
+	b.writeMu.Lock()
+	defer b.writeMu.Unlock()
+
+	err := b.applyStore(key, value)
+	b.signalFlush()
+
+	if err != nil {
 		return err
 	}
 
@@ -203,14 +199,17 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 
 	defer func() {
 		cancel()
+
+		if err == nil {
+			err = b.wait()
+		}
+
 		b.waitReaders()
 
 		if b.file != nil {
 			err = errors.Join(err, b.file.Close())
 			b.file = nil
 		}
-
-		close(b.done)
 	}()
 
 	b.file, err = b.fs.OpenFile(b.path, os.O_RDWR|os.O_CREATE, 0o600)
@@ -232,32 +231,15 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 			return nil
 		case <-stateCtx.Done():
 			return nil
-		case u := <-b.updates:
-			if u.barrier != nil {
-				close(u.barrier)
-
-				continue
-			}
-
-			var updateErr error
-
-			start := time.Now()
-
-			if u.delete {
-				updateErr = b.applyDelete(u.key)
-			} else {
-				updateErr = b.applyStore(u.key, u.value)
-			}
-
-			b.metrics.observeDuration(metricsOperationWriteback, start)
-
-			if updateErr != nil {
-				return updateErr
+		case <-b.flush:
+			if err := b.wait(); err != nil {
+				return err
 			}
 		}
 	}
 }
 
+// Delete removes key from the store.
 func (b *Bytes) Delete(key string) error {
 	start := time.Now()
 	defer b.metrics.observeDuration(metricsOperationDelete, start)
@@ -266,10 +248,20 @@ func (b *Bytes) Delete(key string) error {
 		return err
 	}
 
-	return b.send(update{key: key, delete: true})
+	b.writeMu.Lock()
+	defer b.writeMu.Unlock()
+
+	err := b.applyDelete(key)
+	b.signalFlush()
+
+	return err
 }
 
 func (b *Bytes) applyStore(key string, value []byte) error {
+	if err := b.contextErr(); err != nil {
+		return err
+	}
+
 	root := b.root.Load()
 	if root == 0 {
 		return b.storeFirst(key, value)
@@ -278,44 +270,29 @@ func (b *Bytes) applyStore(key string, value []byte) error {
 	return b.storeExisting(root, key, value)
 }
 
-func (b *Bytes) send(u update) error {
-	state, err := b.stateOrErr()
-	if err != nil {
-		return err
-	}
-
+func (b *Bytes) signalFlush() {
 	select {
-	case b.updates <- u:
-		return nil
-	case <-state.ctx.Done():
-		return state.ctx.Err()
+	case b.flush <- unit{}:
+	default:
 	}
 }
 
+// wait writes all dirty pages and the header, then returns.
 func (b *Bytes) wait() error {
-	state, err := b.stateOrErr()
-	if err != nil {
+	b.writeMu.Lock()
+	defer b.writeMu.Unlock()
+
+	start := time.Now()
+	defer b.metrics.observeDuration(metricsOperationWriteback, start)
+
+	return b.flushLocked()
+}
+
+func (b *Bytes) applyDelete(key string) error {
+	if err := b.contextErr(); err != nil {
 		return err
 	}
 
-	barrier := make(chan struct{})
-
-	select {
-	case b.updates <- update{barrier: barrier}:
-	case <-state.ctx.Done():
-		return state.ctx.Err()
-	}
-
-	select {
-	case <-barrier:
-		return nil
-	case <-state.ctx.Done():
-		return state.ctx.Err()
-	}
-}
-
-// Delete removes key from the store.
-func (b *Bytes) applyDelete(key string) error {
 	root := b.root.Load()
 	if root == 0 {
 		return nil
@@ -406,20 +383,12 @@ func (b *Bytes) commitRoot(root uint64) error {
 	if err := b.checkDirtyLimit(); err != nil {
 		b.discardPending()
 
-		if flushErr := b.flushLocked(); flushErr != nil {
-			return errors.Join(err, flushErr)
-		}
-
 		return err
 	}
 
 	b.root.Store(root)
 
-	if err := b.reclaimPending(); err != nil {
-		return err
-	}
-
-	return b.flushLocked()
+	return b.reclaimPending()
 }
 
 func (b *Bytes) checkDirtyLimit() error {
