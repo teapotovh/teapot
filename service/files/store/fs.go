@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 	"uuid"
@@ -86,7 +85,7 @@ func (f *FS) Revision() uint64 {
 }
 
 // Put implements MutableFileSystem.
-func (f *FS) Put(ctx context.Context, path string, r io.Reader, _ os.FileMode) (err error) {
+func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 	parent, name, err := splitPath(path)
 	if err != nil {
 		return err

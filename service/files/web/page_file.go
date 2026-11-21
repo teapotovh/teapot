@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
-
-	"github.com/hack-pad/hackpadfs"
 
 	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/webauth"
+	"github.com/teapotovh/teapot/service/files/store"
 )
 
-func (web *Web) File(w http.ResponseWriter, r *http.Request) error {
+func (web *Web) File(w http.ResponseWriter, r *http.Request) (err error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
 		return httphandler.NewRedirectError(PathIndex, http.StatusFound)
@@ -27,22 +25,27 @@ func (web *Web) File(w http.ResponseWriter, r *http.Request) error {
 
 	path = filepath.Clean(path)
 
-	session, err := web.files.Sesssions().Get(auth.Username)
+	session, err := web.files.Session(r.Context(), auth.Username)
 	if err != nil {
 		return httphandler.NewInternalError(err, nil)
 	}
 
-	file, err := hackpadfs.OpenFile(session.FS(), path, os.O_RDONLY, 0)
+	file, err := session.FS().Open(r.Context(), sep+path)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, store.ErrNotFound) {
 			return httphandler.ErrNotFound
 		}
 
 		return httphandler.NewInternalError(fmt.Errorf("could not read file at %q: %w", path, err), nil)
 	}
 
-	_, err = io.Copy(w, file)
-	if err != nil {
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			err = errors.Join(fmt.Errorf("could not close file at %q: %w", path, closeErr), err)
+		}
+	}()
+
+	if _, err := io.Copy(w, file); err != nil {
 		return fmt.Errorf("error while writing response file at %q: %w", path, err)
 	}
 

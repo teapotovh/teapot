@@ -18,7 +18,7 @@ func TestWatchLive(t *testing.T) {
 		t.Fatalf("Mkdir: %v", err)
 	}
 
-	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("x"), 0o644); err != nil {
+	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
 
@@ -37,7 +37,7 @@ func TestWatchLive(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	if err := fs.Put(ctx, "/a/g", bytes.NewBufferString("y"), 0o644); err != nil {
+	if err := fs.Put(ctx, "/a/g", bytes.NewBufferString("y")); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func TestWatchRequiresCurrentRevision(t *testing.T) {
 		t.Fatalf("Mkdir: %v", err)
 	}
 
-	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("x"), 0o644); err != nil {
+	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
 

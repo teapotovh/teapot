@@ -11,12 +11,14 @@ import (
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/teapotovh/teapot/lib/grpcsrv"
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/httpsrv"
 	"github.com/teapotovh/teapot/lib/log"
 	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/files"
+	filesgrpc "github.com/teapotovh/teapot/service/files/grpc"
 	"github.com/teapotovh/teapot/service/files/web"
 	"github.com/teapotovh/teapot/service/files/webdav"
 )
@@ -26,9 +28,10 @@ const (
 	CodeObservability = -2
 	CodeFiles         = -3
 	CodeHTTP          = -4
-	CodeWebDav        = -5
-	CodeWeb           = -6
-	CodeRun           = -7
+	CodeGRPC          = -5
+	CodeWebDav        = -6
+	CodeWeb           = -7
+	CodeRun           = -8
 )
 
 const (
@@ -37,13 +40,15 @@ const (
 )
 
 func main() {
-	components := flag.StringSliceP("components", "c", []string{"webdav", "web"}, "list of components to run")
+	components := flag.StringSliceP("components", "c", []string{"grpc", "webdav", "web"}, "list of components to run")
 
 	fs, getLogConfig := log.LogFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getObservabilityConfig := observability.ObservabilityFlagSet("files")
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getHTTPSrvConfig := httpsrv.HTTPSrvFlagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	fs, getGRPCSrvConfig := grpcsrv.GRPCSrvFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
 	fs, getFilesConfig := files.FilesFlagSet()
 	flag.CommandLine.AddFlagSet(fs)
@@ -76,27 +81,36 @@ func main() {
 		os.Exit(CodeHTTP)
 	}
 
-	files, err := files.NewFiles(getFilesConfig(), logger.With("sub", "files"))
+	files, err := files.NewFiles(context.Background(), getFilesConfig(), logger.With("sub", "files"))
 	if err != nil {
 		logger.Error("error while initiating the files subsystem", "err", err)
 		os.Exit(CodeFiles)
 	}
 
-	observability.RegisterMetrics(files)
-	observability.RegisterReadyz(files)
-
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
 	observability.RegisterLivez(httpsrv)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	grpcsrv, err := grpcsrv.NewGRPCSrv(getGRPCSrvConfig(), logger.With("sub", "grpcsrv"))
+	if err != nil {
+		logger.Error("error while initiating the grpcsrv subsystem", "err", err)
+		os.Exit(CodeGRPC)
+	}
+
+	observability.RegisterMetrics(grpcsrv)
+	observability.RegisterReadyz(grpcsrv)
+	observability.RegisterLivez(grpcsrv)
+	observability.RegisterTracing(grpcsrv)
+
+	if slices.Contains(*components, "grpc") {
+		grpcsrv.Register("files", filesgrpc.NewServer(files))
+	}
 
 	if slices.Contains(*components, "webdav") {
 		webdav, err := webdav.NewWebDav(files, webdav.WebDavConfig{}, logger.With("sub", "webdav"))
 		if err != nil {
 			logger.Error("error while initiating the webdav subsystem", "err", err)
-			os.Exit(CodeWeb)
+			os.Exit(CodeWebDav)
 		}
 
 		httpsrv.Register("webdav", webdav, HTTPWebDavPrefix)
@@ -113,8 +127,13 @@ func main() {
 		httpsrv.Register("web", web, HTTPWebPrefix)
 	}
 
+	run.Add("files/store", files.Store(), nil)
 	run.Add("httpsrv", httpsrv, nil)
+	run.Add("grpcsrv", grpcsrv, nil)
 	run.Add("observability", observability, nil)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running files components", "err", err)

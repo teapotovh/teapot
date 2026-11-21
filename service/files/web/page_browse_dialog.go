@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"github.com/hack-pad/hackpadfs"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	hxhttp "maragu.dev/gomponents-htmx/http"
@@ -92,12 +92,12 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 
 		path = filepath.Clean(filepath.Join(base, path))
 
-		session, err := web.files.Sesssions().Get(auth.Username)
+		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		if err := hackpadfs.MkdirAll(session.FS(), path, files.DirPerm); err != nil {
+		if err := session.FS().Mkdir(r.Context(), sep+path); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return dialogError{err: fmt.Errorf("error while creating folder %q: %w", path, err)}, nil
 		}
@@ -142,18 +142,18 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 
 		path := filepath.Clean(filepath.Join(base, header.Filename))
 
-		session, err := web.files.Sesssions().Get(auth.Username)
+		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		bytes, err := io.ReadAll(file)
+		data, err := io.ReadAll(file)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return dialogError{err: fmt.Errorf("could not read file from request: %w", err)}, nil
 		}
 
-		if err := hackpadfs.WriteFullFile(session.FS(), path, bytes, files.DirPerm); err != nil {
+		if err := session.FS().Put(r.Context(), sep+path, bytes.NewReader(data)); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return dialogError{err: fmt.Errorf("error while writing file %q: %w", path, err)}, nil
 		}
