@@ -257,6 +257,11 @@ func (b *Bytes) Delete(key string) error {
 	return err
 }
 
+// Wait blocks until all previous writes are applied.
+func (b *Bytes) Wait() error {
+	return b.wait()
+}
+
 func (b *Bytes) applyStore(key string, value []byte) error {
 	if err := b.contextErr(); err != nil {
 		return err

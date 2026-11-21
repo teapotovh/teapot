@@ -112,6 +112,11 @@ func (t *Tree[T]) Delete(key string) error {
 	return t.store.Delete(key)
 }
 
+// Wait blocks until all previous writes are applied.
+func (t *Tree[T]) Wait() error {
+	return t.store.Wait()
+}
+
 // All iterates over all entries in key order.
 func (t *Tree[T]) All() iter.Seq2[string, T] {
 	return t.scan(t.store.All())
