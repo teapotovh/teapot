@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "files",
+    srcs = [
+        "files.go",
+        "name.go",
+        "path.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/files",
+    visibility = ["//visibility:public"],
+    deps = ["@org_golang_x_text//unicode/norm"],
+)
+
+go_test(
+    name = "files_test",
+    srcs = [
+        "name_test.go",
+        "path_test.go",
+    ],
+    embed = [":files"],
+)
