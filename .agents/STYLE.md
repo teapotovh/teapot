@@ -31,6 +31,8 @@ constants for values where it makes sense to do so.
 
 Type assertions should always be commented. Look in the repository for examples.
 
+Changes to `.proto` files should always contain comments for every type and every field.
+
 ## Testing
 
 Tests should be added only when necessary. Generally, when adding new code it's
