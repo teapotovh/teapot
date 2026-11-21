@@ -29,6 +29,8 @@ You MUST NOT use repated strings/number constants throughout the code without
 defining an (potentially exported) constant for them. We should always use
 constants for values where it makes sense to do so.
 
+Type assertions should always be commented. Look in the repository for examples.
+
 ## Testing
 
 Tests should be added only when necessary. Generally, when adding new code it's
