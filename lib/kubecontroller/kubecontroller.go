@@ -18,6 +18,8 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var (
@@ -72,6 +74,7 @@ type ControllerConfig[Resource runtime.Object] struct {
 	Handler      Handler[Resource]
 	Namespace    string
 	NumRetries   int
+	Workers      int
 }
 
 // Controller implements a simple kubernetes controller that calls a callback
@@ -84,6 +87,7 @@ type Controller[Resource runtime.Object] struct {
 	handler    Handler[Resource]
 	resource   string
 	numRetries int
+	workers    int
 }
 
 // NewController creates a new Controller.
@@ -155,6 +159,8 @@ func NewController[Resource runtime.Object](
 		numRetries = 5
 	}
 
+	workers := max(1, config.Workers)
+
 	return &Controller[Resource]{
 		logger: logger,
 
@@ -164,6 +170,7 @@ func NewController[Resource runtime.Object](
 		queue:    queue,
 
 		numRetries: numRetries,
+		workers:    workers,
 		handler:    config.Handler,
 	}, nil
 }
@@ -238,8 +245,8 @@ func (c *Controller[Resource]) handleErr(err error, key string) {
 	)
 }
 
-// Run begins watching and syncing.
-func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
+// Run implements run.Runnable.
+func (c *Controller[Resource]) Run(ctx context.Context, notify run.Notify) error {
 	defer utilruntime.HandleCrashWithContext(ctx)
 
 	// Let the workers stop when we are done
@@ -254,9 +261,11 @@ func (c *Controller[Resource]) Run(ctx context.Context, workers int) error {
 		return fmt.Errorf("error waiting for caches to sync: %w", ErrTimeout)
 	}
 
-	for range workers {
+	for range c.workers {
 		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}
+
+	notify.Notify()
 
 	<-ctx.Done()
 	c.logger.Debug("stopping the kubernetes controller", "resource", c.resource)
@@ -268,3 +277,6 @@ func (c *Controller[Resource]) runWorker(_ context.Context) {
 	for c.processNextItem() {
 	}
 }
+
+// Ensure *Controller implements run.Runnable.
+var _ run.Runnable = (*Controller[runtime.Object])(nil)

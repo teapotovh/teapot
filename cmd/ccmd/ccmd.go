@@ -66,6 +66,8 @@ func main() {
 		os.Exit(CodeInitCCM)
 	}
 
+	run.Add("ccm", ccm, nil)
+
 	if slices.Contains(*components, "externalip") {
 		externalip, err := externalip.NewExternalIP(ccm, getExternalIPConfig(), logger.With("sub", "externalip"))
 		if err != nil {
@@ -98,8 +100,6 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-
-	run.Add("ccm", ccm, nil)
 
 	if err := run.Run(ctx); err != nil {
 		logger.Error("error while running ccm components", "err", err)

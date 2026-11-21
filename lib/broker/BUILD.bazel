@@ -5,4 +5,5 @@ go_library(
     srcs = ["broker.go"],
     importpath = "github.com/teapotovh/teapot/lib/broker",
     visibility = ["//visibility:public"],
+    deps = ["//lib/run"],
 )

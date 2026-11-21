@@ -27,15 +27,14 @@ type CCMConfig struct {
 }
 
 type CCM struct {
-	internalIP   netip.Addr
-	externalIP   netip.Addr
-	logger       *slog.Logger
-	client       *kubernetes.Clientset
-	broker       *broker.Broker[Event]
-	brokerCancel context.CancelFunc
-	controller   *kubecontroller.Controller[*v1.Node]
-	node         string
-	lock         sync.Mutex
+	internalIP netip.Addr
+	externalIP netip.Addr
+	logger     *slog.Logger
+	client     *kubernetes.Clientset
+	broker     *broker.Broker[Event]
+	controller *kubecontroller.Controller[*v1.Node]
+	node       string
+	lock       sync.Mutex
 }
 
 func NewCCM(config CCMConfig, logger *slog.Logger) (*CCM, error) {
@@ -48,26 +47,23 @@ func NewCCM(config CCMConfig, logger *slog.Logger) (*CCM, error) {
 		return nil, fmt.Errorf("error while building kubernetes client: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	ccm := CCM{
 		logger: logger,
 
-		node:         config.Node,
-		client:       client,
-		broker:       broker.NewBroker[Event](),
-		brokerCancel: cancel,
+		node:   config.Node,
+		client: client,
+		broker: broker.NewBroker[Event](),
 	}
 	controllerConfig := kubecontroller.ControllerConfig[*v1.Node]{
 		Client:  client,
 		Handler: ccm.handle,
+		Workers: 1,
 	}
 
 	ccm.controller, err = kubecontroller.NewController(controllerConfig, logger.With("component", "kubecontroller"))
 	if err != nil {
 		return nil, fmt.Errorf("error while building kubernetes controller: %w", err)
 	}
-
-	go ccm.broker.Run(ctx)
 
 	return &ccm, nil
 }
@@ -99,11 +95,7 @@ func (ccm *CCM) KubeClient() *kubernetes.Clientset {
 
 // Run implements run.Runnable.
 func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
-	defer ccm.brokerCancel()
-
-	notify.Notify()
-
-	return ccm.controller.Run(ctx, 1)
+	return run.Combine(ccm.broker, ccm.controller).Run(ctx, notify)
 }
 
 func (ccm *CCM) update(ctx context.Context) error {

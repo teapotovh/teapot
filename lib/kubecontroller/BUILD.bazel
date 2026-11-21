@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/teapotovh/teapot/lib/kubecontroller",
     visibility = ["//visibility:public"],
     deps = [
+        "//lib/run",
         "@io_k8s_apimachinery//pkg/api/meta",
         "@io_k8s_apimachinery//pkg/fields",
         "@io_k8s_apimachinery//pkg/runtime",

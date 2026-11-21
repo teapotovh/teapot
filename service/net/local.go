@@ -24,14 +24,13 @@ const (
 var DefaultPrivateKey = wgtypes.Key{}
 
 type Local struct {
-	address      netip.Addr
-	logger       *slog.Logger
-	net          *Net
-	broker       *broker.Broker[LocalEvent]
-	brokerCancel context.CancelFunc
-	node         string
-	port         uint16
-	key          wgtypes.Key
+	address netip.Addr
+	logger  *slog.Logger
+	net     *Net
+	broker  *broker.Broker[LocalEvent]
+	node    string
+	port    uint16
+	key     wgtypes.Key
 }
 
 type LocalEvent struct {
@@ -70,11 +69,6 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 
 	logger.Info("loaded wireguard key", "public_key", key.PublicKey(), "node", config.LocalNode)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	broker := broker.NewBroker[LocalEvent]()
-	go broker.Run(ctx)
-
 	return &Local{
 		logger: logger,
 		net:    net,
@@ -82,8 +76,7 @@ func NewLocal(net *Net, config LocalConfig, logger *slog.Logger) (*Local, error)
 		node: config.LocalNode,
 		key:  key,
 
-		broker:       broker,
-		brokerCancel: cancel,
+		broker: broker.NewBroker[LocalEvent](),
 	}, nil
 }
 
@@ -114,8 +107,17 @@ func storeKey(path string, key wgtypes.Key) error {
 
 // Run implements run.Runnable.
 func (l *Local) Run(ctx context.Context, notify run.Notify) error {
-	defer l.brokerCancel()
+	return run.Combine(l.broker, localEvents{l}).Run(ctx, notify)
+}
 
+type localEvents struct{ *Local }
+
+func (l *Local) Broker() *broker.Broker[LocalEvent] {
+	return l.broker
+}
+
+// Run implements run.Runnable.
+func (l localEvents) Run(ctx context.Context, notify run.Notify) error {
 	sub := l.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 
@@ -158,10 +160,6 @@ func (l *Local) Run(ctx context.Context, notify run.Notify) error {
 	}
 
 	return nil
-}
-
-func (l *Local) Broker() *broker.Broker[LocalEvent] {
-	return l.broker
 }
 
 func (l *Local) event() LocalEvent {
