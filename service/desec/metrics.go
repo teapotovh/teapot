@@ -2,6 +2,7 @@ package desec
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -48,6 +49,26 @@ func (d *Desec) initMetrics() {
 		},
 		[]string{"path", "code"},
 	)
+}
+
+func (m *metrics) observeCall(operation, hasError string, duration time.Duration) {
+	labels := prometheus.Labels{
+		"operation": operation,
+		"error":     hasError,
+	}
+
+	m.total.With(labels).Inc()
+	m.duration.With(labels).Observe(duration.Seconds())
+}
+
+func (m *metrics) observeProviderCall(path, code string, duration time.Duration) {
+	labels := prometheus.Labels{
+		"path": path,
+		"code": code,
+	}
+
+	m.providerTotal.With(labels).Inc()
+	m.providerDuration.With(labels).Observe(duration.Seconds())
 }
 
 // Metrics implements observability.Metrics.

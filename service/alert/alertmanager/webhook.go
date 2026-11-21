@@ -31,7 +31,7 @@ func (am *AlertManager) Webhook(w http.ResponseWriter, r *http.Request) (err err
 			status = metricsStatusFailed
 		}
 
-		am.metrics.total.WithLabelValues(status).Add(1)
+		am.metrics.incTotal(status)
 	}()
 
 	var data template.Data
@@ -55,7 +55,7 @@ func (am *AlertManager) Webhook(w http.ResponseWriter, r *http.Request) (err err
 	)
 
 	for _, a := range data.Alerts {
-		am.metrics.alerts.WithLabelValues(a.Status).Add(1)
+		am.metrics.incAlerts(a.Status)
 		am.logger.DebugContext(r.Context(), "received alert", "alert", a)
 
 		if a.Status == StatusFiring {

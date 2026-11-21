@@ -101,9 +101,9 @@ func (f *Factory) NewClient(ctx context.Context) (client *Client, err error) {
 		f.clients.Add(1)
 
 		if err != nil {
-			f.metrics.total.WithLabelValues(metricsStatusError).Add(1)
+			f.metrics.incTotal(metricsStatusError)
 		} else {
-			f.metrics.active.Inc()
+			f.metrics.incActive()
 		}
 	}()
 
@@ -150,7 +150,7 @@ func (f *Factory) Run(ctx context.Context, notify run.Notify) (err error) {
 	eg, ctx := errgroup.WithContext(ctx)
 	for i := range f.workers {
 		eg.Go(func() error {
-			return f.pool.fill(ctx, i, f.metrics.dial)
+			return f.pool.fill(ctx, i, &f.metrics)
 		})
 	}
 

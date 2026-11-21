@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kataras/requestid"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/httptrace"
@@ -132,4 +133,49 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 // WithTracing implements observability.Tracing.
 func (h *HTTPSrv) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
 	h.httpTrace.WithTracing(tp, tracer)
+}
+
+func (h *HTTPSrv) initMetrics() {
+	// Request metrics
+	h.metrics.total = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "httpsrv_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "status"},
+	)
+
+	h.metrics.duration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "httpsrv_request_duration_seconds",
+			Help:    "HTTP request latency in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method"},
+	)
+
+	h.metrics.requestSize = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "httpsrv_request_size_bytes",
+			Help:    "HTTP request size in bytes",
+			Buckets: httpSizeBucket,
+		},
+		[]string{"method"},
+	)
+
+	h.metrics.responseSize = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "httpsrv_response_size_bytes",
+			Help:    "HTTP response size in bytes",
+			Buckets: httpSizeBucket,
+		},
+		[]string{"method"},
+	)
+
+	h.metrics.active = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "httpsrv_requests_active",
+			Help: "Current number of HTTP requests being served",
+		},
+	)
 }

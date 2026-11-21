@@ -9,7 +9,6 @@ import (
 
 	"github.com/cenkalti/backoff/v5"
 	"github.com/go-ldap/ldap/v3"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -59,7 +58,7 @@ func newPool(url, base string, timeout time.Duration, size uint32, logger *slog.
 // Call this n times to have n workers filling the pool. Adjust n for your
 // desired refill rate, which is determined by n and the connection latency,
 // using Little's law.
-func (p *pool) fill(ctx context.Context, i uint32, dial prometheus.Histogram) error {
+func (p *pool) fill(ctx context.Context, i uint32, metrics *metrics) error {
 	p.logger.DebugContext(ctx, "started LDAP pool filler worker", "id", i)
 	defer func() {
 		p.logger.DebugContext(ctx, "stopped LDAP pool filler worker", "id", i)
@@ -92,8 +91,7 @@ func (p *pool) fill(ctx context.Context, i uint32, dial prometheus.Histogram) er
 			continue
 		}
 
-		duration := time.Since(start).Seconds()
-		dial.Observe(duration)
+		metrics.observeDial(time.Since(start))
 
 		select {
 		case p.source <- conn:

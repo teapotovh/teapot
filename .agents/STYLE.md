@@ -35,6 +35,17 @@ Type assertions should always be commented. Look in the repository for examples.
 
 Changes to `.proto` files should always contain comments for every type and every field.
 
+## Metrics
+
+Add metrics to each new module when it makes sense. Follow the existing
+`metrics.go` files as examples. Keep the collectors in a `metrics` struct. In
+`metrics.go`, use the collector fields directly. From other files, publish
+values only through helper methods on the `metrics` struct. Do not add helper
+methods that are only used in `metrics.go`. Do not call `Observe`, `Inc`, `Add`,
+or other methods on the Prometheus collectors from other files. Do not add
+separate `newMetrics` constructors. Keep the `Metrics` method in the
+`metrics.go` file.
+
 ## Testing
 
 Tests should be added only when necessary. Generally, when adding new code it's
