@@ -244,10 +244,8 @@ func (w *worker) run() {
 				flush.Trigger()
 			}
 
-			w.metrics.total.WithLabelValues(w.source, req.level).Inc()
-			w.metrics.duration.WithLabelValues(w.source, req.level).
-				Observe(float64(time.Since(req.insertedAt).Seconds()))
-			w.metrics.size.WithLabelValues(w.source).Set(float64(bytesWrittenSinceLastRotate))
+			w.metrics.observeLine(w.source, req.level, time.Since(req.insertedAt))
+			w.metrics.setSize(w.source, bytesWrittenSinceLastRotate)
 
 			req.result <- nil
 		}

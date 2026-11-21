@@ -31,8 +31,7 @@ func bind(ctx context.Context, metrics *metrics, conn *ldap.Conn, username, pass
 		status = metricsStatusError
 	}
 
-	duration := time.Since(start).Seconds()
-	metrics.duration.WithLabelValues(metricsOperationBind, status).Observe(duration)
+	metrics.observeOperation(metricsOperationBind, status, time.Since(start))
 
 	return err
 }
@@ -56,8 +55,7 @@ func search(
 		status = metricsStatusError
 	}
 
-	duration := time.Since(start).Seconds()
-	metrics.duration.WithLabelValues(metricsOperationSearch, status).Observe(duration)
+	metrics.observeOperation(metricsOperationSearch, status, time.Since(start))
 
 	return res, err
 }
@@ -76,8 +74,7 @@ func passwd(
 		status = metricsStatusError
 	}
 
-	duration := time.Since(start).Seconds()
-	metrics.duration.WithLabelValues(metricsOperationPasswd, status).Observe(duration)
+	metrics.observeOperation(metricsOperationPasswd, status, time.Since(start))
 
 	return res, err
 }

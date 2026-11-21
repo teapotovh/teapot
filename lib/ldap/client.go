@@ -67,14 +67,14 @@ func (c *Client) Authenticate(ctx context.Context, username string, password str
 }
 
 func (c *Client) Close() {
-	c.metrics.active.Dec()
+	c.metrics.decActive()
 
 	status := metricsStatusSuccess
 	if c.errored {
 		status = metricsStatusError
 	}
 
-	c.metrics.total.WithLabelValues(status).Add(1)
+	c.metrics.incTotal(status)
 
 	if err := c.conn.Close(); err != nil {
 		c.logger.ErrorContext(c.ctx, "error while closing LDAP client", "err", err)

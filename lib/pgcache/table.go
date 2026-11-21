@@ -76,7 +76,7 @@ func trackDurationList[K Key[K], T Object[K]](table string, list List[K, T]) Lis
 		start := time.Now()
 
 		defer func() {
-			operationDuration.WithLabelValues(table, operationList, status(err)).Observe(time.Since(start).Seconds())
+			tableMetrics.observeOperation(table, operationList, err, time.Since(start))
 		}()
 
 		return list(ctx, conn)
@@ -88,7 +88,7 @@ func trackDurationGet[K Key[K], T Object[K]](table string, get Get[K, T]) Get[K,
 		start := time.Now()
 
 		defer func() {
-			operationDuration.WithLabelValues(table, operationGet, status(err)).Observe(time.Since(start).Seconds())
+			tableMetrics.observeOperation(table, operationGet, err, time.Since(start))
 		}()
 
 		return get(ctx, conn, keys)
@@ -100,7 +100,7 @@ func trackDurationStore[K Key[K], T Object[K]](table string, store Store[K, T]) 
 		start := time.Now()
 
 		defer func() {
-			operationDuration.WithLabelValues(table, operationStore, status(err)).Observe(time.Since(start).Seconds())
+			tableMetrics.observeOperation(table, operationStore, err, time.Since(start))
 		}()
 
 		return store(ctx, tx, objects)
@@ -112,7 +112,7 @@ func trackDurationDelete[K Key[K], T Object[K]](table string, del Delete[K, T]) 
 		start := time.Now()
 
 		defer func() {
-			operationDuration.WithLabelValues(table, operationDelete, status(err)).Observe(time.Since(start).Seconds())
+			tableMetrics.observeOperation(table, operationDelete, err, time.Since(start))
 		}()
 
 		return del(ctx, tx, keys)
@@ -147,7 +147,7 @@ func NewTable[K Key[K], T Object[K]](pool *pgxpool.Pool,
 
 func (t *Table[K, T]) store(key K, object T) {
 	if _, existed := t.cache.Load(key); !existed {
-		defer objectsTotal.WithLabelValues(t.table).Inc()
+		defer tableMetrics.incObjects(t.table)
 	}
 
 	t.cache.Store(key, object)
@@ -155,21 +155,21 @@ func (t *Table[K, T]) store(key K, object T) {
 
 func (t *Table[K, T]) delete(key K) {
 	if _, existed := t.cache.Load(key); existed {
-		defer objectsTotal.WithLabelValues(t.table).Desc()
+		defer tableMetrics.decObjects(t.table)
 	}
 
 	t.cache.Delete(key)
 }
 
 func (t *Table[K, T]) Get(key K) (T, bool) {
-	defer loadsTotal.WithLabelValues(t.table, approachGet).Inc()
+	defer tableMetrics.incLoads(t.table, approachGet)
 	return t.cache.Load(key)
 }
 
 func (t *Table[K, T]) List() iter.Seq[T] {
 	return func(yield func(object T) bool) {
 		for _, object := range t.cache.All() {
-			loadsTotal.WithLabelValues(t.table, approachList).Inc()
+			tableMetrics.incLoads(t.table, approachList)
 
 			if !yield(object) {
 				break
@@ -181,7 +181,7 @@ func (t *Table[K, T]) List() iter.Seq[T] {
 func (t *Table[K, T]) From(key K) iter.Seq[T] {
 	return func(yield func(object T) bool) {
 		for _, object := range t.cache.From(key) {
-			loadsTotal.WithLabelValues(t.table, approachFrom).Inc()
+			tableMetrics.incLoads(t.table, approachFrom)
 
 			if !yield(object) {
 				break
@@ -193,7 +193,7 @@ func (t *Table[K, T]) From(key K) iter.Seq[T] {
 func (t *Table[K, T]) Between(from, to K) iter.Seq[T] {
 	return func(yield func(object T) bool) {
 		for _, object := range t.cache.Between(from, to) {
-			loadsTotal.WithLabelValues(t.table, approachBetween).Inc()
+			tableMetrics.incLoads(t.table, approachBetween)
 
 			if !yield(object) {
 				break
@@ -310,7 +310,7 @@ func (t *Table[K, T]) handleEvents(ctx context.Context, events []Event[K]) (err 
 
 	defer func() {
 		if err == nil {
-			notificationUpdateDuration.WithLabelValues(t.table).Observe(time.Since(start).Seconds())
+			tableMetrics.observeNotificationUpdate(t.table, time.Since(start))
 		}
 	}()
 
@@ -455,11 +455,11 @@ func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notif
 // Metrics implements observability.Metrics.
 func (t *Table[K, T]) Metrics() []prometheus.Collector {
 	return []prometheus.Collector{
-		objectsTotal,
-		loadsTotal,
-		notificationUpdateDuration,
-		operationDuration,
-		transactionDuration,
+		tableMetrics.objectsTotal,
+		tableMetrics.loadsTotal,
+		tableMetrics.notificationUpdateDuration,
+		tableMetrics.operationDuration,
+		tableMetrics.transactionDuration,
 	}
 }
 

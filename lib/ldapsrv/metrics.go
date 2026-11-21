@@ -1,6 +1,8 @@
 package ldapsrv
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -34,6 +36,22 @@ func (s *LDAPSrv[T]) initMetrics() {
 		},
 		[]string{"operation", "status"},
 	)
+}
+
+func (m *metrics) incActive() {
+	m.active.Inc()
+}
+
+func (m *metrics) decActive() {
+	m.active.Dec()
+}
+
+func (m *metrics) incTotal() {
+	m.total.Add(1)
+}
+
+func (m *metrics) observeOperation(operation, status string, duration time.Duration) {
+	m.duration.WithLabelValues(operation, status).Observe(duration.Seconds())
 }
 
 // Metrics implements observability.Metrics.

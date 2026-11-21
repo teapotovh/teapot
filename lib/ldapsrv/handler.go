@@ -94,8 +94,7 @@ func (s *LDAPSrv[T]) handle(ctx context.Context, state T, w ResponseWriter, r *M
 	start := time.Now()
 
 	defer func() {
-		s.metrics.duration.WithLabelValues(r.ProtocolOpName(), ldap.EnumeratedLDAPResultCode[code]).
-			Observe(time.Since(start).Seconds())
+		s.metrics.observeOperation(r.ProtocolOpName(), ldap.EnumeratedLDAPResultCode[code], time.Since(start))
 	}()
 
 	state, code, err = s.runHandler(ctx, state, w, r)

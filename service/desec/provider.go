@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/nrdcg/desec"
-	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 	ednsprovider "sigs.k8s.io/external-dns/provider"
@@ -213,17 +212,10 @@ func (p *provider) bulkDelete(ctx context.Context, domainName string, rrSets []d
 var _ ednsprovider.Provider = &provider{}
 
 func (p *provider) updateMetrics(operation string, start time.Time, err error) {
-	duration := time.Since(start)
-
 	hasErr := "no"
 	if err != nil {
 		hasErr = "yes"
 	}
 
-	labels := prometheus.Labels{
-		"operation": operation,
-		"error":     hasErr,
-	}
-	p.desec.metrics.total.With(labels).Inc()
-	p.desec.metrics.duration.With(labels).Observe(duration.Seconds())
+	p.desec.metrics.observeCall(operation, hasErr, time.Since(start))
 }

@@ -22,71 +22,40 @@ type metrics struct {
 
 var httpSizeBucket = prometheus.ExponentialBuckets(100, 10, 5)
 
-func (h *HTTPSrv) initMetrics() {
-	// Request metrics
-	h.metrics.total = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "httpsrv_requests_total",
-			Help: "Total number of HTTP requests",
-		},
-		[]string{"method", "status"},
-	)
+func (m *metrics) incActive() {
+	m.active.Inc()
+}
 
-	h.metrics.duration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "httpsrv_request_duration_seconds",
-			Help:    "HTTP request latency in seconds",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"method"},
-	)
+func (m *metrics) decActive() {
+	m.active.Dec()
+}
 
-	h.metrics.requestSize = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "httpsrv_request_size_bytes",
-			Help:    "HTTP request size in bytes",
-			Buckets: httpSizeBucket,
-		},
-		[]string{"method"},
-	)
-
-	h.metrics.responseSize = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "httpsrv_response_size_bytes",
-			Help:    "HTTP response size in bytes",
-			Buckets: httpSizeBucket,
-		},
-		[]string{"method"},
-	)
-
-	h.metrics.active = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "httpsrv_requests_active",
-			Help: "Current number of HTTP requests being served",
-		},
-	)
+func (m *metrics) observeRequest(method, status string, duration time.Duration, requestSize, responseSize int) {
+	m.total.WithLabelValues(method, status).Inc()
+	m.duration.WithLabelValues(method).Observe(duration.Seconds())
+	m.requestSize.WithLabelValues(method).Observe(float64(requestSize))
+	m.responseSize.WithLabelValues(method).Observe(float64(responseSize))
 }
 
 func (h *HTTPSrv) metricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		h.metrics.active.Inc()
-		defer h.metrics.active.Dec()
+		h.metrics.incActive()
+		defer h.metrics.decActive()
 
 		// Capture response status
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 		next.ServeHTTP(rw, r)
 
-		duration := time.Since(start).Seconds()
-		method := r.Method
-		status := strconv.Itoa(rw.statusCode)
-
-		h.metrics.total.WithLabelValues(method, status).Inc()
-		h.metrics.duration.WithLabelValues(method).Observe(duration)
-		h.metrics.requestSize.WithLabelValues(method).Observe(float64(r.ContentLength))
-		h.metrics.responseSize.WithLabelValues(method).Observe(float64(rw.bytesWritten))
+		h.metrics.observeRequest(
+			r.Method,
+			strconv.Itoa(rw.statusCode),
+			time.Since(start),
+			int(r.ContentLength),
+			rw.bytesWritten,
+		)
 	})
 }
 

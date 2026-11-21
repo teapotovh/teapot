@@ -84,11 +84,11 @@ func (c *client[T]) serve(serveCtx context.Context) {
 	defer span.End()
 	serveCtx = observability.ContextWithTracer(serveCtx, c.srv.tracer)
 
-	c.srv.metrics.active.Inc()
-	c.srv.metrics.total.Add(1)
+	c.srv.metrics.incActive()
+	c.srv.metrics.incTotal()
 	c.srv.wg.Add(1)
 	defer func() {
-		c.srv.metrics.active.Dec()
+		c.srv.metrics.decActive()
 		c.srv.wg.Done()
 		if err := c.close(serveCtx); err != nil {
 			c.logger.DebugContext(serveCtx, "error while closing client", "err", err)

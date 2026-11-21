@@ -1,6 +1,10 @@
 package log
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type metrics struct {
 	total    *prometheus.CounterVec
@@ -33,6 +37,15 @@ func (l *Log) initMetrics() {
 		},
 		[]string{"source"},
 	)
+}
+
+func (m *metrics) observeLine(source, level string, duration time.Duration) {
+	m.total.WithLabelValues(source, level).Inc()
+	m.duration.WithLabelValues(source, level).Observe(duration.Seconds())
+}
+
+func (m *metrics) setSize(source string, size uint64) {
+	m.size.WithLabelValues(source).Set(float64(size))
 }
 
 func (l *Log) Metrics() []prometheus.Collector {

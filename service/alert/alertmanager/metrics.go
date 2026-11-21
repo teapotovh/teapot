@@ -32,6 +32,14 @@ func (am *AlertManager) initMetrics() {
 	)
 }
 
+func (m *metrics) incTotal(status string) {
+	m.total.WithLabelValues(status).Add(1)
+}
+
+func (m *metrics) incAlerts(status string) {
+	m.alerts.WithLabelValues(status).Add(1)
+}
+
 // Metrics implements observability.Metrics.
 func (am *AlertManager) Metrics() []prometheus.Collector {
 	return []prometheus.Collector{

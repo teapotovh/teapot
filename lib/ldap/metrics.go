@@ -1,6 +1,8 @@
 package ldap
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -58,6 +60,26 @@ func (f *Factory) initMetrics() {
 		},
 		[]string{"operation", "status"},
 	)
+}
+
+func (m *metrics) observeDial(duration time.Duration) {
+	m.dial.Observe(duration.Seconds())
+}
+
+func (m *metrics) incActive() {
+	m.active.Inc()
+}
+
+func (m *metrics) decActive() {
+	m.active.Dec()
+}
+
+func (m *metrics) incTotal(status string) {
+	m.total.WithLabelValues(status).Add(1)
+}
+
+func (m *metrics) observeOperation(operation, status string, duration time.Duration) {
+	m.duration.WithLabelValues(operation, status).Observe(duration.Seconds())
 }
 
 // Metrics implements observability.Metrics.

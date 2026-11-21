@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/nrdcg/desec"
-	"github.com/prometheus/client_golang/prometheus"
 	ednsprovider "sigs.k8s.io/external-dns/provider"
 
 	"github.com/teapotovh/teapot/lib/httplog"
@@ -109,14 +108,6 @@ func (d *Desec) collectWebhookMetrics(handler http.Handler) http.Handler {
 		}
 		handler.ServeHTTP(&rw, r)
 
-		duration := time.Since(start)
-		code := rw.statusCode
-		labels := prometheus.Labels{
-			"path": r.URL.Path,
-			"code": strconv.Itoa(code),
-		}
-
-		d.metrics.providerTotal.With(labels).Inc()
-		d.metrics.providerDuration.With(labels).Observe(duration.Seconds())
+		d.metrics.observeProviderCall(r.URL.Path, strconv.Itoa(rw.statusCode), time.Since(start))
 	})
 }
