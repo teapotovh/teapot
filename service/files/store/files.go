@@ -1,11 +1,10 @@
-package files
+package store
 
 import (
 	"context"
 	"errors"
 	"io"
 	"os"
-	"time"
 )
 
 var (
@@ -23,8 +22,8 @@ var (
 	ErrReadOnly = errors.New("file system is read-only")
 )
 
-// FS is the read-only file interface for one user.
-type FS interface {
+// FileSystem is the read-only file interface for one user.
+type FileSystem interface {
 	// Stat returns the inode at path.
 	Stat(ctx context.Context, path string) (Inode, error)
 	// List returns the children of path after cursor. A nil cursor starts at the first page.
@@ -35,9 +34,9 @@ type FS interface {
 	Revision() uint64
 }
 
-// MutableFS is a file interface that also allows writes.
-type MutableFS interface {
-	FS
+// MutableFileSystem is a file interface that also allows writes.
+type MutableFileSystem interface {
+	FileSystem
 	// Put writes the content of r to path.
 	Put(ctx context.Context, path string, r io.Reader, mode os.FileMode) error
 	// Delete removes path.
@@ -69,30 +68,6 @@ const (
 	// KindFile marks a file.
 	KindFile
 )
-
-// Inode is a file or a directory.
-type Inode struct {
-	// UID is the id of the user that owns the inode.
-	UID int64
-	// NodeID is the id of the inode in the user tree.
-	NodeID uint64
-	// ParentID is the id of the parent inode. The root is its own parent.
-	ParentID uint64
-	// Name is the last element of the path.
-	Name string
-	// Kind is the type of the inode.
-	Kind Kind
-	// Size is the size of the file in bytes.
-	Size int64
-	// ModTime is the time of the last change.
-	ModTime time.Time
-	// Hash is the S3 entity tag of the current blob.
-	Hash Hash
-	// S3Key is the S3 object key of the current blob.
-	S3Key string
-	// Revision is the revision of the last change.
-	Revision uint64
-}
 
 // Cursor is an opaque position in a list.
 type Cursor string
