@@ -1,3 +1,20 @@
+// Package run starts and monitors long-running components.
+//
+// Add each component with [Run.Add]. [Run.Run] starts the components in order
+// and waits for each one to notify that it started. If a component fails to
+// start, or the startup timeout expires, Run.Run stops and returns the error.
+//
+// After all components start, Run.Run waits until the context is canceled or a
+// component fails. If one component fails, Run.Run cancels the context of all
+// components and returns the error. A panic in a component becomes an error
+// too.
+//
+// Run calls [Runnable.Run] at most once. If Runnable.Run returns an error, the
+// whole process stops. When the context passed to Runnable.Run is canceled, the
+// process will stop soon.
+//
+// Do not add defensive code for many calls to Runnable.Run. Use these
+// properties to make Runnable.Run as simple as possible.
 package run
 
 import (
@@ -48,6 +65,10 @@ func (n *notify) notifyError(err error) {
 	n.ch <- err
 }
 
+// Runnable is a long-running component.
+//
+// Run is called at most once. A returned error stops the whole process. A
+// canceled context means that the process will stop soon, so Run must return.
 type Runnable interface {
 	Run(ctx context.Context, notify Notify) error
 }
