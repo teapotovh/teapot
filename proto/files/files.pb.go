@@ -122,27 +122,77 @@ func (x *FileKind) GetSize() int64 {
 	return 0
 }
 
+type InodeIdentifier struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Uid           int64                  `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
+	NodeId        uint64                 `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InodeIdentifier) Reset() {
+	*x = InodeIdentifier{}
+	mi := &file_proto_files_files_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InodeIdentifier) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InodeIdentifier) ProtoMessage() {}
+
+func (x *InodeIdentifier) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_files_files_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InodeIdentifier.ProtoReflect.Descriptor instead.
+func (*InodeIdentifier) Descriptor() ([]byte, []int) {
+	return file_proto_files_files_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *InodeIdentifier) GetUid() int64 {
+	if x != nil {
+		return x.Uid
+	}
+	return 0
+}
+
+func (x *InodeIdentifier) GetNodeId() uint64 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
 type Inode struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Uid      int64                  `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
-	Revision uint64                 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
-	NodeId   uint64                 `protobuf:"varint,3,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ParentId uint64                 `protobuf:"varint,4,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
-	Name     string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Identifier *InodeIdentifier       `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	Revision   uint64                 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	ParentId   uint64                 `protobuf:"varint,3,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	Name       string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// Types that are valid to be assigned to Kind:
 	//
 	//	*Inode_Directory
 	//	*Inode_File
 	Kind          isInode_Kind           `protobuf_oneof:"kind"`
-	ModifiedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=modified_at,json=modifiedAt,proto3" json:"modified_at,omitempty"`
-	Deleted       bool                   `protobuf:"varint,9,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	ModifiedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=modified_at,json=modifiedAt,proto3" json:"modified_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Inode) Reset() {
 	*x = Inode{}
-	mi := &file_proto_files_files_proto_msgTypes[2]
+	mi := &file_proto_files_files_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -154,7 +204,7 @@ func (x *Inode) String() string {
 func (*Inode) ProtoMessage() {}
 
 func (x *Inode) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_files_files_proto_msgTypes[2]
+	mi := &file_proto_files_files_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -167,26 +217,19 @@ func (x *Inode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Inode.ProtoReflect.Descriptor instead.
 func (*Inode) Descriptor() ([]byte, []int) {
-	return file_proto_files_files_proto_rawDescGZIP(), []int{2}
+	return file_proto_files_files_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Inode) GetUid() int64 {
+func (x *Inode) GetIdentifier() *InodeIdentifier {
 	if x != nil {
-		return x.Uid
+		return x.Identifier
 	}
-	return 0
+	return nil
 }
 
 func (x *Inode) GetRevision() uint64 {
 	if x != nil {
 		return x.Revision
-	}
-	return 0
-}
-
-func (x *Inode) GetNodeId() uint64 {
-	if x != nil {
-		return x.NodeId
 	}
 	return 0
 }
@@ -237,23 +280,16 @@ func (x *Inode) GetModifiedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Inode) GetDeleted() bool {
-	if x != nil {
-		return x.Deleted
-	}
-	return false
-}
-
 type isInode_Kind interface {
 	isInode_Kind()
 }
 
 type Inode_Directory struct {
-	Directory *DirectoryKind `protobuf:"bytes,6,opt,name=directory,proto3,oneof"`
+	Directory *DirectoryKind `protobuf:"bytes,5,opt,name=directory,proto3,oneof"`
 }
 
 type Inode_File struct {
-	File *FileKind `protobuf:"bytes,7,opt,name=file,proto3,oneof"`
+	File *FileKind `protobuf:"bytes,6,opt,name=file,proto3,oneof"`
 }
 
 func (*Inode_Directory) isInode_Kind() {}
@@ -261,15 +297,19 @@ func (*Inode_Directory) isInode_Kind() {}
 func (*Inode_File) isInode_Kind() {}
 
 type Event struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Inode         *Inode                 `protobuf:"bytes,1,opt,name=inode,proto3" json:"inode,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*Event_Update
+	//	*Event_Delete
+	Event         isEvent_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_proto_files_files_proto_msgTypes[3]
+	mi := &file_proto_files_files_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -281,7 +321,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_files_files_proto_msgTypes[3]
+	mi := &file_proto_files_files_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,27 +334,158 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_proto_files_files_proto_rawDescGZIP(), []int{3}
+	return file_proto_files_files_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *Event) GetInode() *Inode {
+func (x *Event) GetEvent() isEvent_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *Event) GetUpdate() *Update {
+	if x != nil {
+		if x, ok := x.Event.(*Event_Update); ok {
+			return x.Update
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetDelete() *Delete {
+	if x != nil {
+		if x, ok := x.Event.(*Event_Delete); ok {
+			return x.Delete
+		}
+	}
+	return nil
+}
+
+type isEvent_Event interface {
+	isEvent_Event()
+}
+
+type Event_Update struct {
+	Update *Update `protobuf:"bytes,1,opt,name=update,proto3,oneof"`
+}
+
+type Event_Delete struct {
+	Delete *Delete `protobuf:"bytes,2,opt,name=delete,proto3,oneof"`
+}
+
+func (*Event_Update) isEvent_Event() {}
+
+func (*Event_Delete) isEvent_Event() {}
+
+type Update struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Inode         *Inode                 `protobuf:"bytes,1,opt,name=inode,proto3" json:"inode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Update) Reset() {
+	*x = Update{}
+	mi := &file_proto_files_files_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Update) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Update) ProtoMessage() {}
+
+func (x *Update) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_files_files_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Update.ProtoReflect.Descriptor instead.
+func (*Update) Descriptor() ([]byte, []int) {
+	return file_proto_files_files_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Update) GetInode() *Inode {
 	if x != nil {
 		return x.Inode
 	}
 	return nil
 }
 
+type Delete struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Identifier    *InodeIdentifier       `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	Revision      uint64                 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Delete) Reset() {
+	*x = Delete{}
+	mi := &file_proto_files_files_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Delete) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Delete) ProtoMessage() {}
+
+func (x *Delete) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_files_files_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Delete.ProtoReflect.Descriptor instead.
+func (*Delete) Descriptor() ([]byte, []int) {
+	return file_proto_files_files_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Delete) GetIdentifier() *InodeIdentifier {
+	if x != nil {
+		return x.Identifier
+	}
+	return nil
+}
+
+func (x *Delete) GetRevision() uint64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
 type SnapshotPage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Inodes        []*Inode               `protobuf:"bytes,1,rep,name=inodes,proto3" json:"inodes,omitempty"`
 	Revision      uint64                 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	Cursor        string                 `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SnapshotPage) Reset() {
 	*x = SnapshotPage{}
-	mi := &file_proto_files_files_proto_msgTypes[4]
+	mi := &file_proto_files_files_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +497,7 @@ func (x *SnapshotPage) String() string {
 func (*SnapshotPage) ProtoMessage() {}
 
 func (x *SnapshotPage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_files_files_proto_msgTypes[4]
+	mi := &file_proto_files_files_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +510,7 @@ func (x *SnapshotPage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotPage.ProtoReflect.Descriptor instead.
 func (*SnapshotPage) Descriptor() ([]byte, []int) {
-	return file_proto_files_files_proto_rawDescGZIP(), []int{4}
+	return file_proto_files_files_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SnapshotPage) GetInodes() []*Inode {
@@ -356,6 +527,13 @@ func (x *SnapshotPage) GetRevision() uint64 {
 	return 0
 }
 
+func (x *SnapshotPage) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type WatchEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Event         *Event                 `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
@@ -365,7 +543,7 @@ type WatchEvent struct {
 
 func (x *WatchEvent) Reset() {
 	*x = WatchEvent{}
-	mi := &file_proto_files_files_proto_msgTypes[5]
+	mi := &file_proto_files_files_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +555,7 @@ func (x *WatchEvent) String() string {
 func (*WatchEvent) ProtoMessage() {}
 
 func (x *WatchEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_files_files_proto_msgTypes[5]
+	mi := &file_proto_files_files_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +568,7 @@ func (x *WatchEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchEvent.ProtoReflect.Descriptor instead.
 func (*WatchEvent) Descriptor() ([]byte, []int) {
-	return file_proto_files_files_proto_rawDescGZIP(), []int{5}
+	return file_proto_files_files_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *WatchEvent) GetEvent() *Event {
@@ -402,14 +580,13 @@ func (x *WatchEvent) GetEvent() *Event {
 
 type SnapshotRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AfterRevision uint64                 `protobuf:"varint,1,opt,name=after_revision,json=afterRevision,proto3" json:"after_revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SnapshotRequest) Reset() {
 	*x = SnapshotRequest{}
-	mi := &file_proto_files_files_proto_msgTypes[6]
+	mi := &file_proto_files_files_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -421,7 +598,7 @@ func (x *SnapshotRequest) String() string {
 func (*SnapshotRequest) ProtoMessage() {}
 
 func (x *SnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_files_files_proto_msgTypes[6]
+	mi := &file_proto_files_files_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -434,14 +611,7 @@ func (x *SnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_proto_files_files_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *SnapshotRequest) GetAfterRevision() uint64 {
-	if x != nil {
-		return x.AfterRevision
-	}
-	return 0
+	return file_proto_files_files_proto_rawDescGZIP(), []int{9}
 }
 
 type WatchRequest struct {
@@ -453,7 +623,7 @@ type WatchRequest struct {
 
 func (x *WatchRequest) Reset() {
 	*x = WatchRequest{}
-	mi := &file_proto_files_files_proto_msgTypes[7]
+	mi := &file_proto_files_files_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -465,7 +635,7 @@ func (x *WatchRequest) String() string {
 func (*WatchRequest) ProtoMessage() {}
 
 func (x *WatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_files_files_proto_msgTypes[7]
+	mi := &file_proto_files_files_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -478,7 +648,7 @@ func (x *WatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchRequest.ProtoReflect.Descriptor instead.
 func (*WatchRequest) Descriptor() ([]byte, []int) {
-	return file_proto_files_files_proto_rawDescGZIP(), []int{7}
+	return file_proto_files_files_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *WatchRequest) GetAfterRevision() uint64 {
@@ -497,29 +667,41 @@ const file_proto_files_files_proto_rawDesc = "" +
 	"\bFileKind\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x12\n" +
 	"\x04hash\x18\x02 \x01(\fR\x04hash\x12\x12\n" +
-	"\x04size\x18\x03 \x01(\x03R\x04size\"\xbb\x02\n" +
-	"\x05Inode\x12\x10\n" +
-	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x1a\n" +
-	"\brevision\x18\x02 \x01(\x04R\brevision\x12\x17\n" +
-	"\anode_id\x18\x03 \x01(\x04R\x06nodeId\x12\x1b\n" +
-	"\tparent_id\x18\x04 \x01(\x04R\bparentId\x12\x12\n" +
-	"\x04name\x18\x05 \x01(\tR\x04name\x124\n" +
-	"\tdirectory\x18\x06 \x01(\v2\x14.files.DirectoryKindH\x00R\tdirectory\x12%\n" +
-	"\x04file\x18\a \x01(\v2\x0f.files.FileKindH\x00R\x04file\x12;\n" +
-	"\vmodified_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"modifiedAt\x12\x18\n" +
-	"\adeleted\x18\t \x01(\bR\adeletedB\x06\n" +
-	"\x04kind\"+\n" +
-	"\x05Event\x12\"\n" +
-	"\x05inode\x18\x01 \x01(\v2\f.files.InodeR\x05inode\"P\n" +
+	"\x04size\x18\x03 \x01(\x03R\x04size\"<\n" +
+	"\x0fInodeIdentifier\x12\x10\n" +
+	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x17\n" +
+	"\anode_id\x18\x02 \x01(\x04R\x06nodeId\"\xae\x02\n" +
+	"\x05Inode\x126\n" +
+	"\n" +
+	"identifier\x18\x01 \x01(\v2\x16.files.InodeIdentifierR\n" +
+	"identifier\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x04R\brevision\x12\x1b\n" +
+	"\tparent_id\x18\x03 \x01(\x04R\bparentId\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x124\n" +
+	"\tdirectory\x18\x05 \x01(\v2\x14.files.DirectoryKindH\x00R\tdirectory\x12%\n" +
+	"\x04file\x18\x06 \x01(\v2\x0f.files.FileKindH\x00R\x04file\x12;\n" +
+	"\vmodified_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"modifiedAtB\x06\n" +
+	"\x04kind\"b\n" +
+	"\x05Event\x12'\n" +
+	"\x06update\x18\x01 \x01(\v2\r.files.UpdateH\x00R\x06update\x12'\n" +
+	"\x06delete\x18\x02 \x01(\v2\r.files.DeleteH\x00R\x06deleteB\a\n" +
+	"\x05event\",\n" +
+	"\x06Update\x12\"\n" +
+	"\x05inode\x18\x01 \x01(\v2\f.files.InodeR\x05inode\"\\\n" +
+	"\x06Delete\x126\n" +
+	"\n" +
+	"identifier\x18\x01 \x01(\v2\x16.files.InodeIdentifierR\n" +
+	"identifier\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x04R\brevision\"h\n" +
 	"\fSnapshotPage\x12$\n" +
 	"\x06inodes\x18\x01 \x03(\v2\f.files.InodeR\x06inodes\x12\x1a\n" +
-	"\brevision\x18\x02 \x01(\x04R\brevision\"0\n" +
+	"\brevision\x18\x02 \x01(\x04R\brevision\x12\x16\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\"0\n" +
 	"\n" +
 	"WatchEvent\x12\"\n" +
-	"\x05event\x18\x01 \x01(\v2\f.files.EventR\x05event\"8\n" +
-	"\x0fSnapshotRequest\x12%\n" +
-	"\x0eafter_revision\x18\x01 \x01(\x04R\rafterRevision\"5\n" +
+	"\x05event\x18\x01 \x01(\v2\f.files.EventR\x05event\"\x11\n" +
+	"\x0fSnapshotRequest\"5\n" +
 	"\fWatchRequest\x12%\n" +
 	"\x0eafter_revision\x18\x01 \x01(\x04R\rafterRevision2y\n" +
 	"\x05Files\x12;\n" +
@@ -538,34 +720,41 @@ func file_proto_files_files_proto_rawDescGZIP() []byte {
 	return file_proto_files_files_proto_rawDescData
 }
 
-var file_proto_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_proto_files_files_proto_goTypes = []any{
 	(*DirectoryKind)(nil),         // 0: files.DirectoryKind
 	(*FileKind)(nil),              // 1: files.FileKind
-	(*Inode)(nil),                 // 2: files.Inode
-	(*Event)(nil),                 // 3: files.Event
-	(*SnapshotPage)(nil),          // 4: files.SnapshotPage
-	(*WatchEvent)(nil),            // 5: files.WatchEvent
-	(*SnapshotRequest)(nil),       // 6: files.SnapshotRequest
-	(*WatchRequest)(nil),          // 7: files.WatchRequest
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*InodeIdentifier)(nil),       // 2: files.InodeIdentifier
+	(*Inode)(nil),                 // 3: files.Inode
+	(*Event)(nil),                 // 4: files.Event
+	(*Update)(nil),                // 5: files.Update
+	(*Delete)(nil),                // 6: files.Delete
+	(*SnapshotPage)(nil),          // 7: files.SnapshotPage
+	(*WatchEvent)(nil),            // 8: files.WatchEvent
+	(*SnapshotRequest)(nil),       // 9: files.SnapshotRequest
+	(*WatchRequest)(nil),          // 10: files.WatchRequest
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_proto_files_files_proto_depIdxs = []int32{
-	0, // 0: files.Inode.directory:type_name -> files.DirectoryKind
-	1, // 1: files.Inode.file:type_name -> files.FileKind
-	8, // 2: files.Inode.modified_at:type_name -> google.protobuf.Timestamp
-	2, // 3: files.Event.inode:type_name -> files.Inode
-	2, // 4: files.SnapshotPage.inodes:type_name -> files.Inode
-	3, // 5: files.WatchEvent.event:type_name -> files.Event
-	6, // 6: files.Files.Snapshot:input_type -> files.SnapshotRequest
-	7, // 7: files.Files.Watch:input_type -> files.WatchRequest
-	4, // 8: files.Files.Snapshot:output_type -> files.SnapshotPage
-	5, // 9: files.Files.Watch:output_type -> files.WatchEvent
-	8, // [8:10] is the sub-list for method output_type
-	6, // [6:8] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	2,  // 0: files.Inode.identifier:type_name -> files.InodeIdentifier
+	0,  // 1: files.Inode.directory:type_name -> files.DirectoryKind
+	1,  // 2: files.Inode.file:type_name -> files.FileKind
+	11, // 3: files.Inode.modified_at:type_name -> google.protobuf.Timestamp
+	5,  // 4: files.Event.update:type_name -> files.Update
+	6,  // 5: files.Event.delete:type_name -> files.Delete
+	3,  // 6: files.Update.inode:type_name -> files.Inode
+	2,  // 7: files.Delete.identifier:type_name -> files.InodeIdentifier
+	3,  // 8: files.SnapshotPage.inodes:type_name -> files.Inode
+	4,  // 9: files.WatchEvent.event:type_name -> files.Event
+	9,  // 10: files.Files.Snapshot:input_type -> files.SnapshotRequest
+	10, // 11: files.Files.Watch:input_type -> files.WatchRequest
+	7,  // 12: files.Files.Snapshot:output_type -> files.SnapshotPage
+	8,  // 13: files.Files.Watch:output_type -> files.WatchEvent
+	12, // [12:14] is the sub-list for method output_type
+	10, // [10:12] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_proto_files_files_proto_init() }
@@ -573,9 +762,13 @@ func file_proto_files_files_proto_init() {
 	if File_proto_files_files_proto != nil {
 		return
 	}
-	file_proto_files_files_proto_msgTypes[2].OneofWrappers = []any{
+	file_proto_files_files_proto_msgTypes[3].OneofWrappers = []any{
 		(*Inode_Directory)(nil),
 		(*Inode_File)(nil),
+	}
+	file_proto_files_files_proto_msgTypes[4].OneofWrappers = []any{
+		(*Event_Update)(nil),
+		(*Event_Delete)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -583,7 +776,7 @@ func file_proto_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_files_files_proto_rawDesc), len(file_proto_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
