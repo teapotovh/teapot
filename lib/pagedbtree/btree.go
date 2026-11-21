@@ -65,7 +65,8 @@ type Bytes struct {
 	root    atomic.Uint64
 	readers atomic.Int64
 
-	cache *pageCache
+	cache   *pageCache
+	metrics metrics
 
 	state   atomic.Pointer[storeState]
 	done    chan struct{}
@@ -100,7 +101,7 @@ func Open(fs FS, cfg Config) (*Bytes, error) {
 		return nil, ErrInvalidConfig
 	}
 
-	return &Bytes{
+	b := &Bytes{
 		memory:     cfg.Memory,
 		disk:       cfg.Disk,
 		dirtyPages: cfg.DirtyPages,
@@ -110,11 +111,17 @@ func Open(fs FS, cfg Config) (*Bytes, error) {
 		pendingSet: make(map[uint64]struct{}),
 		done:       make(chan struct{}),
 		updates:    make(chan update),
-	}, nil
+	}
+	b.metrics.init(b.path)
+
+	return b, nil
 }
 
 // Load returns the value for key.
 func (b *Bytes) Load(key string) ([]byte, bool, error) {
+	start := time.Now()
+	defer b.metrics.observeDuration(metricsOperationLoad, start)
+
 	if err := b.contextErr(); err != nil {
 		return nil, false, err
 	}
@@ -154,6 +161,9 @@ func (b *Bytes) Load(key string) ([]byte, bool, error) {
 
 // Store writes a value for key.
 func (b *Bytes) Store(key string, value []byte) error {
+	start := time.Now()
+	defer b.metrics.observeDuration(metricsOperationStore, start)
+
 	if err := b.contextErr(); err != nil {
 		return err
 	}
@@ -162,21 +172,28 @@ func (b *Bytes) Store(key string, value []byte) error {
 		return ErrKeyTooLarge
 	}
 
-	return b.send(update{key: key, value: value})
+	if err := b.send(update{key: key, value: value}); err != nil {
+		return err
+	}
+
+	b.metrics.observeEntrySize(len(key) + len(value))
+
+	return nil
 }
 
+// All iterates over all entries in key order.
 func (b *Bytes) All() iter.Seq2[string, []byte] {
-	return b.scan("", "", false)
+	return b.scan("", "", false, metricsOperationAll)
 }
 
 // From iterates over entries with a key greater than or equal to from.
 func (b *Bytes) From(from string) iter.Seq2[string, []byte] {
-	return b.scan(from, "", false)
+	return b.scan(from, "", false, metricsOperationFrom)
 }
 
 // Between iterates over entries with a key in [from, to).
 func (b *Bytes) Between(from, to string) iter.Seq2[string, []byte] {
-	return b.scan(from, to, true)
+	return b.scan(from, to, true, metricsOperationBetween)
 }
 
 // Run implements run.Runnable.
@@ -206,6 +223,7 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 	}
 
 	b.state.Store(state)
+	b.countEntries()
 	notify.Notify()
 
 	for {
@@ -222,11 +240,16 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 			}
 
 			var updateErr error
+
+			start := time.Now()
+
 			if u.delete {
 				updateErr = b.applyDelete(u.key)
 			} else {
 				updateErr = b.applyStore(u.key, u.value)
 			}
+
+			b.metrics.observeDuration(metricsOperationWriteback, start)
 
 			if updateErr != nil {
 				return updateErr
@@ -236,6 +259,9 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 }
 
 func (b *Bytes) Delete(key string) error {
+	start := time.Now()
+	defer b.metrics.observeDuration(metricsOperationDelete, start)
+
 	if err := b.contextErr(); err != nil {
 		return err
 	}
@@ -343,7 +369,13 @@ func (b *Bytes) applyDelete(key string) error {
 		return err
 	}
 
-	return b.commitRoot(newRoot)
+	if err := b.commitRoot(newRoot); err != nil {
+		return err
+	}
+
+	b.metrics.decEntries()
+
+	return nil
 }
 
 func (b *Bytes) contextErr() error {
@@ -419,7 +451,13 @@ func (b *Bytes) storeFirst(key string, value []byte) error {
 		return err
 	}
 
-	return b.commitRoot(root)
+	if err := b.commitRoot(root); err != nil {
+		return err
+	}
+
+	b.metrics.incEntries()
+
+	return nil
 }
 
 func (b *Bytes) storeExisting(root uint64, key string, value []byte) error {
@@ -437,10 +475,12 @@ func (b *Bytes) storeExisting(root uint64, key string, value []byte) error {
 		return leaf.entries[i].key >= key
 	})
 
+	exists := index < len(leaf.entries) && leaf.entries[index].key == key
+
 	entries := leaf.entries
 	oldOverflow := []uint64(nil)
 
-	if index < len(entries) && entries[index].key == key {
+	if exists {
 		oldOverflow, err = b.overflowChain(entries[index].overflow)
 		if err != nil {
 			return err
@@ -478,7 +518,15 @@ func (b *Bytes) storeExisting(root uint64, key string, value []byte) error {
 		return err
 	}
 
-	return b.commitRoot(newRoot)
+	if err := b.commitRoot(newRoot); err != nil {
+		return err
+	}
+
+	if !exists {
+		b.metrics.incEntries()
+	}
+
+	return nil
 }
 
 func (b *Bytes) load() error {
@@ -525,6 +573,8 @@ func (b *Bytes) load() error {
 func (b *Bytes) reset() error {
 	b.cache = newPageCache(b.memory)
 	b.root.Store(0)
+	b.metrics.setEntries(0)
+	b.metrics.setCachedEntries(0)
 
 	b.metaMu.Lock()
 	b.pageCount = 0
@@ -593,7 +643,10 @@ func (b *Bytes) loadPage(id uint64) (*page, error) {
 	p := &page{id: id, data: data}
 	p.used.Store(true)
 
-	return b.cache.insertIfAbsent(p), nil
+	p = b.cache.insertIfAbsent(p)
+	b.metrics.setCachedEntries(b.cache.entryCount())
+
+	return p, nil
 }
 
 func (b *Bytes) writePage(p *page) error {
@@ -632,6 +685,7 @@ func (b *Bytes) allocatePage() (uint64, error) {
 			b.metaMu.Unlock()
 
 			b.cache.remove(id)
+			b.metrics.setCachedEntries(b.cache.entryCount())
 
 			return id, nil
 		}
@@ -657,6 +711,7 @@ func (b *Bytes) allocatePage() (uint64, error) {
 func (b *Bytes) putPage(p *page) {
 	p.dirty.Store(true)
 	b.cache.replace(p)
+	b.metrics.setCachedEntries(b.cache.entryCount())
 }
 
 func (b *Bytes) addPendingFree(ids ...uint64) {
@@ -1311,8 +1366,43 @@ func (b *Bytes) copyUp(
 	return childID, nil
 }
 
-func (b *Bytes) scan(from, to string, bounded bool) iter.Seq2[string, []byte] {
+func (b *Bytes) countEntries() {
+	root := b.root.Load()
+	if root == 0 {
+		b.metrics.setEntries(0)
+
+		return
+	}
+
+	cur, err := b.seek(root, "")
+	if err != nil {
+		return
+	}
+
+	var total int64
+
+	for cur.leaf != 0 {
+		leaf, err := b.loadLeaf(cur.leaf)
+		if err != nil {
+			break
+		}
+
+		total += int64(len(leaf.entries))
+
+		ok, err := cur.next()
+		if err != nil || !ok {
+			break
+		}
+	}
+
+	b.metrics.setEntries(total)
+}
+
+func (b *Bytes) scan(from, to string, bounded bool, operation string) iter.Seq2[string, []byte] {
 	return func(yield func(string, []byte) bool) {
+		start := time.Now()
+		defer b.metrics.observeDuration(operation, start)
+
 		if b.contextErr() != nil {
 			return
 		}

@@ -7,6 +7,8 @@ import (
 	"iter"
 	"unsafe"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -128,6 +130,11 @@ func (t *Tree[T]) Between(from, to string) iter.Seq2[string, T] {
 // Run implements run.Runnable.
 func (t *Tree[T]) Run(ctx context.Context, notify run.Notify) error {
 	return t.store.Run(ctx, notify)
+}
+
+// Metrics implements observability.Metrics.
+func (t *Tree[T]) Metrics() []prometheus.Collector {
+	return t.store.Metrics()
 }
 
 func (t *Tree[T]) scan(seq iter.Seq2[string, []byte]) iter.Seq2[string, T] {
