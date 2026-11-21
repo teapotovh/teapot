@@ -28,6 +28,9 @@ do this if the plan has some clear gaps that must be addressed before continuing
 
 Read the style guidelines in .agents/STYLE.md (from project root) for how to write code.
 
+Strictly implement just what was required, do not over-engieer things. Keep code
+simple and minimal.
+
 ### Checks
 
 Ensure all tests pertaining to the touched code pass. Ensure all lint checks

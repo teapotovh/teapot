@@ -40,6 +40,13 @@ existing open-source projects, etc, to make sure the input values are not bogous
 Then, outputs should be asserted based on the specification/expectation, not
 based on the written code.
 
+When writing code, always keep testing in mind. Most code should take interfaces
+as inputs for 'external systems' such as filesystems, databases, etc. Each package
+should declare its own *public* interfaces that its abstractions will consume.
+Each package, should also type assert that the concrete implementation type
+expected to be used implements the requested interface (i.e., a `DB` type should
+be implemented by `*pgx.Conn`).
+
 ## Validating
 
 Never run `bazel build` on more targets than necessary. Rely on the GitHub CI to
