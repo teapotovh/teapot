@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package files;
+option go_package = "github.com/teapotovh/teapot/proto/files;files";
+
+import "google/protobuf/timestamp.proto";
+
+// Files carries the inode metadata of the files service.
+service Files {
+  // Snapshot sends all inodes after the requested revision.
+  rpc Snapshot (SnapshotRequest) returns (stream SnapshotPage) {}
+
+  // Watch sends the events after the requested revision.
+  rpc Watch (WatchRequest) returns (stream WatchEvent) {}
+}
+
+// DirectoryKind marks an inode as a directory.
+message DirectoryKind {}
+
+// FileKind marks an inode as a file.
+message FileKind {
+  // Ref is the S3 object key of the current blob.
+  string ref = 1;
+
+  // Hash is the S3 ETag of the current blob.
+  bytes hash = 2;
+
+  // Size is the size of the file in bytes.
+  int64 size = 3;
+}
+
+// Inode is a file or a directory. It does not carry file bytes.
+message Inode {
+  // Uid is the user id of the tree owner.
+  int64 uid = 1;
+
+  // Revision is the revision of the last change to the inode.
+  uint64 revision = 2;
+
+  // NodeId is the id of the inode in the user tree.
+  uint64 node_id = 3;
+
+  // ParentId is the id of the parent inode. The root is its own parent.
+  uint64 parent_id = 4;
+
+  // Name is the last element of the path.
+  string name = 5;
+
+  // Kind is the type of the inode. It is a directory or a file.
+  oneof kind {
+    // Directory marks a directory inode.
+    DirectoryKind directory = 6;
+
+    // File marks a file inode. It carries the file metadata.
+    FileKind file = 7;
+  }
+
+  // ModifiedAt is the time of the last change.
+  google.protobuf.Timestamp modified_at = 8;
+
+  // Deleted is true for a tombstone.
+  bool deleted = 9;
+}
+
+// Event is a change to an inode.
+message Event {
+  // Inode is the new state. It is a tombstone if deleted is true.
+  Inode inode = 1;
+}
+
+// SnapshotPage is one page of a snapshot.
+message SnapshotPage {
+  // Inodes are the inodes in this page.
+  repeated Inode inodes = 1;
+
+  // Revision is the global revision at the start of the snapshot.
+  // It is valid only after the stream ends.
+  uint64 revision = 2;
+}
+
+// WatchEvent is an event sent on the watch stream.
+message WatchEvent {
+  // Event is the change to apply.
+  Event event = 1;
+}
+
+// SnapshotRequest asks for the snapshot after a revision.
+message SnapshotRequest {
+  // AfterRevision is the last revision the client has. Zero means all.
+  uint64 after_revision = 1;
+}
+
+// WatchRequest asks for the events after a revision.
+message WatchRequest {
+  // AfterRevision is the revision to start from. The stream sends later events.
+  uint64 after_revision = 1;
+}
