@@ -23,7 +23,9 @@ under `lib/`. Abstractions should be individually testable. Configuration should
 be parsed in a `flags.go` file for each abstraction, and provided to the `NewXX`
 call via a struct.
 
-Avoid acronyms if possible. keep all error/log messages lowercase.
+Avoid acronyms if possible. keep all error/log messages lowercase. Error handling
+should always wrap errors in most cases. Avoid not wrapping returned errors only
+in the few places where a wrap truly doesn't make sense.
 
 You MUST NOT use repated strings/number constants throughout the code without
 defining an (potentially exported) constant for them. We should always use
