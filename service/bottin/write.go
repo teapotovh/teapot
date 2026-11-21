@@ -7,8 +7,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/teapotovh/teapot/lib/ldapsrv"
 	ldap "github.com/teapotovh/teapot/lib/ldapsrv/goldap"
@@ -128,15 +127,10 @@ func (server *Bottin) Add(ctx context.Context, state State, r ldap.AddRequest) (
 		attrs[AttrObjectClass] = store.AttributeValue{"top"}
 	}
 
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		return state, fmt.Errorf("(%w) error while generating random uuid: %w", ldapsrv.ErrOperationsError, err)
-	}
-
 	// Write system attributes
 	attrs[AttrCreatorsName] = []string{state.User().user}
 	attrs[AttrCreateTimestamp] = []string{genTimestamp()}
-	attrs[AttrEntryUUID] = []string{uuid.String()}
+	attrs[AttrEntryUUID] = []string{uuid.New().String()}
 
 	tx, err := server.store.Begin(ctx)
 	if err != nil {

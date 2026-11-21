@@ -20,7 +20,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/btree v1.1.3
 	github.com/google/go-github/v81 v81.0.0
-	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.1
 	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -99,6 +98,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

@@ -7,8 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/teapotovh/teapot/lib/ldapsrv"
 	"github.com/teapotovh/teapot/lib/run"
@@ -179,18 +178,13 @@ func (server *Bottin) initialize(ctx context.Context) error {
 	}
 
 	if !baseExists {
-		uuid, err := uuid.NewRandom()
-		if err != nil {
-			return fmt.Errorf("error while generating random uuid: %w", err)
-		}
-
 		// We have to initialize the server. Create a root object.
 		baseAttributes := store.Attributes{
 			AttrObjectClass:         store.AttributeValue{"top", "dcObject", "organization"},
 			"structuralobjectclass": store.AttributeValue{"organization"},
 			AttrCreatorsName:        store.AttributeValue{server.baseDN.String()},
 			AttrCreateTimestamp:     store.AttributeValue{genTimestamp()},
-			AttrEntryUUID:           store.AttributeValue{uuid.String()},
+			AttrEntryUUID:           store.AttributeValue{uuid.New().String()},
 		}
 
 		entry := store.NewEntry(server.baseDN, baseAttributes)

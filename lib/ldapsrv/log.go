@@ -3,8 +3,7 @@ package ldapsrv
 import (
 	"context"
 	"log/slog"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // ContextHandler is a custom slog.Handler that prints values from

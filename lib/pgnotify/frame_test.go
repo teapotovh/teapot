@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"testing"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 var (

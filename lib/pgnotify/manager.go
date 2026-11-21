@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -70,14 +70,9 @@ func NewManager(config *pgx.ConnConfig, logger *slog.Logger) (*Manager, error) {
 		return nil, ErrInvalidConfig
 	}
 
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("error while generating uuid: %w", err)
-	}
-
 	config = config.Copy()
 
-	return newManager(logger, id, func(ctx context.Context) (Conn, error) {
+	return newManager(logger, uuid.New(), func(ctx context.Context) (Conn, error) {
 		return pgx.ConnectConfig(ctx, config)
 	}), nil
 }

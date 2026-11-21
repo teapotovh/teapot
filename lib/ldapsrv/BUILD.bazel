@@ -23,7 +23,6 @@ go_library(
         "//lib/ldapsrv/goldap",
         "//lib/observability",
         "//lib/run",
-        "@com_github_google_uuid//:uuid",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
         "@io_opentelemetry_go_otel//attribute",

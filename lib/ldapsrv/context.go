@@ -2,8 +2,7 @@ package ldapsrv
 
 import (
 	"context"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type ContextKey string
