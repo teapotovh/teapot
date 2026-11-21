@@ -23,6 +23,7 @@ go_proto_library(
     importpath = "github.com/teapotovh/teapot/proto/files",
     protos = [":files_proto"],
     visibility = ["//visibility:public"],
+    deps = ["@com_github_planetscale_vtprotobuf//types/known/timestamppb"],
 )
 
 filegroup(

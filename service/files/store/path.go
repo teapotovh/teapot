@@ -1,4 +1,4 @@
-package files
+package store
 
 import (
 	"path"
