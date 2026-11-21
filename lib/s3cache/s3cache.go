@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"golang.org/x/sync/singleflight"
 )

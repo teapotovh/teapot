@@ -6,9 +6,10 @@ import (
 	"slices"
 	"time"
 	"unicode/utf8"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 
@@ -39,11 +40,16 @@ func parseObjectRows(rows pgx.Rows) (refs []objectRef, err error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var ref objectRef
+		var (
+			ref   objectRef
+			refID pgtype.UUID
+		)
 
-		if err := rows.Scan(&ref.Path, &ref.ModTime, &ref.Ref, &ref.ETag); err != nil {
+		if err := rows.Scan(&ref.Path, &ref.ModTime, &refID, &ref.ETag); err != nil {
 			return nil, fmt.Errorf("could not extract three columns from psql list: %w", err)
 		}
+
+		ref.Ref = uuid.UUID(refID.Bytes)
 
 		refs = append(refs, ref)
 	}
@@ -99,13 +105,13 @@ var storeObjectQuery = `
 func storeObjectRefPSQL(ctx context.Context, tx pgx.Tx, refs []objectRef) error {
 	paths := make([]string, 0, len(refs))
 	modTimes := make([]time.Time, 0, len(refs))
-	uuids := make([]uuid.UUID, 0, len(refs))
+	uuids := make([]pgtype.UUID, 0, len(refs))
 	etags := make([]string, 0, len(refs))
 
 	for _, ref := range refs {
 		paths = append(paths, string(ref.Path))
 		modTimes = append(modTimes, ref.ModTime)
-		uuids = append(uuids, ref.Ref)
+		uuids = append(uuids, pgtype.UUID{Bytes: ref.Ref, Valid: true})
 		etags = append(etags, ref.ETag.String())
 	}
 

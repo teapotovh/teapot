@@ -5,8 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // ErrInvalidFrame is returned when a notification frame is malformed.

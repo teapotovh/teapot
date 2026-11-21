@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/observability"
@@ -164,12 +164,7 @@ func (s *LDAPSrv[T]) Run(ctx context.Context, notify run.Notify) (err error) {
 
 			ctx := context.WithValue(ctx, ContextKeyAddr, conn.RemoteAddr().String())
 
-			uid, err := uuid.NewRandom()
-			if err != nil {
-				s.logger.WarnContext(ctx, "could not generate request id", "err", err)
-
-				uid = uuid.UUID{}
-			}
+			uid := uuid.New()
 
 			ctx = context.WithValue(ctx, ContextKeyRequestID, uid)
 

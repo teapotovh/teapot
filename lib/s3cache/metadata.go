@@ -10,8 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 const v1MetadataFileName = "v1.metadata.json"
