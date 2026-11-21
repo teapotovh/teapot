@@ -2,17 +2,19 @@ package pagedbtree
 
 import (
 	"container/list"
+	"encoding/binary"
 	"sync"
 )
 
 type pageCache struct {
-	mu     sync.Mutex
-	budget int64
-	used   int64
-	dirty  int
-	pages  map[uint64]*page
-	order  *list.List
-	hand   *list.Element
+	mu      sync.Mutex
+	budget  int64
+	used    int64
+	dirty   int
+	entries int64
+	pages   map[uint64]*page
+	order   *list.List
+	hand    *list.Element
 }
 
 func newPageCache(budget int64) *pageCache {
@@ -101,11 +103,28 @@ func (c *pageCache) dirtyCount() int {
 	return c.dirty
 }
 
+func (c *pageCache) entryCount() int64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.entries
+}
+
+func cacheLeafEntries(p *page) int64 {
+	if pageType(p.data[pageTypeOffset]) != pageLeaf {
+		return 0
+	}
+
+	return int64(binary.LittleEndian.Uint16(p.data[pageCountOffset:]))
+}
+
 func (c *pageCache) addLocked(p *page) {
 	p.elem = c.order.PushBack(p)
 	c.pages[p.id] = p
 
 	c.used += int64(len(p.data))
+	c.entries += cacheLeafEntries(p)
+
 	if p.dirty.Load() {
 		c.dirty++
 	}
@@ -121,6 +140,8 @@ func (c *pageCache) removeLocked(p *page) {
 	delete(c.pages, p.id)
 
 	c.used -= int64(len(p.data))
+	c.entries -= cacheLeafEntries(p)
+
 	if p.dirty.Load() {
 		c.dirty--
 	}

@@ -6,12 +6,16 @@ go_library(
         "btree.go",
         "cache.go",
         "file.go",
+        "metrics.go",
         "page.go",
         "typed.go",
     ],
     importpath = "github.com/teapotovh/teapot/lib/pagedbtree",
     visibility = ["//visibility:public"],
-    deps = ["//lib/run"],
+    deps = [
+        "//lib/run",
+        "@com_github_prometheus_client_golang//prometheus",
+    ],
 )
 
 go_test(
