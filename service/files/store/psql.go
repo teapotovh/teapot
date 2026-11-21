@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/teapotovh/teapot/lib/pgnotify"
 )
 
 // ErrInvalidKind reports an unknown inode kind.
@@ -15,7 +17,7 @@ var ErrInvalidKind = errors.New("invalid inode kind")
 // PSQL is the PostgreSQL metadata backend.
 type PSQL struct {
 	pool   *pgxpool.Pool
-	notify Notifications
+	notify pgnotify.Notifications
 }
 
 var currentRevisionQuery = `
@@ -72,42 +74,6 @@ func (p *PSQL) Load(ctx context.Context, fn func(uint64, []Inode) error) (err er
 	return tx.Commit(ctx)
 }
 
-var changedSinceQuery = `
-		SELECT uid, node_id, revision, parent_id, name, kind, ref, hash, size, mtime, deleted
-		FROM inodes
-		WHERE revision > $1
-		ORDER BY revision;
-	`
-
-// ChangedSince implements DB.
-func (p *PSQL) ChangedSince(ctx context.Context, revision uint64) (inodes []Inode, err error) {
-	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{
-		IsoLevel:   pgx.RepeatableRead,
-		AccessMode: pgx.ReadOnly,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error while starting changed transaction: %w", err)
-	}
-
-	defer rollbackPgxOnError(ctx, tx, &err)
-
-	rows, err := tx.Query(ctx, changedSinceQuery, int64(revision)) //nolint:gosec
-	if err != nil {
-		return nil, fmt.Errorf("error while listing changed inodes: %w", err)
-	}
-
-	inodes, err = scanInodes(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("error while committing changed transaction: %w", err)
-	}
-
-	return inodes, nil
-}
-
 // Close implements DB.
 func (p *PSQL) Close() {
 	p.pool.Close()
@@ -122,10 +88,9 @@ func rollbackPgxOnError(ctx context.Context, tx pgx.Tx, err *error) {
 }
 
 var snapshotPageQuery = `
-		SELECT uid, node_id, revision, parent_id, name, kind, ref, hash, size, mtime, deleted
+		SELECT uid, node_id, revision, parent_id, name, kind, ref, hash, size, mtime
 		FROM inodes
 		WHERE revision > $1
-			AND (deleted = false OR $1 > 0)
 			AND (parent_id, name) > ($2, $3)
 		ORDER BY parent_id, name
 		LIMIT $4;
@@ -167,7 +132,7 @@ func readSnapshotPage(
 
 type psqlTx struct {
 	tx       pgx.Tx
-	notify   Notifications
+	notify   pgnotify.Notifications
 	revision uint64
 }
 
@@ -208,8 +173,8 @@ var (
 		`
 
 	upsertQuery = `
-			INSERT INTO inodes (uid, node_id, revision, parent_id, name, kind, ref, hash, size, mtime, deleted)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			INSERT INTO inodes (uid, node_id, revision, parent_id, name, kind, ref, hash, size, mtime)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			ON CONFLICT (uid, node_id) DO UPDATE SET
 				parent_id = EXCLUDED.parent_id,
 				name = EXCLUDED.name,
@@ -218,7 +183,6 @@ var (
 				mtime = EXCLUDED.mtime,
 				hash = EXCLUDED.hash,
 				ref = EXCLUDED.ref,
-				deleted = EXCLUDED.deleted,
 				revision = EXCLUDED.revision;
 		`
 )
@@ -252,13 +216,23 @@ func (t *psqlTx) Put(ctx context.Context, inode Inode) (uint64, error) {
 		hash,
 		inode.Size,
 		inode.ModTime,
-		inode.Deleted,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("error while storing the inode: %w", err)
 	}
 
 	return inode.NodeID, nil
+}
+
+var deleteInodeQuery = `DELETE FROM inodes WHERE uid = $1 AND node_id = $2;`
+
+// Delete implements Tx.
+func (t *psqlTx) Delete(ctx context.Context, uid int64, nodeID uint64) error {
+	if _, err := t.tx.Exec(ctx, deleteInodeQuery, uid, int64(nodeID)); err != nil { //nolint:gosec
+		return fmt.Errorf("error while deleting the inode: %w", err)
+	}
+
+	return nil
 }
 
 // Commit implements Tx.
@@ -302,7 +276,6 @@ func scanInode(row scanner) (Inode, error) {
 		&hash,
 		&inode.Size,
 		&inode.ModTime,
-		&inode.Deleted,
 	)
 	if err != nil {
 		return Inode{}, err

@@ -12,7 +12,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -291,6 +290,45 @@ func TestCacheRebuild(t *testing.T) {
 	}
 }
 
+func TestSnapshot(t *testing.T) {
+	t.Parallel()
+
+	store, ctx := newTestStore(t)
+	fs := store.For(1006)
+
+	if err := fs.Mkdir(ctx, "/a"); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("hello"), 0o644); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+
+	var (
+		revision uint64
+		inodes   []Inode
+	)
+
+	err := store.Snapshot(ctx, func(pageRevision uint64, page []Inode) error {
+		revision = pageRevision
+
+		inodes = append(inodes, page...)
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if revision == 0 {
+		t.Fatal("snapshot revision = 0, want a positive value")
+	}
+
+	if len(inodes) != 3 {
+		t.Fatalf("snapshot inodes = %d, want 3", len(inodes))
+	}
+}
+
 type testNotify chan struct{}
 
 // Notify implements run.Notify.
@@ -403,29 +441,6 @@ func (d *memDB) Load(_ context.Context, fn func(uint64, []Inode) error) error {
 	return fn(state.revision, inodes)
 }
 
-// ChangedSince implements DB.
-func (d *memDB) ChangedSince(_ context.Context, revision uint64) ([]Inode, error) {
-	d.mu.Lock()
-	state := d.copyLocked()
-	d.mu.Unlock()
-
-	inodes := make([]Inode, 0)
-
-	for _, nodes := range state.inodes {
-		for _, inode := range nodes {
-			if inode.Revision > revision {
-				inodes = append(inodes, inode)
-			}
-		}
-	}
-
-	slices.SortFunc(inodes, func(a, b Inode) int {
-		return int(a.Revision - b.Revision) //nolint:gosec // Test revisions are small.
-	})
-
-	return inodes, nil
-}
-
 func (d *memDB) Close() {}
 
 func (d *memDB) copyLocked() *memState {
@@ -474,6 +489,13 @@ func (t *memTx) Put(_ context.Context, inode Inode) (uint64, error) {
 	nodes[inode.NodeID] = inode
 
 	return inode.NodeID, nil
+}
+
+// Delete implements Tx.
+func (t *memTx) Delete(_ context.Context, uid int64, nodeID uint64) error {
+	delete(t.state.inodes[uid], nodeID)
+
+	return nil
 }
 
 // Commit implements Tx.
