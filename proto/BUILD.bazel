@@ -16,5 +16,6 @@ go_proto_compiler(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_planetscale_vtprotobuf//protohelpers",
+        "@com_github_planetscale_vtprotobuf//types/known/timestamppb",
     ],
 )
