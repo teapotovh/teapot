@@ -1,0 +1,11 @@
+--- a/lint/golangci_lint.bzl	2026-11-22 14:15:59.884038055 +0100
++++ b/lint/golangci_lint.bzl	2026-11-22 14:15:59.892037962 +0100
+@@ -79,7 +79,7 @@
+     ctx.actions.run_shell(
+         inputs = stage_inputs,
+         outputs = [json_dir],
+-        command = 'dir="$1"; shift; mkdir -p "$dir"; for f in "$@"; do dest="$dir/$(basename "$f")"; cp -f "$f" "$dest"; chmod u+w "$dest"; done',
++        command = 'dir="$1"; shift; mkdir -p "$dir"; i=0; for f in "$@"; do i=$((i+1)); dest="$dir/$i.pkg.json"; cp -f "$f" "$dest"; chmod u+w "$dest"; done',
+         arguments = [stage_args],
+         mnemonic = mnemonic + "Stage",
+         progress_message = "Staging Go package metadata for %{label}",

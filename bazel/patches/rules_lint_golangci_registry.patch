@@ -1,0 +1,13 @@
+--- a/lint/private/gopackagesdriver_static/packageregistry.go	2026-11-22 14:43:37.756283832 +0100
++++ b/lint/private/gopackagesdriver_static/packageregistry.go	2026-11-22 14:43:44.062376472 +0100
+@@ -66,7 +66,9 @@
+ 			pkg.CompiledGoFiles = pkg.GoFiles
+ 		}
+ 
+-		pr.packagesByID[pkg.ID] = pkg
++		if _, ok := pr.packagesByID[pkg.ID]; !ok || pkg.PkgPath != "testmain" {
++			pr.packagesByID[pkg.ID] = pkg
++		}
+ 
+ 		if flatPkg.IsStdlib() {
+ 			pr.stdlib[pkg.PkgPath] = pkg

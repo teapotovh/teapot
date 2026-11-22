@@ -3,3 +3,7 @@ common --enable_platform_specific_config
 
 build:linux --sandbox_add_mount_pair=/home
 build:macos --sandbox_add_mount_pair=/Users
+
+build:lint --aspects=//tools/lint:linters.bzl%golangci_lint
+build:lint --output_groups=rules_lint_machine
+build:lint --@rules_lint//lint:fail_on_violation

@@ -16,7 +16,7 @@ import (
 //	  --test_arg=-test.fuzzcachedir=/tmp/fuzzcache
 func FuzzReadLDAPMessage(f *testing.F) {
 	for _, test := range getLDAPMessageTestData() {
-		f.Add(test.bytes.getBytes())
+		f.Add(test.bytes.Bytes())
 	}
 
 	f.Add([]byte{0x30, 0x00})
