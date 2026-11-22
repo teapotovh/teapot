@@ -32,4 +32,4 @@ spec:
             memory: 128Mi
   serviceTemplate:
     spec:
-      internalTrafficPolicy: Local
+      trafficDistribution: PreferSameNode
