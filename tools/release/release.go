@@ -200,11 +200,12 @@ func printCommands(repo, releaseTag string) {
 	fmt.Fprintln(os.Stderr, "git push origin "+releaseTag)
 
 	releaseBranch := "release/" + releaseTag
-	// kustomize separates the repository URL and the subdirectory with "//".
-	base := "https://" + repo + "//" + releaseBranch
+	// kustomize separates the repository URL and the subdirectory with "//",
+	// and the branch goes in the ref parameter.
+	url := "https://" + repo + "//deploy/release?ref=" + releaseBranch
 
 	fmt.Fprintln(os.Stderr, "once CI has created "+releaseBranch+", deploy with")
-	fmt.Fprintln(os.Stderr, "kubectl apply -k "+base+"/deploy/release?ref="+releaseTag)
+	fmt.Fprintln(os.Stderr, "kubectl apply -k \""+url+"\"")
 }
 
 // lastRelease finds the most recent tag matching tagPattern. Because the
