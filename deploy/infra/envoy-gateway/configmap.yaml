@@ -18,7 +18,7 @@ data:
       kubernetes:
         rateLimitDeployment:
           container:
-            image: mirror.gcr.io/envoyproxy/ratelimit:ff287602
+            image: mirror.gcr.io/envoyproxy/ratelimit:5ae0682e
           patch:
             type: StrategicMerge
             value:
@@ -29,5 +29,5 @@ data:
                     - imagePullPolicy: IfNotPresent
                       name: envoy-ratelimit
         shutdownManager:
-          image: mirror.gcr.io/envoyproxy/gateway:v1.8.0
+          image: mirror.gcr.io/envoyproxy/gateway:v1.10.0
       type: Kubernetes

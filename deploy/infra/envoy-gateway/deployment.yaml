@@ -17,6 +17,14 @@ spec:
       labels:
         control-plane: envoy-gateway
     spec:
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - args:
         - server
@@ -27,10 +35,25 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        - name: ENVOY_GATEWAY_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.serviceAccountName
+        - name: ENVOY_GATEWAY_FULLNAME
+          value: envoy-gateway
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: prod.teapot.local
-        image: mirror.gcr.io/envoyproxy/gateway:v1.8.0
+        image: mirror.gcr.io/envoyproxy/gateway:v1.10.0
         imagePullPolicy: IfNotPresent
+        startupProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /healthz
+            port: 8081
+          periodSeconds: 1
+          successThreshold: 1
+          timeoutSeconds: 1
         livenessProbe:
           httpGet:
             path: /healthz
@@ -68,6 +91,7 @@ spec:
             drop:
             - ALL
           privileged: false
+          readOnlyRootFilesystem: true
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
@@ -80,6 +104,8 @@ spec:
         - mountPath: /certs
           name: certs
           readOnly: true
+        - mountPath: /var/lib/eg/wasm
+          name: wasm-cache
       imagePullSecrets: []
       serviceAccountName: serviceaccount
       terminationGracePeriodSeconds: 10
@@ -91,3 +117,7 @@ spec:
       - name: certs
         secret:
           secretName: envoy-gateway
+      # Writable cache for Wasm modules; required because the controller uses
+      # a read-only root filesystem.
+      - name: wasm-cache
+        emptyDir: {}

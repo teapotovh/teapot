@@ -8,11 +8,11 @@ labels:
     app.kubernetes.io/managed-by: kustomize
 
 resources:
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_backends.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_backendtrafficpolicies.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_clienttrafficpolicies.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_envoyextensionpolicies.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_envoypatchpolicies.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_envoyproxies.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_httproutefilters.yaml
-- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.8.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_securitypolicies.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_backends.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_backendtrafficpolicies.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_clienttrafficpolicies.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_envoyextensionpolicies.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_envoypatchpolicies.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_envoyproxies.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_httproutefilters.yaml
+- https://raw.githubusercontent.com/envoyproxy/gateway/refs/tags/v1.10.0/charts/gateway-helm/charts/crds/crds/generated/gateway.envoyproxy.io_securitypolicies.yaml

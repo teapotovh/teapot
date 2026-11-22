@@ -13,6 +13,14 @@ spec:
       labels:
         app.kubernetes.io/component: certgen
     spec:
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - command:
         - envoy-gateway
@@ -25,7 +33,7 @@ spec:
               fieldPath: metadata.namespace
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: cluster.local
-        image: mirror.gcr.io/envoyproxy/gateway:v1.8.0
+        image: mirror.gcr.io/envoyproxy/gateway:v1.10.0
         imagePullPolicy: IfNotPresent
         name: certgen
         securityContext:
