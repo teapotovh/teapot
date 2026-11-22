@@ -33,9 +33,10 @@ jobs:
 
       - name: Push OCI images
         run: |
+          set -euo pipefail
           bazel cquery 'filter(":push$", kind("image_push", //...))' --output=files |
             sed 's|^|./|' |
-            xargs -P "$(nproc)" -n 1
+            xargs -P "$(nproc)" -n 1 env
 
   release-branch:
     name: Release Branch
