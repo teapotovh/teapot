@@ -7,7 +7,6 @@ replace golang.org/x/tools => golang.org/x/tools v0.47.1-0.20260707181000-a299da
 
 require (
 	git.sr.ht/~bitfehler/brant v0.5.1
-	github.com/ammario/tlru v0.4.0
 	github.com/arran4/golang-ical v0.3.8
 	github.com/bazelbuild/rules_go v0.65.0
 	github.com/cenkalti/backoff/v5 v5.0.3
@@ -21,7 +20,6 @@ require (
 	github.com/google/btree v1.1.3
 	github.com/google/go-github/v81 v81.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.1
-	github.com/hack-pad/hackpadfs v0.2.4
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v5 v5.11.0
@@ -67,7 +65,6 @@ require (
 require (
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

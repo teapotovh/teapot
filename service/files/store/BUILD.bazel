@@ -10,6 +10,7 @@ go_library(
         "files.go",
         "flag.go",
         "fs.go",
+        "mem.go",
         "name.go",
         "path.go",
         "psql.go",
@@ -46,5 +47,4 @@ go_test(
         "watch_test.go",
     ],
     embed = [":store"],
-    deps = ["//lib/pgnotify"],
 )

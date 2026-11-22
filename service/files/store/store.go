@@ -101,11 +101,22 @@ func NewStore(
 	notifications pgnotify.Notifications,
 	logger *slog.Logger,
 ) (*Store, error) {
+	return newStore(config, db, blob, notifications, osFS{}, logger)
+}
+
+func newStore(
+	config Config,
+	db DB,
+	blob Blob,
+	notifications pgnotify.Notifications,
+	fs pagedbtree.FS,
+	logger *slog.Logger,
+) (*Store, error) {
 	if config.Cache.Path == "" {
 		return nil, fmt.Errorf("%w: cache path is required", pagedbtree.ErrInvalidConfig)
 	}
 
-	cache, err := openCache(osFS{}, pagedbtree.Config{
+	cache, err := openCache(fs, pagedbtree.Config{
 		Path:   config.Cache.Path,
 		Memory: config.Cache.Memory,
 		Disk:   config.Cache.Disk,

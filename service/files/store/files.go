@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 )
 
 var (
@@ -38,7 +37,7 @@ type FileSystem interface {
 type MutableFileSystem interface {
 	FileSystem
 	// Put writes the content of r to path.
-	Put(ctx context.Context, path string, r io.Reader, mode os.FileMode) error
+	Put(ctx context.Context, path string, r io.Reader) error
 	// Delete removes path.
 	Delete(ctx context.Context, path string) error
 	// Rename moves oldPath to newPath.

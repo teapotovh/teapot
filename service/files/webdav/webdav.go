@@ -60,17 +60,17 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := httpauth.MustGetAuth(r)
 
-		session, err := wd.files.Sesssions().Get(auth.Username)
+		session, err := wd.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		fs := newWebDavFSWrapper(session.FS(), wd.logger.With("component", "fs"))
+		wrapper := newWebDavFSWrapper(session.FS(), wd.logger.With("component", "fs"))
 
 		handler := &webdav.Handler{
 			Prefix:     prefix,
-			FileSystem: fs,
+			FileSystem: wrapper,
 			// TODO: implement a custom locking system
 			LockSystem: webdav.NewMemLS(),
 			Logger: func(r *http.Request, err error) {

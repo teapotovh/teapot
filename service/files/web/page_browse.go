@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	"github.com/hack-pad/hackpadfs"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	h "maragu.dev/gomponents/html"
@@ -19,6 +18,7 @@ import (
 	"github.com/teapotovh/teapot/lib/ui/components"
 	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
+	"github.com/teapotovh/teapot/service/files/store"
 )
 
 var (
@@ -41,14 +41,14 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 
 		path = filepath.Clean(path)
 
-		session, err := web.files.Sesssions().Get(auth.Username)
+		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		dirEntries, err := hackpadfs.ReadDir(session.FS(), path)
+		page, err := session.FS().List(r.Context(), sep+path, nil)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
+			if errors.Is(err, store.ErrNotFound) {
 				return nil, webhandler.ErrNotFound
 			}
 
@@ -59,21 +59,19 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 
 		var entries []entry
 
-		for _, e := range dirEntries {
-			entryPath := filepath.Clean(filepath.Join(path, e.Name()))
+		for _, inode := range page.Inodes {
+			entryPath := filepath.Clean(filepath.Join(path, inode.Name))
 
-			stat, err := hackpadfs.Stat(session.FS(), entryPath)
-			if err != nil {
-				err = fmt.Errorf("could not stat file at %q: %w", path, err)
-				return nil, webhandler.NewInternalError(err, nil)
+			mode := os.FileMode(0)
+			if inode.Kind == store.KindDirectory {
+				mode = os.ModeDir
 			}
 
-			size := stat.Size()
 			entries = append(entries, entry{
-				name: e.Name(),
+				name: inode.Name,
 				path: entryPath,
-				mode: e.Type(),
-				size: uint64(size), //nolint:gosec
+				mode: mode,
+				size: uint64(inode.Size), //nolint:gosec
 			})
 		}
 

@@ -11,7 +11,7 @@ go_library(
     deps = [
         "//lib/httpauth",
         "//service/files",
-        "@com_github_hack_pad_hackpadfs//:hackpadfs",
+        "//service/files/store",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_rs_cors//:cors",
         "@org_golang_x_net//webdav",
