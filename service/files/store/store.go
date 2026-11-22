@@ -90,7 +90,10 @@ type Store struct {
 	events *broker.Broker[Event]
 
 	revision atomic.Uint64
+	synced   atomic.Bool
 	applyMu  sync.Mutex
+
+	metrics metrics
 }
 
 // NewStore creates a store from its dependencies.
@@ -125,7 +128,7 @@ func newStore(
 		return nil, err
 	}
 
-	return &Store{
+	store := &Store{
 		logger: logger,
 
 		db:            db,
@@ -134,7 +137,11 @@ func newStore(
 
 		cache:  cache,
 		events: broker.NewBroker[Event](),
-	}, nil
+	}
+
+	store.metrics.initMetrics()
+
+	return store, nil
 }
 
 // NewPSQL creates a store backed by PostgreSQL and S3.
@@ -272,9 +279,17 @@ func (r *syncRunner) Run(ctx context.Context, notify run.Notify) error {
 		return err
 	}
 
+	r.store.synced.Store(true)
+	defer r.store.synced.Store(false)
+
 	notify.Notify()
 
 	return r.store.listen(ctx)
+}
+
+func (s *Store) setRevision(revision uint64) {
+	s.revision.Store(revision)
+	s.metrics.setRevision(revision)
 }
 
 func (s *Store) bootstrap(ctx context.Context) error {
@@ -289,7 +304,7 @@ func (s *Store) bootstrap(ctx context.Context) error {
 			}
 		}
 
-		s.revision.Store(revision)
+		s.setRevision(revision)
 
 		return nil
 	}); err != nil {
@@ -349,7 +364,7 @@ func (s *Store) sync(ctx context.Context, incoming Event) ([]Event, error) {
 		return nil, err
 	}
 
-	s.revision.Store(incoming.Inode.Revision)
+	s.setRevision(incoming.Inode.Revision)
 
 	return []Event{incoming}, nil
 }
