@@ -1,0 +1,21 @@
+namespace: app
+namePrefix: mail-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: mail
+    app.kubernetes.io/name: mail
+    app.kubernetes.io/part-of: mail
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- unbound
+- spamassassin
+- dkim
+- dmarc
+- arc
+- postfix
+- stalwart
+
+- dnsendpoint.yaml

@@ -1,0 +1,11 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app: envoy-gateway-gateway
+    app.kubernetes.io/instance: envoy-gateway-gateway
+    app.kubernetes.io/name: envoy-gateway-gateway
+    app.kubernetes.io/part-of: envoy-gateway-gateway
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- gatewayclass.yaml

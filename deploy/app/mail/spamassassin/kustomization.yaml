@@ -1,0 +1,12 @@
+namePrefix: spamassassin-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: spamassassin
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- job.yaml

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  "opendkim.conf": |
+    Syslog yes
+    SyslogSuccess yes
+    LogWhy yes
+
+    Mode sv
+    Socket inet:8891@0.0.0.0
+    InternalHosts 127.0.0.1, 10.42.0.0/16, 100.64.0.0/16
+    AuthservID smtp.teapot.ovh
+
+    KeyTable      /etc/opendkim/KeyTable
+    SigningTable  refile:/etc/opendkim/SigningTable
+    RequireSafeKeys no
+
+    Canonicalization relaxed/simple
+
+    On-BadSignature   accept
+    On-NoSignature    accept
+    On-SignatureError accept
+
+  "KeyTable": |
+    21012026._domainkey.teapot.ovh      teapot.ovh:21012026:/etc/opendkim/keys/teapot.ovh.21012026.key
+    21012026._domainkey.cappuccino.ovh  cappuccino.ovh:21012026:/etc/opendkim/keys/cappuccino.ovh.21012026.key
+
+  "SigningTable": |
+    *@teapot.ovh      21012026._domainkey.teapot.ovh
+    *@cappuccino.ovh  21012026._domainkey.cappuccino.ovh
+    *@smtp.teapot.ovh  21012026._domainkey.teapot.ovh

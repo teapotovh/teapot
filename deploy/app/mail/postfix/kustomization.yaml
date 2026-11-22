@@ -1,0 +1,12 @@
+namePrefix: postfix-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: postfix
+
+resources:
+- configmap.yaml
+- statefulset.yaml
+- service.yaml
+- certificate.yaml

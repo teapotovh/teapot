@@ -1,10 +1,10 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
-  name: deploy
+  name: teapot
   namespace: flux
 spec:
-  interval: 5m
+  interval: 1h
   url: https://{{ .Repo }}
   ref:
     tag: {{ .Tag }}

@@ -1,0 +1,71 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httproute
+spec:
+  parentRefs:
+    - name: gateway
+  hostnames:
+    - vault.teapot.ovh
+  rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: vaultwarden-server
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httproute-block-healthz-admin
+spec:
+  parentRefs:
+    - name: gateway
+  hostnames:
+    - vault.example.com
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /healthz
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: return-403
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /healthz/
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: return-403
+    - matches:
+        - path:
+            type: Exact
+            value: /admin
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: return-403
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /admin/
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: return-403

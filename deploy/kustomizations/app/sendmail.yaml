@@ -1,0 +1,14 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: sendmail
+spec:
+  interval: 1h
+  path: deploy/app/sendmail
+  prune: true
+  dependsOn:
+    - name: app
+    - name: external-dns-crd
+  sourceRef:
+    kind: GitRepository
+    name: teapot

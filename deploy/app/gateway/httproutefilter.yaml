@@ -1,0 +1,7 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: return-403
+spec:
+  directResponse:
+    statusCode: 403

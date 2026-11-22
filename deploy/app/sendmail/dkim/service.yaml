@@ -1,0 +1,9 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: server
+spec:
+  ports:
+  - protocol: TCP
+    port: 8891
+    targetPort: milter

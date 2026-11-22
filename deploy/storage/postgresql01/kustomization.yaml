@@ -1,0 +1,14 @@
+namespace: storage
+namePrefix: postgresql01-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: postgresql01
+    app.kubernetes.io/name: postgresql01
+    app.kubernetes.io/part-of: postgresql01
+
+resources:
+- cluster.yaml
+- pooler.yaml
+- user.yaml

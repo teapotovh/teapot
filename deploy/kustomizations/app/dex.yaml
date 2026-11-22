@@ -1,0 +1,29 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: dex-storage
+spec:
+  interval: 1h
+  path: deploy/app/dex/storage
+  prune: true
+  dependsOn:
+    - name: postgresql01
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: dex
+spec:
+  interval: 1h
+  path: deploy/app/dex
+  prune: true
+  dependsOn:
+    - name: app
+    - name: dex-storage
+    - name: bottin
+  sourceRef:
+    kind: GitRepository
+    name: teapot

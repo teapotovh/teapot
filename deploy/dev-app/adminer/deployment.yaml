@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: adminer
+        image: adminer
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: ADMINER_DESIGN
+          value: ichier

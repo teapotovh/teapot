@@ -1,0 +1,16 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: cert-manager
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- https://github.com/cert-manager/cert-manager/raw/refs/tags/v1.17.0/deploy/crds/crd-certificaterequests.yaml
+- https://github.com/cert-manager/cert-manager/raw/refs/tags/v1.17.0/deploy/crds/crd-certificates.yaml
+- https://github.com/cert-manager/cert-manager/raw/refs/tags/v1.17.0/deploy/crds/crd-challenges.yaml
+- https://github.com/cert-manager/cert-manager/raw/refs/tags/v1.17.0/deploy/crds/crd-clusterissuers.yaml
+- https://github.com/cert-manager/cert-manager/raw/refs/tags/v1.17.0/deploy/crds/crd-issuers.yaml
+- https://github.com/cert-manager/cert-manager/raw/refs/tags/v1.17.0/deploy/crds/crd-orders.yaml

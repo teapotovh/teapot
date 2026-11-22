@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filter
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels: {}
+            topologyKey: kubernetes.io/hostname
+      containers:
+        - name: opendkim
+          image: mirror.gcr.io/instrumentisto/opendkim:2.11-alpine
+          ports:
+            - name: milter
+              containerPort: 8891
+          volumeMounts:
+            - name: config
+              mountPath: /etc/opendkim
+              readOnly: true
+            - name: keys
+              mountPath: /etc/opendkim/keys
+              readOnly: true
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        - name: config
+          configMap:
+            name: config
+        - name: keys
+          secret:
+            secretName: mail-dkim-keys
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 10.43.0.53

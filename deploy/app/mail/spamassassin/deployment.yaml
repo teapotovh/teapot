@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filter
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels: {}
+            topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: configure
+        image: mirror.gcr.io/dibi/envsubst
+        command: ["sh", "-c", "envsubst < /tmpl/local.cf.tmpl > /etc/mail/spamassassin/local.cf"]
+        env:
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgresql01-user-mail
+                key: username
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgresql01-user-mail
+                key: password
+        volumeMounts:
+        - name: template
+          mountPath: /tmpl
+        - name: config
+          mountPath: /etc/mail/spamassassin
+
+      containers:
+      - name: spamassassin
+        image: ghcr.io/teapotovh/spamassassin:v0.0.16
+        ports:
+        - name: spamd
+          containerPort: 783
+        - name: milter
+          containerPort: 10017
+        readinessProbe:
+          exec:
+            command: ["spamc", "-4", "-K"]
+          initialDelaySeconds: 10 
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /etc/mail/spamassassin/local.cf
+          subPath: local.cf
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: 100m
+            memory: 512Mi
+      volumes:
+      - name: template
+        configMap:
+          name: config
+      - name: config
+        emptyDir: {}

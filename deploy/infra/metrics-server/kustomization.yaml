@@ -1,0 +1,17 @@
+namespace: kube-system
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: metrics-server
+    app.kubernetes.io/instance: metrics-server
+    app.kubernetes.io/name: metrics-server
+    app.kubernetes.io/part-of: metrics-server
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- deployment.yaml
+- service.yaml
+- apiservice.yaml

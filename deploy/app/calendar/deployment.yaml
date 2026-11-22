@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  replicas: 3
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8146"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: {}
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: calendar
+          image: ghcr.io/teapotovh/calendard:latest
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 8145
+            - name: observability
+              protocol: TCP
+              containerPort: 8146
+          args:
+            - --log-format=json
+            - --observability-tracing-endpoint=opentelemetry-collector-server.storage:4317
+            - --ldap-url=ldap://bottin-server.storage:389
+            - --ldap-root-dn=$(LDAP_BIND_DN)
+            - --ldap-root-passwd=$(LDAP_BIND_PASSWORD)
+            - --calendar-store-type=online
+            - --calendar-store-psql-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/calendar
+            - --calendar-store-s3-url=http://$(S3_ID):$(S3_KEY)@garage01-garage.storage:3900
+            - --s3cache-bucket=calendar
+            - --s3cache-path=/s3cache
+          env:
+            - name: LDAP_BIND_DN
+              valueFrom:
+                secretKeyRef:
+                  name: bottin-admin
+                  key: username
+            - name: LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bottin-admin
+                  key: password
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql01-user-calendar
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql01-user-calendar
+                  key: password
+            - name: S3_ID
+              valueFrom:
+                secretKeyRef:
+                  name: garage01-key-calendar
+                  key: id
+            - name: S3_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: garage01-key-calendar
+                  key: key
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              # This gets much more CPU to avoid throttling expensive requests
+              # that decode a lot of dictionaries
+              cpu: 2000m
+              memory: 256Mi
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /livez
+              port: observability
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 5
+          startupProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /readyz
+              port: observability
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          volumeMounts:
+          - name: s3cache
+            mountPath: /s3cache
+      volumes:
+      - name: s3cache
+        ephemeral:
+          volumeClaimTemplate:
+            spec:
+              accessModes: [ "ReadWriteOnce" ]
+              storageClassName: "local-path-storageclass"
+              resources:
+                requests:
+                  storage: "2Gi"

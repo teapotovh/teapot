@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync
+spec:
+  schedule: "0 4 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            role: cronjob
+        spec:
+          containers:
+            - name: vaultwarden-ldap
+              image: mirror.gcr.io/vividboarder/vaultwarden_ldap:2.2
+              env:
+                - name: APP_VAULTWARDEN_URL
+                  value: "http://vaultwarden-server:8080"
+                - name: APP_VAULTWARDEN_ADMIN_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: vaultwarden-admin
+                      key: token
+                - name: APP_LDAP_HOST
+                  value: "bottin-server.storage"
+                - name: APP_LDAP_SCHEME
+                  value: "ldap"
+                - name: APP_LDAP_SSL
+                  value: "false"
+                - name: APP_LDAP_STARTTLS
+                  value: "false"
+                - name: APP_LDAP_BIND_DN
+                  valueFrom:
+                    secretKeyRef:
+                      name: bottin-admin
+                      key: username
+                - name: APP_LDAP_BIND_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: bottin-admin
+                      key: password
+                - name: APP_LDAP_SEARCH_BASE_DN
+                  value: "ou=users,dc=teapot,dc=ovh"
+                - name: APP_LDAP_SEARCH_FILTER
+                  value: "(&(objectClass=posixAccount)(memberOf=cn=vaultwarden,ou=accesses,dc=teapot,dc=ovh))"
+                - name: APP_LDAP_SYNC_LOOP
+                  value: "false"
+          restartPolicy: OnFailure

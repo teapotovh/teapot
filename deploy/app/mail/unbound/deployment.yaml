@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels: {}
+            topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: fetch-hints
+        image: mirror.gcr.io/alpine
+        command: ["sh", "-c", "wget https://www.internic.net/domain/named.root -O /hints/root.hints"]
+        volumeMounts:
+        - name: hints
+          mountPath: /hints
+      containers:
+      - name: unbound
+        image: mirror.gcr.io/linuxcontainers/unbound:1.0
+        ports:
+        - name: dns-udp
+          containerPort: 53
+          protocol: UDP
+        - name: dns-tcp
+          containerPort: 53
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/unbound/unbound.conf
+          subPath: unbound.conf
+        - name: hints
+          mountPath: /etc/unbound/root.hints
+          subPath: root.hints
+      volumes:
+      - name: config
+        configMap:
+          name: unbound-config
+      - name: hints
+        emptyDir: {}
+---

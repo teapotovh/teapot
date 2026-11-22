@@ -1,0 +1,6 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: webhook
+spec:
+  minAvailable: 1 # Default value because minAvailable and maxUnavailable are not set

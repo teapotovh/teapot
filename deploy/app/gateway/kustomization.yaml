@@ -1,0 +1,18 @@
+namespace: app
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: app-gateway
+    app.kubernetes.io/instance: app-gateway
+    app.kubernetes.io/name: app-gateway
+    app.kubernetes.io/part-of: app-gateway
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- envoyproxy.yaml
+- gateway.yaml
+- httproute.yaml
+- httproutefilter.yaml
+- backendtrafficpolicy.yaml
+- referencegrant.yaml

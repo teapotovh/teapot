@@ -1,0 +1,9 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: cainjector
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- deployment.yaml

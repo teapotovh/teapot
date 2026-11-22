@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  unbound.conf: |
+    server:
+      interface: 0.0.0.0
+      port: 53
+      do-ip4: yes
+      do-ip6: no
+      do-udp: yes
+      do-tcp: yes
+
+      root-hints: "/etc/unbound/root.hints"
+      auto-trust-anchor-file: "/etc/unbound/root.key"
+      access-control: 0.0.0.0/0 allow
+      do-not-query-localhost: no
+      
+      harden-glue: yes
+      harden-dnssec-stripped: yes
+      qname-minimisation: yes
+      prefetch: yes

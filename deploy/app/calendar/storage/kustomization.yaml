@@ -1,0 +1,13 @@
+namespace: storage
+namePrefix: calendar-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: calendar
+      app.kubernetes.io/name: calendar
+      app.kubernetes.io/part-of: calendar
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - database.yaml

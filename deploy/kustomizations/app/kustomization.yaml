@@ -1,0 +1,13 @@
+namespace: flux
+
+resources:
+  - app.yaml
+  - gateway.yaml
+
+  - sendmail.yaml
+  - mail.yaml
+  - dex.yaml
+  - vaultwarden.yaml
+  - radicale.yaml
+  - kontakte.yaml
+  - calendar.yaml

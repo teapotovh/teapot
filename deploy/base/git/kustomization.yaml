@@ -1,0 +1,4 @@
+resources:
+- alert.yaml
+- provider.yaml
+- secret.yaml

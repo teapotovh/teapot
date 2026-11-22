@@ -1,0 +1,205 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-teapot.ovh
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      domain: teapot.ovh
+  template:
+    metadata:
+      labels:
+        domain: teapot.ovh
+    spec:
+      # tolerations:
+      # - key: node-role.kubernetes.io/control-plane
+      #   operator: Exists
+      #   effect: NoSchedule
+      # nodeSelector:
+      #   node-role.kubernetes.io/control-plane: ""
+      automountServiceAccountToken: true
+      serviceAccountName: serviceaccount
+      securityContext:
+        fsGroup: 65534
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: external-dns
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+          image: ghcr.io/teapotovh/external-dns:v0.0.25
+          imagePullPolicy: IfNotPresent
+          args:
+            - --log-format=json
+            # - --log-level=debug
+            - --interval=1m
+            - --source=crd
+            - --source=service
+            - --source=gateway-httproute
+            - --provider=ovh
+            - --domain-filter=teapot.ovh
+            - --txt-owner-id=prod
+            - --managed-record-types=A
+            - --managed-record-types=CNAME
+            - --managed-record-types=MX
+            - --managed-record-types=TXT
+          env:
+          - name: OVH_APPLICATION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-ovh-credentials-teapot.ovh
+                key: applicationKey
+          - name: OVH_APPLICATION_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-ovh-credentials-teapot.ovh
+                key: applicationSecret
+          - name: OVH_CONSUMER_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-ovh-credentials-teapot.ovh
+                key: consumerKey
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 7979
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-cappuccino.ovh
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      domain: cappuccino.ovh
+  template:
+    metadata:
+      labels:
+        domain: cappuccino.ovh
+    spec:
+      # tolerations:
+      # - key: node-role.kubernetes.io/control-plane
+      #   operator: Exists
+      #   effect: NoSchedule
+      # nodeSelector:
+      #   node-role.kubernetes.io/control-plane: ""
+      automountServiceAccountToken: true
+      serviceAccountName: serviceaccount
+      securityContext:
+        fsGroup: 65534
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: external-dns
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+          image: ghcr.io/teapotovh/external-dns:v0.0.25
+          imagePullPolicy: IfNotPresent
+          args:
+            - --log-format=json
+            # - --log-level=debug
+            - --interval=1m
+            - --source=crd
+            - --source=service
+            - --source=gateway-httproute
+            - --provider=ovh
+            - --domain-filter=cappuccino.ovh
+            - --txt-owner-id=prod
+            - --managed-record-types=A
+            - --managed-record-types=CNAME
+            - --managed-record-types=MX
+            - --managed-record-types=TXT
+          env:
+          - name: OVH_APPLICATION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-ovh-credentials-cappuccino.ovh
+                key: applicationKey
+          - name: OVH_APPLICATION_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-ovh-credentials-cappuccino.ovh
+                key: applicationSecret
+          - name: OVH_CONSUMER_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-ovh-credentials-cappuccino.ovh
+                key: consumerKey
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 7979
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5

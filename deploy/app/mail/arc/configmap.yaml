@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  "openarc.conf": |
+    Syslog yes
+
+    Mode sv
+    Socket inet:8893@0.0.0.0
+    AuthservID smtp.teapot.ovh
+
+    Domain smtp.teapot.ovh
+    KeyFile /etc/openarc/keys/smtp.teapot.ovh.30012026.key
+    Selector 30012026
+    RequireSafeKeys no
+
+    Canonicalization relaxed/simple

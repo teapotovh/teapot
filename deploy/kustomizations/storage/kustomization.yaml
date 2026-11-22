@@ -1,0 +1,12 @@
+namespace: flux
+
+resources:
+- storage.yaml
+
+- postgresql01.yaml
+- garage01.yaml
+- bottin.yaml
+- prometheus.yaml
+- loki.yaml
+- tempo.yaml
+- opentelemetry-collector.yaml

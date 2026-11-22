@@ -1,0 +1,13 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: webhook
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- mutating-webhook.yaml
+- validating-webhook.yaml
+- deployment.yaml
+- poddisruptionbudget.yaml
+- service.yaml

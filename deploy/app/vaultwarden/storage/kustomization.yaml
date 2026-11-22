@@ -1,0 +1,13 @@
+namespace: storage
+namePrefix: vaultwarden-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: vaultwarden
+      app.kubernetes.io/name: vaultwarden
+      app.kubernetes.io/part-of: vaultwarden
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - database.yaml

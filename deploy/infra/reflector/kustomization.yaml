@@ -1,0 +1,16 @@
+namespace: kube-system
+namePrefix: reflector-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: reflector
+    app.kubernetes.io/instance: reflector
+    app.kubernetes.io/name: reflector
+    app.kubernetes.io/part-of: reflector
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- deployment.yaml

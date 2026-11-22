@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  config.toml: |
+    [session.data]
+    domain = [
+      "imap.teapot.ovh"
+    ]
+
+    [certificate."default"]
+    cert = "%{file:/opt/stalwart/etc/tls/tls.crt}%"
+    private-key = "%{file:/opt/stalwart/etc/tls/tls.key}%"
+
+
+    [server.listener."lmtp"]
+    bind = ["[::]:24"]
+    protocol = "lmtp"
+    [server.listener."imaps"]
+    bind = ["[::]:993"]
+    protocol = "imap"
+    tls.implicit = true
+
+    [session.rcpt]
+    relay = true
+
+    [session.auth]
+    require = false
+
+    [spam-filter]
+    enable = false
+    [auth.dkim]
+    verify = "disable"
+
+    [storage]
+    data = "psql"
+    fts = "psql"
+    lookup = "psql"
+    blob = "garage"
+    directory = "ldap"
+
+    [store.psql]
+    type = "postgresql"
+    host = "postgresql01-pooler.storage"
+    port = 5432
+    database = "stalwart"
+    user = "%{env:DB_USERNAME}%"
+    password = "%{env:DB_PASSWORD}%"
+    timeout = "5s"
+
+    [store.psql.tls]
+    enable = false
+    [store.psql.pool]
+    max-connections = 5
+
+    [store.garage]
+    type = "s3"
+    region = "garage"
+    endpoint = "http://garage01-garage.storage:3900"
+    bucket = "stalwart"
+    access-key = "%{env:S3_ID}%"
+    secret-key = "%{env:S3_KEY}%"
+
+    [directory."ldap"]
+    type = "ldap"
+    url = "ldap://bottin-server.storage"
+    base-dn = "dc=teapot,dc=ovh"
+    [directory."ldap".bind]
+    dn = "%{env:LDAP_BIND_DN}%"
+    secret = "%{env:LDAP_BIND_PASSWORD}%"
+
+    [directory."ldap".bind.auth]
+    method = "lookup"
+
+    [directory."ldap".filter]
+    email = "(&(objectClass=posixAccount)(memberOf=cn=mail,ou=accesses,dc=teapot,dc=ovh)(mail=?))"
+    domains = "(&(objectClass=domain)(domain=?))"
+    name = "(&(objectClass=posixAccount)(memberOf=cn=mail,ou=accesses,dc=teapot,dc=ovh)(cn=?))"
+
+    [directory."ldap".attributes]
+    name = "cn"
+    class = "objectClass"
+    secret = "userPassword"
+    groups = "memberOf"
+    email = "mail"
+    email-alias = "mailAlias"
+    quota = "diskQuota"
+
+    [session.rcpt.directory]
+    name = "ldap"
+
+    [tracer.log]
+    type = "stdout"
+    level = "info"
+    ansi = false
+    enable = true
+
+    # Required for readyz/livez
+    [server.listener."http"]
+    bind = "[::]:8080"
+    protocol = "http"
+    [metrics.prometheus]
+    enable = true

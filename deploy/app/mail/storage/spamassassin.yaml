@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: spamassassin-database
+spec:
+  name: spamassassin
+  owner: mail
+  cluster:
+    name: postgresql01-cluster

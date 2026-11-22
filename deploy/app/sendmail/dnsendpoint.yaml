@@ -1,0 +1,31 @@
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: dnsendpoint
+spec:
+  endpoints:
+  - dnsName: sendmail.teapot.ovh
+    recordTTL: 300
+    recordType: MX
+    targets:
+    - "10 mail.sendmail.teapot.ovh."
+  - dnsName: mail.sendmail.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=spf1 a -all"
+  - dnsName: sendmail.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=spf1 mx -all"
+  - dnsName: _dmarc.sendmail.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=DMARC1; p=reject; rua=mailto:root@teapot.ovh; ruf=mailto:root@teapot.ovh; fo=1:d:s; adkim=r; aspf=r"
+  - dnsName: 02012026._domainkey.sendmail.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuMls6JeSXWLUeasevrU7nQDRpj6Fs2gobe0J+d3mxBCVXfbywdGTg3a2qHpCxLpZnMFRM8L4LL5zZbSogbHy4uYJCosgSLESGVrNWlKoo+7Hwo0UIs63NlM9EgLz/fYWqCcm5gZAYLi0MXHO2ImD/rQWkEmdiSXjU03INroiXungXhxkvdwdFvklByVLZsTxvfLdDuTjk2WtRG7UmzaexIHeLiUmiYG9N18jZXnLu4hZx+247gp/Bg9TDKGrzaHC0VeEZllLh4Nwg5rnJV7SsluRFKpUOTV964rVzNwOgNj8bVKQsT0Fq3T+z1JVRLWef/KbOPjYOgddmuUR4AUswwIDAQAB"

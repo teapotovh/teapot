@@ -1,0 +1,14 @@
+namespace: dev-app
+namePrefix: adminer-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: adminer
+    app.kubernetes.io/name: adminer
+    app.kubernetes.io/part-of: adminer
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- deployment.yaml
+- service.yaml

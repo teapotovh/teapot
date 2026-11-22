@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: startupapicheck:create-cert
+rules:
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificaterequests"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: startupapicheck:create-cert
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: startupapicheck:create-cert
+subjects:
+  - kind: ServiceAccount
+    name: startupapicheck

@@ -1,0 +1,23 @@
+namespace: envoy-gateway-system
+namePrefix: envoy-gateway-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: envoy-gateway
+    app.kubernetes.io/instance: envoy-gateway
+    app.kubernetes.io/name: envoy-gateway
+    app.kubernetes.io/part-of: envoy-gateway
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- namespace.yaml
+- serviceaccount.yaml
+- rbac.yaml
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- mutatingwebhook.yaml
+
+configurations:
+- name-prefix.yaml

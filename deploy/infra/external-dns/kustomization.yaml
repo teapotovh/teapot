@@ -1,0 +1,19 @@
+namespace: external-dns
+namePrefix: external-dns-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: external-dns
+    app.kubernetes.io/instance: external-dns
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: external-dns
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- namespace.yaml
+- serviceaccount.yaml
+- rbac.yaml
+- secret.yaml
+- deployment.yaml
+- service.yaml

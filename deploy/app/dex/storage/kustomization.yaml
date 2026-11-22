@@ -1,0 +1,13 @@
+namespace: storage
+namePrefix: dex-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: dex
+      app.kubernetes.io/name: dex
+      app.kubernetes.io/part-of: dex
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - database.yaml

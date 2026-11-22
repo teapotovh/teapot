@@ -1,0 +1,16 @@
+namespace: envoy-gateway-system
+namePrefix: envoy-gateway-cert-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: envoy-gateway-cert
+    app.kubernetes.io/instance: envoy-gateway-cert
+    app.kubernetes.io/name: envoy-gateway-cert
+    app.kubernetes.io/part-of: envoy-gateway-cert
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- job.yaml

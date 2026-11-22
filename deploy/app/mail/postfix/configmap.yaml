@@ -1,0 +1,192 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  "master.cf": |
+    #
+    # Postfix master process configuration file.  For details on the format
+    # of the file, see the master(5) manual page (command: "man 5 master" or
+    # on-line: http://www.postfix.org/master.5.html).
+    #
+    # Do not forget to execute "postfix reload" after editing this file.
+    #
+    # ==========================================================================
+    # service type  private unpriv  chroot  wakeup  maxproc command + args
+    #               (yes)   (yes)   (no)    (never) (100)
+    # ==========================================================================
+    # SMTP (port 25) - receiving mail
+    smtp      inet  n       -       n       -       -       smtpd
+      -o smtpd_tls_security_level=may
+
+    # SMTPS (port 465) - TLS wrapper
+    smtps     inet  n       -       n       -       -       smtpd
+      -o smtpd_tls_wrappermode=yes
+      -o smtpd_sasl_auth_enable=yes
+      -o smtpd_reject_unlisted_recipient=no
+      -o smtpd_client_restrictions=permit_sasl_authenticated,reject
+      -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject_invalid_hostname,reject_unknown_recipient_domain,reject_unauth_destination,reject_unverified_recipient,reject_sender_login_mismatch
+
+    # Submission (port 587) - STARTTLS for users
+    submission inet n       -       n       -       -       smtpd
+      -o smtpd_tls_security_level=encrypt
+      -o smtpd_sasl_auth_enable=yes
+      -o smtpd_reject_unlisted_recipient=no
+      -o smtpd_client_restrictions=permit_sasl_authenticated,reject
+      -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject_invalid_hostname,reject_unknown_recipient_domain,reject_unauth_destination,reject_unverified_recipient,reject_sender_login_mismatch
+    pickup    unix  n       -       n       60      1       pickup
+    cleanup   unix  n       -       n       -       0       cleanup
+    qmgr      unix  n       -       n       300     1       qmgr
+    #qmgr     unix  n       -       n       300     1       oqmgr
+    tlsmgr    unix  -       -       n       1000?   1       tlsmgr
+    rewrite   unix  -       -       n       -       -       trivial-rewrite
+    bounce    unix  -       -       n       -       0       bounce
+    defer     unix  -       -       n       -       0       bounce
+    trace     unix  -       -       n       -       0       bounce
+    verify    unix  -       -       n       -       1       verify
+    flush     unix  n       -       n       1000?   0       flush
+    proxymap  unix  -       -       n       -       -       proxymap
+    proxywrite unix -       -       n       -       1       proxymap
+    smtp      unix  -       -       n       -       -       smtp
+    relay     unix  -       -       n       -       -       smtp
+    showq     unix  n       -       n       -       -       showq
+    error     unix  -       -       n       -       -       error
+    retry     unix  -       -       n       -       -       error
+    discard   unix  -       -       n       -       -       discard
+    local     unix  -       n       n       -       -       local
+    virtual   unix  -       n       n       -       -       virtual
+    lmtp      unix  -       -       n       -       -       lmtp
+    anvil     unix  -       -       n       -       1       anvil
+    scache    unix  -       -       n       -       1       scache
+
+  "main.cf.tmpl": |
+    compatibility_level = 3.9
+    debug_peer_level = 3
+    append_dot_mydomain = no
+    delay_warning_time = 1h
+    biff = no
+    strict_rfc821_envelopes = yes
+    show_user_unknown_table_name = no
+    disable_vrfy_command = yes
+    inet_interfaces = all
+    inet_protocols = ipv4
+
+    queue_directory = /var/spool/postfix
+    recipient_delimiter = +-
+    myhostname = smtp.teapot.ovh
+    mailer_daemon_address = MAILER-DAEMON@teapot.ovh
+
+    smtpd_banner = $${escape}myhostname ESMTP $${escape}mail_name (${HOSTNAME})
+    smtp_helo_name = $${escape}myhostname
+
+    virtual_mailbox_domains = ldap:/etc/postfix/ldap_domains.cf
+    virtual_alias_maps = ldap:/etc/postfix/ldap_alias_map.cf
+    alias_maps =
+    alias_database =
+    smtpd_sender_login_maps = ldap:/etc/postfix/ldap_sender_map.cf
+
+    virtual_transport = lmtp:inet:mail-stalwart-lmtp:24
+    lmtp_host_lookup = dns, native
+
+    # https://wiki.debian.org/Postfix#anti-spam:_smtp_restrictions
+    smtpd_helo_required = yes
+    smtpd_helo_restrictions = reject_invalid_helo_hostname, reject_non_fqdn_helo_hostname, reject_unknown_helo_hostname
+    smtpd_recipient_restrictions = permit_sasl_authenticated, reject_invalid_hostname, reject_unknown_recipient_domain, reject_unauth_destination, reject_unverified_recipient
+
+    # https://www.linode.com/docs/guides/email-with-postfix-dovecot-and-mysql/#configuration-file-settings-for-postfix-email-server
+    smtpd_sender_restrictions = permit_sasl_authenticated, reject_non_fqdn_sender, reject_unknown_sender_domain
+    smtpd_sasl_security_options = noanonymous, noplaintext
+    smtpd_sasl_tls_security_options = noanonymous
+
+    smtpd_sasl_type = cyrus
+    smtpd_sasl_path = smtpd
+    smtpd_sasl_auth_enable = yes
+    smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+
+    smtpd_milters = inet:mail-dkim-filter:8891, inet:mail-dmarc-filter:8893, inet:mail-arc-filter:8893, inet:mail-spamassassin-filter:10017
+    non_smtpd_milters = $${escape}smtpd_milters
+    milter_default_action = accept
+    milter_protocol = 6
+    # apply dkim to internal messages aswell, such as bounces
+    internal_mail_filter_classes = bounce
+    always_add_missing_headers = yes
+
+    smtp_tls_security_level = may
+    smtp_tls_note_starttls_offer = yes
+    smtp_tls_session_cache_database = lmdb:${${escape}data_directory}/smtp_scache
+
+    smtpd_tls_security_level = encrypt
+    smtpd_tls_auth_only = yes
+    smtpd_tls_loglevel = 1
+    smtpd_tls_session_cache_timeout = 3600s
+    tls_random_source = dev:/dev/urandom
+    smtpd_tls_cert_file = /etc/postfix/tls/tls.crt
+    smtpd_tls_key_file  = /etc/postfix/tls/tls.key
+
+    smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3
+    smtpd_tls_protocols = !SSLv2, !SSLv3
+    smtp_tls_mandatory_protocols = !SSLv2, !SSLv3
+    smtp_tls_protocols = !SSLv2, !SSLv3
+    smtp_tls_exclude_ciphers = EXP, MEDIUM, LOW, DES, 3DES, SSLv2
+    smtpd_tls_exclude_ciphers = EXP, MEDIUM, LOW, DES, 3DES, SSLv2
+    tls_high_cipherlist = kEECDH:+kEECDH+SHA:kEDH:+kEDH+SHA:+kEDH+CAMELLIA:kECDH:+kECDH+SHA:kRSA:+kRSA+SHA:+kRSA+CAMELLIA:!aNULL:!eNULL:!SSLv2:!RC4:!MD5:!DES:!EXP:!SEED:!IDEA:!3DES
+    tls_medium_cipherlist = kEECDH:+kEECDH+SHA:kEDH:+kEDH+SHA:+kEDH+CAMELLIA:kECDH:+kECDH+SHA:kRSA:+kRSA+SHA:+kRSA+CAMELLIA:!aNULL:!eNULL:!SSLv2:!MD5:!DES:!EXP:!SEED:!IDEA:!3DES
+    smtp_tls_ciphers = high
+    smtpd_tls_ciphers = high
+
+  "ldap_domains.cf.tmpl": |
+    server_host = ldap://bottin-server.storage:389
+    version = 3
+
+    bind = yes
+    bind_dn = ${LDAP_BIND_DN}
+    bind_pw = ${LDAP_BIND_PASSWORD}
+
+    search_base = ou=domains,dc=teapot,dc=ovh
+    scope = sub
+    query_filter = (domain=%s)
+    result_attribute = domain
+
+  "ldap_alias_map.cf.tmpl": |
+    server_host = ldap://bottin-server.storage:389
+    version = 3
+
+    bind = yes
+    bind_dn = ${LDAP_BIND_DN}
+    bind_pw = ${LDAP_BIND_PASSWORD}
+
+    search_base = ou=alises,dc=teapot,dc=ovh
+    scope = sub
+    query_filter = (|(mail=%s)(&(cn=%u)(objectClass=nisMailAlias)))
+    result_attribute = rfc822MailMember, mail
+
+  "ldap_sender_map.cf.tmpl": |
+    server_host = ldap://bottin-server.storage:389
+    version = 3
+
+    bind = yes
+    bind_dn = ${LDAP_BIND_DN}
+    bind_pw = ${LDAP_BIND_PASSWORD}
+
+    search_base = ou=users,dc=teapot,dc=ovh
+    scope = sub
+    query_filter = (|(mail=%s)(mailAlternateAddress=%s))
+    result_attribute = cn
+
+  "smtpd.conf": |
+    pwcheck_method: saslauthd
+    mech_list: PLAIN LOGIN
+    saslauthd_path: /var/run/saslauthd/mux
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: other-config
+data:
+  "syslog.conf": |
+    mail.* /var/log/postfix/mail.log
+    mail.* /dev/stdout
+  "saslauthd.conf": |
+    ldap_servers: ldap://bottin-server.storage:389
+    ldap_auth_method: fastbind
+    ldap_filter: cn=%u,ou=users,dc=teapot,dc=ovh

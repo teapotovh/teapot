@@ -1,0 +1,16 @@
+namespace: app
+namePrefix: radicale-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: radicale
+      app.kubernetes.io/name: radicale
+      app.kubernetes.io/part-of: radicale
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- httproute.yaml

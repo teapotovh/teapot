@@ -1,0 +1,19 @@
+namespace: storage
+namePrefix: prometheus-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: prometheus
+    app.kubernetes.io/instance: prometheus
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- configmap.yaml
+- deployment.yaml
+- persistentvolumeclaim.yaml
+- service.yaml

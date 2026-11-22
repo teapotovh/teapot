@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  "syslog.conf": |
+    mail.* /var/log/postfix/mail.log
+    mail.* /dev/stdout
+
+  "main.cf": |
+    compatibility_level = 3.9
+    debug_peer_level = 3
+    queue_directory = /var/spool/postfix
+    myhostname = mail.sendmail.teapot.ovh
+    smtp_helo_name = $myhostname
+    mydomain = sendmail.teapot.ovh
+    myorigin = $mydomain
+    mydestination = $mydomain
+
+    inet_interfaces = all
+    inet_protocols = ipv4
+    mynetworks = 10.42.0.0/16, 100.64.0.0/16
+
+    smtpd_relay_restrictions = permit_mynetworks, reject
+    smtpd_sender_restrictions = check_sender_access regexp:/etc/postfix/sender_access, reject
+
+    milter_default_action = reject
+    smtpd_milters = inet:sendmail-dkim-server:8891
+    non_smtpd_milters = $smtpd_milters
+    bounce_notice_recipient = sendmail@teapot.ovh
+    2bounce_notice_recipient = sendmail@teapot.ovh
+    header_checks = regexp:/etc/postfix/header_checks
+    always_add_missing_headers = yes
+
+    smtp_tls_security_level = may
+    queue_run_delay = 300s
+    maximal_queue_lifetime = 1h
+    bounce_queue_lifetime = 1h
+
+  "sender_access": |
+    /@sendmail\.teapot\.ovh$/  OK
+  "header_checks": |
+    /^From:.*@sendmail\.teapot\.ovh/ PREPEND Reply-To: dump@teapot.ovh

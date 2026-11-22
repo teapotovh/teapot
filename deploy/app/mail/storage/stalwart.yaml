@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: stalwart-database
+spec:
+  name: stalwart
+  owner: mail
+  cluster:
+    name: postgresql01-cluster

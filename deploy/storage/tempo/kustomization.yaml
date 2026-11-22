@@ -1,0 +1,17 @@
+namespace: storage
+namePrefix: tempo-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: tempo
+    app.kubernetes.io/instance: tempo
+    app.kubernetes.io/name: tempo
+    app.kubernetes.io/part-of: tempo
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- persistentvolumeclaim.yaml
+- service.yaml

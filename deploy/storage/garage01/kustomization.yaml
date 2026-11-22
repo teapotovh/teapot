@@ -1,0 +1,18 @@
+namespace: storage
+namePrefix: garage01-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: garage01
+    app.kubernetes.io/name: garage01
+    app.kubernetes.io/part-of: garage01
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- secret.yaml
+- configmap.yaml
+- statefulset.yaml
+- service.yaml
+- key.yaml

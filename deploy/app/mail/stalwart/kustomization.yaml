@@ -1,0 +1,12 @@
+namePrefix: stalwart-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: stalwart
+
+resources:
+- certificate.yaml
+- configmap.yaml
+- statefulset.yaml
+- service.yaml

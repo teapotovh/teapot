@@ -3,6 +3,9 @@ not manage them. You deploy them by hand.
 
 - ccmd, netd, loadbalancerd: deployed together from this folder.
 - flux: the Flux controllers.
+- git: the notification objects and the token. Apply this after flux. The
+  token file is a template: fill it in before you apply, and never commit a
+  filled copy.
 
 On main, the images built in this repo use the latest tag. A release branch
 has the real tags.
@@ -15,4 +18,5 @@ New cluster? Run in this order:
 
 kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/release?ref=<tag>
 kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/flux?ref=<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/git?ref=<tag>
 kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/release?ref=<tag>

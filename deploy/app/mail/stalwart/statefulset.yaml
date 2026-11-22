@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: server
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  # TODO: scale to 3
+  replicas: 2
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics/prometheus"
+    spec:
+      terminationGracePeriodSeconds: 30
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels: {}
+            topologyKey: kubernetes.io/hostname
+        # TODO: remove when we actually go into prod
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - kube02.prod.infra.teapot.ovh
+      containers:
+      - name: stalwart
+        image: stalwartlabs/stalwart:v0.15-alpine
+        ports:
+        - containerPort: 24
+          name: lmtp
+        - containerPort: 993
+          name: imaps
+        - containerPort: 8080
+          name: observability
+        volumeMounts:
+        - name: config
+          mountPath: /opt/stalwart/etc/
+          readOnly: true
+        - name: tls
+          mountPath: /opt/stalwart/etc/tls
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /healthz/live
+            port: observability
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: observability
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
+        env:
+        - name: LDAP_BIND_DN
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: username
+        - name: LDAP_BIND_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: password
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-mail
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-mail
+              key: password
+        - name: S3_ID
+          valueFrom:
+            secretKeyRef:
+              name: garage01-key-stalwart
+              key: id
+        - name: S3_KEY
+          valueFrom:
+            secretKeyRef:
+              name: garage01-key-stalwart
+              key: key
+      volumes:
+      - name: config
+        configMap:
+          name: config
+      - name: tls
+        secret:
+          secretName: mail-stalwart-certificate

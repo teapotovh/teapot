@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  annotations:
+    external-dns.kubernetes.io/hostname: smtp.teapot.ovh
+spec:
+  type: NodePort
+  internalTrafficPolicy: Local
+  externalTrafficPolicy: Local
+  ports:
+    - name: smtp
+      port: 25
+      nodePort: 30025
+      targetPort: smtp
+      protocol: TCP
+    - name: submission
+      port: 30587
+      nodePort: 30587
+      targetPort: submission
+      protocol: TCP
+    - name: submissions
+      port: 30465
+      nodePort: 30465
+      targetPort: submissions
+      protocol: TCP

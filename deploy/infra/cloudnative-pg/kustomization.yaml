@@ -1,0 +1,16 @@
+namespace: cnpg-system
+namePrefix: cnpg-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: cnpg
+    app.kubernetes.io/instance: cloudnative-pg
+    app.kubernetes.io/name: cloudnative-pg
+    app.kubernetes.io/part-of: cloudnative-pg
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- rbac
+- common
+- manager

@@ -1,0 +1,11 @@
+namePrefix: dmarc-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: dmarc
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- service.yaml

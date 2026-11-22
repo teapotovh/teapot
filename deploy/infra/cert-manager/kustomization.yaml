@@ -1,0 +1,19 @@
+namespace: cert-manager
+namePrefix: cert-manager-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: cert-manager
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- namespace.yaml
+- rbac
+- cainjector
+- startupapicheck
+- webhook
+- controller

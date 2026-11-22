@@ -1,0 +1,18 @@
+namespace: kube-system
+namePrefix: fluent-bit-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: fluent-bit
+    app.kubernetes.io/instance: fluent-bit
+    app.kubernetes.io/name: fluent-bit
+    app.kubernetes.io/part-of: fluent-bit
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- configmap.yaml
+- daemonset.yaml
+- service.yaml

@@ -1,0 +1,26 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: external-dns-crd
+spec:
+  interval: 1h
+  path: deploy/infra/external-dns/crd
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: external-dns
+spec:
+  interval: 1h
+  path: deploy/infra/external-dns
+  prune: true
+  dependsOn:
+    - name: external-dns-crd
+    - name: sealed-secrets
+  sourceRef:
+    kind: GitRepository
+    name: teapot

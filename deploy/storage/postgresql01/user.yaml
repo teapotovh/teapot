@@ -1,0 +1,107 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: user-bottin
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    password: AgA/WPnOwvva/tsrtLTgWnnxk/fupIAONlycVP4VtB8ylYIXU0dR6r4DGUs1CR1fkrghQDxkvAxVyfm9H0H0gv8asj42RWXo3GU/HnpVVZBdvKElUqQdampbQG52sbChMwErmFK/wFIlIFFX+Up64kJm4HMoWK7eOzbrIyAP8aafXc1AWIrbiWpuH2IfGSftzJnzqdI0YBdxyP3QJAcBt8Wk77phvOoVUnZfZedu+HaTizBx2B7kmUHfczxscKrqHjgNdxzih/vLHkLzUsfm+gklxmVHf6hGIUxcp+JujzCm5spQHr5RMkHiwuOKury+R4CdXNE0dPdphkT3irKNmaEyN644eIIssoLFtl5Xv0UoYADyd+TiN3MXU/iGqiekM+ES675fgQa7sLIkkfvi/XeJ22rWO9UdAmC7XLvSdm/0qszkZBTcVE3EYQ7hh/4YrxYQnKgb75xLOfMT5ZYPEk6J8pt67bpryWcsgFJMKtswtCmzKCxIpEyFDqc/h+PbmvUnGMk7WFbTRLLy3P75AFP1DMZlks4mlrNsNAdHkPEf8yAlgZHbu50dufte12DzD5fWLR+c+VeYpjIKh/O7nSNzOJqPO6cD4c4hd3uaZZQ3VDqazcPD77ROEsB1sk38aooGdQDr6SNk0Y3Vnnrw3f149EEdhk0pHlwsRQbTZwglNqKWCjnTRw9ipMqUem9hURv0rXeMVTcpYISADw5mQEkCOIChgajQCTV3/ovbAB0obw==
+  template:
+    data:
+      username: bottin
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: user-mail
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    password: AgAEfeCfEQQCqU+rtlrS/5FJP3bXHTjHFkxaZhLeyY84k+UgZRV8qG1Zjz0IvhIASLxHK/3n5tHzOV4z33Y3x6nd4kmvBuSZCRsHEDojCOnVMm/TxpaKe1kdtGK7C06hqi81tkyW8oROxqbTwMc2lGuU48JocQPnjyMvhIitBvLsQdpQYu78Ug1LP8sVcCRovSsX44CjjmntTbgN5KTXAjaBKXb+CftvFhiGk3Fy43Hm/61B+RCazJ/lhlpapZhjv0lHA4fpHBJ+QuAKHWGRMmDr18muE0ZvHC0FaQlh4IqcPzvJoTEtiVZTjUFmwcVzk3l++x0HRPNZwsdXdsTDz1Yaowa7cr4K+6+7qtjmaR0hCdzqPsMkBuZ03BGG5mEqPHL5nHHd23EvO8lyfKgVQi5sYiplmt6mpuhYQdDBqBYmys/59DulKNjREvlD+5m8giibkvmUJLJXOxrvUG99GE7xowX9n56+AXihwhMmENoe2hsXLbQaXE7AV6mB/wwi9zSNJAzE0EhPtAnKbV/UL0BtQ5LOhbEQw9FJcq+MMIYaOWcvgkwvu7vbG+EKBUolXUtQx22/2ndF0nW0HYt5xwA6SHYonzkodgNfMFCP+VuV2v0cdm08TrXFjjtdHCvMDrmCQq4qWUoX1P+ep3005xDIxDYmlL/MccGxQdew2a/42G78ZE2zDJEfQDumyIxv8OBMPkjdWcpvI+1kduw4fJGxXsN63VMloNJlpyy/f+/7Fg==
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+    data:
+      username: mail
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: user-vaultwarden
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    password: AgAvzaoAjwDBpR9aLdKYE5ASyIZr5OI0Ibr5gIf5jzaaK+irDZhDsR0vBtVNCMgxjNj3QRUk+O8EdOGF1b38uYnkwsF22XKuwf+2LNOSgnU3MA97ZH8ROujSTV3mOPj0ch3zHYmPgvVT4mgTFZHZPtmSW1WX0lfP/oZ4T9UULkuw3oIOGZ6YsuNaIQAC3PWa1OU1fmRCJp2feDGtzj3LRUNucO7s2bp7oLJsBZDHfH1JA1C/v8WJLm8Eac289I6Qx/qEy5x7Zd3lBpjg4wS7OZuJF69xyylfA8URzjHSEQTROg29JvRPE4PUHLBX+UOldBP24+/VVc/XGnW/zJMoTYomSwDC++ubGkknxwh5+x7wmg8kdnUB4iQ5KnPnAnDCWnRXuZw16JKV5jH0a6GOxLRZATsF0q53i9Ty4jDVIK213+SJHkTNEi6ifowKS4YNKwp/rmGYNzYveu3wQTZ7JOVYkxUJwOZDKqUZLX/B08ExUJJK7MRChnLKTk8K4IYooiJPuP5ChrUz1jQKGPmZLEY+Srk6qKP6JSa69QcR1LFzQtRYkO75mqPRG/00blp3jthLqeQFABgFH2aXClimDzfcwafkSPC2KBOXyS7DG4sCITbV8HmHmOaUj7w4Fp3h5NBjzbpcaZXKfM1T0HzRVtQdSZJE5cEEdyNEYf7rYiJXFJ2fogBfRJNMkR5R9L/SoSO10SVu+6o2LaLrgVhqIoGieICZXkQLZ8NosGp8XcQa0w==
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+    data:
+      username: vaultwarden
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: user-dex
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    password: AgCDrOidsIbCHm5ufdu/2i6nPQLrf0psJDd/Tx0lHO4vp1yrOUgDJdnvZL3q/SnwMtUVXfsMzwxc6fux8X1vFv+yT8aKJOezZNhUruuT9EBd8vgXd8J3IqTL/yz/vuJgi+/Nz+NXLg4otew+cZDOGTL4i7896/heJf0VSA2k6o5AuQgbrD3sLWm04JmQc/uE41aNEGfWUb0n3DHx1tZPgHN3TbHU+d7HYA91dZUo4keAa5DHv0ltw9dAe2pamDV4H+2IISUKtnbI46YOok+DOdV6yidWxIJaCAbiMAYYz+zZDvE6i+t4zTOTRFUeqRbm7h8FfcS5U+TLNtvwGpR2nuYQAuVqrN3aacB6neAxFTkT9DkhmSUQygB1f4XXQS81yQszXzFfAAQxPtbBALx2IHCTfFHuUH+g+4IbLBWnTqR7teGjSzmWdh7b3NGE0jkElis6sebQFtOsZyJs+PosvuUKzzLsWdg3etQhdEs+b0WT4k+tfHwT+DdX758vakf2MAGE8vIYS9N3YW4o35LiWHo1PBc3bSA1l2jSui4BVy3vajlJTqETbd4fRLuDWFHHQHZcq/xYY/F1ssvu+mbTwPEcxRIDA/M4Q3KecKa0L7zSWLuaiZEpcvdjatUrmxxuLQk65qPX//XzVyrUTihwGpHXlt3qfz6hXQ/TjIWW4q4cMvPxScBJghT3YClCwCsLc1e929FA1YgPFdPsBbzltk9WIYkkpSAqtxVzX00KGiwbdA==
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+    data:
+      username: dex
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: user-radicale
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    password: AgAwMgLpztok2ESC+ZBPleDs3LgpFfvqLfzzxlwBHRqWqnmmgOR6rP3BWmoh6mccOyx4fOAQ+jVZvs4G8M2W1EYMQ9rIWMzrfOd1fHAFw422ZlJjLAY38siYQPRXyx5XoBJROeSE8AzG9nOONqPdiXPFo2zXgTbw/UlPGdR6TULObgGTg6U+LJfnscI5+wNIOBlMSB2hd3X7Oj2hWOZ+IMdOhyRQt70mcYdSaa3YIlbNcE9JzjKW+vG8+u5nYepgXUSQU1ePeGetkxV222fso1eWGiTzIOkIooDO1k+2xlLmZ+zHpRsJsFfXqY94XaGG1E14jjW1rmyiTeJvbUs4e+DLR5VDtM+OR+i+L6p/GY0e8cAcfPeCfV7MiStBqXyvvj81HYVhnErM3XLJ/67PDStc7GgCnOo4rhfI/OU4BYIbYQFHkXcQ5l4suB5g4BJ92nHwLNvOyDcuTUxBYwc7CCXs4R7eKcfxG6KAc/o9bKDyPJe35QHd7fRQQrRFl50LciUtqhMTZ2GmxeoHWwIxZJ09slKo77g6i0SJKXnQyrvwjLiRpqyj26dwp9BBOHsq2QZyZiMAAcy8JRYvusHvskCWqWcyjelRaNctQIgbOf9h1VuzWfA6RUMtV8p9EpsILofey22mTmn7wH8FHg+4DM/eI/R+F1zblPAYWu9WY1rsyWnG6vFfk4vRUJX2Ko5njqha8LohCLOOo7ShhUqtHyhnD/5lmQOe4ZyywHV6NMhRzw==
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+    data:
+      username: radicale
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: user-calendar
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    password: AgBvz3UwJgFKsMUvqm8w8Mcn4QGXl/uc8zmXP1DdO7DH7G9R2UTPYRv1nixTkojnwC5irISs+BrgV4TlwhPOdYjlBZNjyJOvGHPLRqD6GmTdOZxqyTwX139MMFg86HRVlQ2v68wfNUEznhjjOZ36jXcppjGzGkdweVuheW7AW4+DFAVC4IHCq9ZwzzrtYscGtdS+l4YR2SFHx3sQshlevxvnfS7H3AOow4vUhuEDmy/cOzu5+dIUZHFVExZYFXH0/7tkT3VhzIf/M37Tn9i/j0n/bCq5oTg+ukgZ3D5JUySoTitHtuXmNIHcz1PwKZg/PACqjByaO/Tc7IgdUt+wsco8Bf+WtW3wd8GZmkl8gjXyYGOpEIutnB3kbUU+lv4JF8/sSRf/RYa5H+DKqDmKC0TT4Ol5fLiHIsvCmSk+EwGXrW/zjDkPz3+/up7meKpzQp9ZllM0r5B6CaqVy6GulCl3T18Ho1yNHxeXrCqOsq0dkMwtWzdmkRf41mEIfbwEntmgWqr28hrEKzSndzuQ9p0c/nJL9IW8Lc0t3BRLaZU7/Znx6Eo+qo6wvaNyYMSFpl5KAGOS4dyCfGX5jZSgFb8tyNlwwd2IKmoYr69lXrfSY7wVe0NtiOcjysHBKZHkJT5wU7c9LJ6ddeeIElG33jjZcpZfmU9u4h3I8YK93MbfYH4yGYFLFA6I/OIUgPWL/VH+MgTcRl9bvwVtNH/vjhDNBU66hNW9FDHPH37Q/HrrIw==
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+    data:
+      username: calendar

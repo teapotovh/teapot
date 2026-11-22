@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  "config.tmpl": |
+    # Config file for Radicale - A simple calendar server
+    #
+    # Place it into /etc/radicale/config (global)
+    # or ~/.config/radicale/config (user)
+    #
+    # The current values are the default ones
+
+    [server]
+
+    # CalDAV server hostnames separated by a comma
+    # IPv4 syntax: address:port
+    # IPv6 syntax: [address]:port
+    # For example: 0.0.0.0:9999, [::]:9999
+    hosts = 0.0.0.0:5232
+
+    # Max parallel connections
+    max_connections = 20
+
+    # Max size of request body (bytes)
+    #max_content_length = 100000000
+
+    # Socket timeout (seconds)
+    #timeout = 30
+
+    # SSL flag, enable HTTPS protocol
+    #ssl = False
+
+    # SSL certificate path
+    certificate = /etc/ssl/certs/ssl-cert-snakeoil.pem
+
+    # SSL private key
+    key = /etc/ssl/private/ssl-cert-snakeoil.key
+
+    # CA certificate for validating clients. This can be used to secure
+    # TCP traffic between Radicale and a reverse proxy
+    #certificate_authority =
+
+
+    [encoding]
+
+    # Encoding for responding requests
+    request = utf-8
+
+    # Encoding for storing local collections
+    stock = utf-8
+
+
+    [auth]
+
+    type = ldap
+
+    # LDAP server URL, with protocol and port (multiple servers can be separated by spaces)
+    ldap_uri = ldap://bottin-server.storage:389
+
+    # LDAP base path
+    ldap_base = ou=users,dc=teapot,dc=ovh
+
+    # LDAP dn for initial login, used if LDAP server does not allow anonymous searches
+    # Leave empty if searches are anonymous
+    ldap_reader_dn = ${LDAP_BIND_DN}
+
+    # LDAP password for initial login, used with ldap_binddn
+    ldap_secret = ${LDAP_BIND_PASSWORD}
+
+    [rights]
+
+    # Rights backend
+    # Value: none | authenticated | owner_only | owner_write | from_file
+    type = owner_only
+
+    # File for rights management from_file
+    # file = /etc/radicale/rights
+
+
+    [storage]
+
+    # Storage backend
+    type = radicale_sql
+
+    url = postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgresql01-pooler.storage/radicale
+
+    [web]
+
+    # Web interface backend
+    # Value: none | internal
+    #type = internal
+
+
+    [logging]
+
+    # Threshold for the logger
+    # Value: debug | info | warning | error | critical
+    level = info
+
+    # Don't include passwords in logs
+    mask_passwords = True
+
+    [headers]
+
+    # Additional HTTP headers
+    #Access-Control-Allow-Origin = *
