@@ -26,7 +26,7 @@ The worktree must be created using the appropriate tool call (such as `worktree_
 If strictly necessary, you can ask questions to the user before proceeding. Only
 do this if the plan has some clear gaps that must be addressed before continuing.
 
-Read the style guidelines in .agents/STYLE.md (from project root) for how to write code.
+Read the style guidelines in @.agents/STYLE.md (from project root) for how to write code.
 
 Strictly implement just what was required, do not over-engieer things. Keep code
 simple and minimal.
@@ -35,6 +35,8 @@ simple and minimal.
 
 Ensure all tests pertaining to the touched code pass. Ensure all lint checks
 succeed and all the Bazel files are up-to-date.
+
+Ensure you strictly followed the coding style rules in @.agents/STYLE.md.
 
 ## Create the PR
 
@@ -69,3 +71,5 @@ the checks (only those which it makes sense to run based on what you touched).
 The objective is to push the code to Git as quickly as possible, so the user
 can further steer the conversation. Ensuring checks pass (and thus that the CI
 is green) is a secondary concern: it's only relevant when the PR is ready to be merged.
+
+Before every push, make sure you strictly follow the rules in @.agents/STYLE.md.
