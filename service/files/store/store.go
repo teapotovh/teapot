@@ -13,7 +13,6 @@ import (
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/teapotovh/teapot/lib/broker"
 	"github.com/teapotovh/teapot/lib/pagedbtree"
@@ -161,47 +160,39 @@ func NewPSQL(ctx context.Context, config Config, logger *slog.Logger) (*Store, e
 		return nil, fmt.Errorf("error while closing the migration connection: %w", err)
 	}
 
-	poolConfig, err := pgxpool.ParseConfig(config.URL)
+	db, err := NewPSQLDB(ctx, config.URL)
 	if err != nil {
-		return nil, fmt.Errorf("error while parsing the PostgreSQL URL: %w", err)
-	}
-
-	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error while opening the PostgreSQL pool: %w", err)
-	}
-
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("error while connecting to PostgreSQL: %w", err)
+		return nil, err
 	}
 
 	connConfig, err := pgx.ParseConfig(config.URL)
 	if err != nil {
-		pool.Close()
+		db.Close()
+
 		return nil, fmt.Errorf("error while parsing the notification URL: %w", err)
 	}
 
 	notifications, err := pgnotify.NewManager(connConfig, logger.With("component", "notifications"))
 	if err != nil {
-		pool.Close()
+		db.Close()
+
 		return nil, fmt.Errorf("error while creating the notification manager: %w", err)
 	}
+
+	db.notify = notifications
 
 	blob, err := NewS3Blob(config.S3)
 	if err != nil {
 		err = errors.Join(err, notifications.Close())
-		pool.Close()
+		db.Close()
 
 		return nil, fmt.Errorf("could not create S3 blob store: %w", err)
 	}
 
-	db := &PSQL{pool: pool, notify: notifications}
-
 	store, err := NewStore(config, db, blob, notifications, logger)
 	if err != nil {
 		err = errors.Join(err, notifications.Close())
-		pool.Close()
+		db.Close()
 
 		return nil, err
 	}

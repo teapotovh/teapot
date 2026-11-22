@@ -1,0 +1,75 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:load.bzl", "image_load")
+load("@rules_img//img:push.bzl", "image_push")
+
+go_library(
+    name = "files_garbagecollectord_lib",
+    srcs = ["garbagecollectord.go"],
+    importpath = "github.com/teapotovh/teapot/cmd/files-garbagecollectord",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//lib/log",
+        "//lib/observability",
+        "//lib/run",
+        "//service/files/garbagecollector",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_binary(
+    name = "files-garbagecollectord",
+    embed = [":files_garbagecollectord_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "files-garbagecollectord_static",
+    embed = [":files_garbagecollectord_lib"],
+    pure = "on",
+    static = "on",
+    visibility = ["//visibility:public"],
+)
+
+# OCI Image building
+image_layer(
+    name = "binary_layer",
+    srcs = {
+        "/files-garbagecollectord": ":files-garbagecollectord_static",
+    },
+    compress = "zstd",
+)
+
+image_manifest(
+    name = "image",
+    base = "@distroless_static_debian13",
+    entrypoint = ["/files-garbagecollectord"],
+    layers = [
+        ":binary_layer",
+    ],
+    platform = "@zig_sdk//libc_aware/platform:linux_amd64_gnu.2.28",
+)
+
+image_load(
+    name = "load",
+    image = ":image",
+    tag = "ghcr.io/teapotovh/files-garbagecollectord:latest",
+)
+
+image_push(
+    name = "push",
+    image = ":image",
+    registry = "ghcr.io",
+    repository = "teapotovh/files-garbagecollectord",
+    stamp = "disabled",
+    tag_file = "//bazel:version_file_latest",
+)
+
+image_push(
+    name = "push_ttl",
+    image = ":image",
+    registry = "ocihub.com",
+    repository = "teapotovh_files-garbagecollectord",
+    tag = "1h",
+)

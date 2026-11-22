@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "garbagecollector",
+    srcs = [
+        "flag.go",
+        "garbagecollector.go",
+        "metrics.go",
+        "s3.go",
+        "z.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/service/files/garbagecollector",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/observability",
+        "//lib/run",
+        "//lib/s3cache",
+        "//service/files/store",
+        "@com_github_dustin_go_humanize//:go-humanize",
+        "@com_github_minio_minio_go_v7//:minio-go",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_test(
+    name = "garbagecollector_test",
+    srcs = ["garbagecollector_test.go"],
+    embed = [":garbagecollector"],
+)

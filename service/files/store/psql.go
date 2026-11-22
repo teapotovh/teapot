@@ -21,6 +21,27 @@ type PSQL struct {
 	notify pgnotify.Notifications
 }
 
+// NewPSQLDB creates a PostgreSQL metadata backend from a connection URL.
+func NewPSQLDB(ctx context.Context, url string) (*PSQL, error) {
+	config, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("error while parsing the PostgreSQL URL: %w", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		return nil, fmt.Errorf("error while opening the PostgreSQL pool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+
+		return nil, fmt.Errorf("error while connecting to PostgreSQL: %w", err)
+	}
+
+	return &PSQL{pool: pool}, nil
+}
+
 var currentRevisionQuery = `
 		SELECT value FROM revision WHERE id = 1;
 	`
