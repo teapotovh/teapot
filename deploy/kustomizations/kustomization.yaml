@@ -1,8 +1,6 @@
 namespace: flux
 
 resources:
-- namespace.yaml
-
 - app
 - dev-app
 - infra

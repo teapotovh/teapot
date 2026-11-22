@@ -7,4 +7,4 @@ spec:
   interval: 1h
   url: https://{{ .Repo }}
   ref:
-    tag: {{ .Tag }}
+    branch: {{ .Branch }}

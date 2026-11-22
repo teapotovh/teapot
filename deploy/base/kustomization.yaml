@@ -7,3 +7,6 @@ resources:
 - ccmd
 - netd
 - loadbalancerd
+
+components:
+- ../versions

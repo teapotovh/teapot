@@ -11,6 +11,9 @@ import (
 	"strings"
 	"text/template"
 
+	"sigs.k8s.io/kustomize/api/types"
+	"sigs.k8s.io/yaml"
+
 	"github.com/teapotovh/teapot/tools/util"
 
 	_ "embed"
@@ -22,23 +25,30 @@ var ErrNoTag = errors.New("no tag given, pass -tag or set GITHUB_REF_NAME")
 // ErrNoPush reports that no ghcr.io image_push target exists.
 var ErrNoPush = errors.New("no ghcr.io image_push targets found")
 
-// ErrOverlay reports that an overlay dir is already present.
-var ErrOverlay = errors.New("overlay is not empty, aborting")
-
 var (
 	tag     = flag.String("tag", os.Getenv("GITHUB_REF_NAME"), "release tag")
 	verbose = flag.Bool("verbose", false, "print all executed commands")
 )
 
 const (
-	overlayDir     = "deploy/release"
-	baseOverlayDir = "deploy/base/release"
-	branchPrefix   = "release/"
-	commitPrefix   = "release "
-	registry       = "ghcr.io"
-	botName        = "github-actions[bot]"
-	botEmail       = "github-actions[bot]@users.noreply.github.com"
+	gitRepositoryFile = "deploy/release.yaml"
+	versionsFile      = "deploy/versions/kustomization.yaml"
+	branchPrefix      = "release/"
+	commitPrefix      = "release "
+	registry          = "ghcr.io"
+	gitRepositoryName = "teapot"
+	gitRepositoryNS   = "flux"
+	botName           = "github-actions[bot]"
+	botEmail          = "github-actions[bot]@users.noreply.github.com"
 )
+
+//go:embed gitrepository.yaml
+var gitRepositoryTemplate []byte
+
+type releaseData struct {
+	Repo   string
+	Branch string
+}
 
 type queryAttr struct {
 	Name  string `xml:"name,attr"`
@@ -51,34 +61,6 @@ type queryRule struct {
 
 type queryResult struct {
 	Rules []queryRule `xml:"rule"`
-}
-
-type overlayData struct {
-	Tag    string
-	Repo   string
-	Images []string
-}
-
-//go:embed gitrepository.yaml
-var gitRepositoryTemplate []byte
-
-//go:embed images.patch.yaml
-var imagesPatchTemplate []byte
-
-//go:embed release.kustomization.yaml
-var releaseKustomizationTemplate []byte
-
-//go:embed base.kustomization.yaml
-var baseKustomizationTemplate []byte
-
-var overlayFiles = []struct {
-	template []byte
-	output   string
-}{
-	{gitRepositoryTemplate, filepath.Join(overlayDir, "gitrepository.yaml")},
-	{imagesPatchTemplate, filepath.Join(overlayDir, "images-patch.yaml")},
-	{releaseKustomizationTemplate, filepath.Join(overlayDir, "kustomization.yaml")},
-	{baseKustomizationTemplate, filepath.Join(baseOverlayDir, "kustomization.yaml")},
 }
 
 func main() {
@@ -116,9 +98,13 @@ func branch() error {
 		return err
 	}
 
-	util.Phase("writing overlay to " + overlayDir)
+	util.Phase("writing versions for " + *tag)
 
-	if err := writeOverlay(root, repo, images); err != nil {
+	if err := writeVersions(root, images); err != nil {
+		return err
+	}
+
+	if err := writeGitRepository(root, repo); err != nil {
 		return err
 	}
 
@@ -159,8 +145,9 @@ func pushedImages() ([]string, error) {
 	return images, nil
 }
 
+// parseQuery decodes the query output. Bazel emits an xml 1.1 declaration,
+// which is dropped first.
 func parseQuery(data []byte, query *queryResult) error {
-	// Bazel emits an xml 1.1 declaration, which Go's decoder rejects.
 	if bytes.HasPrefix(data, []byte("<?xml")) {
 		_, data, _ = bytes.Cut(data, []byte("\n"))
 	}
@@ -193,37 +180,39 @@ func pushImage(rule queryRule) (string, bool) {
 	return registry + "/" + repo, true
 }
 
-func writeOverlay(root, repo string, images []string) error {
-	for _, dir := range []string{overlayDir, baseOverlayDir} {
-		path := filepath.Join(root, dir)
-
-		if _, err := os.Stat(path); err == nil {
-			return fmt.Errorf("%s: %w", path, ErrOverlay)
-		}
+// writeVersions writes the version component that kustomize uses to set the
+// tag of every image pushed by this release.
+func writeVersions(root string, images []string) error {
+	component := types.Kustomization{
+		APIVersion: types.ComponentVersion,
+		Kind:       types.ComponentKind,
 	}
 
-	data := overlayData{Tag: *tag, Repo: repo, Images: images}
-
-	for _, file := range overlayFiles {
-		content, err := render(file.template, file.output, data)
-		if err != nil {
-			return err
-		}
-
-		path := filepath.Join(root, file.output)
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-			return fmt.Errorf("could not create overlay dir: %w", err)
-		}
-
-		if err := os.WriteFile(path, content, 0o644); err != nil { //nolint:gosec
-			return fmt.Errorf("could not write %s: %w", path, err)
-		}
+	for _, image := range images {
+		component.Images = append(component.Images, types.Image{Name: image, NewTag: *tag})
 	}
 
-	return nil
+	data, err := yaml.Marshal(component)
+	if err != nil {
+		return fmt.Errorf("could not marshal versions: %w", err)
+	}
+
+	return write(root, versionsFile, data)
 }
 
-func render(content []byte, name string, data overlayData) ([]byte, error) {
+func writeGitRepository(root, repo string) error {
+	data, err := render(gitRepositoryTemplate, gitRepositoryFile, releaseData{
+		Repo:   repo,
+		Branch: branchPrefix + *tag,
+	})
+	if err != nil {
+		return err
+	}
+
+	return write(root, gitRepositoryFile, data)
+}
+
+func render(content []byte, name string, data releaseData) ([]byte, error) {
 	tmpl, err := template.New(name).Parse(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("could not parse %s: %w", name, err)
@@ -238,6 +227,22 @@ func render(content []byte, name string, data overlayData) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+func write(root, name string, data []byte) error {
+	path := filepath.Join(root, name)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return fmt.Errorf("could not create %s: %w", filepath.Dir(path), err)
+	}
+
+	if err := os.WriteFile(path, data, 0o644); err != nil { //nolint:gosec
+		return fmt.Errorf("could not write %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// commit creates the release branch at HEAD, stages every tracked change and
+// pushes it. CI checkout leaves the push credentials in place.
 func commit() error {
 	branch := branchPrefix + *tag
 
@@ -253,14 +258,11 @@ func commit() error {
 		return err
 	}
 
-	args := make([]string, 0, len(overlayFiles)+1)
-	args = append(args, "add")
-
-	for _, file := range overlayFiles {
-		args = append(args, file.output)
+	if _, err := util.GitRun(nil, "add", "-u"); err != nil {
+		return err
 	}
 
-	if _, err := util.GitRun(nil, args...); err != nil {
+	if _, err := util.GitRun(nil, "add", gitRepositoryFile); err != nil {
 		return err
 	}
 

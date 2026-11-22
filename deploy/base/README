@@ -1,22 +1,30 @@
 This folder holds the parts that must exist before Flux can work. Flux does
 not manage them. You deploy them by hand.
 
-- ccmd, netd, loadbalancerd: deployed together from this folder.
+- base components: ccmd, netd, loadbalancerd. Deploy them together.
 - flux: the Flux controllers.
-- git: the notification objects and the token. Apply this after flux. The
-  token file is a template: fill it in before you apply, and never commit a
-  filled copy.
+- gitops: the namespace, the root Kustomization, the notification objects and
+  the token template.
+
+The GitRepository is not in this folder. Each release branch holds it in
+deploy/release.yaml, so this folder never changes at release time.
 
 On main, the images built in this repo use the latest tag. A release branch
 has the real tags.
 
-Deploy ccmd, netd and loadbalancerd together, from a release branch:
-
-kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/release?ref=release/<tag>
-
 New cluster? Run in this order:
 
-kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/release?ref=release/<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/base?ref=release/<tag>
 kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/flux?ref=release/<tag>
-kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/git?ref=release/<tag>
-kubectl apply -k https://github.com/teapotovh/teapot//deploy/release?ref=release/<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/gitops?ref=release/<tag>
+kubectl apply -f "https://raw.githubusercontent.com/teapotovh/teapot/release/<tag>/deploy/release.yaml"
+
+The root Kustomization reports a missing source until you apply the release
+file. Flux reconciles the rest after that.
+
+Fill in the token in deploy/base/gitops/secret.yaml and apply it by hand after
+the steps above. Flux reconciles the rest.
+
+To deploy a release on a running cluster, apply only the release file:
+
+kubectl apply -f "https://raw.githubusercontent.com/teapotovh/teapot/release/<tag>/deploy/release.yaml"
