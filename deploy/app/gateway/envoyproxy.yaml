@@ -19,7 +19,7 @@ spec:
     kubernetes:
       envoyDaemonSet:
         container:
-          image: mirror.gcr.io/envoyproxy/envoy:distroless-v1.38.0
+          image: mirror.gcr.io/envoyproxy/envoy:distroless-v1.40.2
       envoyService:
         type: LoadBalancer
         patch:
