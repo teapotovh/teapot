@@ -26,12 +26,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker images
+      - name: Build OCI images
         run: |
           targets=$(bazel query 'filter(":push$", kind("image_push", //...))')
-          for target in $targets; do
-            bazel run "$target"
-          done
+          bazel build $targets
+
+      - name: Push OCI images
+        run: |
+          bazel cquery 'filter(":push$", kind("image_push", //...))' --output=files |
+            sed 's|^|./|' |
+            xargs -P "$(nproc)" -n 1
 
   release-branch:
     name: Release Branch
