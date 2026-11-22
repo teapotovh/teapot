@@ -6,7 +6,7 @@ metadata:
     external-dns.kubernetes.io/hostname: smtp.teapot.ovh
 spec:
   type: NodePort
-  internalTrafficPolicy: Local
+  trafficDistribution: PreferSameNode
   externalTrafficPolicy: Local
   ports:
     - name: smtp

@@ -6,7 +6,7 @@ metadata:
     external-dns.kubernetes.io/hostname: imap.teapot.ovh
 spec:
   type: NodePort
-  internalTrafficPolicy: Local
+  trafficDistribution: PreferSameNode
   externalTrafficPolicy: Local
   ports:
     - name: imaps
