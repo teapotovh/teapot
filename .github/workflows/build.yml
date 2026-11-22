@@ -48,4 +48,4 @@ jobs:
           repository-cache: true
 
       - name: Create release branch
-        run: bazel run //tools/releasebranch:branch
+        run: bazel run //tools:releasebranch
