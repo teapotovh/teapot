@@ -12,7 +12,7 @@ import (
 var ErrInvalidFrame = errors.New("invalid notification frame")
 
 const (
-	// MaxPayloadSize is the maximum size of a PostgreSQL notification payload.
+	// MaxPayloadSize is the PostgreSQL payload limit. Payloads must be shorter.
 	MaxPayloadSize = 8000
 
 	frameFlagsOffset  = 0
@@ -24,9 +24,9 @@ const (
 	// FrameMoreFlag is set in the flags byte when more frames follow.
 	FrameMoreFlag = 1 << 7
 
-	// ChunkSize is the maximum number of raw bytes in one frame. Base64
-	// encoding and the frame header must fit in MaxPayloadSize.
-	ChunkSize = 5982
+	// ChunkSize is the maximum number of payload bytes in one frame. The
+	// base64 encoding of the frame header and payload must fit in MaxPayloadSize.
+	ChunkSize = 5976
 )
 
 type frame struct {
@@ -62,7 +62,7 @@ func encode(payload []byte, sender uuid.UUID) []string {
 }
 
 func encodeFrame(f frame) string {
-	raw := make([]byte, FrameHeaderSize+base64.StdEncoding.EncodedLen(len(f.data)))
+	raw := make([]byte, FrameHeaderSize+len(f.data))
 
 	if f.more {
 		raw[frameFlagsOffset] = FrameMoreFlag
@@ -70,39 +70,39 @@ func encodeFrame(f frame) string {
 
 	binary.BigEndian.PutUint32(raw[frameIndexOffset:frameSenderOffset], f.index)
 	copy(raw[frameSenderOffset:FrameHeaderSize], f.sender[:])
-	base64.StdEncoding.Encode(raw[FrameHeaderSize:], f.data)
+	copy(raw[FrameHeaderSize:], f.data)
 
-	return string(raw)
+	return base64.StdEncoding.EncodeToString(raw)
 }
 
 func decodeFrame(raw string) (frame, error) {
-	if len(raw) < FrameHeaderSize {
-		return frame{}, fmt.Errorf("%w: frame is too short", ErrInvalidFrame)
-	}
-
-	if len(raw) > MaxPayloadSize {
+	if len(raw) >= MaxPayloadSize {
 		return frame{}, fmt.Errorf("%w: frame is too large", ErrInvalidFrame)
 	}
 
-	header := raw[frameFlagsOffset]
-	if header&^FrameMoreFlag != 0 {
-		return frame{}, fmt.Errorf("%w: unknown header bits", ErrInvalidFrame)
-	}
-
-	data, err := base64.StdEncoding.DecodeString(raw[FrameHeaderSize:])
+	buf, err := base64.StdEncoding.DecodeString(raw)
 	if err != nil {
 		return frame{}, fmt.Errorf("%w: %w", ErrInvalidFrame, err)
 	}
 
+	if len(buf) < FrameHeaderSize {
+		return frame{}, fmt.Errorf("%w: frame is too short", ErrInvalidFrame)
+	}
+
+	header := buf[frameFlagsOffset]
+	if header&^FrameMoreFlag != 0 {
+		return frame{}, fmt.Errorf("%w: unknown header bits", ErrInvalidFrame)
+	}
+
 	f := frame{
-		data: data,
-		index: uint32(raw[frameIndexOffset])<<24 |
-			uint32(raw[frameIndexOffset+1])<<16 |
-			uint32(raw[frameIndexOffset+2])<<8 |
-			uint32(raw[frameIndexOffset+3]),
+		data: buf[FrameHeaderSize:],
+		index: uint32(buf[frameIndexOffset])<<24 |
+			uint32(buf[frameIndexOffset+1])<<16 |
+			uint32(buf[frameIndexOffset+2])<<8 |
+			uint32(buf[frameIndexOffset+3]),
 		more: header&FrameMoreFlag != 0,
 	}
-	copy(f.sender[:], raw[frameSenderOffset:FrameHeaderSize])
+	copy(f.sender[:], buf[frameSenderOffset:FrameHeaderSize])
 
 	return f, nil
 }
