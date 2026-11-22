@@ -147,6 +147,13 @@ func release() (err error) {
 	}
 
 	if len(subjects) == 0 {
+		repo, err := util.Repository()
+		if err != nil {
+			return err
+		}
+
+		printCommands(repo, lastTag)
+
 		return fmt.Errorf("no new commits since %s: %w", lastTag, ErrNothingToRelease)
 	}
 
@@ -183,16 +190,21 @@ func release() (err error) {
 
 	util.Phase("(release) tagged, please run")
 
-	fmt.Fprintln(os.Stderr, "git push origin "+newTag)
+	printCommands(repo, newTag)
 
-	releaseBranch := "release/" + newTag
+	return nil
+}
+
+// printCommands prints how to push the tag and how to deploy it.
+func printCommands(repo, releaseTag string) {
+	fmt.Fprintln(os.Stderr, "git push origin "+releaseTag)
+
+	releaseBranch := "release/" + releaseTag
 	// kustomize separates the repository URL and the subdirectory with "//".
 	base := "https://" + repo + "//" + releaseBranch
 
 	fmt.Fprintln(os.Stderr, "once CI has created "+releaseBranch+", deploy with")
-	fmt.Fprintln(os.Stderr, "kubectl apply -k "+base+"/deploy/release?ref="+newTag)
-
-	return nil
+	fmt.Fprintln(os.Stderr, "kubectl apply -k "+base+"/deploy/release?ref="+releaseTag)
 }
 
 // lastRelease finds the most recent tag matching tagPattern. Because the
