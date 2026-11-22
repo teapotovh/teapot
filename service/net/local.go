@@ -1,7 +1,6 @@
 package net
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/netip"
@@ -106,8 +105,15 @@ func storeKey(path string, key wgtypes.Key) error {
 }
 
 // Run implements run.Runnable.
-func (l *Local) Run(ctx context.Context, notify run.Notify) error {
-	return run.Combine(l.broker, localEvents{l}).Run(ctx, notify)
+func (l *Local) Run(step run.Step) error {
+	step.Add("broker", l.broker)
+	step.Add("events", localEvents{l})
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 type localEvents struct{ *Local }
@@ -117,14 +123,16 @@ func (l *Local) Broker() *broker.Broker[LocalEvent] {
 }
 
 // Run implements run.Runnable.
-func (l localEvents) Run(ctx context.Context, notify run.Notify) error {
+func (l localEvents) Run(step run.Step) error {
+	ctx := step.Context()
+
 	sub := l.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 
 	// Publish an event when we start with the initial configuration
 	l.broker.Publish(l.event())
 
-	notify.Notify()
+	step.Notify()
 
 	for event := range sub.Iter(ctx) {
 		if event.Update != nil {

@@ -74,8 +74,6 @@ func main() {
 	defer stop()
 
 	run.Add("net", net, nil)
-	run.Add("local", net.Local(), nil)
-	run.Add("cluster", net.Cluster(), nil)
 
 	if slices.Contains(*components, "wireguard") {
 		wireguard, err := wireguard.NewWireguard(net, getWireguardConfig(), logger.With("sub", "wireguard"))

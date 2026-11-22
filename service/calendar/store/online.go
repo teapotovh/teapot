@@ -182,7 +182,9 @@ func (o *Online) Ping(ctx context.Context) error {
 }
 
 // Run implements run.Runnable.
-func (o *Online) Run(ctx context.Context, notify run.Notify) (err error) {
+func (o *Online) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	defer o.pool.Close()
 
 	client, err := minio.New(o.s3endpoint, &minio.Options{
@@ -200,7 +202,14 @@ func (o *Online) Run(ctx context.Context, notify run.Notify) (err error) {
 		return fmt.Errorf("error while building s3 cache: %w", err)
 	}
 
-	return run.Combine(o.calendarTable, o.objectRefTable).Run(ctx, notify)
+	step.Add("calendars", o.calendarTable)
+	step.Add("objects", o.objectRefTable)
+	step.Wait()
+	step.Notify()
+
+	<-ctx.Done()
+
+	return nil
 }
 
 // WithTracing implements observability.Tracing.

@@ -193,7 +193,8 @@ func (b *Bytes) Between(from, to string) iter.Seq2[string, []byte] {
 }
 
 // Run implements run.Runnable.
-func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
+func (b *Bytes) Run(step run.Step) (err error) {
+	ctx := step.Context()
 	stateCtx, cancel := context.WithCancel(context.Background())
 	state := &storeState{ctx: stateCtx, cancel: cancel}
 
@@ -219,7 +220,7 @@ func (b *Bytes) Run(ctx context.Context, notify run.Notify) (err error) {
 
 	b.state.Store(state)
 	b.countEntries()
-	notify.Notify()
+	step.Notify()
 
 	for {
 		select {

@@ -51,4 +51,5 @@ go_test(
         "watch_test.go",
     ],
     embed = [":store"],
+    deps = ["//lib/run"],
 )

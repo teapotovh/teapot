@@ -263,8 +263,9 @@ func (e *Embed) Register(server *grpc.Server) {
 }
 
 // Run implements run.Runnable.
-func (e *Embed) Run(ctx context.Context, notify run.Notify) (err error) {
-	notify.Notify()
+func (e *Embed) Run(step run.Step) (err error) {
+	ctx := step.Context()
+	step.Notify()
 
 	<-ctx.Done()
 

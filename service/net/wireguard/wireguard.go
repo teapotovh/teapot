@@ -2,7 +2,6 @@ package wireguard
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"log/slog"
 	"net"
@@ -63,7 +62,9 @@ func NewWireguard(net *tnet.Net, config WireguardConfig, logger *slog.Logger) (*
 }
 
 // Run implements run.Runnable.
-func (w *Wireguard) Run(ctx context.Context, notify run.Notify) (err error) {
+func (w *Wireguard) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	csub := w.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
 
@@ -81,7 +82,7 @@ func (w *Wireguard) Run(ctx context.Context, notify run.Notify) (err error) {
 		}
 	}()
 
-	notify.Notify()
+	step.Notify()
 
 	for {
 		select {

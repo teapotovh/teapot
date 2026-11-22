@@ -13,6 +13,7 @@ go_library(
     deps = [
         "//lib/ldap",
         "//lib/observability",
+        "//lib/run",
         "//service/files/store",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",

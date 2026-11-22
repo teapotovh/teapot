@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 func testLogger() *slog.Logger {
@@ -19,9 +21,17 @@ type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
 
-type stubNotify struct{}
+type stubStep struct {
+	ctx context.Context
+}
 
-func (stubNotify) Notify() {}
+func (s stubStep) Context() context.Context { return s.ctx }
+
+func (stubStep) Notify() {}
+
+func (stubStep) Add(string, run.Runnable) {}
+
+func (stubStep) Wait() {}
 
 type handlerService struct{}
 
@@ -40,7 +50,7 @@ func runServer(t *testing.T, h *HTTPSrv, ctx context.Context) <-chan error {
 	t.Helper()
 
 	done := make(chan error, 1)
-	go func() { done <- h.Run(ctx, stubNotify{}) }()
+	go func() { done <- h.Run(stubStep{ctx: ctx}) }()
 
 	return done
 }

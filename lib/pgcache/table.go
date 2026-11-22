@@ -373,7 +373,8 @@ func (t *Table[K, T]) handleEvents(ctx context.Context, events []Event[K]) (err 
 }
 
 // Run implements run.Runnable.
-func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
+func (t *Table[K, T]) Run(step run.Step) error {
+	ctx := step.Context()
 	lastStartup := time.Unix(0, 0)
 	lastErr := error(nil)
 
@@ -393,7 +394,7 @@ func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
 
 		lastStartup = time.Now()
 
-		if err := t.processNotifications(ctx, notify); err != nil {
+		if err := t.processNotifications(step); err != nil {
 			lastErr = err
 
 			t.logger.Warn("error while processing notification, retrying", "err", err, "last_startup", lastStartup)
@@ -401,7 +402,9 @@ func (t *Table[K, T]) Run(ctx context.Context, notify run.Notify) error {
 	}
 }
 
-func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notify) (err error) {
+func (t *Table[K, T]) processNotifications(step run.Step) (err error) {
+	ctx := step.Context()
+
 	t.loaded.Store(false)
 
 	objects, err := t.listFunc(ctx, t.pool)
@@ -432,7 +435,7 @@ func (t *Table[K, T]) processNotifications(ctx context.Context, notify run.Notif
 		return fmt.Errorf("error while setting up notifications listener: %w", err)
 	}
 
-	notify.Notify()
+	step.Notify()
 
 	for {
 		events, err := t.nm.Next(ctx)

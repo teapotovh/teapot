@@ -15,6 +15,7 @@ go_library(
         "//lib/httplog",
         "//lib/ldap",
         "//lib/observability",
+        "//lib/run",
         "//lib/webdav/caldav",
         "//lib/wellknown",
         "//service/calendar/backend",

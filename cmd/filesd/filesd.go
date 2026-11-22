@@ -131,7 +131,7 @@ func main() {
 		httpsrv.Register("web", web, HTTPWebPrefix)
 	}
 
-	run.Add("files/store", files.Store(), nil)
+	run.Add("files", files, nil)
 	run.Add("httpsrv", httpsrv, nil)
 	run.Add("grpcsrv", grpcsrv, nil)
 	run.Add("observability", observability, nil)

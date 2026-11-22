@@ -8,6 +8,7 @@ import (
 	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
@@ -78,6 +79,17 @@ func NewKontakte(config KontakteConfig, logger *slog.Logger) (*Kontakte, error) 
 
 func (k *Kontakte) LDAPFactory() *ldap.Factory {
 	return k.ldapFactory
+}
+
+// Run implements run.Runnable.
+func (k *Kontakte) Run(step run.Step) error {
+	step.Add("ldap", k.ldapFactory)
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 // Handler implements httpsrv.HTTPService.

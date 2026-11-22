@@ -246,7 +246,8 @@ func (c *Controller[Resource]) handleErr(err error, key string) {
 }
 
 // Run implements run.Runnable.
-func (c *Controller[Resource]) Run(ctx context.Context, notify run.Notify) error {
+func (c *Controller[Resource]) Run(step run.Step) error {
+	ctx := step.Context()
 	defer utilruntime.HandleCrashWithContext(ctx)
 
 	// Let the workers stop when we are done
@@ -265,7 +266,7 @@ func (c *Controller[Resource]) Run(ctx context.Context, notify run.Notify) error
 		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}
 
-	notify.Notify()
+	step.Notify()
 
 	<-ctx.Done()
 	c.logger.Debug("stopping the kubernetes controller", "resource", c.resource)

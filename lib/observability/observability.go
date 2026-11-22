@@ -162,7 +162,9 @@ func (obs *Observability) RegisterTracing(traceable Tracing) {
 }
 
 // Run implements run.Runnable.
-func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
+func (obs *Observability) Run(step run.Step) error {
+	ctx := step.Context()
+
 	if err := obs.registerMetrics(); err != nil {
 		return fmt.Errorf("error while registering all metrics: %w", err)
 	}
@@ -174,7 +176,7 @@ func (obs *Observability) Run(ctx context.Context, notify run.Notify) error {
 
 	go func() {
 		obs.logger.Info("opening observability server", "address", obs.inner.Addr)
-		notify.Notify()
+		step.Notify()
 
 		if err := obs.inner.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			ch <- err

@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
+	"github.com/teapotovh/teapot/lib/run"
 	filespb "github.com/teapotovh/teapot/proto/files"
 	"github.com/teapotovh/teapot/service/files/store"
 )
@@ -160,10 +161,14 @@ func newMemoryStore(t *testing.T) (*store.Store, context.Context) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	ready := make(chan struct{}, 1)
+	ready := make(readyService, 1)
+
+	runner := run.NewRun(run.RunConfig{Timeout: 5 * time.Second}, slog.New(slog.DiscardHandler))
+	runner.Add("store", st, nil)
+	runner.Add("ready", ready, nil)
 
 	go func() {
-		done <- st.Run(ctx, notifyChannel(ready))
+		done <- runner.Run(ctx)
 	}()
 
 	select {
@@ -196,14 +201,19 @@ func (f filesStore) Store() *store.Store {
 	return f.st
 }
 
-type notifyChannel chan struct{}
+type readyService chan struct{}
 
-// Notify implements run.Notify.
-func (n notifyChannel) Notify() {
+func (s readyService) Run(step run.Step) error {
 	select {
-	case n <- struct{}{}:
+	case s <- struct{}{}:
 	default:
 	}
+
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 type stream struct {

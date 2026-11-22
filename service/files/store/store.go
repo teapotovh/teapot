@@ -228,63 +228,33 @@ func (s *Store) Revision() uint64 {
 }
 
 // Run implements run.Runnable.
-func (s *Store) Run(ctx context.Context, notify run.Notify) (err error) {
+func (s *Store) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	defer func() {
 		err = errors.Join(err, s.notifications.Close())
 		s.db.Close()
 	}()
 
-	ready := make(chan struct{})
+	step.Add("events", s.events)
+	step.Add("inodes", s.cache.nodes)
+	step.Add("children", s.cache.children)
+	step.Wait()
 
-	return run.Combine(
-		&cacheRunner{cache: s.cache, ready: ready},
-		s.events,
-		&syncRunner{store: s, ready: ready},
-	).Run(ctx, notify)
-}
-
-// cacheRunner starts both cache trees and signals when they are ready.
-type cacheRunner struct {
-	cache *cache
-	ready chan<- struct{}
-}
-
-// Run implements run.Runnable.
-func (r *cacheRunner) Run(ctx context.Context, notify run.Notify) error {
-	return run.Combine(r.cache.nodes, r.cache.children).Run(ctx, &startupNotify{
-		next:  notify,
-		ready: r.ready,
-	})
-}
-
-// syncRunner waits for the cache, loads the snapshot, then applies notifications.
-type syncRunner struct {
-	store *Store
-	ready <-chan struct{}
-}
-
-// Run implements run.Runnable.
-func (r *syncRunner) Run(ctx context.Context, notify run.Notify) error {
-	select {
-	case <-r.ready:
-	case <-ctx.Done():
-		return nil
-	}
-
-	if err := r.store.notifications.Listen(ctx, defaultChannel); err != nil {
+	if err := s.notifications.Listen(ctx, defaultChannel); err != nil {
 		return fmt.Errorf("error while listening for notifications: %w", err)
 	}
 
-	if err := r.store.bootstrap(ctx); err != nil {
+	if err := s.bootstrap(ctx); err != nil {
 		return err
 	}
 
-	r.store.synced.Store(true)
-	defer r.store.synced.Store(false)
+	s.synced.Store(true)
+	defer s.synced.Store(false)
 
-	notify.Notify()
+	step.Notify()
 
-	return r.store.listen(ctx)
+	return s.listen(ctx)
 }
 
 func (s *Store) setRevision(revision uint64) {
@@ -384,18 +354,6 @@ func (s *Store) publish(events []Event) {
 	for _, event := range events {
 		s.events.Publish(event)
 	}
-}
-
-type startupNotify struct {
-	next  run.Notify
-	ready chan<- struct{}
-	once  sync.Once
-}
-
-// Notify implements run.Notify.
-func (n *startupNotify) Notify() {
-	n.next.Notify()
-	n.once.Do(func() { close(n.ready) })
 }
 
 type osFS struct{}

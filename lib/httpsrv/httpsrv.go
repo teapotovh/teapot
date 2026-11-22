@@ -87,7 +87,9 @@ func (h *HTTPSrv) Register(name string, service HTTPService, prefix string) {
 }
 
 // Run implements run.Runnable.
-func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
+func (h *HTTPSrv) Run(step run.Step) error {
+	ctx := step.Context()
+
 	ch := make(chan error, 1)
 	defer close(ch)
 
@@ -96,7 +98,7 @@ func (h *HTTPSrv) Run(ctx context.Context, notify run.Notify) error {
 	go func() {
 		h.logger.Info("opening HTTP server", "address", h.inner.Addr)
 		h.running.Store(true)
-		notify.Notify()
+		step.Notify()
 
 		if err := h.inner.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			ch <- err

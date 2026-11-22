@@ -1,7 +1,6 @@
 package cni
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -85,7 +84,9 @@ func NewCNI(net *tnet.Net, config CNIConfig, logger *slog.Logger) (*CNI, error) 
 }
 
 // Run implements run.Runnable.
-func (c *CNI) Run(ctx context.Context, notify run.Notify) (err error) {
+func (c *CNI) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	csub := c.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
 
@@ -108,7 +109,7 @@ func (c *CNI) Run(ctx context.Context, notify run.Notify) (err error) {
 		}
 	}()
 
-	notify.Notify()
+	step.Notify()
 
 	for {
 		select {

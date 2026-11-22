@@ -51,11 +51,13 @@ func NewExternalIP(ccm *ccm.CCM, config ExternalIPConfig, logger *slog.Logger) (
 }
 
 // Run implements run.Runnable.
-func (eip *ExternalIP) Run(ctx context.Context, notify run.Notify) error {
+func (eip *ExternalIP) Run(step run.Step) error {
+	ctx := step.Context()
+
 	sub := eip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()
 
-	notify.Notify()
+	step.Notify()
 
 	ticker := time.NewTicker(eip.interval)
 

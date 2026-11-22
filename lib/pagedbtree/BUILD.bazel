@@ -29,4 +29,5 @@ go_test(
         "typed_test.go",
     ],
     embed = [":pagedbtree"],
+    deps = ["//lib/run"],
 )

@@ -70,8 +70,9 @@ func NewLoadBalancer(config LoadBalancerConfig, logger *slog.Logger) (*LoadBalan
 }
 
 // Run implements run.Runnable.
-func (lb *LoadBalancer) Run(ctx context.Context, notify run.Notify) error {
-	notify.Notify()
+func (lb *LoadBalancer) Run(step run.Step) error {
+	ctx := step.Context()
+	step.Notify()
 
 	return lb.mgr.Start(ctx)
 }

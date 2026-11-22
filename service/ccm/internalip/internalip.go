@@ -53,11 +53,13 @@ func NewInternalIP(ccm *ccm.CCM, config InternalIPConfig, logger *slog.Logger) (
 }
 
 // Run implements run.Runnable.
-func (iip *InternalIP) Run(ctx context.Context, notify run.Notify) error {
+func (iip *InternalIP) Run(step run.Step) error {
+	ctx := step.Context()
+
 	sub := iip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()
 
-	notify.Notify()
+	step.Notify()
 
 	for {
 		select {

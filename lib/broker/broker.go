@@ -26,10 +26,11 @@ func NewBroker[T any]() *Broker[T] {
 }
 
 // Run implements run.Runnable.
-func (b *Broker[T]) Run(ctx context.Context, notify run.Notify) error {
+func (b *Broker[T]) Run(step run.Step) error {
+	ctx := step.Context()
 	subs := map[chan T]unit{}
 
-	notify.Notify()
+	step.Notify()
 
 	doneCn := ctx.Done()
 

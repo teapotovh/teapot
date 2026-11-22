@@ -1,7 +1,6 @@
 package initialize
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 
@@ -23,11 +22,13 @@ func NewInitialize(ccm *ccm.CCM, logger *slog.Logger) (*Initialize, error) {
 }
 
 // Run implements run.Runnable.
-func (iip *Initialize) Run(ctx context.Context, notify run.Notify) error {
+func (iip *Initialize) Run(step run.Step) error {
+	ctx := step.Context()
+
 	sub := iip.ccm.Broker().Subscribe()
 	defer sub.Unsubscribe()
 
-	notify.Notify()
+	step.Notify()
 
 	for {
 		select {

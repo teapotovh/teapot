@@ -94,8 +94,15 @@ func (ccm *CCM) KubeClient() *kubernetes.Clientset {
 }
 
 // Run implements run.Runnable.
-func (ccm *CCM) Run(ctx context.Context, notify run.Notify) error {
-	return run.Combine(ccm.broker, ccm.controller).Run(ctx, notify)
+func (ccm *CCM) Run(step run.Step) error {
+	step.Add("broker", ccm.broker)
+	step.Add("controller", ccm.controller)
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 func (ccm *CCM) update(ctx context.Context) error {

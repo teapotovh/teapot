@@ -23,6 +23,7 @@ go_library(
         "//lib/httplog",
         "//lib/ldap",
         "//lib/pagetitle",
+        "//lib/run",
         "//lib/ui",
         "//lib/ui/components",
         "//lib/webauth",

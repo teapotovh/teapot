@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 var errTestWrite = errors.New("write failed")
@@ -533,7 +535,12 @@ func TestConcurrentAccess(t *testing.T) {
 }
 
 type testNotify struct {
-	ch chan unit
+	ctx context.Context
+	ch  chan unit
+}
+
+func (n testNotify) Context() context.Context {
+	return n.ctx
 }
 
 func (n testNotify) Notify() {
@@ -542,6 +549,10 @@ func (n testNotify) Notify() {
 	default:
 	}
 }
+
+func (testNotify) Add(string, run.Runnable) {}
+
+func (testNotify) Wait() {}
 
 func TestRunPersists(t *testing.T) {
 	t.Parallel()
@@ -554,10 +565,10 @@ func TestRunPersists(t *testing.T) {
 	t.Cleanup(cancel)
 
 	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan unit, 1)}
+	notify := testNotify{ctx: ctx, ch: make(chan unit, 1)}
 
 	go func() {
-		done <- store.Run(ctx, notify)
+		done <- store.Run(notify)
 	}()
 
 	select {
@@ -600,10 +611,10 @@ func TestRunCancelStopsOperations(t *testing.T) {
 	t.Cleanup(cancel)
 
 	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan unit, 1)}
+	notify := testNotify{ctx: ctx, ch: make(chan unit, 1)}
 
 	go func() {
-		done <- store.Run(ctx, notify)
+		done <- store.Run(notify)
 	}()
 
 	select {
