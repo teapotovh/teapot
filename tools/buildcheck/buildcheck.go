@@ -5,6 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/bazelbuild/rules_go/go/runfiles"
 
@@ -19,6 +22,10 @@ var (
 var (
 	verbose = flag.Bool("verbose", false, "print all executed commands")
 )
+
+const workflowsDir = ".github/workflows"
+
+var bazelRE = regexp.MustCompile(`bazel (?:run|build|test) ([^\s"']+)`)
 
 var (
 	directories = []string{
@@ -41,6 +48,56 @@ var phaseN uint32
 func phase(name string) {
 	fmt.Fprintf(os.Stderr, "%02d %s\n", phaseN, name)
 	phaseN += 1
+}
+
+// checkWorkflowTargets verifies that every bazel target used in a workflow
+// exists. A label typo in a workflow otherwise fails only in CI.
+func checkWorkflowTargets(root string) error {
+	entries, err := os.ReadDir(filepath.Join(root, workflowsDir))
+	if err != nil {
+		return fmt.Errorf("could not read %s: %w", workflowsDir, err)
+	}
+
+	seen := make(map[string]bool)
+
+	var labels []string
+
+	for _, entry := range entries {
+		switch filepath.Ext(entry.Name()) {
+		case ".yaml", ".yml":
+		default:
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(root, workflowsDir, entry.Name())) //nolint:gosec
+		if err != nil {
+			return fmt.Errorf("could not read workflow: %w", err)
+		}
+
+		for _, match := range bazelRE.FindAllStringSubmatch(string(data), -1) {
+			label := match[1]
+
+			if seen[label] || label == "//..." || strings.ContainsAny(label, "$'\"") {
+				continue
+			}
+
+			seen[label] = true
+
+			labels = append(labels, label)
+		}
+	}
+
+	if len(labels) == 0 {
+		return nil
+	}
+
+	expr := "set(" + strings.Join(labels, " ") + ")"
+
+	if _, stderr, err := util.Run(nil, "bazel", "query", expr); err != nil {
+		return fmt.Errorf("workflow target check failed: %w, %s", err, stderr.String())
+	}
+
+	return nil
 }
 
 func release() (err error) {
@@ -81,6 +138,12 @@ func release() (err error) {
 		if stdout, stderr, err := util.Run(nil, buildifierPath, "-mode=diff", "-r", dir); err != nil {
 			return fmt.Errorf("buildifier failed: %w, %s, %s", err, stdout.String(), stderr.String())
 		}
+	}
+
+	phase("(check) workflow targets")
+
+	if err := checkWorkflowTargets(root); err != nil {
+		return err
 	}
 
 	phase("(check) clean working tree")
