@@ -20,6 +20,11 @@ alias(
 )
 
 alias(
+    name = "releasebranch",
+    actual = "//tools/releasebranch:releasebranch",
+)
+
+alias(
     name = "golangci-lint",
     actual = "@multitool//tools/golangci-lint:workspace_root",
 )

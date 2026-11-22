@@ -56,13 +56,6 @@ func main() {
 	}
 }
 
-var phaseN uint32
-
-func phase(name string) {
-	fmt.Fprintf(os.Stderr, "%02d %s\n", phaseN, name)
-	phaseN += 1
-}
-
 //nolint:gocyclo
 func release() (err error) {
 	gazellePath, err := runfiles.Rlocation("com_github_teapotovh_teapot/tools/gazelle")
@@ -95,21 +88,21 @@ func release() (err error) {
 	}
 
 	newTag := fmt.Sprintf("v0.0.0-%s-%s", time.Now().UTC().Format("20060102150405"), headShort)
-	phase("(info) minting release: " + newTag)
+	util.Phase("(info) minting release: " + newTag)
 
-	phase("(check) bazel mod tidy")
+	util.Phase("(check) bazel mod tidy")
 
 	if stdout, stderr, err := util.Run(nil, "bazel", "mod", "tidy"); err != nil {
 		return fmt.Errorf("bazel mod tidy failed: %w, %s, %s", err, stdout.String(), stderr.String())
 	}
 
-	phase("(check) gazelle")
+	util.Phase("(check) gazelle")
 
 	if _, _, err := util.Run(nil, gazellePath, "-mode=diff"); err != nil {
 		return fmt.Errorf("gazelle check failed: %w", err)
 	}
 
-	phase("(check) buildifier")
+	util.Phase("(check) buildifier")
 
 	for _, dir := range directories {
 		if stdout, stderr, err := util.Run(nil, buildifierPath, "-mode=diff", "-r", dir); err != nil {
@@ -117,14 +110,14 @@ func release() (err error) {
 		}
 	}
 
-	phase("(check) golangci-lint")
+	util.Phase("(check) golangci-lint")
 
 	if stdout, _, err := util.Run(nil, golangciLintPath, "run"); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", stdout.String())
 		return fmt.Errorf("golangci-lint failed: %w", err)
 	}
 
-	phase("(check) clean working tree")
+	util.Phase("(check) clean working tree")
 
 	out, err := util.GitRun(nil, "status", "--porcelain")
 	if err != nil {
@@ -136,7 +129,7 @@ func release() (err error) {
 		return ErrWorkingTreeNotClean
 	}
 
-	phase("(release) planning")
+	util.Phase("(release) planning")
 
 	headSHA, err := util.GitRun(nil, "rev-parse", "HEAD")
 	if err != nil {
@@ -166,14 +159,14 @@ func release() (err error) {
 	fmt.Printf("\tcommits:      %d\n", len(subjects))
 	fmt.Println()
 
-	phase("(release) overview")
+	util.Phase("(release) overview")
 	fmt.Println()
 
 	for line := range strings.SplitSeq(message, "\n") {
 		fmt.Fprintln(os.Stderr, "\t"+line)
 	}
 
-	phase("(release) tagging")
+	util.Phase("(release) tagging")
 
 	if *dryRun {
 		return ErrDryRun
@@ -183,11 +176,23 @@ func release() (err error) {
 		return fmt.Errorf("creating tag: %w", err)
 	}
 
-	phase("(release) tagged, please run")
+	repo, err := util.Repository()
+	if err != nil {
+		return err
+	}
 
-	_, err = fmt.Fprintln(os.Stderr, "git push origin "+newTag)
+	util.Phase("(release) tagged, please run")
 
-	return err
+	fmt.Fprintln(os.Stderr, "git push origin "+newTag)
+
+	releaseBranch := "release/" + newTag
+	// kustomize separates the repository URL and the subdirectory with "//".
+	base := "https://" + repo + "//" + releaseBranch
+
+	fmt.Fprintln(os.Stderr, "once CI has created "+releaseBranch+", deploy with")
+	fmt.Fprintln(os.Stderr, "kubectl apply -k "+base+"/deploy/release?ref="+newTag)
+
+	return nil
 }
 
 // lastRelease finds the most recent tag matching tagPattern. Because the

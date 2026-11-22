@@ -13,3 +13,11 @@ genrule(
     cmd = "cat $(location :version_file) > $@ && echo 'latest' >> $@",
     visibility = ["//visibility:public"],
 )
+
+genrule(
+    name = "repository_file",
+    outs = ["repository.txt"],
+    cmd_bash = "grep -Po '^STABLE_TEAPOT_REPOSITORY\\s+\\K.*' bazel-out/stable-status.txt > $@ || true",
+    stamp = True,
+    visibility = ["//visibility:public"],
+)

@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +15,14 @@ import (
 var (
 	root    string
 	verbose bool
+	phaseN  uint32
 )
+
+const repositoryRunfile = "com_github_teapotovh_teapot/bazel/repository.txt"
+
+// ErrNoRepository reports that git remote origin is missing, so the
+// normalized repository origin cannot be determined.
+var ErrNoRepository = errors.New("could not determine repository origin, set git remote origin")
 
 // WorkspaceRoot returns the real checkout directory. When launched via
 // `bazel run`, Bazel sets BUILD_WORKSPACE_DIRECTORY to it; the binary
@@ -58,6 +66,42 @@ func Run(stdin io.Reader, command string, args ...string) (*bytes.Buffer, *bytes
 	}
 
 	return &stdout, &stderr, cmd.Run()
+}
+
+// RunfileString returns the trimmed content of a runfiles data file.
+func RunfileString(rel string) (string, error) {
+	path, err := runfiles.Rlocation(rel)
+	if err != nil {
+		return "", fmt.Errorf("could not locate runfile %s: %w", rel, err)
+	}
+
+	data, err := os.ReadFile(path) //nolint:gosec
+	if err != nil {
+		return "", fmt.Errorf("could not read runfile %s: %w", rel, err)
+	}
+
+	return strings.TrimSpace(string(data)), nil
+}
+
+// Repository returns the normalized origin, for example
+// github.com/teapotovh/teapot, stamped by bazel/status.sh.
+func Repository() (string, error) {
+	repo, err := RunfileString(repositoryRunfile)
+	if err != nil {
+		return "", err
+	}
+
+	if repo == "" {
+		return "", ErrNoRepository
+	}
+
+	return repo, nil
+}
+
+// Phase prints a numbered progress line to stderr.
+func Phase(name string) {
+	fmt.Fprintf(os.Stderr, "%02d %s\n", phaseN, name)
+	phaseN += 1
 }
 
 // GitRun executes git with args and returns trimmed stdout. On failure the

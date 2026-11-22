@@ -32,3 +32,20 @@ jobs:
           for target in $targets; do
             bazel run "$target"
           done
+
+  release-branch:
+    name: Release Branch
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Create release branch
+        run: bazel run //tools/releasebranch:branch
