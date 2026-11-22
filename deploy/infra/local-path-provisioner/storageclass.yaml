@@ -4,4 +4,4 @@ metadata:
   name: storageclass
 provisioner: rancher.io/local-path
 volumeBindingMode: WaitForFirstConsumer
-reclaimPolicy: Delete
+reclaimPolicy: Retain
