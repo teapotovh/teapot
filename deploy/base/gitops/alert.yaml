@@ -2,7 +2,6 @@ apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
 metadata:
   name: on-reconcile
-  namespace: flux-system
 spec:
   providerRef:
     name: github
