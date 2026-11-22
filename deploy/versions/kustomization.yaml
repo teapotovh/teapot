@@ -1,25 +1,25 @@
 apiVersion: kustomize.config.k8s.io/v1alpha1
-kind: Component
 images:
 - name: ghcr.io/teapotovh/alertd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/bottind
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/calendard
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/ccmd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/desecd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/embedd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/filesd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/kontakted
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/loadbalancerd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/logd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
 - name: ghcr.io/teapotovh/netd
-  newTag: latest
+  newTag: v0.0.0-20261122162008-44e331b7a252
+kind: Component
