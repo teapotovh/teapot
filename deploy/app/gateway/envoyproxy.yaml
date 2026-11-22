@@ -28,9 +28,11 @@ spec:
             spec:
               internalTrafficPolicy: Local
               ports:
-              - nodePort: 30080
+              - name: http
+                nodePort: 30080
                 port: 80
                 protocol: TCP
-              - nodePort: 30443
+              - name: https
+                nodePort: 30443
                 port: 443
                 protocol: TCP
