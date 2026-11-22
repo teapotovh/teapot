@@ -1,0 +1,7 @@
+- op: add
+  path: /spec/images
+  value:
+{{- range .Images }}
+    - name: {{ . }}
+      newTag: {{ $.Tag }}
+{{- end }}

@@ -14,6 +14,7 @@ go_library(
 go_binary(
     name = "release",
     data = [
+        "//bazel:repository_file",
         "//tools:gazelle",
         "@multitool//tools/buildifier",
         "@multitool//tools/golangci-lint",
