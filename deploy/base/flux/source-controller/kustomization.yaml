@@ -1,0 +1,12 @@
+namePrefix: source-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: source-controller
+
+resources:
+- https://github.com/fluxcd/source-controller/releases/download/v1.7.4/source-controller.crds.yaml
+- serviceaccount.yaml
+- deployment.yaml
+- service.yaml

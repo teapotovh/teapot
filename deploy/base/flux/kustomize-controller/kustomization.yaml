@@ -1,0 +1,11 @@
+namePrefix: kustomize-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: kustomize-controller
+
+resources:
+- https://github.com/fluxcd/kustomize-controller/releases/download/v1.7.3/kustomize-controller.crds.yaml
+- serviceaccount.yaml
+- deployment.yaml

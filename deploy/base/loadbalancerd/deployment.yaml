@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deplyoment
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      # annotations:
+      #   prometheus.io/scrape: "true"
+      #   prometheus.io/port: "8146"
+    spec:
+      serviceAccountName: serviceaccount
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: loadbalancerd
+          image: ghcr.io/teapotovh/loadbalancerd:latest
+          ports:
+            - name: observability
+              protocol: TCP
+              containerPort: 8146
+          args:
+            - --log-format=json
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          # livenessProbe:
+          #   failureThreshold: 2
+          #   httpGet:
+          #     path: /livez
+          #     port: observability
+          #   initialDelaySeconds: 10
+          #   periodSeconds: 30
+          #   successThreshold: 1
+          #   timeoutSeconds: 5
+          # startupProbe:
+          #   failureThreshold: 6
+          #   httpGet:
+          #     path: /readyz
+          #     port: observability
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+          #   successThreshold: 1
+          #   timeoutSeconds: 5

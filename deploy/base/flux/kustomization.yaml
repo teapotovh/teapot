@@ -1,0 +1,19 @@
+namespace: flux-system
+namePrefix: flux-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: flux
+    app.kubernetes.io/instance: flux
+    app.kubernetes.io/name: flux
+    app.kubernetes.io/part-of: flux
+
+resources:
+- namespace.yaml
+
+- source-controller
+- kustomize-controller
+- notification-controller
+- policies
+- rbac
