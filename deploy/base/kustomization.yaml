@@ -6,7 +6,6 @@ resources:
 - namespace.yaml
 - ccmd
 - netd
-- loadbalancerd
 
 components:
 - ../versions

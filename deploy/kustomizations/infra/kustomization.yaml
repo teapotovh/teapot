@@ -14,3 +14,4 @@ resources:
 - cloudnative-pg.yaml
 - garage.yaml
 - fluent-bit.yaml
+- loadbalancerd.yaml
