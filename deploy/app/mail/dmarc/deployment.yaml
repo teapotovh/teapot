@@ -9,16 +9,17 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels: {}
-            topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels: {}
       containers:
         - name: opendmarc
           image: mirror.gcr.io/instrumentisto/opendmarc:1.4-alpine

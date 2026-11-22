@@ -15,12 +15,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "3903"
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels: {}
-            topologyKey: kubernetes.io/hostname
       serviceAccountName: serviceaccount
       securityContext:
         fsGroup: 1000
@@ -31,10 +25,9 @@ spec:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
         labelSelector:
-          matchLabels:
-            app: garage
-            app.kubernetes.io/instance: garage01
+          matchLabels: {}
       initContainers:
         # Copies garage.toml from configmap to temporary etc volume and 
         # replaces RPC secret placeholder

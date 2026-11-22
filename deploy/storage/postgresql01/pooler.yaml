@@ -14,13 +14,14 @@ spec:
       default_pool_size: "10"
   template:
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                cnpg.io/poolerName: postgresql01-pooler
-            topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels:
+            cnpg.io/poolerName: postgresql01-pooler
       containers:
       - name: pgbouncer
         resources:

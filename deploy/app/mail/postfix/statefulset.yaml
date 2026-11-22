@@ -7,10 +7,9 @@ metadata:
 spec:
   # TODO: raise back to 2
   replicas: 1
-  strategy:
+  updateStrategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 0
       maxUnavailable: 1
   template:
     metadata:
@@ -19,12 +18,14 @@ spec:
         prometheus.io/port: "9154"
     spec:
       terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels: {}
       affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels: {}
-            topologyKey: kubernetes.io/hostname
 
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
