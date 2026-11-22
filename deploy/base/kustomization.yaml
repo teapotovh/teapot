@@ -1,0 +1,9 @@
+labels:
+- pairs:
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- namespace.yaml
+- ccmd
+- netd
+- loadbalancerd

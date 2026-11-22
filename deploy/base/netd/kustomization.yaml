@@ -1,0 +1,15 @@
+namespace: teapot-system
+namePrefix: teapot-netd-
+ 
+labels:
+- includeSelectors: true
+  pairs:
+    app: teapot-netd
+    app.kubernetes.io/instance: teapot-netd
+    app.kubernetes.io/name: teapot-netd
+    app.kubernetes.io/part-of: teapot-netd
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- daemonset.yaml

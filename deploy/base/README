@@ -1,16 +1,18 @@
 This folder holds the parts that must exist before Flux can work. Flux does
-not manage them. You deploy changes here by hand. On main, the image tags
-here are dummy values. A release branch has the real tags.
+not manage them. You deploy them by hand.
 
-Deploy the parts together:
+- ccmd, netd, loadbalancerd: deployed together from this folder.
+- flux: the Flux controllers.
 
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/release/base?ref=<tag>
+On main, the images built in this repo use the latest tag. A release branch
+has the real tags.
+
+Deploy ccmd, netd and loadbalancerd together, from a release branch:
+
+kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/release?ref=<tag>
 
 New cluster? Run in this order:
 
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/release/flux?ref=<tag>
-kubectl apply -k bootstrap
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/release/kustomizations?ref=<tag>
-
-Fill in the secret files before you apply. tools/release prints these
-commands after you push a tag.
+kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/release?ref=<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/flux?ref=<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/release?ref=<tag>

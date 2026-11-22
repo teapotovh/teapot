@@ -1,0 +1,15 @@
+namespace: teapot-system
+namePrefix: teapot-loadbalancerd-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: teapot-loadbalancerd
+    app.kubernetes.io/name: teapot-loadbalancerd
+    app.kubernetes.io/part-of: teapot-loadbalancerd
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- deployment.yaml

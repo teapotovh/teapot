@@ -1,0 +1,12 @@
+namePrefix: notification-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: notification-controller
+
+resources:
+- https://github.com/fluxcd/notification-controller/releases/download/v1.7.5/notification-controller.crds.yaml
+- serviceaccount.yaml
+- deployment.yaml
+- service.yaml

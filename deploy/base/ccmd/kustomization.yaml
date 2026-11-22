@@ -1,0 +1,15 @@
+namespace: teapot-system
+namePrefix: teapot-ccmd-
+ 
+labels:
+- includeSelectors: true
+  pairs:
+    app: teapot-ccmd
+    app.kubernetes.io/instance: teapot-ccmd
+    app.kubernetes.io/name: teapot-ccmd
+    app.kubernetes.io/part-of: teapot-ccmd
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- daemonset.yaml
