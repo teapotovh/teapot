@@ -12,11 +12,11 @@ has the real tags.
 
 Deploy ccmd, netd and loadbalancerd together, from a release branch:
 
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/release?ref=<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/release?ref=release/<tag>
 
 New cluster? Run in this order:
 
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/release?ref=<tag>
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/flux?ref=<tag>
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/base/git?ref=<tag>
-kubectl apply -k https://github.com/teapotovh/teapot//release/<tag>/deploy/release?ref=<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/release?ref=release/<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/flux?ref=release/<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/base/git?ref=release/<tag>
+kubectl apply -k https://github.com/teapotovh/teapot//deploy/release?ref=release/<tag>
