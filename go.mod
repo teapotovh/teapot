@@ -60,6 +60,8 @@ require (
 	maragu.dev/gomponents-htmx v0.6.1
 	sigs.k8s.io/controller-runtime v0.25.2
 	sigs.k8s.io/external-dns v0.24.0
+	sigs.k8s.io/kustomize/api v0.20.1
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
@@ -77,6 +79,7 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.3 // indirect
+	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
@@ -168,7 +171,7 @@ require (
 	mvdan.cc/gofumpt v0.10.0 // indirect
 	mvdan.cc/xurls/v2 v2.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.20.1 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
-	sigs.k8s.io/yaml v1.6.0 // indirect
 )

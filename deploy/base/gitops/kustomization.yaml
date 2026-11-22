@@ -1,4 +1,5 @@
 resources:
+- namespace.yaml
+- kustomizations.yaml
 - alert.yaml
 - provider.yaml
-- secret.yaml

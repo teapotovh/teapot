@@ -28,6 +28,8 @@ var (
 	verbose = flag.Bool("verbose", false, "print all executed commands")
 )
 
+const gitRepositoryFile = "deploy/release.yaml"
+
 var (
 	directories = []string{
 		"cmd", "lib", "service",
@@ -200,12 +202,11 @@ func printCommands(repo, releaseTag string) {
 	fmt.Fprintln(os.Stderr, "git push origin "+releaseTag)
 
 	releaseBranch := "release/" + releaseTag
-	// kustomize separates the repository URL and the subdirectory with "//",
-	// and the branch goes in the ref parameter.
-	url := "https://" + repo + "//deploy/release?ref=" + releaseBranch
+	path := strings.TrimPrefix(repo, "github.com/")
+	url := "https://raw.githubusercontent.com/" + path + "/" + releaseBranch + "/" + gitRepositoryFile
 
 	fmt.Fprintln(os.Stderr, "once CI has created "+releaseBranch+", deploy with")
-	fmt.Fprintln(os.Stderr, "kubectl apply -k \""+url+"\"")
+	fmt.Fprintln(os.Stderr, "kubectl apply -f \""+url+"\"")
 }
 
 // lastRelease finds the most recent tag matching tagPattern. Because the

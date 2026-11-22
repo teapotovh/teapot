@@ -3,15 +3,14 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "releasebranch_lib",
     srcs = ["branch.go"],
-    embedsrcs = [
-        "base.kustomization.yaml",
-        "gitrepository.yaml",
-        "images.patch.yaml",
-        "release.kustomization.yaml",
-    ],
+    embedsrcs = ["gitrepository.yaml"],
     importpath = "github.com/teapotovh/teapot/tools/releasebranch",
     visibility = ["//visibility:private"],
-    deps = ["//tools/util"],
+    deps = [
+        "//tools/util",
+        "@io_k8s_sigs_kustomize_api//types",
+        "@io_k8s_sigs_yaml//:yaml",
+    ],
 )
 
 go_binary(
@@ -23,9 +22,10 @@ go_binary(
 
 go_test(
     name = "releasebranch_test",
-    srcs = [
-        "branch_test.go",
-        "templates_test.go",
-    ],
+    srcs = ["branch_test.go"],
     embed = [":releasebranch_lib"],
+    deps = [
+        "@io_k8s_sigs_kustomize_api//types",
+        "@io_k8s_sigs_yaml//:yaml",
+    ],
 )

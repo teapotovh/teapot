@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+images:
+- name: ghcr.io/teapotovh/alertd
+  newTag: latest
+- name: ghcr.io/teapotovh/bottind
+  newTag: latest
+- name: ghcr.io/teapotovh/calendard
+  newTag: latest
+- name: ghcr.io/teapotovh/ccmd
+  newTag: latest
+- name: ghcr.io/teapotovh/desecd
+  newTag: latest
+- name: ghcr.io/teapotovh/embedd
+  newTag: latest
+- name: ghcr.io/teapotovh/filesd
+  newTag: latest
+- name: ghcr.io/teapotovh/kontakted
+  newTag: latest
+- name: ghcr.io/teapotovh/loadbalancerd
+  newTag: latest
+- name: ghcr.io/teapotovh/logd
+  newTag: latest
+- name: ghcr.io/teapotovh/netd
+  newTag: latest
