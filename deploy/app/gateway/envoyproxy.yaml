@@ -1,0 +1,36 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: app-proxy
+spec:
+  telemetry:
+    tracing:
+      samplingFraction:
+        numerator: 1
+        denominator: 100
+      provider:
+        type: OpenTelemetry
+        backendRefs:
+          - name: opentelemetry-collector-server
+            namespace: storage
+            port: 4317
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDaemonSet:
+        container:
+          image: mirror.gcr.io/envoyproxy/envoy:distroless-v1.38.0
+      envoyService:
+        type: LoadBalancer
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              internalTrafficPolicy: Local
+              ports:
+              - nodePort: 30080
+                port: 80
+                protocol: TCP
+              - nodePort: 30443
+                port: 443
+                protocol: TCP

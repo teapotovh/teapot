@@ -1,0 +1,15 @@
+namespace: app
+namePrefix: sendmail-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: sendmail
+    app.kubernetes.io/name: sendmail
+    app.kubernetes.io/part-of: sendmail
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- dkim
+- postfix
+- dnsendpoint.yaml

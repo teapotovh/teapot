@@ -1,0 +1,11 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app: sealed-secrets
+    app.kubernetes.io/instance: sealed-secrets
+    app.kubernetes.io/name: sealed-secrets
+    app.kubernetes.io/part-of: sealed-secrets
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- https://github.com/bitnami-labs/sealed-secrets/raw/refs/tags/v0.34.0/helm/sealed-secrets/crds/bitnami.com_sealedsecrets.yaml

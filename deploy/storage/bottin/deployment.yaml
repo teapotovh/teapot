@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8146"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels: {}
+            topologyKey: kubernetes.io/hostname
+      containers:
+        - name: bottin
+          image: ghcr.io/teapotovh/bottind:latest
+          ports:
+            - name: ldap
+              protocol: TCP
+              containerPort: 389
+            - name: observability
+              protocol: TCP
+              containerPort: 8146
+          args:
+            - --log-format=json
+            - --observability-tracing-endpoint=opentelemetry-collector-server.storage:4317
+            - --ldapsrv-port=389
+            - --bottin-passwd=$(ROOT_PASSWORD)
+            - --bottin-store-type=psql
+            - --bottin-store-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/bottin
+            - "--bottin-acl=ANONYMOUS::bind:*,ou=users,dc=teapot,dc=ovh:"
+            - "--bottin-acl=dc=teapot,dc=ovh::bind:*,ou=users,dc=teapot,dc=ovh:"
+            - "--bottin-acl=ANONYMOUS::bind:dc=teapot,dc=ovh:"
+            - "--bottin-acl=ANONYMOUS::read:dc=teapot,dc=ovh:"
+            - "--bottin-acl=*,dc=teapot,dc=ovh::read:*:* !userpassword"
+            - "--bottin-acl=*::read modify:SELF:*"
+            - "--bottin-acl=dc=teapot,dc=ovh::read add modify delete:*:*"
+            - "--bottin-acl=*:cn=admin,ou=groups,dc=teapot,dc=ovh:read add modify delete:*:*"
+            - "--bottin-acl=*::read::*"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bottin-admin
+                  key: password
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql01-user-bottin
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql01-user-bottin
+                  key: password
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /livez
+              port: observability
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 5
+          startupProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /readyz
+              port: observability
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5

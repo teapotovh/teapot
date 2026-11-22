@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-db
+spec:
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: mirror.gcr.io/postgres:alpine
+        env:
+          - name: PGUSER
+            valueFrom:
+              secretKeyRef:
+                name: postgresql01-user-mail
+                key: username
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgresql01-user-mail
+                key: password
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          TABLE_EXISTS=$(psql -h postgresql01-pooler.storage -d spamassassin -tAc "SELECT 1 FROM pg_tables WHERE tablename = 'bayes_vars';")
+
+          if [ "$TABLE_EXISTS" = "1" ]; then
+            echo "Database already initialized. Skipping."
+          else
+            echo "Fetching schemas from GitHub..."
+            wget https://raw.githubusercontent.com/apache/spamassassin/spamassassin_release_4_0_2/sql/bayes_pg.sql -O /tmp/bayes.sql
+            wget https://raw.githubusercontent.com/apache/spamassassin/spamassassin_release_4_0_2/sql/awl_pg.sql -O /tmp/awl.sql
+
+            echo "Applying Bayes schema..."
+            psql -h postgresql01-pooler.storage -d spamassassin -f /tmp/bayes.sql
+            
+            echo "Applying AWL schema..."
+            psql -h postgresql01-pooler.storage -d spamassassin -f /tmp/awl.sql
+            
+            echo "Database initialization complete."
+          fi
+      restartPolicy: OnFailure
+  backoffLimit: 4

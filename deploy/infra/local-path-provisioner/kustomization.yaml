@@ -1,0 +1,18 @@
+namespace: kube-system
+namePrefix: local-path-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: local-path-provisioner
+    app.kubernetes.io/instance: local-path-provisioner
+    app.kubernetes.io/name: local-path-provisioner
+    app.kubernetes.io/part-of: local-path-provisioner
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- configmap.yaml
+- deployment.yaml
+- storageclass.yaml

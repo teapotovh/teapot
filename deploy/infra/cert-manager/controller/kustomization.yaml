@@ -1,0 +1,8 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: controller
+
+resources:
+- deployment.yaml
+- poddisruptionbudget.yaml

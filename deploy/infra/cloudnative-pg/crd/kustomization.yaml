@@ -1,0 +1,19 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app: cnpg
+    app.kubernetes.io/instance: cloudnative-pg
+    app.kubernetes.io/name: cloudnative-pg
+    app.kubernetes.io/part-of: cloudnative-pg
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_clusters.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_backups.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_scheduledbackups.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_poolers.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_imagecatalogs.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_clusterimagecatalogs.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_databases.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_publications.yaml
+- https://github.com/cloudnative-pg/cloudnative-pg/raw/refs/tags/v1.26.0/config/crd/bases/postgresql.cnpg.io_subscriptions.yaml

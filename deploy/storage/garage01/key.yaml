@@ -1,0 +1,35 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: key-stalwart
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    id: AgBOsLMW+p03RozOuDKNQYkia89s650wOv2Krslh8h9hYv1KQv6b133MRQjoWhZvZoKpjrBcNyHx4w0QTyDMWxaFzcwzySg496jXTMTEoRsMKXo7vlvwbxM1eCssTdDmYnmXem+2WHrV0RucrJ6UmMaQEbp2Yv9/kTC4noXM+uABmEBJHpEuzR+1Uy0ofwwbIv9+5GZdMkiUwJwqtxrMTUdEq3KYhpUQhtNOzwNs+R21ud0kKTnOKoVCkcQZXTBdq5lHpKkGxJvUFyAFAW+aqQOQ6VGR767gysl70ZpTs4SzR70/L56leR01GSriSMSM5Xl4SZfhX/rGhl0/sgKzvnCq9P/xy9nc9Bal6Pk3a2Z7xoOF8Kno9v/JGRUQ40V+HVriG2Zl6tJmErtBdGrfEEcGST5bL4lJEuydUtUU5PGOPHxSWS76ElDzNSdlJkr+hA20Muo2spnx7nAnyEqV3JVi992TrG2PJpGIH3qIAVh/RJhGHCJ+d1Rb/7WFxapPjcy5OZL2qd0rmccjRtPlLpjcIHFO9gi5Zu6c0t4o4R6A7H1H3uTXcI3lZyLo/MaKdXt4+nqU703Kafkpo6EDJAzzvxAT09kORCvLoBDndZzxDpchhsGnTnJ/oNa/X7NHEmKpW4uS720kB2PObVf6h5xMui7ur8VyCzfeWjZPCejYVzGPqDtWTw9Bk43YZ9R75uQPK7J1CnkayDxmPd5AedP4egnZX2EClIndoQ==
+    key: AgCOscQRIfFExDNMPzq/rlNoyHyNVBTypWeCFDxuPSO6TGnv7Ewmnd5tDJJDZaf2Sb20J76LsOj9ENYMMz28ZwcHGqmwTgUsq1EvUz0fn/Tmol4IT0g/pkXtnzBlAa4BU0TK4VAbLTS2/aHpzQ3scHv4rdkOEgTAZz31Qq031Y/v58voJ+7hQ/u39v8oLpx3NSvLV7swEyMPMveAqHlQsWEhj4WXs6j4z6n9Gl/S6oC3rGjIbJ3NvcE2SWAKnus2bRNlCNU0s+3EVVPbgjywnmbXzSfS6W5v7TFQcX/oWUZoDchbtLbpnImncZlYi1WW55SNA6plv4mRDKwm/r3ZBr1vUEhyGv+2fj22Ve+ztcrS72j55RT4KN/pUa7Fs7e6fL37zsJjFbtHbKq3n7KBuM/tqPy8ggor3L0wZOgHG9yf4pF/aZYFQjrPG+IntZuiUgiJku9UaCNIvnbv6ZaqgSX3H4KDeqybQxMdflS3zPCImOM9vYiVlKDQmijc/ryhl0LPFIiLugKXl0igxUKvoxtwJzZojDAw+5onorS1JQc4NB7PRD58ehmjSPiN7uK9cEcp2wywkFih0fP20gdcJUd9U1H8j/udOLhOQRQlUNk1GFt2FewklWRf407KxzzbKgZIZt8pwJHVd8u5qsUq3ABdhMS/u2fbUkEsi5KEIL40CDFNxWxdAWx4dZ/eGPzG7OUPtBtv+YO7bxeRDu2e6DZyzr//sTAWXbw8KkTNrH0Fe4XNwmAYiH9EvObYMuDi9FZTe7Qkct0QIw7sWuSmNvaB
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: key-calendar
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    id: AgAX6bc+kKxDPUrdkTnkPafYB328gLrIF3E007O8g9X16++a6Dxs/15+cYfEfpiHiNCZYf4IxFNKN1M9dEiuknu7+XnRLx7wacPuHWwd2MRX45tDd+EmxeeOLvHvnh+0mhbCROuK4tn6mPZr0luVADOFkvvnhi1UxZEzklKZxoYb/2ti/3dt6TfxhvMmXzHQEsG7QU0LL3UkKTSGMWWZdIyS1F6ulbS4caCcplYVvNJFtzEhArWhP4K2sYrWUpkaCoLGn4Roh4ubsgacmmITg5cPoJCz2rzM9IfLnUfAjkwx4u8wu1/lTRLBtajlBg0kmMvS/xXkL+t4oqp1NDBUqJAvHBfvSpG0A7J8pQ3t8ER/tIFJFdfVez0SRCTH8BGKzCJLQ+YDpkJ2cFNUMw/AUo0tqoj+kZ0o6QvpAreHYiqj77Sj2oBA2/dofWjfu5+mfuFAj8uCZnNcivhYXHPg5DTyOTMU9FyUVKyg7H9l+PvzIA4jSgVvvUXAowavcp+Nepd9XsiibhC+auAjGgialBZejaHgqHkYMa6c8PmWB/FpCewwiyXFSzvpKLd38frnuRwx0FV0zMHiMqJ3lGDIAWcQbawir9RxPyxiLHY1GgNsRtSIExtHNxayUG8cgmG6VyLxv6A3kifgchOcBkq8JdaAYucUL+0NK9JdDJf7izggkz0tZ1Lws8lsqeJNJ1iHM7GEIYGyA6k317n5QcPrBPQz2CQNYQes6Fprbw==
+    key: AgB5uUY398XmBgSmBk0dBH6Eyc4Hx9eBUNKB5e0bvHc3OCKDyE0HKYlVArAJtn7wHoIvz7mmnwlvbV2yMyAxGEF0qW9ktDm6t52xBXclGefIjF1v9TUB6CaxdImuiRGDVLeUb4u3d7MrCca2KmzoI0mXWkqnIqvo4fJ/cj5PEeR3qG+VlKKxcAFxQtKSpy+InxsuNpc6jQ0MtrI/1NpJglyUl5THU4UHLmHvLvarnZHIN7VPwr62vCWT/kjNPkE0wHqLfH8VAJ65+iIxCoPF4h/D954NnlDMvNRRvzq4f7opRsdtdcxxcGDK7JoUifEDU9EKB/tqSS0UiVn5ryBckqMLd4Tmu8EpGygVDF2lPcqACEsY2Xv31wwjBd0BJcEsacIETC8BlUnbnxRMkN50A1PqdoBOL0LJi2MAz2NUJ+5B3/juR7cFqQ6R4bbXQMFeNaaTwhsCOBbhOmXbdNXuNI2fkuF17802BtINwKXL3wYw8snDGF4WzUh1VSyrYssX5FW8nFdgG1Tgca8Hz5iO/88Plo3U3GM3xF3Rt2JJpAcphv5La93Sklid+sVJnUBcGYFFgGoN5LMoLafeJpmsDfnBfeGxYXsk74OE3tTQ+D9V16Q6eMhpN1oGHs1+3hAhi+Gk88nMBaBEMzGubNHWiMh+vBB1EOn+4eIJL/HyQrc0WnTB87NClsMX78t0n8CaNtZdGIuEe4TooKFKMhhDN1vlZTBLsUW1r9M3Kb2QtQNVOrwNtGK4R2VbqPH6qTcNq2W2ENbtD6JsRDkL/frvsvbY
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"

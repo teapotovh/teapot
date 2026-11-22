@@ -1,0 +1,17 @@
+namespace: dev-app
+namePrefix: grafana-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: grafana
+      app.kubernetes.io/name: grafana
+      app.kubernetes.io/part-of: grafana
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - persistentvolumeclaim.yaml
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+  - httproute.yaml

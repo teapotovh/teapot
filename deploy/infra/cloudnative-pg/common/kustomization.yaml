@@ -1,0 +1,5 @@
+resources:
+- configmap.yaml
+- mutatingwebhookconfiguration.yaml
+- namespace.yaml
+- validatingwebhookconfiguration.yaml

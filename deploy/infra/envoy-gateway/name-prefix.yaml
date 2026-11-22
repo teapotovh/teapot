@@ -1,0 +1,17 @@
+namePrefix:
+- path: metadata/name
+  kind: ServiceAccount
+- path: metadata/name
+  kind: ClusterRole
+- path: metadata/name
+  kind: ClusterRoleBinding
+- path: metadata/name
+  kind: Role
+- path: metadata/name
+  kind: RoleBinding
+- path: metadata/name
+  kind: ConfigMap
+- path: metadata/name
+  kind: Deployment
+- path: metadata/name
+  kind: MutatingWebhookConfiguration

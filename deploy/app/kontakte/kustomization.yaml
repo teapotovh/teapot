@@ -1,0 +1,16 @@
+namespace: app
+namePrefix: kontakte-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: kontakte
+      app.kubernetes.io/name: kontakte
+      app.kubernetes.io/part-of: kontakte
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+- deployment.yaml
+- service.yaml
+- secret.yaml
+- httproute.yaml

@@ -1,0 +1,16 @@
+namespace: kube-system
+namePrefix: reloader-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: reloader
+    app.kubernetes.io/instance: reloader
+    app.kubernetes.io/name: reloader
+    app.kubernetes.io/part-of: reloader
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- serviceaccount.yaml
+- rbac.yaml
+- deployment.yaml

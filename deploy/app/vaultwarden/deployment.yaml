@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  replicas: 3
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: {}
+                matchExpressions:
+                  - key: role
+                    operator: NotIn
+                    values: [cronjob]
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: vaultwarden
+          image: ghcr.io/dani-garcia/vaultwarden:1.37.1-alpine
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /.env
+              subPath: .env
+              readOnly: true
+            - name: rsa-key
+              mountPath: /rsa_key.pem
+              subPath: rsa_key.pem
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  namespace: storage
+                  name: postgresql01-user-vaultwarden
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  namespace: storage
+                  name: postgresql01-user-vaultwarden
+                  key: password
+            - name: DATABASE_URL
+              value: postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/vaultwarden
+            - name: PUSH_INSTALLATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-relay
+                  key: id
+            - name: PUSH_INSTALLATION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-relay
+                  key: key
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-admin
+                  key: token
+            - name: ROCKET_PORT
+              value: "8080"
+
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 100m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: config
+            items:
+              - key: .env
+                path: .env
+        - name: rsa-key
+          secret:
+            secretName: vaultwarden-rsa-key
+            defaultMode: 256
+        - name: tmp
+          emptyDir: {}

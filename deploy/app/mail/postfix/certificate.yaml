@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: certificate
+spec:
+  secretName: mail-postfix-certificate
+  dnsNames:
+    - smtp.teapot.ovh
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer

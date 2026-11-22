@@ -1,0 +1,17 @@
+namespace: storage
+namePrefix: loki-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: loki
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/part-of: loki
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- persistentvolumeclaim.yaml
+- service.yaml

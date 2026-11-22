@@ -1,0 +1,16 @@
+namespace: flux
+
+resources:
+- gateway-api.yaml
+- envoy-gateway.yaml
+- sealed-secrets.yaml
+- cert-manager.yaml
+- external-dns.yaml
+- local-path-provisioner.yaml
+- metrics-server.yaml
+- descheduler.yaml
+- reflector.yaml
+- reloader.yaml
+- cloudnative-pg.yaml
+- garage.yaml
+- fluent-bit.yaml

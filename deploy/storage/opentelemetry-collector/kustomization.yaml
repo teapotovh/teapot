@@ -1,0 +1,16 @@
+namespace: storage
+namePrefix: opentelemetry-collector-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: opentelemetry-collector
+    app.kubernetes.io/instance: opentelemetry-collector
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- service.yaml

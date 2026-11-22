@@ -1,0 +1,17 @@
+namespace: app
+namePrefix: dex-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: dex
+      app.kubernetes.io/name: dex
+      app.kubernetes.io/part-of: dex
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- secret.yaml
+- httproute.yaml

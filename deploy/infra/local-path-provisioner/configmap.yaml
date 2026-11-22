@@ -1,0 +1,49 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: config
+data:
+  config.json: |-
+    {
+        "nodePathMap":[
+            {
+                    "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+                    "paths":["/opt/local-path-provisioner"]
+            },
+            {
+                    "node":"kube02.prod.infra.teapot.ovh",
+                    "paths":["/mnt/disk01"]
+            },
+            {
+                    "node":"kube03.prod.infra.teapot.ovh",
+                    "paths":["/mnt/disk01"]
+            },
+            {
+                    "node":"kube04.prod.infra.teapot.ovh",
+                    "paths":["/mnt/disk01"]
+            }
+        ]
+    }
+  setup: |-
+    #!/bin/sh
+    set -eu
+    mkdir -m 0777 -p "$VOL_DIR"
+  teardown: |-
+    #!/bin/sh
+    set -eu
+    rm -rf "$VOL_DIR"
+  helperPod.yaml: |-
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: helper-pod
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: node.kubernetes.io/disk-pressure
+          operator: Exists
+          effect: NoSchedule
+      containers:
+      - name: helper-pod
+        image: mirror.gcr.io/busybox
+        imagePullPolicy: IfNotPresent

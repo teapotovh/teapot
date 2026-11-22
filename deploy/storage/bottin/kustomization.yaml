@@ -1,0 +1,16 @@
+namespace: storage
+namePrefix: bottin-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: bottin
+    app.kubernetes.io/name: bottin
+    app.kubernetes.io/part-of: bottin
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- database.yaml
+- secret.yaml
+- deployment.yaml
+- service.yaml

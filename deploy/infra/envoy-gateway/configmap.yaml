@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  envoy-gateway.yaml: |
+    apiVersion: gateway.envoyproxy.io/v1alpha1
+    kind: EnvoyGateway
+    extensionApis: {}
+    gateway:
+      controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    logging:
+      level:
+        default: info
+    xdsServer:
+      address: envoy-gateway-controller.envoy-gateway-system.svc.cluster.local
+    provider:
+      kubernetes:
+        rateLimitDeployment:
+          container:
+            image: mirror.gcr.io/envoyproxy/ratelimit:ff287602
+          patch:
+            type: StrategicMerge
+            value:
+              spec:
+                template:
+                  spec:
+                    containers:
+                    - imagePullPolicy: IfNotPresent
+                      name: envoy-ratelimit
+        shutdownManager:
+          image: mirror.gcr.io/envoyproxy/gateway:v1.8.0
+      type: Kubernetes

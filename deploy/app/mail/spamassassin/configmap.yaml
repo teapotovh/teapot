@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  local.cf.tmpl: |
+    use_bayes 1
+    bayes_auto_learn 1
+    bayes_store_module Mail::SpamAssassin::BayesStore::PgSQL
+    bayes_sql_dsn DBI:Pg:dbname=spamassassin;host=postgresql01-pooler.storage;port=5432
+    bayes_sql_username ${DB_USERNAME}
+    bayes_sql_password ${DB_PASSWORD}
+
+    # Group all bayes learnings in global metrics
+    bayes_sql_override_username global_user
+    
+    use_auto_welcomelist 1
+    auto_welcomelist_factory Mail::SpamAssassin::SQLBasedAddrList
+    user_awl_dsn DBI:Pg:dbname=spamassassin;host=postgresql01-pooler.storage;port=5432
+    user_awl_sql_username ${DB_USERNAME}
+    user_awl_sql_password ${DB_PASSWORD}
+    
+    # Network tests
+    use_razor2 1
+    use_pyzor 1
+    dns_available yes
+
+    # More verbose headers
+    add_header all Report _REPORT_
+    add_header all Status _YESNO_, score=_SCORE_ required=_REQD_ tests=_TESTS_
+    add_header all Level _STARS(*)_
+
+    dns_server 10.43.0.53
+    report_hostname smtp.teapot.ovh
+
+    trusted_networks smtp.teapot.ovh
+
+    # Don't flag empty messages, often the case with GPG-encrypted messages
+    score EMPTY_MESSAGE 0
+    # Don't flag messages with a lot of dots as badly (still flag them +1, due
+    # to Gmail policy with dots).
+    score AC_FROM_MANY_DOTS 1.0

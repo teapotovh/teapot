@@ -1,0 +1,11 @@
+namePrefix: unbound-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: unbound
+
+resources:
+- configmap.yaml
+- deployment.yaml
+- service.yaml

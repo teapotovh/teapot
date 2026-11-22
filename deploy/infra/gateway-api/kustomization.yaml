@@ -1,0 +1,14 @@
+namespace: kube-system
+namePrefix: gateway-api-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: gateway-api
+    app.kubernetes.io/instance: gateway-api
+    app.kubernetes.io/name: gateway-api
+    app.kubernetes.io/part-of: gateway-api
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml

@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  garage.toml: |-
+    metadata_dir = "/mnt/meta"
+    data_dir = "/mnt/data"
+
+    db_engine = "lmdb"
+
+    block_size = 1048576
+
+    replication_factor = 3
+    consistency_mode = "consistent"
+
+    compression_level = 1
+
+    rpc_bind_addr = "[::]:3901"
+    rpc_secret = "${RPC_SECRET}"
+
+    bootstrap_peers = []
+
+    [kubernetes_discovery]
+    namespace = "storage"
+    service_name = "garage01-garage"
+    skip_crd = true
+
+    [s3_api]
+    s3_region = "garage"
+    api_bind_addr = "[::]:3900"
+    root_domain = ".s3.garage01.teapot.local"
+
+    [s3_web]
+    bind_addr = "[::]:3902"
+    root_domain = ".web.garage01.teapot.local"
+    index = "index.html"
+
+    [admin]
+    api_bind_addr = "[::]:3903"
+    # trace_sink = "http://opentelemetry-collector-server.storage:4317"

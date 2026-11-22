@@ -1,0 +1,14 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: garage01
+spec:
+  interval: 1h
+  path: deploy/storage/garage01
+  prune: true
+  dependsOn:
+    - name: storage
+    - name: garage
+  sourceRef:
+    kind: GitRepository
+    name: teapot

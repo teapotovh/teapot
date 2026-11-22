@@ -1,0 +1,57 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: envoy-gateway-crd
+spec:
+  interval: 1h
+  path: deploy/infra/envoy-gateway/crd
+  prune: true
+  dependsOn:
+    - name: gateway-api
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: envoy-gateway
+spec:
+  interval: 1h
+  path: deploy/infra/envoy-gateway
+  prune: true
+  dependsOn:
+    - name: gateway-api
+    - name: envoy-gateway-crd
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: envoy-gateway-cert
+spec:
+  interval: 1h
+  path: deploy/infra/envoy-gateway/cert
+  prune: true
+  dependsOn:
+    - name: envoy-gateway
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: envoy-gateway-gateway
+spec:
+  interval: 1h
+  path: deploy/infra/envoy-gateway/gateway
+  prune: true
+  dependsOn:
+    - name: envoy-gateway
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+

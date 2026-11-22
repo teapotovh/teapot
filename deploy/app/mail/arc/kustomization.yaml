@@ -1,0 +1,12 @@
+namePrefix: arc-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: arc
+
+resources:
+- secret.yaml
+- configmap.yaml
+- deployment.yaml
+- service.yaml

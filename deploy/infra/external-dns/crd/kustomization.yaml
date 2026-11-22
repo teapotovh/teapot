@@ -1,0 +1,11 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app: external-dns
+    app.kubernetes.io/instance: external-dns
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: external-dns
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- https://github.com/kubernetes-sigs/external-dns/raw/refs/tags/v0.21.0/config/crd/standard/dnsendpoints.externaldns.k8s.io.yaml

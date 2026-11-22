@@ -1,0 +1,12 @@
+namePrefix: dkim-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: dkim
+
+resources:
+- secret.yaml
+- configmap.yaml
+- deployment.yaml
+- service.yaml

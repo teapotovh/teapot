@@ -1,0 +1,11 @@
+labels:
+- includeSelectors: true
+  pairs:
+    app: garage
+    app.kubernetes.io/instance: garage
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/part-of: garage
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- crd.yaml

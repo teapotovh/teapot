@@ -1,0 +1,56 @@
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: dnsendpoint
+spec:
+  endpoints:
+  # - dnsName: teapot.ovh
+  #   recordTTL: 300
+  #   recordType: MX
+  #   targets:
+  #   - "10 smtp.teapot.ovh."
+  - dnsName: smtp.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=spf1 a -all"
+  - dnsName: 30012026._domainkey.smtp.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtZlCwbnJYlWbVwCIjEidcJgVZYPESQzUKOlAqMyNoMGi/DrGDEN0iNJ4Pvxqhv8FNuY2uC9JDFw/32GXomNA0tS5TjXLZH1mJJrJ53DVSoGQvg1nSceLWaigzJm+ZKLhBQ59sGLZqJI0niZPV7Tojg5Y3MbXWh55L8NXGAN9gJu+WtIDrcJ4wS7pdgtEoWrd+Bt69VjSfTTXUwT+wdZwGPTuLoIaF9TxtEIzt4rnxOedpbQuqmU+zIoLA7Dl06tWC/1UrEom7vvIt/b6Lp28fxlIY+p2AqBp9fNWPbwHYP3cMJS1/BPnRn2ik71nmUFNWR0VWa3lSqYDs87zRHNZDQIDAQAB"
+  # - dnsName: teapot.ovh
+  #   recordTTL: 300
+  #   recordType: TXT
+  #   targets:
+  #   - "v=spf1 mx -all"
+  # - dnsName: _dmarc.teapot.ovh
+  #   recordTTL: 300
+  #   recordType: TXT
+  #   targets:
+  #   - "v=DMARC1; p=reject; rua=mailto:root@teapot.ovh; ruf=mailto:root@teapot.ovh; fo=1:d:s; adkim=r; aspf=r"
+  - dnsName: 21012026._domainkey.teapot.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxM/xYa97Axnt+kZCy/FHkdgdXH8IpC9754u5dGkd8OG7ZFTCXs45MbA5sAn/CUs6+mHI9FhAvZQdSuqNH3VhJ7R/qTvh8VVNaE9z6xzh9DYFjCe8QjKrCjJhASXjXqGVba8KH6W0HEMySnRKmjr/FY3Af4Q1YX/6dlaToRGXEayUS1NQeI3ep8wlrhl2cdYP31vHtMNP+FATtk+91u89tNDd8okGe/jaeyMHdp6iDB31sYNPY9nzgIp9QPBu3BCCtXMbYPuBepd1mbtJ1z0OY1rcb79UPyqvoGLOcXZJCXPW/6fsXw7lDE+r4VtL1VMynnpwRwX7Xhk1hDsQwZgUZwIDAQAB"
+  - dnsName: cappuccino.ovh
+    recordTTL: 300
+    recordType: MX
+    targets:
+    - "10 smtp.teapot.ovh."
+  - dnsName: cappuccino.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=spf1 mx -all"
+  - dnsName: _dmarc.cappuccino.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=DMARC1; p=reject; rua=mailto:root@teapot.ovh; ruf=mailto:root@teapot.ovh; fo=1:d:s; adkim=r; aspf=r"
+  - dnsName: 21012026._domainkey.cappuccino.ovh
+    recordTTL: 300
+    recordType: TXT
+    targets:
+    - "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArs/fXVriA/9Pn5OY9LhikqswiEZSDP/+t3tiVSDH9lnVr4riG7leDB54EUyfhbz0SkQSuN01l1xD5I5OASmv60IfPghwAiXZ+pky5lAKG/pFhXE5EjafnJhcNCNQ4tzg+s+hCq86dFS8H35Nz/ThVw51/GJeFyJotJA+ptBWthBgDAB13TkviDkgHTpcf8dlYQvD6nVr6AhocemH4xfrXZNP63LN23swq+fHB9cf2PeRT82Y/4Akc07iLiWz5KdY/jFzhmVtXtGUt3G9Wd7tC+HGvOpNGxIBBM29wNw19S/F6DCiKwmFra5HO5Xr/F8zSSX8cND3nDFWidOCBRsI+wIDAQAB"
