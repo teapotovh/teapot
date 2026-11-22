@@ -25,8 +25,11 @@ type FS struct {
 }
 
 // Stat implements FileSystem.
-func (f *FS) Stat(ctx context.Context, path string) (Inode, error) {
-	inode, err := f.resolve(ctx, path)
+func (f *FS) Stat(ctx context.Context, path string) (inode Inode, err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationStat, start, err) }()
+
+	inode, err = f.resolve(ctx, path)
 	if err != nil {
 		return Inode{}, err
 	}
@@ -35,7 +38,10 @@ func (f *FS) Stat(ctx context.Context, path string) (Inode, error) {
 }
 
 // List implements FileSystem.
-func (f *FS) List(ctx context.Context, path string, cursor *Cursor) (Page, error) {
+func (f *FS) List(ctx context.Context, path string, cursor *Cursor) (page Page, err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationList, start, err) }()
+
 	inode, err := f.resolve(ctx, path)
 	if err != nil {
 		return Page{}, err
@@ -50,14 +56,17 @@ func (f *FS) List(ctx context.Context, path string, cursor *Cursor) (Page, error
 		return Page{}, err
 	}
 
-	page := Page{Cursor: next, Inodes: make([]Inode, 0, len(inodes))}
+	page = Page{Cursor: next, Inodes: make([]Inode, 0, len(inodes))}
 	page.Inodes = append(page.Inodes, inodes...)
 
 	return page, nil
 }
 
 // Open implements FileSystem.
-func (f *FS) Open(ctx context.Context, path string) (File, error) {
+func (f *FS) Open(ctx context.Context, path string) (result File, err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationOpen, start, err) }()
+
 	inode, err := f.resolve(ctx, path)
 	if err != nil {
 		return nil, err
@@ -71,7 +80,10 @@ func (f *FS) Open(ctx context.Context, path string) (File, error) {
 		return &file{reader: bytes.NewReader(nil), inode: inode}, nil
 	}
 
+	blobStart := time.Now()
 	reader, err := f.store.blob.Get(ctx, inode.S3Key)
+	f.store.metrics.observeBlobOperation(metricsOperationGet, blobStart, err)
+
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +98,9 @@ func (f *FS) Revision() uint64 {
 
 // Put implements MutableFileSystem.
 func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationPut, start, err) }()
+
 	parent, name, err := splitPath(path)
 	if err != nil {
 		return err
@@ -124,7 +139,10 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 	key := fmt.Sprintf("%d/%s", f.uid, uuid.New().String())
 	counter := &countingReader{reader: r}
 
+	blobStart := time.Now()
 	hash, err := f.store.blob.Put(ctx, key, counter)
+	f.store.metrics.observeBlobOperation(metricsOperationPut, blobStart, err)
+
 	if err != nil {
 		return err
 	}
@@ -160,6 +178,9 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 
 // Mkdir implements MutableFileSystem.
 func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationMkdir, start, err) }()
+
 	parent, name, err := splitPath(path)
 	if err != nil {
 		return err
@@ -204,6 +225,9 @@ func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
 
 // Delete implements MutableFileSystem.
 func (f *FS) Delete(ctx context.Context, path string) (err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationDelete, start, err) }()
+
 	if _, _, err := splitPath(path); err != nil {
 		return err
 	}
@@ -236,6 +260,9 @@ func (f *FS) Delete(ctx context.Context, path string) (err error) {
 
 // Rename implements MutableFileSystem.
 func (f *FS) Rename(ctx context.Context, oldPath, newPath string) (err error) {
+	start := time.Now()
+	defer func() { f.store.metrics.observeOperation(metricsOperationRename, start, err) }()
+
 	if _, _, err := splitPath(oldPath); err != nil {
 		return err
 	}

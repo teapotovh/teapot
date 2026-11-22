@@ -87,6 +87,10 @@ func main() {
 		os.Exit(CodeFiles)
 	}
 
+	observability.RegisterMetrics(files)
+	observability.RegisterReadyz(files)
+	observability.RegisterLivez(files)
+
 	observability.RegisterMetrics(httpsrv)
 	observability.RegisterReadyz(httpsrv)
 	observability.RegisterLivez(httpsrv)

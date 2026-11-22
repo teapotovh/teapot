@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/teapotovh/teapot/lib/observability"
 	"github.com/teapotovh/teapot/lib/pgnotify"
 )
 
@@ -321,3 +322,18 @@ func scanInodes(rows pgx.Rows) ([]Inode, error) {
 
 // Ensure *PSQL implements DB.
 var _ DB = (*PSQL)(nil)
+
+// ReadinessChecks implements observability.ReadinessChecks.
+func (p *PSQL) ReadinessChecks() map[string]observability.Check {
+	return map[string]observability.Check{
+		"files/store/psql": observability.CheckFunc(p.ping),
+	}
+}
+
+func (p *PSQL) ping(ctx context.Context) error {
+	if err := p.pool.Ping(ctx); err != nil {
+		return fmt.Errorf("error while pinging PostgreSQL: %w", err)
+	}
+
+	return nil
+}
