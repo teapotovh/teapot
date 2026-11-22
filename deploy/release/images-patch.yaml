@@ -1,0 +1,25 @@
+- op: add
+  path: /spec/images
+  value:
+    - name: ghcr.io/teapotovh/alertd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/bottind
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/calendard
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/ccmd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/desecd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/embedd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/filesd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/kontakted
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/loadbalancerd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/logd
+      newTag: v0.0.0-20261122123029-c551b3049a8d
+    - name: ghcr.io/teapotovh/netd
+      newTag: v0.0.0-20261122123029-c551b3049a8d

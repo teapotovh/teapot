@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: teapot
+  namespace: flux
+spec:
+  interval: 1h
+  url: https://github.com/teapotovh/teapot
+  ref:
+    tag: v0.0.0-20261122123029-c551b3049a8d
