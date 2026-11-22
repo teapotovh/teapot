@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"io"
+
+	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
 var (
@@ -56,7 +58,7 @@ type File interface {
 }
 
 // Hash is the S3 entity tag of a blob.
-type Hash string
+type Hash = s3cache.Hash
 
 // Kind is the type of an inode.
 type Kind uint8

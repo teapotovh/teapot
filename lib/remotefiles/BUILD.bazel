@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "remotefiles",
+    srcs = [
+        "cache.go",
+        "file.go",
+        "files.go",
+        "flags.go",
+        "path.go",
+        "remotefiles.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/remotefiles",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/pagedbtree",
+        "//lib/run",
+        "//lib/s3cache",
+        "//proto/files:files_go_proto",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_test(
+    name = "remotefiles_test",
+    srcs = ["remotefiles_test.go"],
+    embed = [":remotefiles"],
+    deps = [
+        "//lib/run",
+        "//lib/s3cache",
+        "//proto/files:files_go_proto",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//metadata",
+    ],
+)

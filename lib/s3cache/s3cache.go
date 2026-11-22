@@ -1,7 +1,6 @@
 package s3cache
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"uuid"
 
 	"github.com/minio/minio-go/v7"
-	"golang.org/x/sync/singleflight"
 )
 
 var (
@@ -22,6 +20,19 @@ var (
 
 	DirFileMode = os.FileMode(0o0750)
 )
+
+// Blob stores and reads S3 objects.
+type Blob interface {
+	// Put stores the bytes read from r under key and returns their hash.
+	Put(ctx context.Context, key string, r io.Reader) (Hash, error)
+	// Get opens the object for key and returns its hash.
+	Get(ctx context.Context, key string, expected Hash) (io.ReadSeekCloser, Hash, error)
+	// Remove deletes key.
+	Remove(ctx context.Context, key string) error
+}
+
+// Ensure S3Cache implements Blob.
+var _ Blob = (*S3Cache)(nil)
 
 // S3CacheConfig is the config for a new S3Cache.
 type S3CacheConfig struct {
@@ -46,7 +57,6 @@ type S3Cache struct {
 	capacity int64
 
 	evictMu sync.Mutex
-	sfg     singleflight.Group
 }
 
 // NewS3Cache creates an S3Cache.
@@ -85,62 +95,88 @@ func NewS3Cache(config S3CacheConfig, client *minio.Client, logger *slog.Logger)
 }
 
 // Get returns the content for key along with its current Hash (ETag).
-// If a locally cached copy exists (whose hash matches the expected) it's
+// If a locally cached copy exists (whose hash matches the expected) it is
 // returned without fetching from S3.
-func (c *S3Cache) Get(ctx context.Context, key string, expected Hash) ([]byte, Hash, error) {
+func (c *S3Cache) Get(ctx context.Context, key string, expected Hash) (io.ReadSeekCloser, Hash, error) {
 	if !expected.IsZero() {
-		data, ok, err := c.readCached(key, expected)
+		file, ok, err := c.openCached(key, expected)
 		if err != nil {
 			return nil, ZeroHash, fmt.Errorf("error while reading (possibly) cached S3 key: %w", err)
 		}
 
 		if ok {
-			c.logger.DebugContext(ctx, "cache hit", "key", key, "hash", expected, "size", len(data))
-			return data, expected, nil
+			c.logger.DebugContext(ctx, "cache hit", "key", key, "hash", expected)
+
+			return file, expected, nil
 		}
 	}
 
-	type result struct {
-		data []byte
-		hash Hash
-	}
-
-	v, err, _ := c.sfg.Do(key, func() (any, error) {
-		data, hash, err := c.fetchAndStore(ctx, key)
-		if err != nil {
-			return nil, err
-		}
-
-		return result{data: data, hash: hash}, nil
-	})
-	if err != nil {
-		return nil, ZeroHash, fmt.Errorf("error while fetching key from remote S3: %w", err)
-	}
-
-	r := v.(result)
-
-	return r.data, r.hash, nil
+	return c.fetch(ctx, key)
 }
 
-// Put uploads data to S3 under key, then caches it locally with the resulting
-// ETag, returning that Hash for the caller to use.
-func (c *S3Cache) Put(ctx context.Context, key string, data []byte) (Hash, error) {
+func (c *S3Cache) Put(ctx context.Context, key string, r io.Reader) (Hash, error) {
+	file, err := os.CreateTemp(c.path, "upload-*")
+	if err != nil {
+		c.logger.WarnContext(ctx, "could not create temporary cache file", "key", key, "err", err)
+
+		info, putErr := c.client.PutObject(ctx, c.bucket, key, r, -1, minio.PutObjectOptions{})
+		if putErr != nil {
+			return ZeroHash, fmt.Errorf("error while putting object %q: %w", key, putErr)
+		}
+
+		return Hash(info.ETag), nil
+	}
+
+	path := file.Name()
+
 	info, err := c.client.PutObject(
 		ctx,
 		c.bucket,
 		key,
-		bytes.NewReader(data),
-		int64(len(data)),
+		io.TeeReader(r, file),
+		-1,
 		minio.PutObjectOptions{},
 	)
 	if err != nil {
-		return ZeroHash, fmt.Errorf("error while putting object %q: %w", key, err)
+		return ZeroHash, fmt.Errorf(
+			"error while putting object %q: %w",
+			key,
+			errors.Join(err, file.Close(), os.Remove(path)),
+		)
 	}
 
 	hash := Hash(info.ETag)
 
-	if err := c.store(ctx, key, data, hash); err != nil {
-		c.logger.WarnContext(ctx, "failed to persist S3 cache entry", "key", key, "err", err)
+	stat, err := file.Stat()
+	if err != nil {
+		c.logger.WarnContext(
+			ctx,
+			"failed to cache S3 object",
+			"key", key,
+			"err", errors.Join(err, file.Close(), os.Remove(path)),
+		)
+
+		return hash, nil
+	}
+
+	if err := file.Close(); err != nil {
+		c.logger.WarnContext(
+			ctx,
+			"failed to cache S3 object",
+			"key", key,
+			"err", errors.Join(err, os.Remove(path)),
+		)
+
+		return hash, nil
+	}
+
+	if err := c.adopt(ctx, key, path, stat.Size(), hash); err != nil {
+		c.logger.WarnContext(
+			ctx,
+			"failed to persist S3 cache entry",
+			"key", key,
+			"err", errors.Join(err, os.Remove(path)),
+		)
 	}
 
 	return hash, nil
@@ -168,84 +204,92 @@ func (c *S3Cache) Remove(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *S3Cache) cap() int64 {
-	return c.capacity - c.meta.metadataSize() - c.meta.cacheSize()
-}
-
-func (c *S3Cache) readCached(key string, expected Hash) ([]byte, bool, error) {
+func (c *S3Cache) openCached(key string, expected Hash) (*os.File, bool, error) {
 	e := c.meta.get(key)
 	if e == nil || e.Hash != expected {
 		return nil, false, nil
 	}
 
-	data, err := os.ReadFile(c.dataPath(e.ID))
+	file, err := os.Open(c.dataPath(e.ID))
 	if err != nil {
 		return nil, false, fmt.Errorf("error while reading from filesystem cache: %w", err)
 	}
 
 	c.meta.touch(key)
 
-	return data, true, nil
+	return file, true, nil
 }
 
-func (c *S3Cache) fetchAndStore(ctx context.Context, key string) (data []byte, hash Hash, err error) {
+func (c *S3Cache) fetch(ctx context.Context, key string) (io.ReadSeekCloser, Hash, error) {
 	c.logger.DebugContext(ctx, "fetching from remote S3 store", "key", key)
 
-	obj, err := c.client.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
+	object, err := c.client.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, ZeroHash, fmt.Errorf("error while getting object %q: %w", key, err)
 	}
 
-	defer func() {
-		if e := obj.Close(); e != nil && err == nil {
-			err = fmt.Errorf("error while closing S3 object: %w", err)
-		}
-	}()
-
-	info, err := obj.Stat()
+	info, err := object.Stat()
 	if err != nil {
-		return nil, ZeroHash, fmt.Errorf("error while statting on object %q: %w", key, err)
+		return nil, ZeroHash, fmt.Errorf(
+			"error while reading object metadata for %q: %w",
+			key,
+			errors.Join(err, object.Close()),
+		)
 	}
 
-	hash = Hash(info.ETag)
+	hash := Hash(info.ETag)
 
-	data, err = io.ReadAll(obj)
+	if info.Size >= c.capacity {
+		return object, hash, nil
+	}
+
+	file, err := os.CreateTemp(c.path, "download-*")
 	if err != nil {
-		return nil, ZeroHash, fmt.Errorf("error while reading reading object %q: %w", key, err)
+		c.logger.WarnContext(ctx, "could not create temporary cache file", "key", key, "err", err)
+
+		return object, hash, nil
 	}
 
-	if err := c.store(ctx, key, data, hash); err != nil {
-		c.logger.WarnContext(ctx, "failed to persist S3 cache entry", "key", key, "err", err)
-	}
-
-	return data, hash, nil
+	return &download{
+		ctx:       ctx,
+		cache:     c,
+		key:       key,
+		hash:      hash,
+		size:      info.Size,
+		object:    object,
+		file:      file,
+		path:      file.Name(),
+		cacheable: true,
+	}, hash, nil
 }
 
-func (c *S3Cache) store(ctx context.Context, key string, data []byte, hash Hash) error {
-	uid, oldSize := c.meta.resolveUID(key)
-	newSize := int64(len(data))
-	sizeDiff := newSize - oldSize
+// Put stores the bytes read from r under key and returns their hash.
+// The data is streamed to a temporary file before it is uploaded.
+func (c *S3Cache) cap() int64 {
+	return c.capacity - c.meta.metadataSize() - c.meta.cacheSize()
+}
 
-	// If this item is bigger than the whole cache, don't bother storing it
-	if newSize >= c.capacity {
+func (c *S3Cache) adopt(ctx context.Context, key string, path string, size int64, hash Hash) error {
+	uid, oldSize := c.meta.resolveUID(key)
+
+	// If this item is bigger than the whole cache, don't bother storing it.
+	if size >= c.capacity {
 		c.logger.DebugContext(
 			ctx,
 			"not caching s3 object as it exceeds the total cache size",
 			"key",
 			key,
 			"size",
-			newSize,
+			size,
 			"capacity",
 			c.capacity,
 		)
 
-		return nil
+		return os.Remove(path)
 	}
 
-	// If we don't have enough space to accommodate the new entry, remove enough
-	// entries to satisfy this in LRU fashion.
-	if c.cap() < sizeDiff {
-		if err := c.reclaimSpace(ctx, sizeDiff); err != nil {
+	if c.cap() < size-oldSize {
+		if err := c.reclaimSpace(ctx, size-oldSize); err != nil {
 			return fmt.Errorf("error while reclaiming cache space: %w", err)
 		}
 	}
@@ -255,23 +299,191 @@ func (c *S3Cache) store(ctx context.Context, key string, data []byte, hash Hash)
 		return fmt.Errorf("error while creating base directory for S3 cache entry: %w", err)
 	}
 
-	if err := writeFileAtomic(dataPath, data); err != nil {
-		return fmt.Errorf("error while writing S3 cache entry to disk: %w", err)
+	if err := os.Rename(path, dataPath); err != nil {
+		return fmt.Errorf("error while moving S3 cache entry to disk: %w", err)
 	}
 
-	c.meta.put(key, uid, hash, newSize)
+	c.meta.put(key, uid, hash, size)
 
 	if err := c.meta.persistLocked(); err != nil {
-		return fmt.Errorf("error while writing to s3 cache after adding new entry: %w", err)
+		return fmt.Errorf(
+			"error while writing to s3 cache after adding new entry: %w",
+			errors.Join(err, os.Remove(dataPath)),
+		)
 	}
 
 	return nil
 }
 
-// dataPath returns where a data file for uid lives on disk. Sharded by
-// the first two hex chars of the UID purely to keep any single directory
-// from growing unbounded -- this is an internal storage-layout detail,
-// not derived from the cache key.
+type download struct {
+	ctx    context.Context
+	cache  *S3Cache
+	key    string
+	hash   Hash
+	size   int64
+	object io.ReadSeekCloser
+	file   *os.File
+	path   string
+
+	cacheable  bool
+	done       bool
+	closed     bool
+	background bool
+}
+
+func (d *download) Read(p []byte) (int, error) {
+	if d.done || d.background {
+		return 0, io.EOF
+	}
+
+	n, err := d.object.Read(p)
+	if n > 0 && d.cacheable {
+		if _, writeErr := d.file.Write(p[:n]); writeErr != nil {
+			d.disable()
+		}
+	}
+
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			d.finish()
+		} else {
+			d.disable()
+		}
+	}
+
+	return n, err
+}
+
+// Seek disables caching. A cached file is built from a sequential read only.
+func (d *download) Seek(offset int64, whence int) (int64, error) {
+	d.disable()
+	d.done = false
+
+	return d.object.Seek(offset, whence)
+}
+
+// Close keeps reading the object in the background when the caller stops early,
+// so the whole object is cached.
+func (d *download) Close() error {
+	if d.done {
+		return d.closeObject()
+	}
+
+	if d.background {
+		return nil
+	}
+
+	if d.cacheable {
+		d.background = true
+		go d.complete()
+
+		return nil
+	}
+
+	d.disable()
+
+	return d.closeObject()
+}
+
+func (d *download) complete() {
+	defer func() {
+		if err := d.closeObject(); err != nil {
+			d.cache.logger.WarnContext(d.ctx, "could not close S3 object", "key", d.key, "err", err)
+		}
+	}()
+
+	buffer := make([]byte, 32<<10)
+
+	for {
+		n, err := d.object.Read(buffer)
+		if n > 0 && d.cacheable {
+			if _, writeErr := d.file.Write(buffer[:n]); writeErr != nil {
+				d.disable()
+
+				return
+			}
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				d.finish()
+			} else {
+				d.disable()
+			}
+
+			return
+		}
+	}
+}
+
+func (d *download) closeObject() error {
+	if d.closed {
+		return nil
+	}
+
+	d.closed = true
+
+	return d.object.Close()
+}
+
+func (d *download) disable() {
+	if !d.cacheable {
+		return
+	}
+
+	d.cacheable = false
+
+	if err := d.file.Close(); err != nil {
+		d.cache.logger.WarnContext(d.ctx, "could not close download file", "key", d.key, "err", err)
+	}
+
+	if err := os.Remove(d.path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		d.cache.logger.WarnContext(d.ctx, "could not remove download file", "key", d.key, "err", err)
+	}
+}
+
+func (d *download) finish() {
+	if d.done {
+		return
+	}
+
+	d.done = true
+
+	cacheable := d.cacheable
+	d.cacheable = false
+
+	if cacheable {
+		info, statErr := d.file.Stat()
+		if statErr == nil && info.Size() == d.size {
+			if err := d.file.Close(); err == nil {
+				if err := d.cache.adopt(d.ctx, d.key, d.path, d.size, d.hash); err != nil {
+					removeErr := os.Remove(d.path)
+					d.cache.logger.WarnContext(
+						d.ctx,
+						"failed to persist S3 cache entry",
+						"key", d.key,
+						"err", errors.Join(err, removeErr),
+					)
+				}
+
+				return
+			} else {
+				d.cache.logger.WarnContext(d.ctx, "could not close download file", "key", d.key, "err", err)
+			}
+		} else if statErr != nil {
+			d.cache.logger.WarnContext(d.ctx, "could not stat download file", "key", d.key, "err", statErr)
+		}
+	}
+
+	if err := d.file.Close(); err != nil {
+		d.cache.logger.WarnContext(d.ctx, "could not close download file", "key", d.key, "err", err)
+	}
+
+	if err := os.Remove(d.path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		d.cache.logger.WarnContext(d.ctx, "could not remove download file", "key", d.key, "err", err)
+	}
+}
+
 func (c *S3Cache) dataPath(id uuid.UUID) string {
 	uid := id.String()
 	return filepath.Join(c.path, uid[:2], uid[2:])

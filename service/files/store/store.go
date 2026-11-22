@@ -5,7 +5,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -20,6 +19,7 @@ import (
 	"github.com/teapotovh/teapot/lib/pagedbtree"
 	"github.com/teapotovh/teapot/lib/pgnotify"
 	"github.com/teapotovh/teapot/lib/run"
+	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
 //go:embed migrations/*.sql
@@ -33,14 +33,6 @@ type Config struct {
 	Cache CacheConfig
 	// S3 is the blob store configuration.
 	S3 S3Config
-}
-
-// Blob stores and reads file bytes.
-type Blob interface {
-	// Put stores the bytes read from r under key and returns their hash.
-	Put(ctx context.Context, key string, r io.Reader) (Hash, error)
-	// Get opens the blob stored under key.
-	Get(ctx context.Context, key string) (io.ReadSeekCloser, error)
 }
 
 // ErrRevisionConflict reports that another write advanced the revision.
@@ -83,7 +75,7 @@ type Store struct {
 	logger *slog.Logger
 
 	db            DB
-	blob          Blob
+	blob          s3cache.Blob
 	notifications pgnotify.Notifications
 
 	cache  *cache
@@ -100,7 +92,7 @@ type Store struct {
 func NewStore(
 	config Config,
 	db DB,
-	blob Blob,
+	blob s3cache.Blob,
 	notifications pgnotify.Notifications,
 	logger *slog.Logger,
 ) (*Store, error) {
@@ -110,7 +102,7 @@ func NewStore(
 func newStore(
 	config Config,
 	db DB,
-	blob Blob,
+	blob s3cache.Blob,
 	notifications pgnotify.Notifications,
 	fs pagedbtree.FS,
 	logger *slog.Logger,
@@ -201,7 +193,7 @@ func NewPSQL(ctx context.Context, config Config, logger *slog.Logger) (*Store, e
 		err = errors.Join(err, notifications.Close())
 		pool.Close()
 
-		return nil, err
+		return nil, fmt.Errorf("could not create S3 blob store: %w", err)
 	}
 
 	db := &PSQL{pool: pool, notify: notifications}

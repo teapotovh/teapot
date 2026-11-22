@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
 
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 
-	"github.com/teapotovh/teapot/lib/httptrace"
 	"github.com/teapotovh/teapot/lib/observability"
+	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
 // S3Config is the configuration for the S3 blob store.
@@ -28,7 +25,7 @@ type S3Config struct {
 // ErrBucketNotFound reports that the configured S3 bucket does not exist.
 var ErrBucketNotFound = errors.New("bucket not found")
 
-// S3Blob stores and reads file bytes in S3.
+// S3Blob stores and reads file bytes in S3 without a local cache.
 type S3Blob struct {
 	bucket string
 	client *minio.Client
@@ -36,47 +33,45 @@ type S3Blob struct {
 
 // NewS3Blob creates an S3 blob store.
 func NewS3Blob(config S3Config) (*S3Blob, error) {
-	u, err := url.Parse(config.URL)
+	client, err := s3cache.NewClient(config.URL, config.Region, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error while parsing the S3 URL: %w", err)
-	}
-
-	key := u.User.Username()
-	secret, _ := u.User.Password()
-
-	httpTrace := httptrace.NewHTTPTrace()
-
-	client, err := minio.New(u.Host, &minio.Options{
-		Creds:     credentials.NewStaticV4(key, secret, ""),
-		Secure:    u.Scheme == "https",
-		Region:    config.Region,
-		Transport: httpTrace.Transport(http.DefaultTransport),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error while creating the S3 client: %w", err)
+		return nil, err
 	}
 
 	return &S3Blob{bucket: config.Bucket, client: client}, nil
 }
 
-// Put implements Blob.
-func (s *S3Blob) Put(ctx context.Context, key string, r io.Reader) (Hash, error) {
+// Put implements s3cache.Blob.
+func (s *S3Blob) Put(ctx context.Context, key string, r io.Reader) (s3cache.Hash, error) {
 	info, err := s.client.PutObject(ctx, s.bucket, key, r, -1, minio.PutObjectOptions{})
 	if err != nil {
-		return "", fmt.Errorf("error while storing blob: %w", err)
+		return s3cache.ZeroHash, fmt.Errorf("error while storing object %q: %w", key, err)
 	}
 
-	return Hash(info.ETag), nil
+	return s3cache.Hash(info.ETag), nil
 }
 
-// Get implements Blob.
-func (s *S3Blob) Get(ctx context.Context, key string) (io.ReadSeekCloser, error) {
+// Get implements s3cache.Blob.
+func (s *S3Blob) Get(
+	ctx context.Context,
+	key string,
+	_ s3cache.Hash,
+) (io.ReadSeekCloser, s3cache.Hash, error) {
 	object, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("error while opening blob: %w", err)
+		return nil, s3cache.ZeroHash, fmt.Errorf("error while opening object %q: %w", key, err)
 	}
 
-	return object, nil
+	info, err := object.Stat()
+	if err != nil {
+		return nil, s3cache.ZeroHash, fmt.Errorf(
+			"error while reading object metadata for %q: %w",
+			key,
+			errors.Join(err, object.Close()),
+		)
+	}
+
+	return object, s3cache.Hash(info.ETag), nil
 }
 
 // ReadinessChecks implements observability.ReadinessChecks.
@@ -84,6 +79,15 @@ func (s *S3Blob) ReadinessChecks() map[string]observability.Check {
 	return map[string]observability.Check{
 		"files/store/s3": observability.CheckFunc(s.bucketExists),
 	}
+}
+
+// Remove implements s3cache.Blob.
+func (s *S3Blob) Remove(ctx context.Context, key string) error {
+	if err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("error while removing object %q: %w", key, err)
+	}
+
+	return nil
 }
 
 func (s *S3Blob) bucketExists(ctx context.Context) error {
@@ -98,3 +102,6 @@ func (s *S3Blob) bucketExists(ctx context.Context) error {
 
 	return nil
 }
+
+// Ensure S3Blob implements s3cache.Blob.
+var _ s3cache.Blob = (*S3Blob)(nil)
