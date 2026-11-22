@@ -1,7 +1,6 @@
 package alert
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -82,10 +81,12 @@ func NewAlert(config AlertConfig, logger *slog.Logger) (*Alert, error) {
 }
 
 // Run implements run.Runnable.
-func (a *Alert) Run(ctx context.Context, notify run.Notify) error {
+func (a *Alert) Run(step run.Step) error {
+	ctx := step.Context()
+
 	defer close(a.alerts)
 
-	notify.Notify()
+	step.Notify()
 
 	select {
 	case <-ctx.Done():

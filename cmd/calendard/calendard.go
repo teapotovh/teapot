@@ -87,8 +87,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	run.Add("calendar/ldap", calendar.LDAPFactory(), nil)
-	run.Add("calendar/store", calendar.Store(), nil)
+	run.Add("calendar", calendar, nil)
 	run.Add("httpsrv", httpsrv, nil)
 	run.Add("observability", observability, nil)
 

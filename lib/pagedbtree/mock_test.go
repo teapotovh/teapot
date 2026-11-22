@@ -203,10 +203,10 @@ func startTestRun(t *testing.T, store *Bytes, report bool) <-chan error {
 	ctx, cancel := context.WithCancel(context.Background())
 	runDone := make(chan error, 1)
 	done := make(chan error, 1)
-	notify := testNotify{ch: make(chan unit, 1)}
+	notify := testNotify{ctx: ctx, ch: make(chan unit, 1)}
 
 	go func() {
-		err := store.Run(ctx, notify)
+		err := store.Run(notify)
 		runDone <- err
 
 		done <- err

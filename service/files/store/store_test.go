@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/teapotovh/teapot/lib/run"
 )
 
 func TestFSWriteRead(t *testing.T) {
@@ -322,14 +324,19 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
-type testNotify chan struct{}
+type readyService chan struct{}
 
-// Notify implements run.Notify.
-func (n testNotify) Notify() {
+func (s readyService) Run(step run.Step) error {
 	select {
-	case n <- struct{}{}:
+	case s <- struct{}{}:
 	default:
 	}
+
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 func newTestStore(t *testing.T) (*Store, context.Context) {
@@ -353,11 +360,15 @@ func newTestStore(t *testing.T) (*Store, context.Context) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ready := make(testNotify, 1)
+	ready := make(readyService, 1)
 	errs := make(chan error, 1)
 
+	runner := run.NewRun(run.RunConfig{Timeout: 10 * time.Second}, logger)
+	runner.Add("store", store, nil)
+	runner.Add("ready", ready, nil)
+
 	go func() {
-		errs <- store.Run(ctx, ready)
+		errs <- runner.Run(ctx)
 	}()
 
 	select {

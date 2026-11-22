@@ -202,8 +202,8 @@ func (m *MemTransaction) Commit(ctx context.Context) error {
 // Run implements run.Runnable
 //
 // This is a no-op.
-func (m *Mem) Run(ctx context.Context, notify run.Notify) error {
-	notify.Notify()
+func (m *Mem) Run(step run.Step) error {
+	step.Notify()
 	return nil
 }
 

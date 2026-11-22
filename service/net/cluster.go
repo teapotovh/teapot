@@ -1,7 +1,6 @@
 package net
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/netip"
@@ -51,18 +50,27 @@ func (c *Cluster) Broker() *broker.Broker[ClusterEvent] {
 }
 
 // Run implements run.Runnable.
-func (c *Cluster) Run(ctx context.Context, notify run.Notify) error {
-	return run.Combine(c.broker, clusterEvents{c}).Run(ctx, notify)
+func (c *Cluster) Run(step run.Step) error {
+	step.Add("broker", c.broker)
+	step.Add("events", clusterEvents{c})
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 type clusterEvents struct{ *Cluster }
 
 // Run implements run.Runnable.
-func (c clusterEvents) Run(ctx context.Context, notify run.Notify) error {
+func (c clusterEvents) Run(step run.Step) error {
+	ctx := step.Context()
+
 	sub := c.net.broker.Subscribe()
 	defer sub.Unsubscribe()
 
-	notify.Notify()
+	step.Notify()
 
 	for event := range sub.Iter(ctx) {
 		if event.Delete != nil {

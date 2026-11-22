@@ -79,7 +79,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	run.Add("bottin/store", bottin.Store(), nil)
 	run.Add("bottin", bottin, nil)
 	run.Add("ldapsrv", ldapsrv, nil)
 	run.Add("observability", observability, nil)

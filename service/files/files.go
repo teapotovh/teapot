@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/files/store"
 )
 
@@ -83,6 +84,18 @@ func (s *Session) FS() *store.FS {
 // LDAPFactory returns the LDAP factory.
 func (f *Files) LDAPFactory() *ldap.Factory {
 	return f.ldapFactory
+}
+
+// Run implements run.Runnable.
+func (f *Files) Run(step run.Step) error {
+	step.Add("ldap", f.ldapFactory)
+	step.Add("store", f.store)
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 // MaxSize is the maximum upload size in bytes.

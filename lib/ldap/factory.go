@@ -146,7 +146,9 @@ func (f *Factory) Authenticate(ctx context.Context, username string, password st
 }
 
 // Run implements run.Runnable.
-func (f *Factory) Run(ctx context.Context, notify run.Notify) (err error) {
+func (f *Factory) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	eg, ctx := errgroup.WithContext(ctx)
 	for i := range f.workers {
 		eg.Go(func() error {
@@ -154,7 +156,7 @@ func (f *Factory) Run(ctx context.Context, notify run.Notify) (err error) {
 		})
 	}
 
-	notify.Notify()
+	step.Notify()
 
 	if err := eg.Wait(); err != nil {
 		return err

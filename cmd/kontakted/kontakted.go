@@ -81,7 +81,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	run.Add("kontakte/ladp", kontakte.LDAPFactory(), nil)
+	run.Add("kontakte", kontakte, nil)
 	run.Add("httpsrv", httpsrv, nil)
 	run.Add("observability", observability, nil)
 

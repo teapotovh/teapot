@@ -1,7 +1,6 @@
 package router
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -75,7 +74,9 @@ func NewRouter(net *tnet.Net, config RouterConfig, logger *slog.Logger) (*Router
 	}, nil
 }
 
-func (r *Router) Run(ctx context.Context, notify run.Notify) (err error) {
+func (r *Router) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	csub := r.net.Cluster().Broker().Subscribe()
 	defer csub.Unsubscribe()
 
@@ -85,7 +86,7 @@ func (r *Router) Run(ctx context.Context, notify run.Notify) (err error) {
 		}
 	}()
 
-	notify.Notify()
+	step.Notify()
 
 	for cluster := range csub.Iter(ctx) {
 		r.cluster = cluster

@@ -1,7 +1,6 @@
 package net
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -88,6 +87,15 @@ func (net *Net) Cluster() *Cluster {
 }
 
 // Run implements run.Runnable.
-func (net *Net) Run(ctx context.Context, notify run.Notify) error {
-	return run.Combine(net.broker, net.controller).Run(ctx, notify)
+func (net *Net) Run(step run.Step) error {
+	step.Add("broker", net.broker)
+	step.Add("controller", net.controller)
+	step.Add("local", net.local)
+	step.Add("cluster", net.cluster)
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/teapotovh/teapot/lib/ldapsrv"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/service/bottin"
 	"github.com/teapotovh/teapot/service/bottin/store"
 )
@@ -36,14 +37,25 @@ type testServer struct {
 	bottin *bottin.Bottin
 }
 
-type notifyFunc func()
-
-func (f notifyFunc) Notify() {
-	f()
+type testStep struct {
+	ctx    context.Context
+	notify func()
 }
 
-func noopNotify() notifyFunc {
-	return func() {}
+func (s testStep) Context() context.Context { return s.ctx }
+
+func (s testStep) Notify() { s.notify() }
+
+func (testStep) Add(string, run.Runnable) {}
+
+func (testStep) Wait() {}
+
+func noopStep() testStep {
+	return testStep{ctx: context.Background(), notify: func() {}}
+}
+
+func readyStep(ctx context.Context, ready func()) testStep {
+	return testStep{ctx: ctx, notify: ready}
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -65,7 +77,7 @@ func newTestServerWithACL(t *testing.T, acl []string) *testServer {
 	}, logger)
 	require.NoError(t, err)
 
-	require.NoError(t, server.Run(context.Background(), noopNotify()))
+	require.NoError(t, server.Run(noopStep()))
 	seed(t, server)
 
 	ldapServer, err := ldapsrv.NewServer[bottin.State](ldapsrv.LDAPSrvConfig{
@@ -83,7 +95,7 @@ func newTestServerWithACL(t *testing.T, acl []string) *testServer {
 	var readyOnce sync.Once
 
 	go func() {
-		done <- ldapServer.Run(ctx, notifyFunc(func() {
+		done <- ldapServer.Run(readyStep(ctx, func() {
 			readyOnce.Do(func() {
 				close(ready)
 			})

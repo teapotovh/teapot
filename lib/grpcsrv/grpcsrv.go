@@ -1,7 +1,6 @@
 package grpcsrv
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -93,7 +92,8 @@ func runWithTimeout(timeout time.Duration, fn func()) bool {
 }
 
 // Run implements run.Runnable.
-func (g *GRPCSrv) Run(ctx context.Context, notify run.Notify) (err error) {
+func (g *GRPCSrv) Run(step run.Step) (err error) {
+	ctx := step.Context()
 	g.inner = grpc.NewServer(
 		grpc.StreamInterceptor(g.metrics.StreamServerInterceptor()),
 		grpc.UnaryInterceptor(g.metrics.UnaryServerInterceptor()),
@@ -124,7 +124,7 @@ func (g *GRPCSrv) Run(ctx context.Context, notify run.Notify) (err error) {
 	go func() {
 		g.logger.Info("opening gRPC server", "address", g.address)
 		g.running.Store(true)
-		notify.Notify()
+		step.Notify()
 
 		if err := g.inner.Serve(lis); err != nil {
 			ch <- err

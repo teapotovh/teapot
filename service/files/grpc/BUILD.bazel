@@ -21,6 +21,7 @@ go_test(
     srcs = ["grpc_test.go"],
     embed = [":grpc"],
     deps = [
+        "//lib/run",
         "//proto/files:files_go_proto",
         "//service/files/store",
         "@org_golang_google_grpc//:grpc",

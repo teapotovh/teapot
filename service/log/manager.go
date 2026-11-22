@@ -63,10 +63,11 @@ func NewWorkerManager(
 }
 
 // Run implements run.Runnable.
-func (m *WorkerManager) Run(ctx context.Context, notify run.Notify) (err error) {
+func (m *WorkerManager) Run(step run.Step) (err error) {
+	ctx := step.Context()
 	m.context = ctx
 
-	notify.Notify()
+	step.Notify()
 
 	<-ctx.Done()
 	m.terminating.Store(true)

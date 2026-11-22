@@ -28,6 +28,7 @@ go_test(
     srcs = ["httpsrv_test.go"],
     embed = [":httpsrv"],
     deps = [
+        "//lib/run",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],

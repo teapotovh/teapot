@@ -131,12 +131,17 @@ func (s State) User() User {
 }
 
 // Run implements run.Runnable.
-func (server *Bottin) Run(ctx context.Context, notify run.Notify) error {
+func (server *Bottin) Run(step run.Step) error {
+	ctx := step.Context()
+
+	step.Add("store", server.store)
+	step.Wait()
+
 	if err := server.initialize(ctx); err != nil {
 		return fmt.Errorf("error while initializing: %w", err)
 	}
 
-	notify.Notify()
+	step.Notify()
 
 	return nil
 }

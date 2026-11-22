@@ -1,7 +1,6 @@
 package pagedbtree
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"iter"
@@ -128,8 +127,8 @@ func (t *Tree[T]) Between(from, to string) iter.Seq2[string, T] {
 }
 
 // Run implements run.Runnable.
-func (t *Tree[T]) Run(ctx context.Context, notify run.Notify) error {
-	return t.store.Run(ctx, notify)
+func (t *Tree[T]) Run(step run.Step) error {
+	return t.store.Run(step)
 }
 
 // Metrics implements observability.Metrics.

@@ -85,7 +85,9 @@ func (s *LDAPSrv[T]) Register(h Handler[T]) {
 }
 
 // Run implements run.Runnable.
-func (s *LDAPSrv[T]) Run(ctx context.Context, notify run.Notify) (err error) {
+func (s *LDAPSrv[T]) Run(step run.Step) (err error) {
+	ctx := step.Context()
+
 	if s.handler == nil {
 		return ErrMissingHandler
 	}
@@ -111,7 +113,7 @@ func (s *LDAPSrv[T]) Run(ctx context.Context, notify run.Notify) (err error) {
 		}
 	}()
 
-	notify.Notify()
+	step.Notify()
 
 	// Unblock Accept when the context is canceled. Without this the loop
 	// stays in Accept and never observes the shutdown signal.

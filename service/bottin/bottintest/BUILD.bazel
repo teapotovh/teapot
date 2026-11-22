@@ -19,6 +19,7 @@ go_test(
     ],
     deps = [
         "//lib/ldapsrv",
+        "//lib/run",
         "//service/bottin",
         "//service/bottin/store",
         "@com_github_go_ldap_ldap_v3//:ldap",

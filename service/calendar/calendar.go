@@ -8,6 +8,7 @@ import (
 	"github.com/teapotovh/teapot/lib/httpauth"
 	"github.com/teapotovh/teapot/lib/httplog"
 	"github.com/teapotovh/teapot/lib/ldap"
+	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/webdav/caldav"
 	"github.com/teapotovh/teapot/lib/wellknown"
 	"github.com/teapotovh/teapot/service/calendar/backend"
@@ -81,6 +82,18 @@ func (c *Calendar) Store() store.Store {
 
 func (c *Calendar) LDAPFactory() *ldap.Factory {
 	return c.ldapFactory
+}
+
+// Run implements run.Runnable.
+func (c *Calendar) Run(step run.Step) error {
+	step.Add("ldap", c.ldapFactory)
+	step.Add("store", c.store)
+	step.Wait()
+	step.Notify()
+
+	<-step.Context().Done()
+
+	return nil
 }
 
 func (c *Calendar) Handler(prefix string) http.Handler {

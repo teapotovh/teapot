@@ -263,8 +263,8 @@ func (p *PSQLTransaction) Commit(ctx context.Context) (err error) {
 }
 
 // Run implements run.Runnable.
-func (p *PSQL) Run(ctx context.Context, notify run.Notify) error {
-	return p.table.Run(ctx, notify)
+func (p *PSQL) Run(step run.Step) error {
+	return p.table.Run(step)
 }
 
 // Metrics implements observability.Metrics.

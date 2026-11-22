@@ -1,7 +1,6 @@
 package log
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -72,8 +71,8 @@ func NewLog(config LogConfig, logger *slog.Logger) (*Log, error) {
 }
 
 // Run implements run.Runnable.
-func (l *Log) Run(ctx context.Context, notify run.Notify) (err error) {
-	return l.manager.Run(ctx, notify)
+func (l *Log) Run(step run.Step) (err error) {
+	return l.manager.Run(step)
 }
 
 func (l *Log) Handler(prefix string) http.Handler {
