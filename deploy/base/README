@@ -1,7 +1,7 @@
 This folder holds the parts that must exist before Flux can work. Flux does
 not manage them. You deploy them by hand.
 
-- base components: ccmd, netd, loadbalancerd. Deploy them together.
+- base components: ccmd and netd. Deploy them together.
 - flux: the Flux controllers.
 - gitops: the namespace, the root Kustomization, the notification objects and
   the token template.
