@@ -8,21 +8,22 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
+      maxSurge: 1
+      maxUnavailable: 0
   replicas: 3
   template:
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels: {}
-                matchExpressions:
-                  - key: role
-                    operator: NotIn
-                    values: [cronjob]
-              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          nodeTaintsPolicy: Honor
+          labelSelector:
+            matchLabels: {}
+            matchExpressions:
+              - key: role
+                operator: NotIn
+                values: [cronjob]
       containers:
         - name: vaultwarden
           image: ghcr.io/dani-garcia/vaultwarden:1.37.1-alpine

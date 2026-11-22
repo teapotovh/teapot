@@ -8,6 +8,10 @@ spec:
   # TODO: scale to 3
   replicas: 2
   podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -16,12 +20,14 @@ spec:
         prometheus.io/path: "/metrics/prometheus"
     spec:
       terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels: {}
       affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels: {}
-            topologyKey: kubernetes.io/hostname
         # TODO: remove when we actually go into prod
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
