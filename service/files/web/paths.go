@@ -16,11 +16,10 @@ const (
 	PathLogin  = "/login"
 	PathLogout = "/logout"
 
-	PathIndex         = "/"
-	PathBrowse        = "/browse/"
-	PathBrowseDialog  = "/internal/browse/dialog/"
-	PathBrowseEntries = "/internal/browse/entries/"
-	PathFile          = "/file/"
+	PathIndex        = "/"
+	PathBrowse       = "/browse/"
+	PathBrowseDialog = "/internal/browse/dialog/"
+	PathFile         = "/file/"
 )
 
 func PathBrowseAt(paths ...string) string {

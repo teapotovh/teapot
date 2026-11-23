@@ -1,10 +1,10 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -25,36 +25,25 @@ import (
 // here is the cleaned path of the current directory.
 const here = "."
 
+const browseEntriesCursorID = "cursor"
+
 func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	auth := webauth.GetAuth(r)
+	if auth == nil {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
+	dir, err := urlPath(PathBrowse, r.URL.Path)
+	if err != nil {
+		return nil, fmt.Errorf("could not get relative path: %w", err)
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		auth := webauth.GetAuth(r)
-		if auth == nil {
-			return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
-		}
-
-		dir, err := urlPath(PathBrowse, r.URL.Path)
+		entries, next, err := web.listDir(r.Context(), auth.Username, dir, nil)
 		if err != nil {
-			return nil, fmt.Errorf("could not get relative path: %w", err)
+			return nil, err
 		}
-
-		session, err := web.files.Session(r.Context(), auth.Username)
-		if err != nil {
-			return nil, webhandler.NewInternalError(err, nil)
-		}
-
-		page, err := session.FS().List(r.Context(), storePath(dir), nil)
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) {
-				return nil, webhandler.ErrNotFound
-			}
-
-			err = fmt.Errorf("could not read directory at %q: %w", dir, err)
-
-			return nil, webhandler.NewInternalError(err, nil)
-		}
-
-		entries := toEntries(dir, page.Inodes)
 
 		var (
 			segments = []entry{
@@ -85,7 +74,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 			user:     auth.Username,
 			segments: segments,
 			entries:  entries,
-			cursor:   page.Cursor,
+			cursor:   next,
 		}
 
 		return webhandler.NewPage(
@@ -93,53 +82,55 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 			"Browse your files at "+dir,
 			component,
 		), nil
-	}
 
-	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
-}
+	case http.MethodPost:
+		value := r.FormValue(browseEntriesCursorID)
+		if value == "" {
+			return nil, fmt.Errorf("missing cursor: %w", webhandler.ErrBadRequest)
+		}
 
-const browseEntriesCursorID = "cursor"
+		cursor := store.Cursor(value)
 
-// BrowseEntries returns the next page of a folder as a fragment.
-func (web *Web) BrowseEntries(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
-	if r.Method != http.MethodGet {
+		entries, next, err := web.listDir(r.Context(), auth.Username, dir, &cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		return browseEntries{
+			path:    dir,
+			entries: entries,
+			cursor:  next,
+		}, nil
+
+	default:
 		return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
 	}
+}
 
-	auth := webauth.GetAuth(r)
-	if auth == nil {
-		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
-	}
-
-	dir, err := getDialogBasePath(r, PathBrowse)
+// listDir returns one page of entries of a directory.
+func (web *Web) listDir(
+	ctx context.Context,
+	username string,
+	dir string,
+	cursor *store.Cursor,
+) ([]entry, *store.Cursor, error) {
+	session, err := web.files.Session(ctx, username)
 	if err != nil {
-		return nil, err
+		return nil, nil, webhandler.NewInternalError(err, nil)
 	}
 
-	var cursor *store.Cursor
-
-	if value := r.URL.Query().Get(browseEntriesCursorID); value != "" {
-		c := store.Cursor(value)
-		cursor = &c
-	}
-
-	session, err := web.files.Session(r.Context(), auth.Username)
+	page, err := session.FS().List(ctx, storePath(dir), cursor)
 	if err != nil {
-		return nil, webhandler.NewInternalError(err, nil)
-	}
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, nil, webhandler.ErrNotFound
+		}
 
-	page, err := session.FS().List(r.Context(), storePath(dir), cursor)
-	if err != nil {
 		err = fmt.Errorf("could not read directory at %q: %w", dir, err)
 
-		return nil, webhandler.NewInternalError(err, nil)
+		return nil, nil, webhandler.NewInternalError(err, nil)
 	}
 
-	return browseEntries{
-		path:    dir,
-		entries: toEntries(dir, page.Inodes),
-		cursor:  page.Cursor,
-	}, nil
+	return toEntries(dir, page.Inodes), page.Cursor, nil
 }
 
 func toEntries(dir string, inodes []store.Inode) []entry {
@@ -302,14 +293,12 @@ func (be browseEntries) Render(ctx ui.Context) g.Node {
 	}
 
 	if be.cursor != nil {
-		query := url.Values{}
-		query.Set(browseEntriesCursorID, string(*be.cursor))
-		href := PathBrowseEntries + "?" + query.Encode()
-
-		nodes = append(nodes, h.Div(h.Class("more"),
-			hx.Get(href),
+		nodes = append(nodes, h.Form(h.Class("more"),
+			h.Method("post"),
+			hx.Post(EscapePath(PathBrowseDirAt(be.path))),
 			hx.Trigger("revealed"),
 			hx.Swap("outerHTML"),
+			h.Input(h.Type("hidden"), h.Name(browseEntriesCursorID), h.Value(string(*be.cursor))),
 			g.Text("Loading..."),
 		))
 	}
