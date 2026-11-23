@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -22,12 +22,8 @@ import (
 	"github.com/teapotovh/teapot/service/files/store"
 )
 
-const (
-	// sep is the separator used by URL and store paths.
-	sep = "/"
-	// here is the cleaned path of the current directory.
-	here = "."
-)
+// here is the cleaned path of the current directory.
+const here = "."
 
 func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	switch r.Method {
@@ -37,47 +33,46 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 			return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
 		}
 
-		path, err := filepath.Rel(PathBrowse, r.URL.Path)
+		dir, err := urlPath(PathBrowse, r.URL.Path)
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
+			return nil, fmt.Errorf("could not get relative path: %w", err)
 		}
-
-		path = filepath.Clean(path)
 
 		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		page, err := session.FS().List(r.Context(), sep+path, nil)
+		page, err := session.FS().List(r.Context(), storePath(dir), nil)
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
 				return nil, webhandler.ErrNotFound
 			}
 
-			err = fmt.Errorf("could not read directory at %q: %w", path, err)
+			err = fmt.Errorf("could not read directory at %q: %w", dir, err)
 
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		entries := toEntries(path, page.Inodes)
+		entries := toEntries(dir, page.Inodes)
 
 		var (
 			segments = []entry{
 				{
 					name: auth.Username,
-					path: sep,
+					path: "/",
 					mode: os.ModeDir,
 				},
 			}
 			segmentPath string
 		)
-		for segment := range strings.SplitSeq(path, string(filepath.Separator)) {
+
+		for segment := range strings.SplitSeq(dir, "/") {
 			if segment == here {
 				continue
 			}
 
-			segmentPath = filepath.Join(segmentPath, segment)
+			segmentPath = path.Join(segmentPath, segment)
 			segments = append(segments, entry{
 				name: segment,
 				path: segmentPath,
@@ -86,7 +81,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		}
 
 		component := browse{
-			path:     path,
+			path:     dir,
 			user:     auth.Username,
 			segments: segments,
 			entries:  entries,
@@ -94,8 +89,8 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 		}
 
 		return webhandler.NewPage(
-			pagetitle.Title("Browse at "+path, App),
-			"Browse your files at "+path,
+			pagetitle.Title("Browse at "+dir, App),
+			"Browse your files at "+dir,
 			component,
 		), nil
 	}
@@ -116,7 +111,7 @@ func (web *Web) BrowseEntries(w http.ResponseWriter, r *http.Request) (ui.Compon
 		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
 	}
 
-	path, err := getDialogBasePath(r, PathBrowse)
+	dir, err := getDialogBasePath(r, PathBrowse)
 	if err != nil {
 		return nil, err
 	}
@@ -133,21 +128,21 @@ func (web *Web) BrowseEntries(w http.ResponseWriter, r *http.Request) (ui.Compon
 		return nil, webhandler.NewInternalError(err, nil)
 	}
 
-	page, err := session.FS().List(r.Context(), sep+path, cursor)
+	page, err := session.FS().List(r.Context(), storePath(dir), cursor)
 	if err != nil {
-		err = fmt.Errorf("could not read directory at %q: %w", path, err)
+		err = fmt.Errorf("could not read directory at %q: %w", dir, err)
 
 		return nil, webhandler.NewInternalError(err, nil)
 	}
 
 	return browseEntries{
-		path:    path,
-		entries: toEntries(path, page.Inodes),
+		path:    dir,
+		entries: toEntries(dir, page.Inodes),
 		cursor:  page.Cursor,
 	}, nil
 }
 
-func toEntries(path string, inodes []store.Inode) []entry {
+func toEntries(dir string, inodes []store.Inode) []entry {
 	var entries []entry
 
 	for _, inode := range inodes {
@@ -158,7 +153,7 @@ func toEntries(path string, inodes []store.Inode) []entry {
 
 		entries = append(entries, entry{
 			name: inode.Name,
-			path: filepath.Clean(filepath.Join(path, inode.Name)),
+			path: path.Join(dir, inode.Name),
 			mode: mode,
 			size: uint64(inode.Size), //nolint:gosec
 		})
@@ -228,7 +223,7 @@ var browseStyle = ui.MustParseStyle(`
 func entryHref(entry entry) string {
 	href := PathFileAt(entry.path)
 	if entry.mode == os.ModeDir {
-		href = PathBrowseAt(entry.path) + sep
+		href = PathBrowseDirAt(entry.path)
 	}
 
 	return EscapePath(href)
@@ -248,14 +243,14 @@ func entryNode(ctx ui.Context, entry entry) g.Node {
 }
 
 func (b browse) Render(ctx ui.Context) g.Node {
-	path := filepath.Join(sep, b.path)
+	dir := storePath(b.path)
 
 	entries := b.entries
-	if path != sep {
+	if dir != "/" {
 		entries = append([]entry{
 			{
 				name: "..",
-				path: filepath.Join(path, ".."),
+				path: path.Join(dir, ".."),
 				mode: os.ModeDir,
 				size: 0,
 			},
@@ -270,7 +265,7 @@ func (b browse) Render(ctx ui.Context) g.Node {
 
 					return g.Group{
 						h.A(hx.Boost("true"), h.Href(href), g.Text(segment.name)),
-						h.Span(g.Text(sep)),
+						h.Span(g.Text("/")),
 					}
 				}),
 			),
