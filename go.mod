@@ -7,6 +7,7 @@ replace golang.org/x/tools => golang.org/x/tools v0.47.1-0.20260707181000-a299da
 
 require (
 	git.sr.ht/~bitfehler/brant v0.5.1
+	github.com/arhuman/bizkit v0.3.0
 	github.com/arran4/golang-ical v0.3.8
 	github.com/bazelbuild/rules_go v0.65.0
 	github.com/cenkalti/backoff/v5 v5.0.3
@@ -26,7 +27,7 @@ require (
 	github.com/jsimonetti/pwscheme v0.0.0-20220922140336-67a4d090f150
 	github.com/kataras/requestid v0.0.2
 	github.com/lmittmann/tint v1.2.1
-	github.com/minio/minio-go/v7 v7.3.0
+	github.com/minio/minio-go/v7 v7.4.1
 	github.com/nrdcg/desec v0.11.3
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 	github.com/prometheus/alertmanager v0.34.1
@@ -45,7 +46,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/text v0.43.0
 	golang.org/x/tools/gopls v0.23.0
@@ -147,7 +148,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/exp/typeparams v0.0.0-20260611194520-c48552f49976 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20260811152304-ee035b5b010f // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
@@ -164,11 +165,11 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	honnef.co/go/tools v0.8.0-rc.1 // indirect
+	honnef.co/go/tools v0.8.1 // indirect
 	k8s.io/apiextensions-apiserver v0.37.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 // indirect
-	mvdan.cc/gofumpt v0.10.0 // indirect
+	mvdan.cc/gofumpt v0.12.0 // indirect
 	mvdan.cc/xurls/v2 v2.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.20.1 // indirect
