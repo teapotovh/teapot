@@ -3,10 +3,8 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "store",
     srcs = [
-        "blob.go",
-        "blob_flags.go",
         "cache.go",
-        "cache_flags.go",
+        "cache_flag.go",
         "files.go",
         "flag.go",
         "fs.go",
@@ -35,7 +33,6 @@ go_library(
         "@com_github_jackc_pgx_v5//:pgx",
         "@com_github_jackc_pgx_v5//pgxpool",
         "@com_github_jackc_pgx_v5//stdlib",
-        "@com_github_minio_minio_go_v7//:minio-go",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",
         "@ht_sr_git__bitfehler_brant//:brant",

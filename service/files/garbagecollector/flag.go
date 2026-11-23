@@ -2,8 +2,6 @@ package garbagecollector
 
 import (
 	flag "github.com/spf13/pflag"
-
-	"github.com/teapotovh/teapot/service/files/store"
 )
 
 // GarbageCollectorFlagSet returns the flags for a garbage collector config.
@@ -23,7 +21,7 @@ func GarbageCollectorFlagSet() (*flag.FlagSet, func() Config) {
 	return fs, func() Config {
 		return Config{
 			URL: *url,
-			S3: store.S3Config{
+			S3: S3Config{
 				URL:    *s3URL,
 				Region: *s3Region,
 				Bucket: *s3Bucket,

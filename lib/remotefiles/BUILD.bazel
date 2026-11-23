@@ -6,7 +6,7 @@ go_library(
         "cache.go",
         "file.go",
         "files.go",
-        "flags.go",
+        "flag.go",
         "path.go",
         "remotefiles.go",
     ],
