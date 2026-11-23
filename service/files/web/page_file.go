@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 
 	"github.com/arhuman/bizkit/fileserve"
 
@@ -20,41 +19,39 @@ func (web *Web) File(w http.ResponseWriter, r *http.Request) (err error) {
 		return httphandler.NewRedirectError(PathIndex, http.StatusFound)
 	}
 
-	path, err := filepath.Rel(PathFile, r.URL.Path)
+	rel, err := urlPath(PathFile, r.URL.Path)
 	if err != nil {
-		return errors.Join(fmt.Errorf("could not get relative path: %w", err), httphandler.ErrBadRequest)
+		return fmt.Errorf("could not get relative path: %w", err)
 	}
-
-	path = filepath.Clean(path)
 
 	session, err := web.files.Session(r.Context(), auth.Username)
 	if err != nil {
 		return httphandler.NewInternalError(err, nil)
 	}
 
-	file, err := session.FS().Open(r.Context(), sep+path)
+	file, err := session.FS().Open(r.Context(), storePath(rel))
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) || errors.Is(err, store.ErrIsDirectory) {
 			return httphandler.ErrNotFound
 		}
 
-		return httphandler.NewInternalError(fmt.Errorf("could not read file at %q: %w", path, err), nil)
+		return httphandler.NewInternalError(fmt.Errorf("could not read file at %q: %w", rel, err), nil)
 	}
 
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
-			err = errors.Join(fmt.Errorf("could not close file at %q: %w", path, closeErr), err)
+			err = errors.Join(fmt.Errorf("could not close file at %q: %w", rel, closeErr), err)
 		}
 	}()
 
 	inode, err := file.Stat()
 	if err != nil {
-		return httphandler.NewInternalError(fmt.Errorf("could not stat file at %q: %w", path, err), nil)
+		return httphandler.NewInternalError(fmt.Errorf("could not stat file at %q: %w", rel, err), nil)
 	}
 
 	contentType, err := detectContentType(file)
 	if err != nil {
-		return httphandler.NewInternalError(fmt.Errorf("could not detect content type for %q: %w", path, err), nil)
+		return httphandler.NewInternalError(fmt.Errorf("could not detect content type for %q: %w", rel, err), nil)
 	}
 
 	fileserve.Serve(w, r, fileserve.Meta{

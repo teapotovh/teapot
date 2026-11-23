@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path/filepath"
+	"path"
 
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -47,7 +47,7 @@ func (web *Web) BrowseDialog(w http.ResponseWriter, r *http.Request) (ui.Compone
 func getDialogBasePath(r *http.Request, prefix string) (string, error) {
 	curr := hxhttp.GetCurrentURL(r.Header)
 
-	url, err := url.Parse(curr)
+	u, err := url.Parse(curr)
 	if err != nil {
 		return "", errors.Join(
 			fmt.Errorf("could not parse current URL %q : %w", curr, err),
@@ -55,12 +55,12 @@ func getDialogBasePath(r *http.Request, prefix string) (string, error) {
 		)
 	}
 
-	path, err := filepath.Rel(prefix, url.Path)
+	dir, err := urlPath(prefix, u.Path)
 	if err != nil {
-		return "", errors.Join(fmt.Errorf("could not get relative path: %w", err), webhandler.ErrBadRequest)
+		return "", fmt.Errorf("could not get relative path: %w", err)
 	}
 
-	return filepath.Clean(path), nil
+	return dir, nil
 }
 
 func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
@@ -71,38 +71,38 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 
 	switch r.Method {
 	case http.MethodGet:
-		path, err := getDialogBasePath(r, PathBrowse)
+		dir, err := getDialogBasePath(r, PathBrowse)
 		if err != nil {
 			return nil, err
 		}
 
 		return newFolderDialog{
-			url:  r.URL.Path,
-			path: path,
+			url:  EscapePath(r.URL.Path),
+			path: dir,
 		}, nil
 
 	case http.MethodPost:
 		base := r.FormValue(dialogBaseID)
 
-		path := r.FormValue(newFolderDialogPathID)
-		if base == "" || path == "" {
+		rel := r.FormValue(newFolderDialogPathID)
+		if base == "" || rel == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return dialogError{err: fmt.Errorf("invalid empty path: %w", webhandler.ErrBadRequest)}, nil
 		}
 
-		path = filepath.Clean(filepath.Join(base, path))
+		dir := path.Join(base, rel)
 
 		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		if err := session.FS().Mkdir(r.Context(), sep+path); err != nil {
+		if err := session.FS().Mkdir(r.Context(), storePath(dir)); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return dialogError{err: fmt.Errorf("error while creating folder %q: %w", path, err)}, nil
+			return dialogError{err: fmt.Errorf("error while creating folder %q: %w", dir, err)}, nil
 		}
 
-		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseAt(path)+sep), http.StatusFound)
+		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseDirAt(dir)), http.StatusFound)
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
@@ -116,14 +116,14 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 
 	switch r.Method {
 	case http.MethodGet:
-		path, err := getDialogBasePath(r, PathBrowse)
+		dir, err := getDialogBasePath(r, PathBrowse)
 		if err != nil {
 			return nil, err
 		}
 
 		return uploadDialog{
-			url:  r.URL.Path,
-			path: path,
+			url:  EscapePath(r.URL.Path),
+			path: dir,
 		}, nil
 
 	case http.MethodPost:
@@ -140,7 +140,7 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 			return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
 		}
 
-		path := filepath.Clean(filepath.Join(base, header.Filename))
+		rel := path.Join(base, header.Filename)
 
 		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
@@ -153,12 +153,12 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 			return dialogError{err: fmt.Errorf("could not read file from request: %w", err)}, nil
 		}
 
-		if err := session.FS().Put(r.Context(), sep+path, bytes.NewReader(data)); err != nil {
+		if err := session.FS().Put(r.Context(), storePath(rel), bytes.NewReader(data)); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return dialogError{err: fmt.Errorf("error while writing file %q: %w", path, err)}, nil
+			return dialogError{err: fmt.Errorf("error while writing file %q: %w", rel, err)}, nil
 		}
 
-		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseAt(base)+sep), http.StatusFound)
+		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseDirAt(base)), http.StatusFound)
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
@@ -272,7 +272,7 @@ var uploadFormStyle = ui.MustParseStyle(`
 `)
 
 func (ud uploadDialog) Render(ctx ui.Context) g.Node {
-	cd := filepath.Base(ud.path)
+	cd := path.Base(ud.path)
 	exampleFile := "main.cpp"
 
 	return h.Div(
