@@ -141,7 +141,7 @@ func newStore(
 // NewPSQL creates a store backed by PostgreSQL and S3.
 func NewPSQL(ctx context.Context, config Config, logger *slog.Logger) (*Store, error) {
 	options := brant.DefaultOptions().
-		WithTableName("_version").
+		WithTableName("_files_version").
 		WithFilesystem(migrations).
 		WithDataSourceName(config.URL)
 
