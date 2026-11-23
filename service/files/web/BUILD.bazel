@@ -3,11 +3,13 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "web",
     srcs = [
+        "archive.go",
         "flag.go",
         "metrics.go",
         "page_browse.go",
+        "page_browse_action.go",
         "page_browse_dialog.go",
-        "page_file.go",
+        "page_download.go",
         "page_index.go",
         "paths.go",
         "skeleton.go",
@@ -38,9 +40,14 @@ go_library(
 go_test(
     name = "web_test",
     srcs = [
-        "page_file_test.go",
+        "archive_test.go",
+        "page_browse_action_test.go",
+        "page_download_test.go",
         "paths_test.go",
     ],
     embed = [":web"],
-    deps = ["//service/files/store"],
+    deps = [
+        "//lib/run",
+        "//service/files/store",
+    ],
 )

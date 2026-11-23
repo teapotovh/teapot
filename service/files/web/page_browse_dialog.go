@@ -24,6 +24,8 @@ import (
 const (
 	BrowseDialogNewFolder = "newfolder"
 	BrowseDialogUpload    = "upload"
+	BrowseDialogRename    = "rename"
+	BrowseDialogDelete    = "delete"
 )
 
 var ErrInvalidBrowseDialog = errors.New("invalid browse dialog")
@@ -36,6 +38,12 @@ func (web *Web) BrowseDialog(w http.ResponseWriter, r *http.Request) (ui.Compone
 
 	case BrowseDialogUpload:
 		return web.BrowseDialogUpload(w, r)
+
+	case BrowseDialogRename:
+		return web.BrowseDialogRename(w, r)
+
+	case BrowseDialogDelete:
+		return web.BrowseDialogDelete(w, r)
 
 	default:
 		return nil, fmt.Errorf("could not serve requested dialog %q: %w", dialog, ErrInvalidBrowseDialog)
@@ -164,15 +172,93 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
 }
 
+func (web *Web) BrowseDialogRename(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	auth := webauth.GetAuth(r)
+	if auth == nil {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
+	}
+
+	base, err := getDialogBasePath(r, PathBrowse)
+	if err != nil {
+		return nil, err
+	}
+
+	paths, err := selectedPaths(r)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(paths) != 1 {
+		return nil, fmt.Errorf("rename requires one entry: %w", webhandler.ErrBadRequest)
+	}
+
+	return renameDialog{
+		url:  EscapePath(PathRenameAt(path.Join(base, paths[0]))),
+		path: paths[0],
+	}, nil
+}
+
+func (web *Web) BrowseDialogDelete(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	auth := webauth.GetAuth(r)
+	if auth == nil {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
+	}
+
+	path, err := getDialogBasePath(r, PathBrowse)
+	if err != nil {
+		return nil, err
+	}
+
+	paths, err := selectedPaths(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return deleteDialog{
+		url:   EscapePath(PathDeleteDirAt(path)),
+		paths: paths,
+	}, nil
+}
+
 const (
 	newFolderDialogErrorContainerID = "newfolder-error"
 	dialogBaseID                    = "base"
 	newFolderDialogPathID           = "path"
 	uploadDialogFileID              = "file"
+	renameDialogNameID              = "name"
 )
 
 var dialogStyle = ui.MustParseStyle(`
-	max-width: var(--size-content-3);
+	max-width: calc(var(--size-content-3) + var(--size-10));
+
+	& h3 {
+	  margin-bottom: var(--size-3);
+	}
+
+	& p {
+	  margin-bottom: var(--size-3);
+	}
+
+	& ul {
+	  margin-bottom: var(--size-3);
+	  padding-left: var(--size-5);
+	}
+
+	& form {
+	  margin-top: var(--size-3);
+	}
+`)
+
+var renameDialogStyle = ui.MustParseStyle(`
+	width: calc(var(--size-content-3) + var(--size-10));
 `)
 
 type newFolderDialog struct {
@@ -209,15 +295,13 @@ func (nfd newFolderDialog) Render(ctx ui.Context) g.Node {
 	return h.Div(ctx.Class(dialogStyle),
 		h.H3(g.Text("New Folder")),
 		h.P(g.Text("Create a new folder in the currect directory.")),
-		h.Br(),
 		h.P(
 			g.Text("Adding folders recursively is also supported. Thus, creating a folder named "),
-			h.Code(g.Text("documents/letters")),
-			g.Text(" will create both the "), h.Code(g.Text("documents")),
-			g.Text(" and "), h.Code(g.Text("documents/letters")), g.Text(" folders, as necessary."),
+			components.Code(ctx, g.Text("documents/letters")),
+			g.Text(" will create both the "), components.Code(ctx, g.Text("documents")),
+			g.Text(" and "), components.Code(ctx, g.Text("documents/letters")), g.Text(" folders, as necessary."),
 		),
-		h.Br(),
-		h.P(g.Text("Think of this as "), h.Code(g.Text("mkdir -p")), g.Text(".")),
+		h.P(g.Text("Think of this as "), components.Code(ctx, g.Text("mkdir -p")), g.Text(".")),
 
 		h.Form(
 			ctx.Class(newFolderFormStyle),
@@ -279,17 +363,17 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 		ctx.Class(dialogStyle),
 		h.H3(g.Text("Upload")),
 		h.P(g.Text("Upload a file in the current directory.")),
-		h.Br(),
 		h.P(
 			g.Text("The file will maintain the same name it has when you upload it."),
 			g.Text("For example, if you upload a faile called"),
-			h.Code(g.Text(exampleFile)),
-			g.Text(" it will be placed in the current folder ("), h.Code(g.Text(cd)),
-			g.Text(") as "), h.Code(g.Text(exampleFile)), g.Text("."),
+			components.Code(ctx, g.Text(exampleFile)),
+			g.Text(" it will be placed in the current folder ("), components.Code(ctx, g.Text(cd)),
+			g.Text(") as "), components.Code(ctx, g.Text(exampleFile)), g.Text("."),
 		),
-		h.Br(),
-		g.Text(
-			"Placing files under subfolders is not supported, although you could get it to work with some trickery ;).",
+		h.P(
+			g.Text(
+				"Placing files under subfolders is not supported, although you could get it to work with some trickery ;).",
+			),
 		),
 
 		h.Form(
@@ -318,6 +402,76 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 					),
 				),
 				components.Button(ctx, h.Type("submit"), g.Text("Upload")),
+			),
+
+			h.Div(h.ID(newFolderDialogErrorContainerID), h.Class("error")),
+		),
+	)
+}
+
+type renameDialog struct {
+	url  string
+	path string
+}
+
+func (rd renameDialog) Render(ctx ui.Context) g.Node {
+	name := path.Base(rd.path)
+
+	return h.Div(ctx.Class(dialogStyle, renameDialogStyle),
+		h.H3(g.Text("Rename")),
+		h.P(g.Text("Rename the selected entry.")),
+		h.P(components.Code(ctx, g.Text(name))),
+
+		h.Form(
+			ctx.Class(newFolderFormStyle),
+			hx.Ext("response-targets"),
+			hx.Post(rd.url),
+			hx.Swap("innerHTML"),
+			g.Attr("hx-target-error", "#"+newFolderDialogErrorContainerID),
+
+			components.ValueInput(ctx, renameDialogNameID, "text", "Name", name, true, h.Class("input")),
+
+			h.Div(h.Class("buttons"),
+				components.Button(ctx, h.Type("submit"), g.Text("Rename")),
+			),
+
+			h.Div(h.ID(newFolderDialogErrorContainerID), h.Class("error")),
+		),
+	)
+}
+
+type deleteDialog struct {
+	url   string
+	paths []string
+}
+
+func (dd deleteDialog) Render(ctx ui.Context) g.Node {
+	return h.Div(ctx.Class(dialogStyle),
+		h.H3(g.Text("Delete")),
+		h.P(g.Text("Delete the selected entries? This cannot be undone.")),
+		h.Ul(
+			g.Map(dd.paths, func(filePath string) g.Node {
+				return h.Li(components.Code(ctx, g.Text(path.Base(filePath))))
+			}),
+		),
+
+		h.Form(
+			ctx.Class(newFolderFormStyle),
+			hx.Ext("response-targets"),
+			hx.Post(dd.url),
+			hx.Swap("innerHTML"),
+			g.Attr("hx-target-error", "#"+newFolderDialogErrorContainerID),
+
+			g.Map(dd.paths, func(path string) g.Node {
+				return h.Input(
+					h.Type("hidden"),
+					h.Name(selectionPathID),
+					h.Value(path),
+				)
+			}),
+
+			h.Div(h.Class("buttons"),
+				components.Button(ctx, h.Type("submit"), g.Text("Delete")),
 			),
 
 			h.Div(h.ID(newFolderDialogErrorContainerID), h.Class("error")),

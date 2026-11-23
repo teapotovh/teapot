@@ -34,6 +34,7 @@ func Button(ctx ui.Context, children ...g.Node) g.Node {
 
 func DialogButton(ctx ui.Context, dialogURL string, children ...g.Node) g.Node {
 	return h.Button(
+		h.Type("button"),
 		hx.Get(dialogURL),
 		hx.Target("#"+DialogID+" #"+DialogContentID),
 		hx.Swap("inner"),
