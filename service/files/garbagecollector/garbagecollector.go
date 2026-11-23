@@ -48,12 +48,22 @@ type Objects interface {
 	Delete(ctx context.Context, key string) error
 }
 
+// S3Config is the configuration for the S3 object store.
+type S3Config struct {
+	// URL is the S3 endpoint with optional credentials.
+	URL string
+	// Region is the S3 region.
+	Region string
+	// Bucket is the bucket that holds the blobs.
+	Bucket string
+}
+
 // Config is the configuration for the garbage collector.
 type Config struct {
 	// URL is the PostgreSQL connection string.
 	URL string
 	// S3 is the S3 blob store configuration.
-	S3 store.S3Config
+	S3 S3Config
 	// GracePeriod is the minimum object age before deletion.
 	GracePeriod time.Duration
 }

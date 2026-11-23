@@ -26,6 +26,16 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+// S3Config is the configuration for the S3 blob store.
+type S3Config struct {
+	// URL is the S3 endpoint with optional credentials.
+	URL string
+	// Region is the S3 region.
+	Region string
+	// Cache is the S3 cache configuration.
+	Cache s3cache.S3CacheConfig
+}
+
 // Config is the configuration for the store.
 type Config struct {
 	// URL is the PostgreSQL connection string.
@@ -183,12 +193,20 @@ func NewPSQL(ctx context.Context, config Config, logger *slog.Logger) (*Store, e
 
 	db.notify = notifications
 
-	blob, err := NewS3Blob(config.S3)
+	client, err := s3cache.NewClient(config.S3.URL, config.S3.Region, nil)
 	if err != nil {
 		err = errors.Join(err, notifications.Close())
 		db.Close()
 
-		return nil, fmt.Errorf("could not create S3 blob store: %w", err)
+		return nil, fmt.Errorf("could not create S3 client: %w", err)
+	}
+
+	blob, err := s3cache.NewS3Cache(config.S3.Cache, client, logger.With("component", "s3cache"))
+	if err != nil {
+		err = errors.Join(err, notifications.Close())
+		db.Close()
+
+		return nil, fmt.Errorf("could not create S3 cache: %w", err)
 	}
 
 	store, err := NewStore(config, db, blob, notifications, logger)
