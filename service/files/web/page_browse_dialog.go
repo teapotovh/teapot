@@ -102,7 +102,7 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 			return dialogError{err: fmt.Errorf("error while creating folder %q: %w", path, err)}, nil
 		}
 
-		return nil, webhandler.NewRedirectError(PathBrowseAt(path)+sep, http.StatusFound)
+		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseAt(path)+sep), http.StatusFound)
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
@@ -158,7 +158,7 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 			return dialogError{err: fmt.Errorf("error while writing file %q: %w", path, err)}, nil
 		}
 
-		return nil, webhandler.NewRedirectError(PathBrowseAt(base)+sep, http.StatusFound)
+		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseAt(base)+sep), http.StatusFound)
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)

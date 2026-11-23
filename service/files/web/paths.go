@@ -1,6 +1,7 @@
 package web
 
 import (
+	"net/url"
 	"path/filepath"
 )
 
@@ -27,4 +28,9 @@ func PathBrowseDialogOf(dialog string) string {
 
 func PathFileAt(paths ...string) string {
 	return filepath.Join(append([]string{PathFile}, paths...)...)
+}
+
+// EscapePath percent-encodes a path for use in a URL.
+func EscapePath(path string) string {
+	return (&url.URL{Path: path}).EscapedPath()
 }

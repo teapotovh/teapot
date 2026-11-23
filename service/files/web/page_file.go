@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/arhuman/bizkit/fileserve"
+
 	"github.com/teapotovh/teapot/lib/httphandler"
 	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/service/files/store"
@@ -32,7 +34,7 @@ func (web *Web) File(w http.ResponseWriter, r *http.Request) (err error) {
 
 	file, err := session.FS().Open(r.Context(), sep+path)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, store.ErrNotFound) || errors.Is(err, store.ErrIsDirectory) {
 			return httphandler.ErrNotFound
 		}
 
@@ -45,9 +47,35 @@ func (web *Web) File(w http.ResponseWriter, r *http.Request) (err error) {
 		}
 	}()
 
-	if _, err := io.Copy(w, file); err != nil {
-		return fmt.Errorf("error while writing response file at %q: %w", path, err)
+	inode, err := file.Stat()
+	if err != nil {
+		return httphandler.NewInternalError(fmt.Errorf("could not stat file at %q: %w", path, err), nil)
 	}
 
+	contentType, err := detectContentType(file)
+	if err != nil {
+		return httphandler.NewInternalError(fmt.Errorf("could not detect content type for %q: %w", path, err), nil)
+	}
+
+	fileserve.Serve(w, r, fileserve.Meta{
+		Name:        inode.Name,
+		ContentType: contentType,
+		ModTime:     inode.ModTime,
+	}, file)
+
 	return nil
+}
+
+// detectContentType returns the media type of the file.
+func detectContentType(file store.File) (string, error) {
+	contentType, _, err := fileserve.Sniff(file)
+	if err != nil {
+		return "", fmt.Errorf("could not detect content type: %w", err)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("could not seek file: %w", err)
+	}
+
+	return contentType, nil
 }

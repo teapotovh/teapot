@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "web",
@@ -25,6 +25,7 @@ go_library(
         "//lib/webhandler",
         "//service/files",
         "//service/files/store",
+        "@com_github_arhuman_bizkit//fileserve",
         "@com_github_dustin_go_humanize//:go-humanize",
         "@com_github_spf13_pflag//:pflag",
         "@dev_maragu_gomponents//:gomponents",
@@ -32,4 +33,14 @@ go_library(
         "@dev_maragu_gomponents_htmx//:gomponents-htmx",
         "@dev_maragu_gomponents_htmx//http",
     ],
+)
+
+go_test(
+    name = "web_test",
+    srcs = [
+        "page_file_test.go",
+        "paths_test.go",
+    ],
+    embed = [":web"],
+    deps = ["//service/files/store"],
 )

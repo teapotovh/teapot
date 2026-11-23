@@ -188,7 +188,7 @@ func (b browse) Render(ctx ui.Context) g.Node {
 			href = PathFileAt(entry.path)
 		}
 
-		return href
+		return EscapePath(href)
 	}
 
 	return g.Group{
