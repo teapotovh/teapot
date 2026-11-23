@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,8 +22,10 @@ import (
 	"github.com/teapotovh/teapot/service/files/store"
 )
 
-var (
-	sep  = "/"
+const (
+	// sep is the separator used by URL and store paths.
+	sep = "/"
+	// here is the cleaned path of the current directory.
 	here = "."
 )
 
@@ -57,23 +60,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		var entries []entry
-
-		for _, inode := range page.Inodes {
-			entryPath := filepath.Clean(filepath.Join(path, inode.Name))
-
-			mode := os.FileMode(0)
-			if inode.Kind == store.KindDirectory {
-				mode = os.ModeDir
-			}
-
-			entries = append(entries, entry{
-				name: inode.Name,
-				path: entryPath,
-				mode: mode,
-				size: uint64(inode.Size), //nolint:gosec
-			})
-		}
+		entries := toEntries(path, page.Inodes)
 
 		var (
 			segments = []entry{
@@ -103,6 +90,7 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 			user:     auth.Username,
 			segments: segments,
 			entries:  entries,
+			cursor:   page.Cursor,
 		}
 
 		return webhandler.NewPage(
@@ -113,6 +101,70 @@ func (web *Web) Browse(w http.ResponseWriter, r *http.Request) (ui.Component, er
 	}
 
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
+}
+
+const browseEntriesCursorID = "cursor"
+
+// BrowseEntries returns the next page of a folder as a fragment.
+func (web *Web) BrowseEntries(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
+	if r.Method != http.MethodGet {
+		return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
+	}
+
+	auth := webauth.GetAuth(r)
+	if auth == nil {
+		return nil, webhandler.NewRedirectError(PathIndex, http.StatusFound)
+	}
+
+	path, err := getDialogBasePath(r, PathBrowse)
+	if err != nil {
+		return nil, err
+	}
+
+	var cursor *store.Cursor
+
+	if value := r.URL.Query().Get(browseEntriesCursorID); value != "" {
+		c := store.Cursor(value)
+		cursor = &c
+	}
+
+	session, err := web.files.Session(r.Context(), auth.Username)
+	if err != nil {
+		return nil, webhandler.NewInternalError(err, nil)
+	}
+
+	page, err := session.FS().List(r.Context(), sep+path, cursor)
+	if err != nil {
+		err = fmt.Errorf("could not read directory at %q: %w", path, err)
+
+		return nil, webhandler.NewInternalError(err, nil)
+	}
+
+	return browseEntries{
+		path:    path,
+		entries: toEntries(path, page.Inodes),
+		cursor:  page.Cursor,
+	}, nil
+}
+
+func toEntries(path string, inodes []store.Inode) []entry {
+	var entries []entry
+
+	for _, inode := range inodes {
+		mode := os.FileMode(0)
+		if inode.Kind == store.KindDirectory {
+			mode = os.ModeDir
+		}
+
+		entries = append(entries, entry{
+			name: inode.Name,
+			path: filepath.Clean(filepath.Join(path, inode.Name)),
+			mode: mode,
+			size: uint64(inode.Size), //nolint:gosec
+		})
+	}
+
+	return entries
 }
 
 type entry struct {
@@ -127,6 +179,7 @@ type browse struct {
 	user     string
 	segments []entry
 	entries  []entry
+	cursor   *store.Cursor
 }
 
 var browseTitleStyle = ui.MustParseStyle(`
@@ -157,6 +210,13 @@ var browseStyle = ui.MustParseStyle(`
 	& .mode {
 	  display: none;
 	}
+
+	& .more {
+	  grid-column: 1 / -1;
+	  text-align: center;
+	  padding: var(--size-2) 0;
+	}
+
 	@media (min-width: 768px) {
 		grid-template-columns: 2fr 20fr 5fr;
 		& .mode {
@@ -164,6 +224,28 @@ var browseStyle = ui.MustParseStyle(`
 		}
 	}
 `)
+
+func entryHref(entry entry) string {
+	href := PathFileAt(entry.path)
+	if entry.mode == os.ModeDir {
+		href = PathBrowseAt(entry.path) + sep
+	}
+
+	return EscapePath(href)
+}
+
+func entryNode(ctx ui.Context, entry entry) g.Node {
+	target := hx.Boost("true")
+	if entry.mode != os.ModeDir {
+		target = h.Target("_blank")
+	}
+
+	return g.Group{
+		h.Div(h.Class("mode"), g.Text(entry.mode.String())),
+		h.Div(h.A(target, h.Href(entryHref(entry)), g.Text(entry.name))),
+		h.Div(h.Class("size"), g.Text(humanize.IBytes(entry.size))),
+	}
+}
 
 func (b browse) Render(ctx ui.Context) g.Node {
 	path := filepath.Join(sep, b.path)
@@ -180,22 +262,11 @@ func (b browse) Render(ctx ui.Context) g.Node {
 		}, entries...)
 	}
 
-	href := func(entry entry) string {
-		var href string
-		if entry.mode == os.ModeDir {
-			href = PathBrowseAt(entry.path) + sep
-		} else {
-			href = PathFileAt(entry.path)
-		}
-
-		return EscapePath(href)
-	}
-
 	return g.Group{
 		h.Div(ctx.Class(browseTitleStyle),
 			h.Div(
 				g.Map(b.segments, func(segment entry) g.Node {
-					href := href(segment)
+					href := entryHref(segment)
 
 					return g.Group{
 						h.A(hx.Boost("true"), h.Href(href), g.Text(segment.name)),
@@ -210,23 +281,46 @@ func (b browse) Render(ctx ui.Context) g.Node {
 		),
 
 		h.Section(ctx.Class(browseStyle),
-			g.Map(entries, func(entry entry) g.Node {
-				href := href(entry)
-
-				target := hx.Boost("true")
-				if entry.mode != os.ModeDir {
-					target = h.Target("_blank")
-				}
-
-				return g.Group{
-					h.Div(h.Class("mode"), g.Text(entry.mode.String())),
-					h.Div(h.A(target, h.Href(href), g.Text(entry.name))),
-					h.Div(h.Class("size"), g.Text(humanize.IBytes(entry.size))),
-				}
-			}),
+			browseEntries{
+				path:    b.path,
+				entries: entries,
+				cursor:  b.cursor,
+			}.Render(ctx),
 		),
 	}
 }
 
 // Ensure browse implements ui.Component.
 var _ ui.Component = browse{}
+
+type browseEntries struct {
+	path    string
+	entries []entry
+	cursor  *store.Cursor
+}
+
+func (be browseEntries) Render(ctx ui.Context) g.Node {
+	nodes := make([]g.Node, 0, len(be.entries)+1)
+
+	for _, entry := range be.entries {
+		nodes = append(nodes, entryNode(ctx, entry))
+	}
+
+	if be.cursor != nil {
+		query := url.Values{}
+		query.Set(browseEntriesCursorID, string(*be.cursor))
+		href := PathBrowseEntries + "?" + query.Encode()
+
+		nodes = append(nodes, h.Div(h.Class("more"),
+			hx.Get(href),
+			hx.Trigger("revealed"),
+			hx.Swap("outerHTML"),
+			g.Text("Loading..."),
+		))
+	}
+
+	return g.Group(nodes)
+}
+
+// Ensure browseEntries implements ui.Component.
+var _ ui.Component = browseEntries{}
