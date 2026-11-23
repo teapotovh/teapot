@@ -33,6 +33,7 @@ go_library(
         "//proto/files:files_go_proto",
         "@com_github_jackc_pgx_v5//:pgx",
         "@com_github_jackc_pgx_v5//pgxpool",
+        "@com_github_jackc_pgx_v5//stdlib",
         "@com_github_minio_minio_go_v7//:minio-go",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_spf13_pflag//:pflag",

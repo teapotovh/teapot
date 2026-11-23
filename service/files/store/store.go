@@ -20,6 +20,8 @@ import (
 	"github.com/teapotovh/teapot/lib/pgnotify"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/s3cache"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 //go:embed migrations/*.sql
