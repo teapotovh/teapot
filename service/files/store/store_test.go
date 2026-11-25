@@ -213,6 +213,26 @@ func TestFSListPagination(t *testing.T) {
 	}
 }
 
+func TestFSListRoot(t *testing.T) {
+	t.Parallel()
+
+	store, ctx := newTestStore(t)
+	fs := store.For(1006)
+
+	if err := fs.Mkdir(ctx, "/a"); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	page, err := fs.List(ctx, "/", nil)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if len(page.Inodes) != 1 || page.Inodes[0].Name != "a" {
+		t.Fatalf("List = %+v, want one a", page.Inodes)
+	}
+}
+
 func TestRevisionConflict(t *testing.T) {
 	t.Parallel()
 

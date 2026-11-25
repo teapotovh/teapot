@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"maps"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 
@@ -194,10 +195,14 @@ func (rer *Renderer) Render(ctx context.Context, w io.Writer, loaded AlreadyLoad
 		return err
 	}
 
-	all := g.Group(append(
-		styles,
-		append(scripts, node)...,
-	))
+	var all g.Group
+
+	head := slices.Concat(styles, scripts)
+	if len(head) > 0 {
+		all = append(all, h.Head(head...))
+	}
+
+	all = append(all, node)
 
 	if err := all.Render(w); err != nil {
 		return fmt.Errorf("error while rendering component: %w", err)

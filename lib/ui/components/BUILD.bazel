@@ -5,6 +5,8 @@ go_library(
     srcs = [
         "body.go",
         "button.go",
+        "checkbox.go",
+        "code.go",
         "dialog.go",
         "grid.go",
         "header.go",

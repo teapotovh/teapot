@@ -78,7 +78,9 @@ func (web *Web) Handler(prefix string) http.Handler {
 
 	mux.Handle(PathBrowseAt("{path...}"), web.webHandler.Adapt(web.Browse))
 	mux.Handle(PathBrowseDialogOf("{dialog}"), web.webHandler.Adapt(web.BrowseDialog))
-	mux.Handle(PathFileAt("{path...}"), web.webHandler.AdaptHTTP(web.File))
+	mux.Handle(PathDownloadAt("{path...}"), web.webHandler.AdaptHTTP(web.Download))
+	mux.Handle(PathRenameAt("{path...}"), web.webHandler.Adapt(web.Rename))
+	mux.Handle(PathDeleteAt("{path...}"), web.webHandler.Adapt(web.Delete))
 
 	mux.Handle("/{path...}", web.webHandler.Adapt(web.NotFound))
 

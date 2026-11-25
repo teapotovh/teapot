@@ -51,6 +51,11 @@ type SnapshotCursor struct {
 	Name     string
 }
 
+// IsRoot reports whether the inode is the root directory. The root is its own parent.
+func (i Inode) IsRoot() bool {
+	return i.NodeID == i.ParentID
+}
+
 // Proto returns the wire form of the inode.
 func (i Inode) Proto() *filespb.Inode {
 	message := &filespb.Inode{

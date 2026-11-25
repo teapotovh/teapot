@@ -237,6 +237,11 @@ func (c *cache) apply(inode Inode) error {
 		return err
 	}
 
+	// The root is its own parent, so it is not a child of any inode.
+	if inode.IsRoot() {
+		return nil
+	}
+
 	return c.children.Store(childKeyString(inode.UID, inode.ParentID, inode.Name), nodeIDBytes(inode.NodeID))
 }
 

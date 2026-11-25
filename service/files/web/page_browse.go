@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -24,6 +25,8 @@ import (
 
 // here is the cleaned path of the current directory.
 const here = "."
+
+const parentDir = ".."
 
 const browseEntriesCursorID = "cursor"
 
@@ -170,7 +173,7 @@ type browse struct {
 
 var browseTitleStyle = ui.MustParseStyle(`
 	font-size: var(--font-size-2);
-	padding: var(--size-3) var(--size-2);
+	padding: var(--size-3) var(--size-2) var(--size-3) calc(var(--size-2) * 2 + var(--size-3));
 
 	display: flex;
 	flex-direction: row;
@@ -186,8 +189,9 @@ var browseStyle = ui.MustParseStyle(`
 	display: grid;
 	padding: 0 var(--size-2);
 	width: 100%;
-  grid-template-columns: 20fr 5fr;
+  grid-template-columns: var(--size-3) 20fr 5fr;
 	gap: var(--size-2);
+	align-items: center;
 
 	& .size {
 	  text-align: right;
@@ -204,7 +208,7 @@ var browseStyle = ui.MustParseStyle(`
 	}
 
 	@media (min-width: 768px) {
-		grid-template-columns: 2fr 20fr 5fr;
+		grid-template-columns: var(--size-3) max-content 20fr 5fr;
 		& .mode {
 	    display: block;
 		}
@@ -212,7 +216,7 @@ var browseStyle = ui.MustParseStyle(`
 `)
 
 func entryHref(entry entry) string {
-	href := PathFileAt(entry.path)
+	href := PathDownloadAt(entry.path)
 	if entry.mode == os.ModeDir {
 		href = PathBrowseDirAt(entry.path)
 	}
@@ -221,14 +225,27 @@ func entryHref(entry entry) string {
 }
 
 func entryNode(ctx ui.Context, entry entry) g.Node {
-	target := hx.Boost("true")
-	if entry.mode != os.ModeDir {
-		target = h.Target("_blank")
+	var checkbox = h.Div()
+	if entry.name != parentDir {
+		checkbox = components.Checkbox(
+			ctx,
+			"Select "+entry.name,
+			h.Name(selectionPathID),
+			h.Value(entry.name),
+		)
+	}
+
+	var name g.Node
+	if entry.mode == os.ModeDir {
+		name = h.A(hx.Boost("true"), h.Href(entryHref(entry)), g.Text(entry.name))
+	} else {
+		name = h.A(h.Target("_blank"), h.Href(entryHref(entry)), g.Text(entry.name))
 	}
 
 	return g.Group{
+		checkbox,
 		h.Div(h.Class("mode"), g.Text(entry.mode.String())),
-		h.Div(h.A(target, h.Href(entryHref(entry)), g.Text(entry.name))),
+		h.Div(name),
 		h.Div(h.Class("size"), g.Text(humanize.IBytes(entry.size))),
 	}
 }
@@ -240,39 +257,90 @@ func (b browse) Render(ctx ui.Context) g.Node {
 	if dir != "/" {
 		entries = append([]entry{
 			{
-				name: "..",
-				path: path.Join(dir, ".."),
+				name: parentDir,
+				path: path.Join(dir, parentDir),
 				mode: os.ModeDir,
 				size: 0,
 			},
 		}, entries...)
 	}
 
+	downloadURL := EscapePath(PathDownloadDirAt(b.path))
+
 	return g.Group{
-		h.Div(ctx.Class(browseTitleStyle),
-			h.Div(
-				g.Map(b.segments, func(segment entry) g.Node {
-					href := entryHref(segment)
+		h.Form(
+			h.ID(browseSelectionFormID),
+			h.Method(http.MethodPost),
+			h.Action(downloadURL),
+			hx.On("change", "updateBrowseSelection(this)"),
 
-					return g.Group{
-						h.A(hx.Boost("true"), h.Href(href), g.Text(segment.name)),
-						h.Span(g.Text("/")),
+			h.Div(ctx.Class(browseTitleStyle),
+				h.Div(
+					g.Map(b.segments, func(segment entry) g.Node {
+						href := entryHref(segment)
+
+						return g.Group{
+							h.A(hx.Boost("true"), h.Href(href), g.Text(segment.name)),
+							h.Span(g.Text("/")),
+						}
+					}),
+				),
+				h.Div(h.Class("buttons"),
+					components.Button(ctx,
+						h.Type("submit"),
+						h.FormAction(downloadURL),
+						h.Disabled(),
+						h.Hidden("true"),
+						g.Attr("data-selection-action", selectionActionDownload),
+						g.Text("Download"),
+					),
+					components.Button(ctx,
+						h.Type("button"),
+						hx.Post(PathBrowseDialogOf(BrowseDialogRename)),
+						hx.Target("#"+components.DialogID+" #"+components.DialogContentID),
+						hx.Swap("inner"),
+						h.Disabled(),
+						h.Hidden("true"),
+						g.Attr("data-selection-action", selectionActionRename),
+						g.Text("Rename"),
+					),
+					components.Button(ctx,
+						h.Type("button"),
+						hx.Post(PathBrowseDialogOf(BrowseDialogDelete)),
+						hx.Target("#"+components.DialogID+" #"+components.DialogContentID),
+						hx.Swap("inner"),
+						h.Disabled(),
+						h.Hidden("true"),
+						g.Attr("data-selection-action", selectionActionDelete),
+						g.Text("Delete"),
+					),
+					components.DialogButton(ctx, PathBrowseDialogOf(BrowseDialogNewFolder), g.Text("New Folder")),
+					components.DialogButton(ctx, PathBrowseDialogOf(BrowseDialogUpload), g.Text("Upload")),
+				),
+			),
+
+			h.Section(ctx.Class(browseStyle),
+				browseEntries{
+					path:    b.path,
+					entries: entries,
+					cursor:  b.cursor,
+				}.Render(ctx),
+			),
+		),
+
+		h.Script(g.Raw(`
+			function updateBrowseSelection(form) {
+				var selected = form.querySelectorAll('input[name="` + selectionPathID + `"]:checked').length
+				form.querySelectorAll('[data-selection-action]').forEach(function (button) {
+					button.hidden = selected === 0
+					if (button.dataset.selectionAction === '` + selectionActionRename + `') {
+						button.disabled = selected !== 1
+					} else {
+						button.disabled = selected === 0
 					}
-				}),
-			),
-			h.Div(h.Class("buttons"),
-				components.DialogButton(ctx, PathBrowseDialogOf(BrowseDialogNewFolder), g.Text("New Folder")),
-				components.DialogButton(ctx, PathBrowseDialogOf(BrowseDialogUpload), g.Text("Upload")),
-			),
-		),
-
-		h.Section(ctx.Class(browseStyle),
-			browseEntries{
-				path:    b.path,
-				entries: entries,
-				cursor:  b.cursor,
-			}.Render(ctx),
-		),
+				})
+			}
+		`)),
 	}
 }
 
@@ -293,12 +361,11 @@ func (be browseEntries) Render(ctx ui.Context) g.Node {
 	}
 
 	if be.cursor != nil {
-		nodes = append(nodes, h.Form(h.Class("more"),
-			h.Method("post"),
+		nodes = append(nodes, h.Div(h.Class("more"),
 			hx.Post(EscapePath(PathBrowseDirAt(be.path))),
 			hx.Trigger("revealed"),
 			hx.Swap("outerHTML"),
-			h.Input(h.Type("hidden"), h.Name(browseEntriesCursorID), h.Value(string(*be.cursor))),
+			hx.Vals(`{"`+browseEntriesCursorID+`":`+strconv.Quote(string(*be.cursor))+`}`),
 			g.Text("Loading..."),
 		))
 	}

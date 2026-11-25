@@ -19,7 +19,9 @@ const (
 	PathIndex        = "/"
 	PathBrowse       = "/browse/"
 	PathBrowseDialog = "/internal/browse/dialog/"
-	PathFile         = "/file/"
+	PathDownload     = "/download/"
+	PathRename       = "/rename/"
+	PathDelete       = "/delete/"
 )
 
 func PathBrowseAt(paths ...string) string {
@@ -35,8 +37,24 @@ func PathBrowseDialogOf(dialog string) string {
 	return path.Join(PathBrowseDialog, dialog)
 }
 
-func PathFileAt(paths ...string) string {
-	return path.Join(append([]string{PathFile}, paths...)...)
+func PathDownloadAt(paths ...string) string {
+	return path.Join(append([]string{PathDownload}, paths...)...)
+}
+
+func PathDownloadDirAt(paths ...string) string {
+	return PathDownloadAt(paths...) + "/"
+}
+
+func PathRenameAt(paths ...string) string {
+	return path.Join(append([]string{PathRename}, paths...)...)
+}
+
+func PathDeleteAt(paths ...string) string {
+	return path.Join(append([]string{PathDelete}, paths...)...)
+}
+
+func PathDeleteDirAt(paths ...string) string {
+	return PathDeleteAt(paths...) + "/"
 }
 
 // EscapePath percent-encodes a path for use in a URL.

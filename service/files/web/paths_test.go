@@ -10,20 +10,20 @@ func TestEscapePath(t *testing.T) {
 		want string
 	}{
 		{
-			path: "/file/hello world.txt",
-			want: "/file/hello%20world.txt",
+			path: "/download/hello world.txt",
+			want: "/download/hello%20world.txt",
 		},
 		{
-			path: "/file/a#b.txt",
-			want: "/file/a%23b.txt",
+			path: "/download/a#b.txt",
+			want: "/download/a%23b.txt",
 		},
 		{
-			path: "/file/a?b.txt",
-			want: "/file/a%3Fb.txt",
+			path: "/download/a?b.txt",
+			want: "/download/a%3Fb.txt",
 		},
 		{
-			path: "/file/100%.txt",
-			want: "/file/100%25.txt",
+			path: "/download/100%.txt",
+			want: "/download/100%25.txt",
 		},
 		{
 			path: "/browse/café/",
