@@ -6,11 +6,28 @@ data:
   policy.yaml: |
     apiVersion: "descheduler/v1alpha2"
     kind: "DeschedulerPolicy"
+    maxNoOfPodsToEvictPerNode: 1
     profiles:
       - name: spread
         pluginConfig:
-        - name: "RemoveDuplicates"
+          - name: "DefaultEvictor"
+            args:
+              nodeFit: true
+              minReplicas: 2
+              minPodAge: 10m
+              podProtections:
+                defaultDisabled:
+                  - "PodsWithLocalStorage"
+                extraEnabled:
+                  - "PodsWithPVC"
+          - name: "RemovePodsViolatingTopologySpreadConstraint"
+            args:
+              constraints:
+                - DoNotSchedule
+              topologyBalanceNodeFit: true
+          - name: "RemoveDuplicates"
         plugins:
           balance:
             enabled:
               - "RemoveDuplicates"
+              - "RemovePodsViolatingTopologySpreadConstraint"
