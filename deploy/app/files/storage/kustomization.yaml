@@ -1,0 +1,13 @@
+namespace: storage
+namePrefix: files-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: files
+      app.kubernetes.io/name: files
+      app.kubernetes.io/part-of: files
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - database.yaml

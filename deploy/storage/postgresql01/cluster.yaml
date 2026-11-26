@@ -91,3 +91,13 @@ spec:
           - pg_signal_backend
         passwordSecret:
           name: postgresql01-user-calendar
+      - name: files
+        ensure: present
+        comment: Access user for the files db
+        login: true
+        superuser: false
+        inRoles:
+          - pg_monitor
+          - pg_signal_backend
+        passwordSecret:
+          name: postgresql01-user-files

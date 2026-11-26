@@ -64,6 +64,15 @@ spec:
         certificateRefs:
           - name: calendar2-teapot-ovh-tls
 
+    - name: files-teapot-ovh
+      protocol: HTTPS
+      port: 443
+      hostname: files.teapot.ovh
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: files-teapot-ovh-tls
+
     - name: grafana-teapot-ovh
       protocol: HTTPS
       port: 443

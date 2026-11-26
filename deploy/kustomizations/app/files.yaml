@@ -1,0 +1,30 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: files-storage
+spec:
+  interval: 1h
+  path: deploy/app/files/storage
+  prune: true
+  dependsOn:
+    - name: postgresql01
+  sourceRef:
+    kind: GitRepository
+    name: teapot
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: files
+spec:
+  interval: 1h
+  path: deploy/app/files
+  prune: true
+  dependsOn:
+    - name: app
+    - name: files-storage
+    - name: bottin
+    - name: garage01
+  sourceRef:
+    kind: GitRepository
+    name: teapot

@@ -13,6 +13,8 @@ images:
   newTag: latest
 - name: ghcr.io/teapotovh/embedd
   newTag: latest
+- name: ghcr.io/teapotovh/files-garbagecollectord
+  newTag: latest
 - name: ghcr.io/teapotovh/filesd
   newTag: latest
 - name: ghcr.io/teapotovh/kontakted

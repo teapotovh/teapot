@@ -11,3 +11,4 @@ resources:
   - radicale.yaml
   - kontakte.yaml
   - calendar.yaml
+  - files.yaml
