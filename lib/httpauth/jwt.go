@@ -141,6 +141,7 @@ func (ja *JWTAuth) authCookie(username string, admin bool) (*http.Cookie, error)
 		Expires:  expiry,
 		Secure:   ja.secure,
 		HttpOnly: true,
+		// SameSite Strict blocks cross-site form posts, which protects from CSRF.
 		SameSite: http.SameSiteStrictMode,
 	}, nil
 }
