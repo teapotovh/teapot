@@ -26,7 +26,11 @@ const (
 func NewMem(logger *slog.Logger) (*Store, error) {
 	return newStore(
 		Config{
-			Cache:      CacheConfig{Path: memCachePath, Memory: memCacheMemory},
+			Cache: CacheConfig{
+				Path:           memCachePath,
+				InodesMemory:   memCacheMemory,
+				ChildrenMemory: memCacheMemory,
+			},
 			RetryDelay: time.Second,
 			MaxRetries: 5,
 		},

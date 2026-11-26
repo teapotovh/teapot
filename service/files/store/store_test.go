@@ -504,9 +504,10 @@ func newTestStoreWith(
 
 	store, err := NewStore(Config{
 		Cache: CacheConfig{
-			Path:   filepath.Join(t.TempDir(), "cache"),
-			Memory: 1 << 20,
-			Disk:   32 << 20,
+			Path:           filepath.Join(t.TempDir(), "cache"),
+			InodesMemory:   1 << 20,
+			ChildrenMemory: 1 << 20,
+			Disk:           32 << 20,
 		},
 		RetryDelay: time.Millisecond,
 		MaxRetries: 5,

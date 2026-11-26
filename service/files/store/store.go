@@ -130,11 +130,7 @@ func newStore(
 		return nil, fmt.Errorf("%w: cache path is required", pagedbtree.ErrInvalidConfig)
 	}
 
-	cache, err := openCache(fs, pagedbtree.Config{
-		Path:   config.Cache.Path,
-		Memory: config.Cache.Memory,
-		Disk:   config.Cache.Disk,
-	})
+	cache, err := openCache(fs, config.Cache)
 	if err != nil {
 		return nil, err
 	}

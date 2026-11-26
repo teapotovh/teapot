@@ -19,8 +19,10 @@ var ErrCorruptData = errors.New("corrupt data")
 type CacheConfig struct {
 	// Path is the file prefix used by the cache.
 	Path string
-	// Memory is the page cache budget in bytes.
-	Memory int64
+	// InodesMemory is the inode page cache budget in bytes.
+	InodesMemory int64
+	// ChildrenMemory is the children page cache budget in bytes.
+	ChildrenMemory int64
 	// Disk is the maximum cache file size in bytes.
 	Disk int64
 }
@@ -32,12 +34,18 @@ type cache struct {
 	mu sync.RWMutex
 }
 
-func openCache(fs fs.FS, cfg pagedbtree.Config) (*cache, error) {
-	nodeCfg := cfg
-	nodeCfg.Path = cfg.Path + ".inodes"
+func openCache(fs fs.FS, cfg CacheConfig) (*cache, error) {
+	nodeCfg := pagedbtree.Config{
+		Path:   cfg.Path + ".inodes",
+		Memory: cfg.InodesMemory,
+		Disk:   cfg.Disk,
+	}
 
-	childCfg := cfg
-	childCfg.Path = cfg.Path + ".children"
+	childCfg := pagedbtree.Config{
+		Path:   cfg.Path + ".children",
+		Memory: cfg.ChildrenMemory,
+		Disk:   cfg.Disk,
+	}
 
 	nodes, err := pagedbtree.Open(fs, nodeCfg)
 	if err != nil {
