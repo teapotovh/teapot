@@ -27,9 +27,14 @@ If strictly necessary, you can ask questions to the user before proceeding. Only
 do this if the plan has some clear gaps that must be addressed before continuing.
 
 Read the style guidelines in @.agents/STYLE.md (from project root) for how to write code.
+Before you start writing any code, it is mandatory that you search the repository
+for other code examples of how to solve the same problem. We must keep a consistent
+code style (utmost importance) and reuse libraries and share functionality across
+packages where it makes sense.
 
 Strictly implement just what was required, do not over-engieer things. Keep code
-simple and minimal.
+simple and minimal. When implementing small features or bug fixes, make sure to
+add test coverage.
 
 ### Checks
 
