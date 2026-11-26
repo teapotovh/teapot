@@ -25,6 +25,7 @@ go_library(
         "//lib/ui/components",
         "//lib/webauth",
         "//lib/webhandler",
+        "//lib/wellknown",
         "//service/files",
         "//service/files/store",
         "@com_github_arhuman_bizkit//fileserve",

@@ -36,6 +36,17 @@ func TestResolverHostAbsoluteURL(t *testing.T) {
 	assert.Equal(t, "https://calendar.example.com", path)
 }
 
+func TestResolverHostPath(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "https://files.example.com"+Prefix+string(Webdav), nil)
+
+	path, err := ResolverHostPath("/dav")(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://files.example.com/dav", path)
+}
+
 func TestWellKnownServeHTTP(t *testing.T) {
 	t.Parallel()
 

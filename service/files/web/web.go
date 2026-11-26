@@ -9,6 +9,7 @@ import (
 	"github.com/teapotovh/teapot/lib/ui"
 	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
+	"github.com/teapotovh/teapot/lib/wellknown"
 	"github.com/teapotovh/teapot/service/files"
 )
 
@@ -26,9 +27,10 @@ type Web struct {
 	httpLog    *httplog.HTTPLog
 	webHandler *webhandler.WebHandler
 	webAuth    *webauth.WebAuth
+	wellKnown  wellknown.WellKnown
 }
 
-func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, error) {
+func NewWeb(filesService *files.Files, config WebConfig, logger *slog.Logger) (*Web, error) {
 	httpLog, err := httplog.NewHTTPLog(config.HTTPLog, logger.With("component", "httplog"))
 	if err != nil {
 		return nil, fmt.Errorf("error while constructing httplog: %w", err)
@@ -44,7 +46,7 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 		return nil, fmt.Errorf("error while constructing webhandler: %w", err)
 	}
 
-	webAuth, err := webauth.NewWebAuth(files.LDAPFactory(), config.WebAuth, webauth.WebAuthOptions{
+	webAuth, err := webauth.NewWebAuth(filesService.LDAPFactory(), config.WebAuth, webauth.WebAuthOptions{
 		LoginPath:  PathLogin,
 		LogoutPath: PathLogout,
 		ReturnPath: webauth.ConstantPath(PathBrowse),
@@ -54,14 +56,19 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 		return nil, fmt.Errorf("error while constructing webauth: %w", err)
 	}
 
+	wellKnown := wellknown.WellKnown{
+		wellknown.Webdav: wellknown.ResolverHostPath(files.WebDavPrefix),
+	}
+
 	web := Web{
 		logger: logger,
 
-		files: files,
+		files: filesService,
 
 		httpLog:    httpLog,
 		webHandler: webHandler,
 		webAuth:    webAuth,
+		wellKnown:  wellKnown,
 	}
 
 	return &web, nil
@@ -70,6 +77,8 @@ func NewWeb(files *files.Files, config WebConfig, logger *slog.Logger) (*Web, er
 // Handler implements httpsrv.HTTPService.
 func (web *Web) Handler(prefix string) http.Handler {
 	mux := http.NewServeMux()
+
+	mux.Handle(wellknown.Prefix, web.wellKnown)
 
 	mux.Handle(web.webHandler.AssetPath, web.webHandler.AssetHandler)
 

@@ -100,3 +100,6 @@ func (f *Files) Run(step run.Step) error {
 
 // MaxSize is the maximum upload size in bytes.
 const MaxSize = 64 << 20
+
+// WebDavPrefix is the URL prefix for the WebDAV handler.
+const WebDavPrefix = "/dav"

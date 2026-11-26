@@ -16,6 +16,7 @@ type Service string
 
 const (
 	Caldav Service = "caldav"
+	Webdav Service = "webdav"
 )
 
 type Resolver func(r *http.Request) (string, error)
@@ -64,6 +65,24 @@ func ResolverHost(r *http.Request) (string, error) {
 	}
 
 	return url.String(), nil
+}
+
+// ResolverHostPath returns a resolver that redirects to path on the request host.
+func ResolverHostPath(path string) Resolver {
+	resolver := func(r *http.Request) (string, error) {
+		url := url.URL{
+			Scheme: r.URL.Scheme,
+			Host:   r.Host,
+			Path:   path,
+		}
+
+		return url.String(), nil
+	}
+
+	// Ensure the resolver implements Resolver.
+	var _ Resolver = resolver
+
+	return resolver
 }
 
 // Ensure ResolverSame implements Resolver.
