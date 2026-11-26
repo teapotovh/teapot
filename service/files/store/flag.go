@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	flag "github.com/spf13/pflag"
 
 	"github.com/teapotovh/teapot/lib/s3cache"
@@ -12,6 +14,17 @@ func StoreFlagSet() (*flag.FlagSet, func() Config) {
 
 	psqlURL := fs.String("files-store-psql-url", "", "PostgreSQL connection string for the file store")
 
+	retryDelay := fs.Duration(
+		"files-store-retry-delay",
+		time.Second,
+		"initial delay between write retries on a revision conflict",
+	)
+	maxRetries := fs.Uint64(
+		"files-store-retry-max-retries",
+		5,
+		"maximum number of write retries on a revision conflict",
+	)
+
 	cacheFS, getCacheConfig := CacheFlagSet()
 	fs.AddFlagSet(cacheFS)
 
@@ -20,9 +33,11 @@ func StoreFlagSet() (*flag.FlagSet, func() Config) {
 
 	return fs, func() Config {
 		return Config{
-			URL:   *psqlURL,
-			Cache: getCacheConfig(),
-			S3:    getS3Config(),
+			URL:        *psqlURL,
+			Cache:      getCacheConfig(),
+			S3:         getS3Config(),
+			RetryDelay: *retryDelay,
+			MaxRetries: *maxRetries,
 		}
 	}
 }

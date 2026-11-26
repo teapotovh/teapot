@@ -30,6 +30,7 @@ go_library(
         "//lib/run",
         "//lib/s3cache",
         "//proto/files:files_go_proto",
+        "@com_github_cenkalti_backoff_v5//:backoff",
         "@com_github_jackc_pgx_v5//:pgx",
         "@com_github_jackc_pgx_v5//pgxpool",
         "@com_github_jackc_pgx_v5//stdlib",

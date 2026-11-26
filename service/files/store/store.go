@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
@@ -44,6 +45,10 @@ type Config struct {
 	Cache CacheConfig
 	// S3 is the blob store configuration.
 	S3 S3Config
+	// RetryDelay is the initial delay between write retries.
+	RetryDelay time.Duration
+	// MaxRetries is the maximum number of write retries.
+	MaxRetries uint64
 }
 
 // ErrRevisionConflict reports that another write advanced the revision.
@@ -96,6 +101,9 @@ type Store struct {
 	synced   atomic.Bool
 	applyMu  sync.Mutex
 
+	retryDelay time.Duration
+	maxRetries uint64
+
 	metrics metrics
 }
 
@@ -140,6 +148,9 @@ func newStore(
 
 		cache:  cache,
 		events: broker.NewBroker[Event](),
+
+		retryDelay: config.RetryDelay,
+		maxRetries: config.MaxRetries,
 	}
 
 	store.metrics.initMetrics()

@@ -10,6 +10,8 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/cenkalti/backoff/v5"
+
 	"github.com/teapotovh/teapot/lib/fs"
 )
 
@@ -151,7 +153,7 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 
 	size := counter.count
 
-	tx, err := f.store.db.Begin(ctx, f.store.Revision())
+	tx, err := f.begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -209,7 +211,7 @@ func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
 		return ErrAlreadyExists
 	}
 
-	tx, err := f.store.db.Begin(ctx, f.store.Revision())
+	tx, err := f.begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -252,7 +254,7 @@ func (f *FS) Delete(ctx context.Context, path string) (err error) {
 		}
 	}
 
-	tx, err := f.store.db.Begin(ctx, f.store.Revision())
+	tx, err := f.begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -300,7 +302,7 @@ func (f *FS) Rename(ctx context.Context, oldPath, newPath string) (err error) {
 		return err
 	}
 
-	tx, err := f.store.db.Begin(ctx, f.store.Revision())
+	tx, err := f.begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -320,7 +322,7 @@ func (f *FS) ensureRoot(ctx context.Context) (err error) {
 		return err
 	}
 
-	tx, err := f.store.db.Begin(ctx, f.store.Revision())
+	tx, err := f.begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -328,6 +330,30 @@ func (f *FS) ensureRoot(ctx context.Context) (err error) {
 	defer rollbackOnError(ctx, tx, &err)
 
 	return f.commit(ctx, tx, syntheticRoot(f.uid))
+}
+
+func (f *FS) begin(ctx context.Context) (Tx, error) {
+	expoBackoff := backoff.NewExponentialBackOff()
+	expoBackoff.InitialInterval = f.store.retryDelay
+	expoBackoff.Multiplier = 2
+
+	return backoff.Retry(
+		ctx,
+		func() (Tx, error) {
+			tx, err := f.store.db.Begin(ctx, f.store.Revision())
+			if err == nil {
+				return tx, nil
+			}
+
+			if !errors.Is(err, ErrRevisionConflict) {
+				return nil, backoff.Permanent(err)
+			}
+
+			return nil, err
+		},
+		backoff.WithMaxTries(uint(f.store.maxRetries)),
+		backoff.WithBackOff(expoBackoff),
+	)
 }
 
 func (f *FS) commit(ctx context.Context, tx Tx, inode Inode) error {
