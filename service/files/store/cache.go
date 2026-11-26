@@ -31,6 +31,7 @@ type CacheConfig struct {
 type cache struct {
 	nodes    *pagedbtree.Bytes
 	children *pagedbtree.Bytes
+	usage    map[int64]int64
 
 	mu sync.RWMutex
 }
@@ -58,7 +59,7 @@ func openCache(fs fs.FS, cfg CacheConfig) (*cache, error) {
 		return nil, fmt.Errorf("error while opening the children cache: %w", err)
 	}
 
-	return &cache{nodes: nodes, children: children}, nil
+	return &cache{nodes: nodes, children: children, usage: map[int64]int64{}}, nil
 }
 
 func (c *cache) loadLocked(uid int64, nodeID uint64) (Inode, bool, error) {
@@ -80,6 +81,13 @@ func (c *cache) get(uid int64, nodeID uint64) (Inode, bool, error) {
 	defer c.mu.RUnlock()
 
 	return c.loadLocked(uid, nodeID)
+}
+
+func (c *cache) used(uid int64) int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.usage[uid]
 }
 
 func (c *cache) child(uid int64, parentID uint64, name string) (uint64, bool, error) {
@@ -211,6 +219,7 @@ func (c *cache) childrenPage(
 	return entries, next, nil
 }
 
+//nolint:gocyclo
 func (c *cache) apply(inode Inode) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -222,6 +231,10 @@ func (c *cache) apply(inode Inode) error {
 
 	if ok && old.Revision > inode.Revision {
 		return nil
+	}
+
+	if ok && old.Kind == KindFile {
+		c.usage[inode.UID] -= old.Size
 	}
 
 	if ok && (old.ParentID != inode.ParentID || old.Name != inode.Name) {
@@ -245,6 +258,10 @@ func (c *cache) apply(inode Inode) error {
 
 	if err := c.nodes.Store(nodeKeyString(inode.UID, inode.NodeID), data); err != nil {
 		return err
+	}
+
+	if inode.Kind == KindFile {
+		c.usage[inode.UID] += inode.Size
 	}
 
 	// The root is its own parent, so it is not a child of any inode.
@@ -291,6 +308,8 @@ func (c *cache) all() iter.Seq2[Inode, error] {
 func (c *cache) clear() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	c.usage = map[int64]int64{}
 
 	nodeKeys := make([]string, 0)
 	for key := range c.nodes.All() {

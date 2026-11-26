@@ -89,6 +89,45 @@ func TestFSWriteRead(t *testing.T) {
 	}
 }
 
+func TestFSQuota(t *testing.T) {
+	t.Parallel()
+
+	store, ctx := newTestStoreWith(t, 10, newMemDB(), newMemBlob(), newMemNotifications())
+	fs := store.For(1009)
+
+	if err := fs.Mkdir(ctx, "/a"); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("123456")); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+
+	if err := fs.Put(ctx, "/a/g", bytes.NewBufferString("12345")); !errors.Is(err, ErrQuotaExceeded) {
+		t.Fatalf("Put over quota error = %v, want %v", err, ErrQuotaExceeded)
+	}
+
+	if _, err := fs.Stat(ctx, "/a/g"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("Stat over quota = %v, want not found", err)
+	}
+
+	if err := fs.Put(ctx, "/a/f", bytes.NewBufferString("1234567890")); err != nil {
+		t.Fatalf("Put overwrite: %v", err)
+	}
+
+	if err := fs.Put(ctx, "/a/g", bytes.NewBufferString("1")); !errors.Is(err, ErrQuotaExceeded) {
+		t.Fatalf("Put over quota after overwrite error = %v, want %v", err, ErrQuotaExceeded)
+	}
+
+	if err := fs.Delete(ctx, "/a/f"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	if err := fs.Put(ctx, "/a/g", bytes.NewBufferString("1234567890")); err != nil {
+		t.Fatalf("Put after delete: %v", err)
+	}
+}
+
 func TestFSNameValidation(t *testing.T) {
 	t.Parallel()
 
@@ -308,7 +347,7 @@ func TestFSWriteRetryOnConflict(t *testing.T) {
 	t.Parallel()
 
 	db := newMemDB()
-	store, ctx := newTestStoreWith(t, db, newMemBlob(), newMemNotifications())
+	store, ctx := newTestStoreWith(t, 0, db, newMemBlob(), newMemNotifications())
 	fs := store.For(1007)
 
 	if err := fs.Mkdir(ctx, "/seed"); err != nil {
@@ -488,11 +527,12 @@ func (s readyService) Run(step run.Step) error {
 func newTestStore(t *testing.T) (*Store, context.Context) {
 	t.Helper()
 
-	return newTestStoreWith(t, newMemDB(), newMemBlob(), newMemNotifications())
+	return newTestStoreWith(t, 0, newMemDB(), newMemBlob(), newMemNotifications())
 }
 
 func newTestStoreWith(
 	t *testing.T,
+	quota int64,
 	db *memDB,
 	blob *memBlob,
 	notifications *memNotifications,
@@ -510,6 +550,7 @@ func newTestStoreWith(
 		},
 		RetryDelay: time.Millisecond,
 		MaxRetries: 5,
+		Quota:      quota,
 	}, db, blob, notifications, logger)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)

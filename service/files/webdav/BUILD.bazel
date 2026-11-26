@@ -10,10 +10,10 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib/httpauth",
+        "//lib/webdav",
         "//service/files",
         "//service/files/store",
         "@com_github_prometheus_client_golang//prometheus",
         "@com_github_rs_cors//:cors",
-        "@org_golang_x_net//webdav",
     ],
 )

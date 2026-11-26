@@ -21,6 +21,8 @@ var (
 	ErrAlreadyExists = errors.New("already exists")
 	// ErrNotEmpty reports a delete on a directory with children.
 	ErrNotEmpty = errors.New("directory is not empty")
+	// ErrQuotaExceeded reports a write that exceeds the user quota.
+	ErrQuotaExceeded = errors.New("storage quota exceeded")
 )
 
 // FS is the file system view for one user.
@@ -376,7 +378,38 @@ func (f *FS) begin(ctx context.Context) (Tx, error) {
 	)
 }
 
+func (f *FS) checkQuota(nodeID uint64, size int64) error {
+	if f.store.quota <= 0 {
+		return nil
+	}
+
+	var oldSize int64
+
+	if nodeID != 0 {
+		old, ok, err := f.store.cache.get(f.uid, nodeID)
+		if err != nil {
+			return err
+		}
+
+		if ok && old.Kind == KindFile {
+			oldSize = old.Size
+		}
+	}
+
+	if f.store.cache.used(f.uid)-oldSize+size > f.store.quota {
+		return ErrQuotaExceeded
+	}
+
+	return nil
+}
+
 func (f *FS) commit(ctx context.Context, tx Tx, inode Inode) error {
+	if inode.Kind == KindFile {
+		if err := f.checkQuota(inode.NodeID, inode.Size); err != nil {
+			return err
+		}
+	}
+
 	inode.Revision = tx.Revision()
 
 	nodeID, err := tx.Put(ctx, inode)

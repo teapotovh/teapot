@@ -18,6 +18,7 @@ import (
 	"github.com/teapotovh/teapot/lib/webauth"
 	"github.com/teapotovh/teapot/lib/webhandler"
 	"github.com/teapotovh/teapot/service/files"
+	"github.com/teapotovh/teapot/service/files/store"
 )
 
 const (
@@ -181,7 +182,14 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 
 				rel := path.Join(base, part.FileName())
 				if err := session.FS().Put(r.Context(), storePath(rel), part); err != nil {
+					if errors.Is(err, store.ErrQuotaExceeded) {
+						w.WriteHeader(http.StatusInsufficientStorage)
+
+						return dialogError{err: store.ErrQuotaExceeded}, nil
+					}
+
 					w.WriteHeader(http.StatusBadRequest)
+
 					return dialogError{err: fmt.Errorf("error while writing file %q: %w", rel, err)}, nil
 				}
 
