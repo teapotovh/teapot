@@ -43,6 +43,10 @@ succeed and all the Bazel files are up-to-date.
 
 Ensure you strictly followed the coding style rules in @.agents/STYLE.md.
 
+Ensure that your code doesn't have any pointless functions that could have been
+inlined. You should always prefer inlining code to extrating it in an helper if
+it only has one consumer.
+
 ## Create the PR
 
 Create a PR with the `gh` tool targeting the current worktree. For the PR's
