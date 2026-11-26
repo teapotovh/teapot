@@ -10,9 +10,8 @@ import (
 	"maps"
 	"os"
 	"sync"
-	"time"
 
-	"github.com/teapotovh/teapot/lib/pagedbtree"
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/pgnotify"
 	"github.com/teapotovh/teapot/lib/s3cache"
 )
@@ -33,116 +32,10 @@ func NewMem(logger *slog.Logger) (*Store, error) {
 		newMemDB(),
 		newMemBlob(),
 		newMemNotifications(),
-		newMemFS(),
+		fs.NewMemoryFS(),
 		logger,
 	)
 }
-
-type memFS struct {
-	mu    sync.Mutex
-	files map[string]*memFile
-}
-
-func newMemFS() *memFS {
-	return &memFS{files: map[string]*memFile{}}
-}
-
-// OpenFile implements pagedbtree.FS.
-func (f *memFS) OpenFile(name string, _ int, _ os.FileMode) (pagedbtree.File, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	file, ok := f.files[name]
-	if !ok {
-		file = &memFile{}
-		f.files[name] = file
-	}
-
-	return file, nil
-}
-
-type memFile struct {
-	mu   sync.Mutex
-	data []byte
-}
-
-// ReadAt implements pagedbtree.File.
-func (f *memFile) ReadAt(p []byte, offset int64) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	if offset < 0 {
-		return 0, os.ErrInvalid
-	}
-
-	if offset >= int64(len(f.data)) {
-		return 0, io.EOF
-	}
-
-	n := copy(p, f.data[offset:])
-	if n < len(p) {
-		return n, io.EOF
-	}
-
-	return n, nil
-}
-
-// WriteAt implements pagedbtree.File.
-func (f *memFile) WriteAt(p []byte, offset int64) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	end := offset + int64(len(p))
-	if end > int64(len(f.data)) {
-		data := make([]byte, end)
-		copy(data, f.data)
-		f.data = data
-	}
-
-	copy(f.data[offset:], p)
-
-	return len(p), nil
-}
-
-// Truncate implements pagedbtree.File.
-func (f *memFile) Truncate(size int64) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	if size <= int64(len(f.data)) {
-		f.data = f.data[:size]
-
-		return nil
-	}
-
-	f.data = append(f.data, make([]byte, size-int64(len(f.data)))...)
-
-	return nil
-}
-
-// Stat implements pagedbtree.File.
-func (f *memFile) Stat() (os.FileInfo, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	return memFileInfo{size: int64(len(f.data))}, nil
-}
-
-// Close implements pagedbtree.File.
-func (f *memFile) Close() error {
-	return nil
-}
-
-type memFileInfo struct {
-	size int64
-}
-
-func (i memFileInfo) Name() string       { return memCachePath }
-func (i memFileInfo) Size() int64        { return i.size }
-func (i memFileInfo) Mode() os.FileMode  { return 0o600 }
-func (i memFileInfo) ModTime() time.Time { return time.Time{} }
-func (i memFileInfo) IsDir() bool        { return false }
-func (i memFileInfo) Sys() any           { return nil }
 
 type memState struct {
 	revision uint64
@@ -344,12 +237,6 @@ func (n *memNotifications) Notify(context.Context, pgnotify.Executor, string, []
 func (n *memNotifications) Close() error {
 	return nil
 }
-
-// Ensure *memFS implements pagedbtree.FS.
-var _ pagedbtree.FS = (*memFS)(nil)
-
-// Ensure *memFile implements pagedbtree.File.
-var _ pagedbtree.File = (*memFile)(nil)
 
 // Ensure *memDB implements DB.
 var _ DB = (*memDB)(nil)

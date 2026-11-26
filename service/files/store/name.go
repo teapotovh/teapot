@@ -6,6 +6,8 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
+
+	"github.com/teapotovh/teapot/lib/fs"
 )
 
 // MaxNameBytes is the maximum size of a name in bytes.
@@ -35,7 +37,7 @@ func ValidateName(name string) error {
 		return ErrInvalidName
 	}
 
-	if name == "." || name == ".." || strings.ContainsRune(name, PathSeparator) {
+	if name == "." || name == ".." || strings.ContainsRune(name, fs.PathSeparator) {
 		return ErrInvalidName
 	}
 

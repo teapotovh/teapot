@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -70,7 +71,7 @@ type Tree[T Keyed] struct {
 }
 
 // OpenTree opens or creates a typed store.
-func OpenTree[T Keyed](fs FS, cfg Config, codec Codec[T]) (*Tree[T], error) {
+func OpenTree[T Keyed](fs fs.FS, cfg Config, codec Codec[T]) (*Tree[T], error) {
 	store, err := Open(fs, cfg)
 	if err != nil {
 		return nil, err

@@ -131,7 +131,7 @@ func TestFlushWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	header, err := decodeHeader(file.bytes())
+	header, err := decodeHeader(file.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestCorruptionWipe(t *testing.T) {
 
 	stopTestStore(store)
 
-	data := file.bytes()
+	data := file.Bytes()
 
 	root := binary.LittleEndian.Uint64(data[24:])
 	if root == 0 {
@@ -356,7 +356,7 @@ func TestCorruptionWipe(t *testing.T) {
 	}
 
 	offset := int(root)*pageSize + pageHeaderSize + 4 //nolint:gosec // the root page fits in an int.
-	file.corrupt(offset)
+	file.Corrupt(offset)
 
 	store = openTestStoreWithFile(t, cfg, file)
 
@@ -467,7 +467,7 @@ func TestWriteError(t *testing.T) {
 	store, done := startTestStore(t, cfg, file)
 
 	writeErr := errTestWrite
-	file.setWriteError(writeErr)
+	file.SetWriteError(writeErr)
 
 	if err := store.Store("key", []byte("value")); err != nil {
 		t.Fatal(err)
