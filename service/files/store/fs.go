@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 	"uuid"
+
+	"github.com/teapotovh/teapot/lib/fs"
 )
 
 var (
@@ -406,7 +408,7 @@ func (f *FS) checkCycle(inode, parent Inode) error {
 }
 
 func splitPath(path string) (string, string, error) {
-	clean, err := CleanPath(path)
+	clean, err := fs.CleanPath(path)
 	if err != nil {
 		return "", "", err
 	}

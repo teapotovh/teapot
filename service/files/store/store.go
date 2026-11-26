@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 	"sync/atomic"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/teapotovh/teapot/lib/broker"
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/pagedbtree"
 	"github.com/teapotovh/teapot/lib/pgnotify"
 	"github.com/teapotovh/teapot/lib/run"
@@ -107,7 +107,7 @@ func NewStore(
 	notifications pgnotify.Notifications,
 	logger *slog.Logger,
 ) (*Store, error) {
-	return newStore(config, db, blob, notifications, osFS{}, logger)
+	return newStore(config, db, blob, notifications, fs.OS{}, logger)
 }
 
 func newStore(
@@ -115,7 +115,7 @@ func newStore(
 	db DB,
 	blob s3cache.Blob,
 	notifications pgnotify.Notifications,
-	fs pagedbtree.FS,
+	fs fs.FS,
 	logger *slog.Logger,
 ) (*Store, error) {
 	if config.Cache.Path == "" {
@@ -357,12 +357,6 @@ func (s *Store) publish(events []Event) {
 	for _, event := range events {
 		s.events.Publish(event)
 	}
-}
-
-type osFS struct{}
-
-func (osFS) OpenFile(name string, flag int, perm os.FileMode) (pagedbtree.File, error) {
-	return os.OpenFile(name, flag, perm) //nolint:gosec // The path comes from the configuration.
 }
 
 // Ensure the store implements the run interface.

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"time"
+
+	"github.com/teapotovh/teapot/lib/fs"
 )
 
 var (
@@ -15,7 +17,7 @@ var (
 	// ErrIsDirectory reports that a path is a directory.
 	ErrIsDirectory = errors.New("is a directory")
 	// ErrInvalidPath reports that a path is not valid.
-	ErrInvalidPath = errors.New("invalid path")
+	ErrInvalidPath = fs.ErrInvalidPath
 )
 
 // FileSystem is the read-only file interface for one user.

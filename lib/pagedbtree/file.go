@@ -4,23 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
-	"io"
-	"os"
 )
-
-// File is the file interface used by the store.
-type File interface {
-	io.ReaderAt
-	io.WriterAt
-	Truncate(size int64) error
-	Stat() (os.FileInfo, error)
-	Close() error
-}
-
-// FS opens files for the store.
-type FS interface {
-	OpenFile(name string, flag int, perm os.FileMode) (File, error)
-}
 
 const (
 	fileMagic   = 0x50425442

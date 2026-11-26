@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "fs",
+    srcs = [
+        "fs.go",
+        "mem.go",
+        "os.go",
+        "path.go",
+    ],
+    importpath = "github.com/teapotovh/teapot/lib/fs",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "fs_test",
+    srcs = [
+        "mem_test.go",
+        "path_test.go",
+    ],
+    embed = [":fs"],
+)

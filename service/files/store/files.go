@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
@@ -16,7 +17,7 @@ var (
 	// ErrIsDirectory reports that a path is a directory.
 	ErrIsDirectory = errors.New("is a directory")
 	// ErrInvalidPath reports that a path is not valid.
-	ErrInvalidPath = errors.New("invalid path")
+	ErrInvalidPath = fs.ErrInvalidPath
 	// ErrInvalidName reports that a name is not valid.
 	ErrInvalidName = errors.New("invalid name")
 	// ErrReadOnly reports a write on a read-only file system.

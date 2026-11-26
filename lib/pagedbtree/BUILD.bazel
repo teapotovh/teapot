@@ -13,6 +13,7 @@ go_library(
     importpath = "github.com/teapotovh/teapot/lib/pagedbtree",
     visibility = ["//visibility:public"],
     deps = [
+        "//lib/fs",
         "//lib/run",
         "@com_github_prometheus_client_golang//prometheus",
     ],
@@ -29,5 +30,8 @@ go_test(
         "typed_test.go",
     ],
     embed = [":pagedbtree"],
-    deps = ["//lib/run"],
+    deps = [
+        "//lib/fs",
+        "//lib/run",
+    ],
 )

@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/s3cache"
 	filespb "github.com/teapotovh/teapot/proto/files"
@@ -82,8 +83,8 @@ func NewRemoteFiles(
 }
 
 // For returns the file system view for one user.
-func (fs *RemoteFiles) For(uid int64) *RemoteFS {
-	return &RemoteFS{files: fs, uid: uid}
+func (r *RemoteFiles) For(uid int64) *RemoteFS {
+	return &RemoteFS{files: r, uid: uid}
 }
 
 // RemoteFS is the read-only file system view for one user.
@@ -188,9 +189,9 @@ func (fs *RemoteFS) Revision() uint64 {
 }
 
 // Run implements run.Runnable.
-func (fs *RemoteFiles) Run(step run.Step) error {
-	step.Add("inodes", fs.cache.inodes)
-	step.Add("dirents", fs.cache.dirents)
+func (r *RemoteFiles) Run(step run.Step) error {
+	step.Add("inodes", r.cache.inodes)
+	step.Add("dirents", r.cache.dirents)
 	step.Wait()
 
 	ctx := step.Context()
@@ -212,35 +213,35 @@ func (fs *RemoteFiles) Run(step run.Step) error {
 
 		lastStartup = time.Now()
 
-		if err := fs.process(ctx, step); err != nil {
+		if err := r.process(ctx, step); err != nil {
 			lastErr = err
 
-			fs.logger.WarnContext(ctx, "remote files synchronization failed, retrying", "err", err)
+			r.logger.WarnContext(ctx, "remote files synchronization failed, retrying", "err", err)
 		}
 	}
 }
 
-func (fs *RemoteFiles) process(ctx context.Context, step run.Step) error {
-	if err := fs.snapshot(ctx); err != nil {
+func (r *RemoteFiles) process(ctx context.Context, step run.Step) error {
+	if err := r.snapshot(ctx); err != nil {
 		return fmt.Errorf("could not snapshot remote files: %w", err)
 	}
 
 	step.Notify()
 
-	if err := fs.consume(ctx); err != nil {
+	if err := r.consume(ctx); err != nil {
 		return fmt.Errorf("could not consume remote files events: %w", err)
 	}
 
 	return nil
 }
 
-func (fs *RemoteFiles) snapshot(ctx context.Context) error {
-	stream, err := fs.client.Snapshot(ctx, &filespb.SnapshotRequest{})
+func (r *RemoteFiles) snapshot(ctx context.Context) error {
+	stream, err := r.client.Snapshot(ctx, &filespb.SnapshotRequest{})
 	if err != nil {
 		return fmt.Errorf("could not start snapshot: %w", err)
 	}
 
-	if err := fs.cache.clear(); err != nil {
+	if err := r.cache.clear(); err != nil {
 		return fmt.Errorf("could not clear remote files cache: %w", err)
 	}
 
@@ -257,7 +258,7 @@ func (fs *RemoteFiles) snapshot(ctx context.Context) error {
 		}
 
 		for _, inode := range page.GetInodes() {
-			if err := fs.cache.put(inode); err != nil {
+			if err := r.cache.put(inode); err != nil {
 				return fmt.Errorf("could not store snapshot inode: %w", err)
 			}
 		}
@@ -265,15 +266,15 @@ func (fs *RemoteFiles) snapshot(ctx context.Context) error {
 		revision = page.GetRevision()
 	}
 
-	fs.revision.Store(revision)
+	r.revision.Store(revision)
 
 	return nil
 }
 
-func (fs *RemoteFiles) consume(ctx context.Context) error {
-	revision := fs.revision.Load()
+func (r *RemoteFiles) consume(ctx context.Context) error {
+	revision := r.revision.Load()
 
-	stream, err := fs.client.Watch(ctx, &filespb.WatchRequest{AfterRevision: revision})
+	stream, err := r.client.Watch(ctx, &filespb.WatchRequest{AfterRevision: revision})
 	if err != nil {
 		return fmt.Errorf("could not start watch: %w", err)
 	}
@@ -288,7 +289,7 @@ func (fs *RemoteFiles) consume(ctx context.Context) error {
 			return fmt.Errorf("could not receive watch event: %w", err)
 		}
 
-		if err := fs.apply(event.GetEvent()); err != nil {
+		if err := r.apply(event.GetEvent()); err != nil {
 			if errors.Is(err, ErrSkip) {
 				continue
 			}
@@ -298,57 +299,57 @@ func (fs *RemoteFiles) consume(ctx context.Context) error {
 	}
 }
 
-func (fs *RemoteFiles) apply(event *filespb.Event) error {
+func (r *RemoteFiles) apply(event *filespb.Event) error {
 	switch change := event.GetEvent().(type) {
 	case *filespb.Event_Update:
 		// The event carries the new state of an inode.
-		return fs.applyUpdate(change.Update.GetInode())
+		return r.applyUpdate(change.Update.GetInode())
 	case *filespb.Event_Delete:
 		// The event carries only the identifier of the removed inode.
-		return fs.applyDelete(change.Delete)
+		return r.applyDelete(change.Delete)
 	default:
 		return ErrInvalidEvent
 	}
 }
 
-func (fs *RemoteFiles) applyUpdate(inode *filespb.Inode) error {
+func (r *RemoteFiles) applyUpdate(inode *filespb.Inode) error {
 	if inode == nil || inode.GetIdentifier() == nil {
 		return ErrInvalidInode
 	}
 
-	if err := fs.checkRevision(inode.GetRevision()); err != nil {
+	if err := r.checkRevision(inode.GetRevision()); err != nil {
 		return fmt.Errorf("could not check inode revision: %w", err)
 	}
 
-	if err := fs.cache.put(inode); err != nil {
+	if err := r.cache.put(inode); err != nil {
 		return fmt.Errorf("could not store inode: %w", err)
 	}
 
-	fs.revision.Store(inode.GetRevision())
+	r.revision.Store(inode.GetRevision())
 
 	return nil
 }
 
-func (fs *RemoteFiles) applyDelete(del *filespb.Delete) error {
+func (r *RemoteFiles) applyDelete(del *filespb.Delete) error {
 	if del == nil || del.GetIdentifier() == nil {
 		return ErrInvalidInode
 	}
 
-	if err := fs.checkRevision(del.GetRevision()); err != nil {
+	if err := r.checkRevision(del.GetRevision()); err != nil {
 		return fmt.Errorf("could not check inode revision: %w", err)
 	}
 
-	if _, err := fs.cache.delete(del.GetIdentifier().GetUid(), del.GetIdentifier().GetNodeId()); err != nil {
+	if _, err := r.cache.delete(del.GetIdentifier().GetUid(), del.GetIdentifier().GetNodeId()); err != nil {
 		return fmt.Errorf("could not delete inode: %w", err)
 	}
 
-	fs.revision.Store(del.GetRevision())
+	r.revision.Store(del.GetRevision())
 
 	return nil
 }
 
-func (fs *RemoteFiles) checkRevision(revision uint64) error {
-	current := fs.revision.Load()
+func (r *RemoteFiles) checkRevision(revision uint64) error {
+	current := r.revision.Load()
 
 	if revision <= current {
 		return ErrSkip
@@ -361,13 +362,13 @@ func (fs *RemoteFiles) checkRevision(revision uint64) error {
 	return nil
 }
 
-func (fs *RemoteFiles) resolve(uid int64, path string) (*filespb.Inode, error) {
-	clean, err := CleanPath(path)
+func (r *RemoteFiles) resolve(uid int64, path string) (*filespb.Inode, error) {
+	clean, err := fs.CleanPath(path)
 	if err != nil {
 		return nil, err
 	}
 
-	current, ok, err := fs.cache.inode(uid, rootNodeID)
+	current, ok, err := r.cache.inode(uid, rootNodeID)
 	if err != nil {
 		return nil, fmt.Errorf("could not read root inode: %w", err)
 	}
@@ -376,18 +377,18 @@ func (fs *RemoteFiles) resolve(uid int64, path string) (*filespb.Inode, error) {
 		return nil, ErrNotFound
 	}
 
-	if clean == string(PathSeparator) {
+	if clean == string(fs.PathSeparator) {
 		return current, nil
 	}
 
-	names := strings.Split(strings.TrimPrefix(clean, string(PathSeparator)), string(PathSeparator))
+	names := strings.Split(strings.TrimPrefix(clean, string(fs.PathSeparator)), string(fs.PathSeparator))
 
 	for i, name := range names {
 		if !isDirectory(current) {
 			return nil, ErrNotDirectory
 		}
 
-		nodeID, ok, err := fs.cache.dirent(uid, current.GetIdentifier().GetNodeId(), name)
+		nodeID, ok, err := r.cache.dirent(uid, current.GetIdentifier().GetNodeId(), name)
 		if err != nil {
 			return nil, fmt.Errorf("could not read directory entry %q: %w", name, err)
 		}
@@ -396,7 +397,7 @@ func (fs *RemoteFiles) resolve(uid int64, path string) (*filespb.Inode, error) {
 			return nil, ErrNotFound
 		}
 
-		current, ok, err = fs.cache.inode(uid, nodeID)
+		current, ok, err = r.cache.inode(uid, nodeID)
 		if err != nil {
 			return nil, fmt.Errorf("could not read inode %d: %w", nodeID, err)
 		}
