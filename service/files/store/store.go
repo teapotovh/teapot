@@ -50,6 +50,8 @@ type Config struct {
 	RetryDelay time.Duration
 	// MaxRetries is the maximum number of write retries.
 	MaxRetries uint64
+	// Quota is the maximum number of bytes each user can store. Zero means no limit.
+	Quota int64
 }
 
 // ErrRevisionConflict reports that another write advanced the revision.
@@ -104,6 +106,7 @@ type Store struct {
 
 	retryDelay time.Duration
 	maxRetries uint64
+	quota      int64
 
 	metrics metrics
 }
@@ -148,6 +151,7 @@ func newStore(
 
 		retryDelay: config.RetryDelay,
 		maxRetries: config.MaxRetries,
+		quota:      config.Quota,
 	}
 
 	store.metrics.initMetrics()

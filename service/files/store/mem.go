@@ -105,9 +105,10 @@ func (d *memDB) copyLocked() *memState {
 }
 
 type memTx struct {
-	db       *memDB
-	state    *memState
-	revision uint64
+	db        *memDB
+	state     *memState
+	revision  uint64
+	committed bool
 }
 
 // Revision implements Tx.
@@ -153,12 +154,24 @@ func (t *memTx) Commit(context.Context, []byte) error {
 	defer t.db.mu.Unlock()
 
 	t.db.state = t.state
+	t.committed = true
 
 	return nil
 }
 
 // Rollback implements Tx.
-func (t *memTx) Rollback(context.Context) error { return nil }
+func (t *memTx) Rollback(context.Context) error {
+	t.db.mu.Lock()
+	defer t.db.mu.Unlock()
+
+	if t.committed || t.db.state.revision != t.revision {
+		return nil
+	}
+
+	t.db.state.revision--
+
+	return nil
+}
 
 type memBlob struct {
 	mu    sync.Mutex

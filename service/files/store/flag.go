@@ -8,6 +8,8 @@ import (
 	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
+const defaultQuota = 8 << 30
+
 // StoreFlagSet registers the store flags.
 func StoreFlagSet() (*flag.FlagSet, func() Config) {
 	fs := flag.NewFlagSet("files/store", flag.ExitOnError)
@@ -24,6 +26,7 @@ func StoreFlagSet() (*flag.FlagSet, func() Config) {
 		5,
 		"maximum number of write retries on a revision conflict",
 	)
+	quota := fs.Int64("files-store-quota", defaultQuota, "maximum bytes each user can store, 0 for no limit")
 
 	cacheFS, getCacheConfig := CacheFlagSet()
 	fs.AddFlagSet(cacheFS)
@@ -38,6 +41,7 @@ func StoreFlagSet() (*flag.FlagSet, func() Config) {
 			S3:         getS3Config(),
 			RetryDelay: *retryDelay,
 			MaxRetries: *maxRetries,
+			Quota:      *quota,
 		}
 	}
 }

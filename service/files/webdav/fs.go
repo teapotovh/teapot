@@ -1,189 +1,261 @@
 package webdav
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"log/slog"
+	"mime"
+	"net/http"
 	"os"
 	"path"
-	"strings"
-	"time"
 
-	"golang.org/x/net/webdav"
-
+	libwebdav "github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/service/files/store"
 )
 
-type webDavFSWrapper struct {
-	logger *slog.Logger
-
+type fileSystem struct {
 	fs *store.FS
 }
 
-func newWebDavFSWrapper(fs *store.FS, logger *slog.Logger) *webDavFSWrapper {
-	return &webDavFSWrapper{
-		logger: logger,
-		fs:     fs,
-	}
+func newFileSystem(fs *store.FS) *fileSystem {
+	return &fileSystem{fs: fs}
 }
 
-// Mkdir implements webdav.FileSystem.
-func (fsw *webDavFSWrapper) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
-	name = fsw.sanitizeName(name)
-	fsw.logger.DebugContext(ctx, "performing FS.Mkdir", "name", name)
-
-	if err := fsw.fs.Mkdir(ctx, name); err != nil {
-		return fmt.Errorf("could not create directory %q: %w", name, err)
-	}
-
-	return nil
-}
-
-// OpenFile implements webdav.FileSystem.
-func (fsw *webDavFSWrapper) OpenFile(
-	ctx context.Context,
-	name string,
-	flag int,
-	perm os.FileMode,
-) (webdav.File, error) {
-	name = fsw.sanitizeName(name)
-	fsw.logger.DebugContext(ctx, "performing FS.OpenFile", "name", name, "flag", flag, "perm", perm)
-
-	file := &webDavFileWrapper{
-		logger: fsw.logger.With("file", name),
-		ctx:    ctx,
-		fs:     fsw.fs,
-		name:   name,
-	}
-
-	if flag&(os.O_WRONLY|os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_APPEND) != 0 {
-		file.writable = true
-		file.perm = perm
-		file.buffer = &bytes.Buffer{}
-
-		if flag&os.O_TRUNC == 0 {
-			data, err := fsw.readFile(ctx, name)
-			if err != nil && !errors.Is(err, store.ErrNotFound) {
-				return nil, err
-			}
-
-			file.buffer.Write(data)
-		}
-
-		return file, nil
-	}
-
-	inode, err := fsw.fs.Stat(ctx, name)
+// Open implements webdav.FileSystem.
+func (f *fileSystem) Open(ctx context.Context, name string) (io.ReadCloser, error) {
+	file, err := f.fs.Open(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("could not stat %q: %w", name, err)
+		return nil, storeError(err)
 	}
-
-	if inode.Kind == store.KindDirectory {
-		file.directory = true
-
-		return file, nil
-	}
-
-	opened, err := fsw.fs.Open(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("could not open %q: %w", name, err)
-	}
-
-	file.file = opened
 
 	return file, nil
 }
 
-// RemoveAll implements webdav.FileSystem.
-func (fsw *webDavFSWrapper) RemoveAll(ctx context.Context, name string) error {
-	name = fsw.sanitizeName(name)
-	fsw.logger.DebugContext(ctx, "performing FS.RemoveAll", "name", name)
-
-	if err := fsw.removeAll(ctx, name); err != nil {
-		return fmt.Errorf("could not remove %q: %w", name, err)
-	}
-
-	return nil
-}
-
-// Rename implements webdav.FileSystem.
-func (fsw *webDavFSWrapper) Rename(ctx context.Context, oldName, newName string) error {
-	oldName = fsw.sanitizeName(oldName)
-	newName = fsw.sanitizeName(newName)
-	fsw.logger.DebugContext(ctx, "performing FS.Rename", "old_name", oldName, "new_name", newName)
-
-	if err := fsw.fs.Rename(ctx, oldName, newName); err != nil {
-		return fmt.Errorf("could not rename %q to %q: %w", oldName, newName, err)
-	}
-
-	return nil
-}
-
 // Stat implements webdav.FileSystem.
-func (fsw *webDavFSWrapper) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	name = fsw.sanitizeName(name)
-	fsw.logger.DebugContext(ctx, "performing FS.Stat", "name", name)
-
-	inode, err := fsw.fs.Stat(ctx, name)
+func (f *fileSystem) Stat(ctx context.Context, name string) (*libwebdav.FileInfo, error) {
+	inode, err := f.fs.Stat(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("could not stat %q: %w", name, err)
+		return nil, storeError(err)
 	}
 
-	return newFileInfo(inode), nil
+	return fileInfo(inode, name), nil
 }
 
-func (fsw *webDavFSWrapper) sanitizeName(name string) string {
-	name = path.Clean("/" + strings.TrimPrefix(name, "/"))
-
-	return name
-}
-
-func (fsw *webDavFSWrapper) readFile(ctx context.Context, name string) (data []byte, err error) {
-	file, err := fsw.fs.Open(ctx, name)
+// ReadDir implements webdav.FileSystem.
+func (f *fileSystem) ReadDir(
+	ctx context.Context,
+	name string,
+	recursive bool,
+) ([]libwebdav.FileInfo, error) {
+	root, err := f.Stat(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			err = errors.Join(fmt.Errorf("could not close %q: %w", name, closeErr), err)
-		}
-	}()
+	infos := []libwebdav.FileInfo{*root}
 
-	data, err = io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("could not read %q: %w", name, err)
+	if err := f.readDir(ctx, path.Clean(name), recursive, &infos); err != nil {
+		return nil, err
 	}
 
-	return data, nil
+	return infos, nil
 }
 
-func (fsw *webDavFSWrapper) removeAll(ctx context.Context, name string) error {
-	inode, err := fsw.fs.Stat(ctx, name)
+// Create implements webdav.FileSystem.
+func (f *fileSystem) Create(
+	ctx context.Context,
+	name string,
+	body io.ReadCloser,
+	options *libwebdav.CreateOptions,
+) (*libwebdav.FileInfo, bool, error) {
+	inode, err := f.fs.Stat(ctx, name)
+	exists := err == nil
+
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, false, storeError(err)
+	}
+
+	var current *libwebdav.FileInfo
+
+	if exists {
+		if inode.Kind == store.KindDirectory {
+			return nil, false, libwebdav.NewHTTPError(http.StatusMethodNotAllowed, store.ErrIsDirectory)
+		}
+
+		current = fileInfo(inode, name)
+	}
+
+	pre := libwebdav.Preconditions{IfMatch: options.IfMatch, IfNoneMatch: options.IfNoneMatch}
+
+	var etag string
+	if current != nil {
+		etag = current.ETag
+	}
+
+	if err := pre.CheckWrite(exists, etag); err != nil {
+		return nil, false, libwebdav.NewHTTPError(http.StatusPreconditionFailed, err)
+	}
+
+	if err := f.fs.Put(ctx, name, body); err != nil {
+		return nil, false, storeError(err)
+	}
+
+	info, err := f.Stat(ctx, name)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		return nil, false, err
+	}
+
+	return info, !exists, nil
+}
+
+// RemoveAll implements webdav.FileSystem.
+func (f *fileSystem) RemoveAll(
+	ctx context.Context,
+	name string,
+	options *libwebdav.RemoveAllOptions,
+) error {
+	info, err := f.Stat(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	pre := libwebdav.Preconditions{IfMatch: options.IfMatch, IfNoneMatch: options.IfNoneMatch}
+	if err := pre.CheckWrite(true, info.ETag); err != nil {
+		return libwebdav.NewHTTPError(http.StatusPreconditionFailed, err)
+	}
+
+	return f.removeAll(ctx, name)
+}
+
+// Mkdir implements webdav.FileSystem.
+func (f *fileSystem) Mkdir(ctx context.Context, name string) error {
+	if err := f.fs.Mkdir(ctx, name); err != nil {
+		return storeError(err)
+	}
+
+	return nil
+}
+
+// Copy implements webdav.FileSystem.
+func (f *fileSystem) Copy(
+	ctx context.Context,
+	name string,
+	dest string,
+	options *libwebdav.CopyOptions,
+) (bool, error) {
+	src, err := f.fs.Stat(ctx, name)
+	if err != nil {
+		return false, storeError(err)
+	}
+
+	created := false
+
+	if _, err := f.fs.Stat(ctx, dest); err == nil {
+		if options.NoOverwrite {
+			return false, libwebdav.NewHTTPError(http.StatusPreconditionFailed, os.ErrExist)
+		}
+
+		if err := f.removeAll(ctx, dest); err != nil {
+			return false, err
+		}
+	} else if errors.Is(err, store.ErrNotFound) {
+		created = true
+	} else {
+		return false, storeError(err)
+	}
+
+	if err := f.copy(ctx, src, name, dest, options.NoRecursive); err != nil {
+		return false, err
+	}
+
+	return created, nil
+}
+
+// Move implements webdav.FileSystem.
+func (f *fileSystem) Move(
+	ctx context.Context,
+	name string,
+	dest string,
+	options *libwebdav.MoveOptions,
+) (bool, error) {
+	if _, err := f.fs.Stat(ctx, name); err != nil {
+		return false, storeError(err)
+	}
+
+	created := false
+
+	if _, err := f.fs.Stat(ctx, dest); err == nil {
+		if options.NoOverwrite {
+			return false, libwebdav.NewHTTPError(http.StatusPreconditionFailed, os.ErrExist)
+		}
+
+		if err := f.removeAll(ctx, dest); err != nil {
+			return false, err
+		}
+	} else if errors.Is(err, store.ErrNotFound) {
+		created = true
+	} else {
+		return false, storeError(err)
+	}
+
+	if err := f.fs.Rename(ctx, name, dest); err != nil {
+		return false, storeError(err)
+	}
+
+	return created, nil
+}
+
+func (f *fileSystem) readDir(
+	ctx context.Context,
+	name string,
+	recursive bool,
+	infos *[]libwebdav.FileInfo,
+) error {
+	var cursor *store.Cursor
+
+	for {
+		page, err := f.fs.List(ctx, name, cursor)
+		if err != nil {
+			return storeError(err)
+		}
+
+		for _, inode := range page.Inodes {
+			child := path.Join(name, inode.Name)
+			*infos = append(*infos, *fileInfo(inode, child))
+
+			if recursive && inode.Kind == store.KindDirectory {
+				if err := f.readDir(ctx, child, recursive, infos); err != nil {
+					return err
+				}
+			}
+		}
+
+		if page.Cursor == nil {
 			return nil
 		}
 
-		return err
+		cursor = page.Cursor
+	}
+}
+
+func (f *fileSystem) removeAll(ctx context.Context, name string) error {
+	inode, err := f.fs.Stat(ctx, name)
+	if err != nil {
+		return storeError(err)
 	}
 
 	if inode.Kind == store.KindDirectory {
 		var cursor *store.Cursor
 
 		for {
-			page, err := fsw.fs.List(ctx, name, cursor)
+			page, err := f.fs.List(ctx, name, cursor)
 			if err != nil {
-				return err
+				return storeError(err)
 			}
 
 			for _, child := range page.Inodes {
-				childPath := path.Join(name, child.Name)
-				if err := fsw.removeAll(ctx, childPath); err != nil {
+				if err := f.removeAll(ctx, path.Join(name, child.Name)); err != nil {
 					return err
 				}
 			}
@@ -196,161 +268,107 @@ func (fsw *webDavFSWrapper) removeAll(ctx context.Context, name string) error {
 		}
 	}
 
-	return fsw.fs.Delete(ctx, name)
-}
-
-type webDavFileWrapper struct {
-	logger *slog.Logger
-	ctx    context.Context
-
-	fs   *store.FS
-	name string
-
-	file      store.File
-	buffer    *bytes.Buffer
-	writable  bool
-	directory bool
-	perm      os.FileMode
-}
-
-// Write implements io.Writer.
-func (fw *webDavFileWrapper) Write(p []byte) (int, error) {
-	fw.logger.DebugContext(fw.ctx, "performing File.Write", "len(p)", len(p))
-
-	if !fw.writable {
-		return 0, fmt.Errorf("could not write to %q: %w", fw.name, fs.ErrPermission)
+	if err := f.fs.Delete(ctx, name); err != nil {
+		return storeError(err)
 	}
 
-	return fw.buffer.Write(p)
+	return nil
 }
 
-// Close implements io.Closer.
-func (fw *webDavFileWrapper) Close() (err error) {
-	fw.logger.DebugContext(fw.ctx, "performing File.Close")
-
-	if fw.writable {
-		if err := fw.fs.Put(fw.ctx, fw.name, bytes.NewReader(fw.buffer.Bytes())); err != nil {
-			return fmt.Errorf("could not store %q: %w", fw.name, err)
-		}
-	}
-
-	if fw.file != nil {
-		if closeErr := fw.file.Close(); closeErr != nil {
-			err = fmt.Errorf("could not close %q: %w", fw.name, closeErr)
+func (f *fileSystem) copy(
+	ctx context.Context,
+	inode store.Inode,
+	src string,
+	dest string,
+	noRecursive bool,
+) error {
+	if inode.Kind == store.KindDirectory {
+		if err := f.fs.Mkdir(ctx, dest); err != nil {
+			return storeError(err)
 		}
 
-		fw.file = nil
-	}
-
-	return err
-}
-
-// Read implements io.Reader.
-func (fw *webDavFileWrapper) Read(p []byte) (int, error) {
-	fw.logger.DebugContext(fw.ctx, "performing File.Read", "len(p)", len(p))
-
-	if fw.file == nil {
-		return 0, fmt.Errorf("could not read %q: %w", fw.name, fs.ErrInvalid)
-	}
-
-	return fw.file.Read(p)
-}
-
-// Seek implements io.Seeker.
-func (fw *webDavFileWrapper) Seek(offset int64, whence int) (int64, error) {
-	fw.logger.DebugContext(fw.ctx, "performing File.Seek", "offset", offset, "whence", whence)
-
-	if fw.file == nil {
-		return 0, fmt.Errorf("could not seek %q: %w", fw.name, fs.ErrInvalid)
-	}
-
-	return fw.file.Seek(offset, whence)
-}
-
-// Readdir implements http.File.
-func (fw *webDavFileWrapper) Readdir(count int) ([]fs.FileInfo, error) {
-	fw.logger.DebugContext(fw.ctx, "performing File.Readdir", "count", count)
-
-	if !fw.directory {
-		return nil, fmt.Errorf("could not read directory %q: %w", fw.name, fs.ErrInvalid)
-	}
-
-	var (
-		infos  []fs.FileInfo
-		cursor *store.Cursor
-	)
-
-	for {
-		page, err := fw.fs.List(fw.ctx, fw.name, cursor)
-		if err != nil {
-			return nil, fmt.Errorf("could not list %q: %w", fw.name, err)
+		if noRecursive {
+			return nil
 		}
 
-		for _, inode := range page.Inodes {
-			infos = append(infos, newFileInfo(inode))
+		var cursor *store.Cursor
 
-			if count > 0 && len(infos) == count {
-				return infos, nil
+		for {
+			page, err := f.fs.List(ctx, src, cursor)
+			if err != nil {
+				return storeError(err)
 			}
-		}
 
-		if page.Cursor == nil {
-			break
-		}
+			for _, child := range page.Inodes {
+				if err := f.copy(
+					ctx,
+					child,
+					path.Join(src, child.Name),
+					path.Join(dest, child.Name),
+					false,
+				); err != nil {
+					return err
+				}
+			}
 
-		cursor = page.Cursor
+			if page.Cursor == nil {
+				return nil
+			}
+
+			cursor = page.Cursor
+		}
 	}
 
-	return infos, nil
-}
-
-// Stat implements http.File.
-func (fw *webDavFileWrapper) Stat() (fs.FileInfo, error) {
-	fw.logger.DebugContext(fw.ctx, "performing File.Stat")
-
-	if fw.file != nil {
-		inode, err := fw.file.Stat()
-		if err != nil {
-			return nil, fmt.Errorf("could not stat %q: %w", fw.name, err)
-		}
-
-		return newFileInfo(inode), nil
-	}
-
-	inode, err := fw.fs.Stat(fw.ctx, fw.name)
+	file, err := f.fs.Open(ctx, src)
 	if err != nil {
-		return nil, fmt.Errorf("could not stat %q: %w", fw.name, err)
+		return storeError(err)
 	}
 
-	return newFileInfo(inode), nil
-}
-
-type fileInfo struct {
-	inode store.Inode
-}
-
-func newFileInfo(inode store.Inode) fileInfo {
-	return fileInfo{inode: inode}
-}
-
-func (i fileInfo) Name() string {
-	name := path.Base(i.inode.Name)
-	if name == "." {
-		return i.inode.Name
+	if err := f.fs.Put(ctx, dest, file); err != nil {
+		return errors.Join(storeError(err), file.Close())
 	}
 
-	return name
-}
-
-func (i fileInfo) Size() int64        { return i.inode.Size }
-func (i fileInfo) ModTime() time.Time { return i.inode.ModTime }
-func (i fileInfo) IsDir() bool        { return i.inode.Kind == store.KindDirectory }
-func (i fileInfo) Sys() any           { return nil }
-
-func (i fileInfo) Mode() os.FileMode {
-	if i.IsDir() {
-		return os.ModeDir | 0o0750
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("error while closing %q: %w", src, err)
 	}
 
-	return 0o0640
+	return nil
 }
+
+func fileInfo(inode store.Inode, name string) *libwebdav.FileInfo {
+	info := &libwebdav.FileInfo{
+		Path:    name,
+		Size:    inode.Size,
+		ModTime: inode.ModTime,
+		IsDir:   inode.Kind == store.KindDirectory,
+	}
+
+	if inode.Kind == store.KindFile {
+		info.MIMEType = mime.TypeByExtension(path.Ext(inode.Name))
+		info.ETag = string(inode.Hash)
+	}
+
+	return info
+}
+
+func storeError(err error) error {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return libwebdav.NewHTTPError(http.StatusNotFound, err)
+	case errors.Is(err, store.ErrQuotaExceeded):
+		return libwebdav.NewHTTPError(http.StatusInsufficientStorage, err)
+	case errors.Is(err, store.ErrAlreadyExists):
+		return libwebdav.NewHTTPError(http.StatusMethodNotAllowed, err)
+	case errors.Is(err, store.ErrNotEmpty):
+		return libwebdav.NewHTTPError(http.StatusConflict, err)
+	case errors.Is(err, store.ErrNotDirectory), errors.Is(err, store.ErrIsDirectory):
+		return libwebdav.NewHTTPError(http.StatusConflict, err)
+	case errors.Is(err, store.ErrInvalidPath), errors.Is(err, store.ErrInvalidName):
+		return libwebdav.NewHTTPError(http.StatusBadRequest, err)
+	default:
+		return err
+	}
+}
+
+// Ensure fileSystem implements webdav.FileSystem.
+var _ libwebdav.FileSystem = (*fileSystem)(nil)

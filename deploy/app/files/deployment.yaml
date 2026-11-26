@@ -48,6 +48,7 @@ spec:
             - --files-store-cache-inodes-memory=67108864
             - --files-store-cache-children-memory=67108864
             - --files-store-cache-disk=1073741824
+            - --files-store-quota=8589934592
             - --s3cache-bucket=files
             - --s3cache-path=/cache/s3
             - --httpauth-jwt-secret=$(JWT_SECRET)

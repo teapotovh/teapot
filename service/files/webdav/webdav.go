@@ -6,9 +6,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
-	"golang.org/x/net/webdav"
 
 	"github.com/teapotovh/teapot/lib/httpauth"
+	libwebdav "github.com/teapotovh/teapot/lib/webdav"
 	"github.com/teapotovh/teapot/service/files"
 )
 
@@ -55,8 +55,6 @@ func NewWebDav(files *files.Files, config WebDavConfig, logger *slog.Logger) (*W
 
 // Handler implements httpsrv.HTTPService.
 func (wd *WebDav) Handler(prefix string) http.Handler {
-	handlerLogger := wd.logger.With("component", "handler")
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := httpauth.MustGetAuth(r)
 
@@ -66,24 +64,8 @@ func (wd *WebDav) Handler(prefix string) http.Handler {
 			return
 		}
 
-		wrapper := newWebDavFSWrapper(session.FS(), wd.logger.With("component", "fs"))
-
-		handler := &webdav.Handler{
-			Prefix:     prefix,
-			FileSystem: wrapper,
-			// TODO: implement a custom locking system
-			LockSystem: webdav.NewMemLS(),
-			Logger: func(r *http.Request, err error) {
-				handlerLogger.Error(
-					"error while handling WebDav request",
-					"method",
-					r.Method,
-					"path",
-					r.URL.Path,
-					"err",
-					err,
-				)
-			},
+		handler := &libwebdav.Handler{
+			FileSystem: newFileSystem(session.FS()),
 		}
 
 		handler.ServeHTTP(w, r)
