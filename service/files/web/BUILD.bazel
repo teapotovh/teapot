@@ -42,12 +42,15 @@ go_test(
     srcs = [
         "archive_test.go",
         "page_browse_action_test.go",
+        "page_browse_dialog_test.go",
         "page_download_test.go",
         "paths_test.go",
     ],
     embed = [":web"],
     deps = [
         "//lib/run",
+        "//lib/ui",
         "//service/files/store",
+        "@dev_maragu_gomponents//:gomponents",
     ],
 )
