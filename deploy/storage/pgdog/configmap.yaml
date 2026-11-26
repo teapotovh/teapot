@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgdog-config
+data:
+  pgdog.toml: |
+    [general]
+    host = "0.0.0.0"
+    port = 6432
+    pooler_mode = "transaction"
+    workers = 2
+    default_pool_size = 10
+    min_pool_size = 1
+    read_write_split = "exclude_primary"
+    read_write_strategy = "conservative"
+    prepared_statements = "extended"
+    query_parser = "on"
+    openmetrics_port = 9090
+    tls_verify = "prefer"
+    passthrough_auth = "enabled_plain"
+    pub_sub_channel_size = 128
+    log_level = "info"
+
+    [[databases]]
+    name = "vaultwarden"
+    host = "postgresql01-cluster-rw.storage"
+    port = 5432
+    role = "primary"
+    database_name = "vaultwarden"
+
+    [[databases]]
+    name = "vaultwarden"
+    host = "postgresql01-local.storage"
+    port = 5432
+    role = "replica"
+    database_name = "vaultwarden"
+  users.toml: |
+    [[users]]
+    name = "vaultwarden"
+    database = "vaultwarden"

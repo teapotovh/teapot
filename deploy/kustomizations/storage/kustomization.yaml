@@ -4,6 +4,7 @@ resources:
 - storage.yaml
 
 - postgresql01.yaml
+- pgdog.yaml
 - garage01.yaml
 - bottin.yaml
 - prometheus.yaml

@@ -35,6 +35,15 @@ spec:
       cpu: 2000m
       memory: 2Gi
   managed:
+    services:
+      additional:
+        - selectorType: r
+          serviceTemplate:
+            metadata:
+              name: postgresql01-local
+            spec:
+              type: ClusterIP
+              trafficDistribution: PreferSameNode
     roles:
       - name: bottin
         ensure: present
