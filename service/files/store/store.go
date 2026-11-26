@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -156,6 +157,14 @@ func newStore(
 
 // NewPSQL creates a store backed by PostgreSQL and S3.
 func NewPSQL(ctx context.Context, config Config, logger *slog.Logger) (*Store, error) {
+	if config.Cache.Path == "" {
+		return nil, fmt.Errorf("%w: cache path is required", pagedbtree.ErrInvalidConfig)
+	}
+
+	if err := os.MkdirAll(config.Cache.Path, 0o750); err != nil {
+		return nil, fmt.Errorf("error while creating the cache directory: %w", err)
+	}
+
 	options := brant.DefaultOptions().
 		WithTableName("_version").
 		WithFilesystem(migrations).

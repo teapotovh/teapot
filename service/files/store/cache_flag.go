@@ -13,7 +13,7 @@ const (
 func CacheFlagSet() (*flag.FlagSet, func() CacheConfig) {
 	fs := flag.NewFlagSet("files/store/cache", flag.ExitOnError)
 
-	path := fs.String("files-store-cache-path", "", "file prefix for the inode cache")
+	path := fs.String("files-store-cache-path", "", "directory for the inode cache files")
 	inodesMemory := fs.Int64(
 		"files-store-cache-inodes-memory",
 		defaultCacheMemory,
