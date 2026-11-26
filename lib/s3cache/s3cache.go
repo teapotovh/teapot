@@ -69,6 +69,10 @@ func NewS3Cache(config S3CacheConfig, client *minio.Client, logger *slog.Logger)
 		return nil, ErrS3CacheBucketRequired
 	}
 
+	if err := os.MkdirAll(config.Path, DirFileMode); err != nil {
+		return nil, fmt.Errorf("error while creating the cache directory at %q: %w", config.Path, err)
+	}
+
 	capacity, err := diskCapacity(config.Path)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching the cache size at %q: %w", config.Path, err)

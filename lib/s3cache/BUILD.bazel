@@ -21,7 +21,10 @@ go_library(
 
 go_test(
     name = "s3cache_test",
-    srcs = ["download_test.go"],
+    srcs = [
+        "download_test.go",
+        "s3cache_test.go",
+    ],
     embed = [":s3cache"],
     deps = ["@com_github_stretchr_testify//require"],
 )
