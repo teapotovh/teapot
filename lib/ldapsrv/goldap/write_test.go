@@ -18,11 +18,11 @@ func TestWriteLDAPMessage(t *testing.T) {
 				test.bytes.offset,
 				test.bytes.DumpCurrentBytes(),
 				err,
-				test.bytes.getBytes(),
-				bytes.getBytes(),
+				test.bytes.Bytes(),
+				bytes.Bytes(),
 			)
-		} else if !reflect.DeepEqual(bytes.getBytes(), test.bytes.getBytes()) {
-			t.Errorf("#%d:\nGOT:\n%#+v\nEXPECTED:\n%#+v", i, bytes.getBytes(), test.bytes.getBytes())
+		} else if !reflect.DeepEqual(bytes.Bytes(), test.bytes.Bytes()) {
+			t.Errorf("#%d:\nGOT:\n%#+v\nEXPECTED:\n%#+v", i, bytes.Bytes(), test.bytes.Bytes())
 		}
 	}
 }

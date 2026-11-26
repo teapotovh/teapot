@@ -203,10 +203,6 @@ func (bytes *Bytes) Bytes() []byte {
 	return bytes.bytes
 }
 
-func (bytes *Bytes) getBytes() []byte {
-	return bytes.bytes
-}
-
 func (bytes *Bytes) writeBytes(b []byte) (size int) {
 	size = len(b)
 

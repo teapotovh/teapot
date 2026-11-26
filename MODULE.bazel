@@ -51,6 +51,27 @@ multitool = use_extension("@rules_multitool//multitool:extension.bzl", "multitoo
 multitool.hub(lockfile = "//bazel:multitool.lock.json")
 use_repo(multitool, "multitool")
 
+# --- Lint Configuration ---
+bazel_dep(name = "rules_lint", version = "0.0.0")
+git_override(
+    module_name = "rules_lint",
+    commit = "1da8c08cd847d55a8561c9064510ec13cbab7da1",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:rules_lint_golangci_fail.patch",
+        "//bazel/patches:rules_lint_golangci_stage.patch",
+        "//bazel/patches:rules_lint_golangci_registry.patch",
+    ],
+    remote = "https://github.com/bazel-contrib/rules_lint.git",
+)
+
+rules_lint_toolchains = use_extension("@rules_lint//lint:extensions.bzl", "toolchains")
+rules_lint_toolchains.sarif_parser()
+rules_lint_toolchains.gopackagesdriver()
+use_repo(rules_lint_toolchains, "gopackagesdriver_toolchains", "sarif_parser_toolchains")
+
+register_toolchains("@sarif_parser_toolchains//:all", "@gopackagesdriver_toolchains//:all")
+
 # --- OCI Image Configuration ---
 pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
 

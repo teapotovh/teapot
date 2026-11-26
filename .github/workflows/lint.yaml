@@ -23,27 +23,7 @@ jobs:
           repository-cache: true
           cache-save: ${{ github.event_name != 'pull_request' }}
 
-      - name: Restore golangci-lint cache
-        id: cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/.cache/golangci-lint
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-golangci-lint-${{ hashFiles('go.mod', 'go.sum', '.golangci.yaml', 'bazel/multitool.lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-golangci-lint-
-
       - name: Lint
-        run: bazel run //tools:golangci-lint -- run
-
-      - name: Save golangci-lint cache
-        if: always() && github.event_name != 'pull_request' && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.cache/golangci-lint
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-golangci-lint-${{ hashFiles('go.mod', 'go.sum', '.golangci.yaml', 'bazel/multitool.lock.json') }}
+        run: |
+          targets=$(bazel query 'kind("go_(library|test)", //...)')
+          bazel build --config=lint --keep_going $targets

@@ -1,0 +1,11 @@
+--- a/lint/golangci_lint.bzl	2026-11-22 14:05:41.984087638 +0100
++++ b/lint/golangci_lint.bzl	2026-11-22 14:05:41.996087506 +0100
+@@ -164,7 +164,7 @@
+         command = cache_prologue + goroot_prologue + sarif_setup + 'bin="$1"; shift; ' + run_golangci + "; echo $? >" + exit_code.path + "; " + copy_sarif
+         outputs.append(exit_code)
+     else:
+-        command = cache_prologue + goroot_prologue + sarif_setup + 'bin="$1"; shift; ' + run_golangci + "; " + copy_sarif
++        command = cache_prologue + goroot_prologue + sarif_setup + 'bin="$1"; shift; ' + run_golangci + "; rc=$?; " + copy_sarif + '; if [ "$rc" -ne 0 ]; then cat ' + stdout.path + " >&2; fi; exit $rc"
+ 
+     run_args = ctx.actions.args()
+     run_args.add(executable.path)
