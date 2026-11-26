@@ -327,7 +327,7 @@ var newFolderFormStyle = ui.MustParseStyle(`
 func (nfd newFolderDialog) Render(ctx ui.Context) g.Node {
 	return h.Div(ctx.Class(dialogStyle),
 		h.H3(g.Text("New Folder")),
-		h.P(g.Text("Create a new folder in the currect directory.")),
+		h.P(g.Text("Create a new folder in the current directory.")),
 		h.P(
 			g.Text("Adding folders recursively is also supported. Thus, creating a folder named "),
 			components.Code(ctx, g.Text("documents/letters")),

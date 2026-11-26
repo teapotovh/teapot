@@ -45,7 +45,7 @@ type MutableFileSystem interface {
 	Delete(ctx context.Context, path string) error
 	// Rename moves oldPath to newPath.
 	Rename(ctx context.Context, oldPath, newPath string) error
-	// Mkdir creates a directory at path.
+	// Mkdir creates a directory at path, including any missing parents.
 	Mkdir(ctx context.Context, path string) error
 }
 

@@ -37,7 +37,7 @@ func ValidateName(name string) error {
 		return ErrInvalidName
 	}
 
-	if name == "." || name == ".." || strings.ContainsRune(name, fs.PathSeparator) {
+	if name == "." || name == ".." || strings.Contains(name, fs.PathSeparator) {
 		return ErrInvalidName
 	}
 

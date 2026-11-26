@@ -377,11 +377,11 @@ func (r *RemoteFiles) resolve(uid int64, path string) (*filespb.Inode, error) {
 		return nil, ErrNotFound
 	}
 
-	if clean == string(fs.PathSeparator) {
+	if clean == fs.PathSeparator {
 		return current, nil
 	}
 
-	names := strings.Split(strings.TrimPrefix(clean, string(fs.PathSeparator)), string(fs.PathSeparator))
+	names := strings.Split(strings.TrimPrefix(clean, fs.PathSeparator), fs.PathSeparator)
 
 	for i, name := range names {
 		if !isDirectory(current) {
