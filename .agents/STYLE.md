@@ -30,12 +30,18 @@ in the few places where a wrap truly doesn't make sense.
 You MUST NOT use repated strings/number constants throughout the code without
 defining an (potentially exported) constant for them. We should always use
 constants for values where it makes sense to do so.
+Before using any string value make sure you search the repository and see if we
+already have a constant for it.
 
 Type assertions should always be commented. Look in the repository for examples.
 
 Changes to `.proto` files should always contain comments for every type and every field.
 
 Never return an interface when a concrete type that implements said interface can be returned.
+
+Ensure that your code doesn't have any pointless functions that could have been
+inlined. You should always prefer inlining code to extrating it in an helper if
+it only has one consumer.
 
 ## Metrics
 
