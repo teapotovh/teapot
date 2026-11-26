@@ -35,7 +35,7 @@ const (
 )
 
 const (
-	HTTPWebDavPrefix = "/dav"
+	HTTPWebDavPrefix = files.WebDavPrefix
 	HTTPWebPrefix    = "/"
 )
 
