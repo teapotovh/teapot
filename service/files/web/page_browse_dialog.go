@@ -1,7 +1,6 @@
 package web
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -94,7 +93,7 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 
 		rel := r.FormValue(newFolderDialogPathID)
 		if base == "" || rel == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusBadRequest)
 			return dialogError{err: fmt.Errorf("invalid empty path: %w", webhandler.ErrBadRequest)}, nil
 		}
 
@@ -116,6 +115,7 @@ func (web *Web) BrowseDialogNewFolder(w http.ResponseWriter, r *http.Request) (u
 	return nil, fmt.Errorf("invalid method %q: %w", r.Method, webhandler.ErrBadRequest)
 }
 
+//nolint:gocyclo
 func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.Component, error) {
 	auth := webauth.GetAuth(r)
 	if auth == nil {
@@ -135,35 +135,67 @@ func (web *Web) BrowseDialogUpload(w http.ResponseWriter, r *http.Request) (ui.C
 		}, nil
 
 	case http.MethodPost:
-		if err := r.ParseMultipartForm(files.MaxSize); err != nil { //nolint:gosec
-			return nil, webhandler.NewInternalError(err, nil)
-		}
+		r.Body = http.MaxBytesReader(w, r.Body, files.MaxSize)
 
-		base := r.FormValue(dialogBaseID)
-
-		file, header, _ := r.FormFile(uploadDialogFileID)
-		if base == "" || file == nil || header == nil || header.Filename == "" || header.Size <= 0 {
+		reader, err := r.MultipartReader()
+		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-
-			return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
+			return dialogError{err: fmt.Errorf("could not read multipart form: %w", err)}, nil
 		}
-
-		rel := path.Join(base, header.Filename)
 
 		session, err := web.files.Session(r.Context(), auth.Username)
 		if err != nil {
 			return nil, webhandler.NewInternalError(err, nil)
 		}
 
-		data, err := io.ReadAll(file)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return dialogError{err: fmt.Errorf("could not read file from request: %w", err)}, nil
+		var base string
+
+		var uploaded bool
+
+		for {
+			part, err := reader.NextPart()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return dialogError{err: fmt.Errorf("could not read multipart form: %w", err)}, nil
+			}
+
+			switch part.FormName() {
+			case dialogBaseID:
+				value, err := io.ReadAll(part)
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return dialogError{err: fmt.Errorf("could not read base path: %w", err)}, nil
+				}
+
+				base = string(value)
+
+			case uploadDialogFileID:
+				if base == "" || part.FileName() == "" {
+					w.WriteHeader(http.StatusBadRequest)
+					return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
+				}
+
+				rel := path.Join(base, part.FileName())
+				if err := session.FS().Put(r.Context(), storePath(rel), part); err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return dialogError{err: fmt.Errorf("error while writing file %q: %w", rel, err)}, nil
+				}
+
+				uploaded = true
+			}
+
+			if err := part.Close(); err != nil {
+				return nil, webhandler.NewInternalError(err, nil)
+			}
 		}
 
-		if err := session.FS().Put(r.Context(), storePath(rel), bytes.NewReader(data)); err != nil {
+		if !uploaded {
 			w.WriteHeader(http.StatusBadRequest)
-			return dialogError{err: fmt.Errorf("error while writing file %q: %w", rel, err)}, nil
+			return dialogError{err: fmt.Errorf("invalid empty path/file: %w", webhandler.ErrBadRequest)}, nil
 		}
 
 		return nil, webhandler.NewRedirectError(EscapePath(PathBrowseDirAt(base)), http.StatusFound)
@@ -230,6 +262,7 @@ func (web *Web) BrowseDialogDelete(w http.ResponseWriter, r *http.Request) (ui.C
 
 const (
 	newFolderDialogErrorContainerID = "newfolder-error"
+	uploadDialogErrorContainerID    = "upload-error"
 	dialogBaseID                    = "base"
 	newFolderDialogPathID           = "path"
 	uploadDialogFileID              = "file"
@@ -362,10 +395,10 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 	return h.Div(
 		ctx.Class(dialogStyle),
 		h.H3(g.Text("Upload")),
-		h.P(g.Text("Upload a file in the current directory.")),
+		h.P(g.Text("Upload files in the current directory.")),
 		h.P(
-			g.Text("The file will maintain the same name it has when you upload it."),
-			g.Text("For example, if you upload a faile called"),
+			g.Text("Each file will maintain the same name it has when you upload it."),
+			g.Text("For example, if you upload a file called"),
 			components.Code(ctx, g.Text(exampleFile)),
 			g.Text(" it will be placed in the current folder ("), components.Code(ctx, g.Text(cd)),
 			g.Text(") as "), components.Code(ctx, g.Text(exampleFile)), g.Text("."),
@@ -382,7 +415,7 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 			hx.Encoding("multipart/form-data"),
 			hx.Post(ud.url),
 			hx.Swap("innerHTML"),
-			g.Attr("hx-target-error", "#"+newFolderDialogErrorContainerID),
+			g.Attr("hx-target-error", "#"+uploadDialogErrorContainerID),
 
 			h.Input(h.Class("hidden"),
 				h.Type("text"),
@@ -395,16 +428,17 @@ func (ud uploadDialog) Render(ctx ui.Context) g.Node {
 				components.FileInput(
 					ctx,
 					uploadDialogFileID,
-					"Select a file",
+					"Select files",
+					h.Multiple(),
 					g.Attr(
 						"onchange",
-						"document.querySelector('label[for="+uploadDialogFileID+"]').textContent = this.files[0]?.name || 'Select a file'",
+						"document.querySelector('label[for="+uploadDialogFileID+"]').textContent = this.files.length > 1 ? `${this.files.length} files selected` : this.files[0]?.name || 'Select files'",
 					),
 				),
 				components.Button(ctx, h.Type("submit"), g.Text("Upload")),
 			),
 
-			h.Div(h.ID(newFolderDialogErrorContainerID), h.Class("error")),
+			h.Div(h.ID(uploadDialogErrorContainerID), h.Class("error")),
 		),
 	)
 }
