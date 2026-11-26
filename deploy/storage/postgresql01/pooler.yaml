@@ -13,6 +13,11 @@ spec:
       max_client_conn: "100"
       default_pool_size: "10"
   template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9127"
+        prometheus.io/path: "/metrics"
     spec:
       topologySpreadConstraints:
       - maxSkew: 1
