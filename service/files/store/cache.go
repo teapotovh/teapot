@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"path"
 	"strings"
 	"sync"
 
@@ -17,7 +18,7 @@ var ErrCorruptData = errors.New("corrupt data")
 
 // CacheConfig is the configuration for the inode cache.
 type CacheConfig struct {
-	// Path is the file prefix used by the cache.
+	// Path is the directory used by the cache.
 	Path string
 	// InodesMemory is the inode page cache budget in bytes.
 	InodesMemory int64
@@ -36,13 +37,13 @@ type cache struct {
 
 func openCache(fs fs.FS, cfg CacheConfig) (*cache, error) {
 	nodeCfg := pagedbtree.Config{
-		Path:   cfg.Path + ".inodes",
+		Path:   path.Join(cfg.Path, "inodes"),
 		Memory: cfg.InodesMemory,
 		Disk:   cfg.Disk,
 	}
 
 	childCfg := pagedbtree.Config{
-		Path:   cfg.Path + ".children",
+		Path:   path.Join(cfg.Path, "children"),
 		Memory: cfg.ChildrenMemory,
 		Disk:   cfg.Disk,
 	}

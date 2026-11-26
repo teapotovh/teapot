@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -504,7 +503,7 @@ func newTestStoreWith(
 
 	store, err := NewStore(Config{
 		Cache: CacheConfig{
-			Path:           filepath.Join(t.TempDir(), "cache"),
+			Path:           t.TempDir(),
 			InodesMemory:   1 << 20,
 			ChildrenMemory: 1 << 20,
 			Disk:           32 << 20,
