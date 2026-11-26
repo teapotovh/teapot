@@ -25,6 +25,7 @@ go_test(
     srcs = [
         "basic_test.go",
         "httpauth_test.go",
+        "jwt_test.go",
     ],
     embed = [":httpauth"],
     deps = [
