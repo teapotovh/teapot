@@ -271,6 +271,99 @@ func TestRevisionConflict(t *testing.T) {
 	}
 }
 
+func TestFSWriteRetryOnConflict(t *testing.T) {
+	t.Parallel()
+
+	db := newMemDB()
+	store, ctx := newTestStoreWith(t, db, newMemBlob(), newMemNotifications())
+	fs := store.For(1007)
+
+	if err := fs.Mkdir(ctx, "/seed"); err != nil {
+		t.Fatalf("seed Mkdir: %v", err)
+	}
+
+	gated := &gateDB{
+		memDB:    db,
+		began:    make(chan struct{}, 1),
+		conflict: make(chan struct{}, 16),
+		gate:     make(chan struct{}, 1),
+	}
+	gated.gate <- struct{}{}
+
+	store.db = gated
+
+	errs := make(chan error, 2)
+
+	go func() { errs <- fs.Mkdir(ctx, "/a") }()
+
+	// Wait for the first writer to hold the write transaction.
+	<-gated.began
+
+	go func() { errs <- fs.Mkdir(ctx, "/b") }()
+
+	for range 2 {
+		if err := <-errs; err != nil {
+			t.Fatalf("Mkdir after conflict: %v", err)
+		}
+	}
+
+	for _, path := range []string{"/a", "/b"} {
+		if _, err := fs.Stat(ctx, path); err != nil {
+			t.Fatalf("Stat(%q): %v", path, err)
+		}
+	}
+}
+
+type gateDB struct {
+	*memDB
+
+	began    chan struct{}
+	conflict chan struct{}
+	gate     chan struct{}
+}
+
+func (d *gateDB) Begin(ctx context.Context, expected uint64) (Tx, error) {
+	tx, err := d.memDB.Begin(ctx, expected)
+	if err != nil {
+		if errors.Is(err, ErrRevisionConflict) {
+			select {
+			case d.conflict <- struct{}{}:
+			default:
+			}
+		}
+
+		return nil, err
+	}
+
+	select {
+	case d.began <- struct{}{}:
+	default:
+	}
+
+	select {
+	case <-d.gate:
+		return &gatedTx{Tx: tx, conflict: d.conflict}, nil
+	default:
+		return tx, nil
+	}
+}
+
+type gatedTx struct {
+	Tx
+
+	conflict chan struct{}
+}
+
+func (t *gatedTx) Commit(ctx context.Context, payload []byte) error {
+	select {
+	case <-t.conflict:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return t.Tx.Commit(ctx, payload)
+}
+
 func TestCacheRebuild(t *testing.T) {
 	t.Parallel()
 
@@ -362,9 +455,16 @@ func (s readyService) Run(step run.Step) error {
 func newTestStore(t *testing.T) (*Store, context.Context) {
 	t.Helper()
 
-	db := newMemDB()
-	blob := newMemBlob()
-	notifications := newMemNotifications()
+	return newTestStoreWith(t, newMemDB(), newMemBlob(), newMemNotifications())
+}
+
+func newTestStoreWith(
+	t *testing.T,
+	db *memDB,
+	blob *memBlob,
+	notifications *memNotifications,
+) (*Store, context.Context) {
+	t.Helper()
 
 	logger := slog.New(slog.DiscardHandler)
 
@@ -374,6 +474,8 @@ func newTestStore(t *testing.T) (*Store, context.Context) {
 			Memory: 1 << 20,
 			Disk:   32 << 20,
 		},
+		RetryDelay: time.Millisecond,
+		MaxRetries: 5,
 	}, db, blob, notifications, logger)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)

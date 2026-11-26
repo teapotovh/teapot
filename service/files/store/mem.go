@@ -25,7 +25,11 @@ const (
 // NewMem creates an in-memory store.
 func NewMem(logger *slog.Logger) (*Store, error) {
 	return newStore(
-		Config{Cache: CacheConfig{Path: memCachePath, Memory: memCacheMemory}},
+		Config{
+			Cache:      CacheConfig{Path: memCachePath, Memory: memCacheMemory},
+			RetryDelay: time.Second,
+			MaxRetries: 5,
+		},
 		newMemDB(),
 		newMemBlob(),
 		newMemNotifications(),
