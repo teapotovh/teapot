@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"strings"
 	"time"
 	"uuid"
@@ -183,50 +184,69 @@ func (f *FS) Put(ctx context.Context, path string, r io.Reader) (err error) {
 }
 
 // Mkdir implements MutableFileSystem.
-func (f *FS) Mkdir(ctx context.Context, path string) (err error) {
+func (f *FS) Mkdir(ctx context.Context, p string) (err error) {
 	start := time.Now()
 	defer func() { f.store.metrics.observeOperation(metricsOperationMkdir, start, err) }()
 
-	parent, name, err := splitPath(path)
+	clean, err := fs.CleanPath(p)
 	if err != nil {
 		return err
 	}
 
-	parentInode, err := f.store.cache.resolve(f.uid, parent)
-	if err != nil {
-		return err
-	}
-
-	if parentInode.Kind != KindDirectory {
-		return ErrNotDirectory
+	if clean == fs.PathSeparator {
+		return ErrInvalidPath
 	}
 
 	if err := f.ensureRoot(ctx); err != nil {
 		return err
 	}
 
-	if _, ok, err := f.store.cache.child(f.uid, parentInode.NodeID, name); err != nil {
-		return err
-	} else if ok {
-		return ErrAlreadyExists
+	names := strings.Split(strings.TrimPrefix(clean, fs.PathSeparator), fs.PathSeparator)
+	parent := fs.PathSeparator
+
+	for i, name := range names {
+		if name, err = NormalizeName(name); err != nil {
+			return err
+		}
+
+		parentInode, err := f.store.cache.resolve(f.uid, parent)
+		if err != nil {
+			return err
+		}
+
+		if parentInode.Kind != KindDirectory {
+			return ErrNotDirectory
+		}
+
+		if _, ok, err := f.store.cache.child(f.uid, parentInode.NodeID, name); err != nil {
+			return err
+		} else if ok {
+			if i == len(names)-1 {
+				return ErrAlreadyExists
+			}
+		} else {
+			tx, err := f.begin(ctx)
+			if err != nil {
+				return err
+			}
+
+			inode := Inode{
+				UID:      f.uid,
+				ParentID: parentInode.NodeID,
+				Name:     name,
+				Kind:     KindDirectory,
+				ModTime:  time.Now().UTC(),
+			}
+
+			if err := f.commit(ctx, tx, inode); err != nil {
+				return errors.Join(err, tx.Rollback(ctx))
+			}
+		}
+
+		parent = path.Join(parent, name)
 	}
 
-	tx, err := f.begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer rollbackOnError(ctx, tx, &err)
-
-	inode := Inode{
-		UID:      f.uid,
-		ParentID: parentInode.NodeID,
-		Name:     name,
-		Kind:     KindDirectory,
-		ModTime:  time.Now().UTC(),
-	}
-
-	return f.commit(ctx, tx, inode)
+	return nil
 }
 
 // Delete implements MutableFileSystem.

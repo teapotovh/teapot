@@ -41,3 +41,26 @@ func TestUploadDialogRender(t *testing.T) {
 		t.Errorf("upload dialog does not accept multiple files")
 	}
 }
+
+func TestNewFolderDialogText(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	node := newFolderDialog{url: "/browse/newfolder", path: "/"}.Render(testContext{})
+	if err := node.Render(&buf); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	got := buf.String()
+
+	for _, want := range []string{
+		"Create a new folder in the current directory.",
+		"Adding folders recursively is also supported.",
+		"mkdir -p",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("dialog does not contain %q", want)
+		}
+	}
+}

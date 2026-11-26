@@ -157,6 +157,40 @@ func TestFSRenameCycle(t *testing.T) {
 	}
 }
 
+func TestFSMkdirParents(t *testing.T) {
+	t.Parallel()
+
+	store, ctx := newTestStore(t)
+	fs := store.For(1008)
+
+	if err := fs.Mkdir(ctx, "/a/b/c"); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	for _, path := range []string{"/a", "/a/b", "/a/b/c"} {
+		inode, err := fs.Stat(ctx, path)
+		if err != nil {
+			t.Fatalf("Stat(%q): %v", path, err)
+		}
+
+		if inode.Kind != KindDirectory {
+			t.Fatalf("Stat(%q) kind = %v, want directory", path, inode.Kind)
+		}
+	}
+
+	if err := fs.Mkdir(ctx, "/a/b/c"); !errors.Is(err, ErrAlreadyExists) {
+		t.Fatalf("Mkdir existing error = %v, want already exists", err)
+	}
+
+	if err := fs.Put(ctx, "/a/b/file", bytes.NewBufferString("x")); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+
+	if err := fs.Mkdir(ctx, "/a/b/file/child"); !errors.Is(err, ErrNotDirectory) {
+		t.Fatalf("Mkdir below file error = %v, want not directory", err)
+	}
+}
+
 func TestFSDeepPath(t *testing.T) {
 	t.Parallel()
 
