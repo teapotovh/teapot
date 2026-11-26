@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/pagedbtree"
 	filespb "github.com/teapotovh/teapot/proto/files"
 )
@@ -118,7 +119,7 @@ func openTree[T pagedbtree.Keyed](
 		return nil, fmt.Errorf("could not create cache directory: %w", err)
 	}
 
-	return pagedbtree.OpenTree(osFileSystem{}, pagedbtree.Config{
+	return pagedbtree.OpenTree(fs.OS{}, pagedbtree.Config{
 		Path:       config.Path,
 		Memory:     config.Memory,
 		Disk:       config.Disk,
@@ -267,13 +268,3 @@ func decodeNodeID(data []byte) (uint64, error) {
 
 	return binary.BigEndian.Uint64(data), nil
 }
-
-type osFileSystem struct{}
-
-// OpenFile implements pagedbtree.FS.
-func (osFileSystem) OpenFile(name string, flag int, perm os.FileMode) (pagedbtree.File, error) {
-	return os.OpenFile(name, flag, perm) //nolint:gosec // the cache path comes from configuration.
-}
-
-// Ensure osFileSystem implements pagedbtree.FS.
-var _ pagedbtree.FS = osFileSystem{}

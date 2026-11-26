@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/pagedbtree"
 )
 
@@ -31,7 +32,7 @@ type cache struct {
 	mu sync.RWMutex
 }
 
-func openCache(fs pagedbtree.FS, cfg pagedbtree.Config) (*cache, error) {
+func openCache(fs fs.FS, cfg pagedbtree.Config) (*cache, error) {
 	nodeCfg := cfg
 	nodeCfg.Path = cfg.Path + ".inodes"
 
@@ -93,7 +94,7 @@ func (c *cache) childLocked(uid int64, parentID uint64, name string) (uint64, bo
 }
 
 func (c *cache) resolve(uid int64, path string) (Inode, error) {
-	clean, err := CleanPath(path)
+	clean, err := fs.CleanPath(path)
 	if err != nil {
 		return Inode{}, err
 	}

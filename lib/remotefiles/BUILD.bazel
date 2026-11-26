@@ -7,12 +7,12 @@ go_library(
         "file.go",
         "files.go",
         "flag.go",
-        "path.go",
         "remotefiles.go",
     ],
     importpath = "github.com/teapotovh/teapot/lib/remotefiles",
     visibility = ["//visibility:public"],
     deps = [
+        "//lib/fs",
         "//lib/pagedbtree",
         "//lib/run",
         "//lib/s3cache",

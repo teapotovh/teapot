@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/teapotovh/teapot/lib/fs"
 	"github.com/teapotovh/teapot/lib/run"
 )
 
@@ -54,8 +55,8 @@ type Bytes struct {
 	dirtyPages int
 
 	path string
-	fs   FS
-	file File
+	fs   fs.FS
+	file fs.File
 
 	writeMu sync.Mutex
 	metaMu  sync.Mutex
@@ -91,7 +92,7 @@ type leafPage struct {
 }
 
 // Open creates a byte-level store. The file is opened by Run.
-func Open(fs FS, cfg Config) (*Bytes, error) {
+func Open(fs fs.FS, cfg Config) (*Bytes, error) {
 	if fs == nil || cfg.Path == "" || cfg.Memory < 0 {
 		return nil, ErrInvalidConfig
 	}

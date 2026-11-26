@@ -1,6 +1,7 @@
-package store
+package fs
 
 import (
+	"errors"
 	"path"
 	"slices"
 	"strings"
@@ -8,6 +9,9 @@ import (
 
 // PathSeparator is the separator used in all paths.
 const PathSeparator = '/'
+
+// ErrInvalidPath reports that a path is not valid.
+var ErrInvalidPath = errors.New("invalid path")
 
 // CleanPath checks that p is an absolute path and returns its clean form.
 func CleanPath(p string) (string, error) {
