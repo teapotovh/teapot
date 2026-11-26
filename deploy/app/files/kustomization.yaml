@@ -1,0 +1,20 @@
+namespace: app
+namePrefix: files-
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app: files
+      app.kubernetes.io/name: files
+      app.kubernetes.io/part-of: files
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+- deployment.yaml
+- service.yaml
+- httproute.yaml
+- secret.yaml
+- cronjob.yaml
+
+components:
+- ../../versions

@@ -33,3 +33,21 @@ spec:
         reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
         reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
         reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: key-files
+  annotations:
+    sealedsecrets.bitnami.com/namespace-wide: "true"
+spec:
+  encryptedData:
+    id: AgClBaBizqy6AOJ6if2tIIBrBRHx0lk2mQsyA2H39QKbqXkajT1/sWq6SRdYyiy07T5ePx07hMl/1apHtF8+23CZpmDVHjmtJgV1XOIEdcY8Pwy2IhgsrCa58UzPCMbawk5KOM8WcOFUpZmHk/8lhKWJPSrArRVMPRRr/uHEYOVwyMu3ksVeOWCi+ew6K4jiPwbsYeXguA5DvuhQ+KyvcvpofyUIKvo/Te8PTH6fypqGzL7btn8/dRfGHSftUt6fzz/5Az8d8ZGgf7E26csB2i8NM5j0Jk6KV9uByjogUgfyOYZt/RzuRyPa/Kze/t1YmkqMejvVf2Br2Br82ccG1sViGt9g34xfngNQR/pr0Kzx1pOQdT0zkl/0fJyOwpeFULHdJUXZmQljEkMkQIPaNrLhvIsGfudzCTPqrRb6+oar6iz6GSQ2jY8rVpp+r7FvyDfEKCSHd0LM/atzjMNiBXpMFMIfoZeLOhr60HGcvN3JmmriEIsh7JHLGi6AXtokBRF5MUm6fjYvtXfZeRcHdYdzpx0lFOkHuPjqHe6gwbp2+tcifMsp4AowQgSuN6uqEu8Uwh2i1wP1TeNU5sAv4xMCTwtP40vToQp3Rf1T+Rk1Jiw1tcWZeCDyEy1GZKoHsGba+ADGrsnYU8GRahTgCbBg53+sh64nY7m5WCp9QQcuJMCxXC2MztRRea6w8X8NJ0cHXXFoRMsSSTsecely9d3pDwWU3vr7HCfidg==
+    key: AgAdl9gjndwVFgTGuL8HR8SB/VmJQWdu418U7NKa2y9+n3ejS5xr49t06OV3ZqE/YE1wJk51T31hpKEBqbGPlK9DuZJSFhY6+13AKWPhvD6GnVggVqSL8JolrBKTEFVO186K3/icT2YU0X5Zt1VCVJz4MMuxTJ79Gm00GXPSt+lFbTpsFBLedNT37CwNWxkiRd7H6FdFsegssrYNHHR6xU41Hor+PiPJVbeFZigI+XpckmXB7z4y0/GzHOqWIzoIvuMhkJFb8D/QbZNCGKvQnw8rzE/5/5ZMYgRoCQ26nFYCH0MCP8A6pWSJJqQD79JXt4QMXEI8LrEwvApdJ1nzsdqPa1lgQ94v5S+GZBX1JifshOrZ3we3z9bQU3MWuTaY7KrwNz6MFY/mwcpqGfVBXNebbv9waGFR6hcM6FFQOd6+RWuRdTBEh4HpWQN+uNrA7p7d0gf65XzfHdlhldHWpg/FX/0ebHdpXTmX8P+orUUef22zlYRR7GBRS/HD+zcMv/4+eXyFdFk44D00srCAo1sxFS48oe8IJtslgSegTsCdShIaLm7uQ9HtCtXMBRnAli6dDxd4rrLzyx/1OFoY3eZzqyLiVZ9T42ruMrlSbsDFr25s+AxeoMl2XF4PW1qIV2ONBjY0HPlXgBDTERFHAXVXR+EJvzzhCMp/gVidaziGdmH7R/wMpbCHwWs5bV291e88hvlBod1RmsX9ekD4yob0N1tbFbv4vy7JppogTgdVuI0Rti5/tA3cJE5UqNeCMp1sFyguMnAsZAj/WGZffV5O
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "app"
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "app"
