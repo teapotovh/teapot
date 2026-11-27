@@ -21,6 +21,8 @@ spec:
       containers:
         - name: pgdog
           image: ghcr.io/pgdogdev/pgdog:v0.1.66
+          command:
+            - /usr/local/bin/pgdog
           args:
             - --config=/pgdog/pgdog.toml
             - --users=/pgdog/users.toml
