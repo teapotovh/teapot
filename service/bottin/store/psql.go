@@ -4,26 +4,18 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
+	"time"
 
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/teapotovh/teapot/lib/observability"
-	"github.com/teapotovh/teapot/lib/pgcache"
-	"github.com/teapotovh/teapot/lib/run"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-)
-
-var (
-	ErrNotFound = errors.New("not found")
 )
 
 func parseRows(rows pgx.Rows) ([]Entry, error) {
@@ -64,92 +56,49 @@ func parseRows(rows pgx.Rows) ([]Entry, error) {
 	return entries, nil
 }
 
-var listQuery = `
-		SELECT dn, attributes
-		FROM entries;
-`
-
-func listPSQL(ctx context.Context, conn *pgxpool.Pool) ([]Entry, error) {
-	rows, err := conn.Query(ctx, listQuery)
-	if err != nil {
-		return nil, fmt.Errorf("error while listing entries from psql: %w", err)
-	}
-
-	return parseRows(rows)
-}
-
-var getQuery = `
+var (
+	listQuery = `
 		SELECT dn, attributes
 		FROM entries
-		WHERE dn = ANY($1);
-`
+		ORDER BY dn;
+	`
 
-func getPSQL(ctx context.Context, conn *pgxpool.Pool, prefixes []Prefix) ([]Entry, error) {
-	dns := make([]string, 0, len(prefixes))
-	for _, prefix := range prefixes {
-		dns = append(dns, prefix.String())
-	}
+	getQuery = `
+		SELECT dn, attributes
+		FROM entries
+		WHERE dn = $1
+		LIMIT 1;
+	`
 
-	rows, err := conn.Query(ctx, getQuery, dns)
-	if err != nil {
-		return nil, fmt.Errorf("error while listing select entries from psql: %w", err)
-	}
+	rangeQuery = `
+		SELECT dn, attributes
+		FROM entries
+		WHERE dn >= $1
+			AND dn < $2
+		ORDER BY dn;
+	`
 
-	return parseRows(rows)
-}
-
-var storeQuery = `
+	storeQuery = `
 		INSERT INTO entries (dn, attributes)
-	  SELECT unnest($1::text[]), unnest($2::jsonb[])
+		VALUES ($1, $2)
 		ON CONFLICT (dn) DO UPDATE
 		SET attributes = EXCLUDED.attributes;
-`
+	`
 
-func storePSQL(ctx context.Context, tx pgx.Tx, entries []Entry) error {
-	dns := make([]string, 0, len(entries))
-	attrs := make([][]byte, 0, len(entries))
-
-	for i, entry := range entries {
-		rawAttributes, err := json.Marshal(entry.Attributes)
-		if err != nil {
-			return fmt.Errorf("could not marshal attributes of entry %d for psql: %w", i, err)
-		}
-
-		prefix := entry.DN.Prefix()
-		dns = append(dns, prefix.String())
-		attrs = append(attrs, rawAttributes)
-	}
-
-	_, err := tx.Exec(ctx, storeQuery, dns, attrs)
-	if err != nil {
-		return fmt.Errorf("error while inserting entries with psql: %w", err)
-	}
-
-	return nil
-}
-
-var deleteQuery = `DELETE FROM entries WHERE dn = ANY($1);`
-
-func deletePSQL(ctx context.Context, tx pgx.Tx, prefixes []Prefix) error {
-	dns := make([]string, 0, len(prefixes))
-	for _, prefix := range prefixes {
-		dns = append(dns, prefix.String())
-	}
-
-	_, err := tx.Exec(ctx, deleteQuery, dns)
-	if err != nil {
-		return fmt.Errorf("error while deleting entries in psql: %w", err)
-	}
-
-	return nil
-}
+	deleteQuery = `DELETE FROM entries WHERE dn = $1;`
+)
 
 //go:embed migrations/*.sql
 var migraitions embed.FS
 
+type psqlPool interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Begin(ctx context.Context) (pgx.Tx, error)
+	Ping(ctx context.Context) error
+}
+
 type PSQL struct {
-	pool  *pgxpool.Pool
-	table *pgcache.Table[Prefix, Entry]
+	pool psqlPool
 
 	metrics metrics
 }
@@ -194,14 +143,8 @@ func NewPSQL(ctx context.Context, url string, logger *slog.Logger) (*PSQL, error
 		return nil, fmt.Errorf("error while connecting to psql: %w", err)
 	}
 
-	table, err := pgcache.NewTable(pool, "entries", PrefixFromString, listPSQL, getPSQL, storePSQL, deletePSQL, logger)
-	if err != nil {
-		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
-	}
-
 	p := PSQL{
-		pool:  pool,
-		table: table,
+		pool: pool,
 	}
 	p.metrics.initMetrics("psql")
 
@@ -217,62 +160,137 @@ func (p *PSQL) Ping(ctx context.Context) error {
 	return nil
 }
 
-// List implements Store.
-func (p *PSQL) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, _ error) {
-	if exact {
-		entry, found := p.table.Get(prefix)
-		if found {
-			entries = append(entries, entry)
-		}
-	} else {
-		end := prefixEnd(prefix)
-		entries = slices.Collect(p.table.Between(prefix, end))
+// Get implements Store.
+func (p *PSQL) Get(ctx context.Context, prefix Prefix) (entry Entry, err error) {
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(metricsOperationGet, start, err) }()
+
+	rows, err := p.pool.Query(ctx, getQuery, prefix.String())
+	if err != nil {
+		return Entry{}, fmt.Errorf("error while getting entry from psql: %w", err)
 	}
 
-	return entries, nil
+	entries, err := parseRows(rows)
+	if err != nil {
+		return Entry{}, err
+	}
+
+	if len(entries) == 0 {
+		return Entry{}, ErrNotFound
+	}
+
+	return entries[0], nil
+}
+
+// List implements Store.
+func (p *PSQL) List(ctx context.Context, prefix Prefix) (entries []Entry, err error) {
+	operation := metricsOperationRange
+	if len(prefix) == 0 {
+		operation = metricsOperationList
+	}
+
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(operation, start, err) }()
+
+	if len(prefix) == 0 {
+		rows, err := p.pool.Query(ctx, listQuery)
+		if err != nil {
+			return nil, fmt.Errorf("error while listing entries from psql: %w", err)
+		}
+
+		return parseRows(rows)
+	}
+
+	rows, err := p.pool.Query(ctx, rangeQuery, prefix.String(), prefixEnd(prefix).String())
+	if err != nil {
+		return nil, fmt.Errorf("error while listing entries from psql: %w", err)
+	}
+
+	return parseRows(rows)
 }
 
 // Begin implements Store.
-func (p *PSQL) Begin(ctx context.Context) (Transaction, error) {
-	tx, err := p.table.Begin(ctx)
+func (p *PSQL) Begin(ctx context.Context) (result Transaction, err error) {
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(metricsOperationBegin, start, err) }()
+
+	tx, err := p.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("could not begin pgcache transaction: %w", err)
+		return nil, fmt.Errorf("could not begin psql transaction: %w", err)
 	}
 
-	return &PSQLTransaction{tx: tx}, nil
+	return &PSQLTransaction{tx: tx, metrics: &p.metrics}, nil
 }
 
 type PSQLTransaction struct {
-	tx *pgcache.TableTx[Prefix, Entry]
+	tx      pgx.Tx
+	metrics *metrics
 }
 
 // Store implements Transaction.
 func (p *PSQLTransaction) Store(ctx context.Context, entry Entry) (err error) {
-	return p.tx.Store(ctx, []Entry{entry})
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(metricsOperationStore, start, err) }()
+
+	rawAttributes, err := json.Marshal(entry.Attributes)
+	if err != nil {
+		return fmt.Errorf("could not marshal attributes of entry for psql: %w", err)
+	}
+
+	prefix := entry.DN.Prefix()
+	if _, err := p.tx.Exec(ctx, storeQuery, prefix.String(), rawAttributes); err != nil {
+		return fmt.Errorf("error while inserting entries with psql: %w", err)
+	}
+
+	return nil
 }
 
 // Delete implements Transaction.
 func (p *PSQLTransaction) Delete(ctx context.Context, dn DN) (err error) {
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(metricsOperationDelete, start, err) }()
+
 	prefix := dn.Prefix()
-	return p.tx.Delete(ctx, []Prefix{prefix})
+	if _, err := p.tx.Exec(ctx, deleteQuery, prefix.String()); err != nil {
+		return fmt.Errorf("error while deleting entries in psql: %w", err)
+	}
+
+	return nil
 }
 
 // Commit implements Transaction.
 func (p *PSQLTransaction) Commit(ctx context.Context) (err error) {
-	return p.tx.Commit(ctx)
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(metricsOperationCommit, start, err) }()
+
+	if err := p.tx.Commit(ctx); err != nil {
+		return fmt.Errorf("error while committing transaction: %w", err)
+	}
+
+	return nil
 }
 
-// Run implements run.Runnable.
-func (p *PSQL) Run(step run.Step) error {
-	return p.table.Run(step)
+// Rollback implements Transaction.
+func (p *PSQLTransaction) Rollback(ctx context.Context) (err error) {
+	start := time.Now()
+	defer func() { p.metrics.observeOperation(metricsOperationRollback, start, err) }()
+
+	if err := p.tx.Rollback(ctx); err != nil {
+		return fmt.Errorf("error while rolling back transaction: %w", err)
+	}
+
+	return nil
 }
 
-// Metrics implements observability.Metrics.
-func (p *PSQL) Metrics() []prometheus.Collector {
-	return append(p.table.Metrics(), p.metrics.backend)
-}
-
-// ReadinessChecks implements run.ReadinessChecks.
+// ReadinessChecks implements observability.ReadinessChecks.
 func (p *PSQL) ReadinessChecks() map[string]observability.Check {
-	return p.table.ReadinessChecks()
+	return map[string]observability.Check{
+		"bottin/store/psql": observability.CheckFunc(p.Ping),
+	}
 }
+
+// Ensure *PSQL implements Store.
+var _ Store = (*PSQL)(nil)
+
+// Ensure *PSQLTransaction implements Transaction.
+var _ Transaction = (*PSQLTransaction)(nil)

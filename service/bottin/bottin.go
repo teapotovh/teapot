@@ -113,6 +113,14 @@ func (server *Bottin) Store() store.Store {
 	return server.store
 }
 
+func rollbackOnError(ctx context.Context, tx store.Transaction, err *error) {
+	if *err == nil {
+		return
+	}
+
+	*err = errors.Join(*err, tx.Rollback(ctx))
+}
+
 type State struct {
 	user *User
 }
@@ -134,9 +142,6 @@ func (s State) User() User {
 func (server *Bottin) Run(step run.Step) error {
 	ctx := step.Context()
 
-	step.Add("store", server.store)
-	step.Wait()
-
 	if err := server.initialize(ctx); err != nil {
 		return fmt.Errorf("error while initializing: %w", err)
 	}
@@ -146,7 +151,7 @@ func (server *Bottin) Run(step run.Step) error {
 	return nil
 }
 
-func (server *Bottin) initialize(ctx context.Context) error {
+func (server *Bottin) initialize(ctx context.Context) (err error) {
 	// Check that the root object and the root DSE exist.
 	// If they do, we're done. Otherwise, we have some initialization to do.
 	baseExists, err := server.existsEntry(ctx, server.baseDN)
@@ -167,6 +172,8 @@ func (server *Bottin) initialize(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error while beginning store transaction: %w", err)
 	}
+
+	defer rollbackOnError(ctx, tx, &err)
 
 	if !rootDSEExists {
 		rootDSEAttributes := store.Attributes{

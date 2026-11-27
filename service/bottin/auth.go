@@ -68,7 +68,7 @@ func (server *Bottin) Bind(ctx context.Context, state State, r ldap.BindRequest)
 	return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidCredentials, errors.Join(errs...))
 }
 
-func (server *Bottin) Extended(ctx context.Context, state State, r ldap.ExtendedRequest) (State, error) {
+func (server *Bottin) Extended(ctx context.Context, state State, r ldap.ExtendedRequest) (_ State, err error) {
 	if r.RequestName() != ldapsrv.NoticeOfPasswordModify {
 		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrUnwillingToPerform, ErrUnsupportedExtendedRequest)
 	}
@@ -132,6 +132,8 @@ func (server *Bottin) Extended(ctx context.Context, state State, r ldap.Extended
 	if err != nil {
 		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
+
+	defer rollbackOnError(ctx, tx, &err)
 
 	if err = tx.Store(ctx, store.NewEntry(dn, attrs)); err != nil {
 		return state, fmt.Errorf("(%w) error while updating password: %w", ldapsrv.ErrOperationsError, err)

@@ -8,10 +8,8 @@ import (
 	"time"
 
 	"github.com/google/btree"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/teapotovh/teapot/lib/observability"
-	"github.com/teapotovh/teapot/lib/run"
 )
 
 var ErrCommitted = errors.New("transaction already committed")
@@ -63,23 +61,26 @@ func (m *Mem) Ping(_ context.Context) error {
 	return nil
 }
 
+// Get implements Store.
+func (m *Mem) Get(ctx context.Context, prefix Prefix) (Entry, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	entry, found := m.tr.Get(mementryFromPrefix(prefix))
+	if !found {
+		return Entry{}, ErrNotFound
+	}
+
+	return entry.entry, nil
+}
+
 // List implements Store.
-func (m *Mem) List(ctx context.Context, prefix Prefix, exact bool) (entries []Entry, err error) {
+func (m *Mem) List(ctx context.Context, prefix Prefix) (entries []Entry, err error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	collect := func(entry mementry) bool {
-		// For non-exact matches, continue looping and collect all results
-		if !exact {
-			entries = append(entries, entry.entry)
-			return true
-		}
-
-		// For exact matches, stop if we found the one, otherwise continue looping
-		if entry.prefix.Equal(prefix) {
-			entries = append(entries, entry.entry)
-			return false
-		}
+		entries = append(entries, entry.entry)
 
 		return true
 	}
@@ -199,20 +200,22 @@ func (m *MemTransaction) Commit(ctx context.Context) error {
 	return nil
 }
 
-// Run implements run.Runnable
-//
-// This is a no-op.
-func (m *Mem) Run(step run.Step) error {
-	step.Notify()
+// Rollback implements Transaction.
+func (m *MemTransaction) Rollback(_ context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.committed {
+		return ErrCommitted
+	}
+
+	m.committed = true
+	m.changes = nil
+
 	return nil
 }
 
-// Metrics implements observability.Metrics.
-func (m *Mem) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{m.metrics.backend}
-}
-
-// ReadinessChecks implements run.ReadinessChecks
+// ReadinessChecks implements observability.ReadinessChecks.
 //
 // This is a no-op.
 func (m *Mem) ReadinessChecks() map[string]observability.Check {

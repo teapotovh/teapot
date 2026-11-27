@@ -16,7 +16,16 @@ var (
 )
 
 func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, error) {
-	entries, err := server.store.List(ctx, dn.Prefix(), true)
+	entry, err := server.store.Get(ctx, dn.Prefix())
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, fmt.Errorf(
+			"(%w) error while fetching entry %q: %w",
+			ldapsrv.ErrNoSuchObject,
+			dn.String(),
+			ErrNotFound,
+		)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf(
 			"(%w) error while fetching entry with DN %q from store: %w",
@@ -26,34 +35,20 @@ func (server *Bottin) getEntry(ctx context.Context, dn store.DN) (*store.Entry, 
 		)
 	}
 
-	if len(entries) < 1 {
-		return nil, fmt.Errorf(
-			"(%w) error while fetching entry %q: %w",
-			ldapsrv.ErrNoSuchObject,
-			dn.String(),
-			ErrNotFound,
-		)
-	}
-
-	if len(entries) > 1 {
-		return nil, fmt.Errorf(
-			"(%w) error while fetching entry %q: %w",
-			ldapsrv.ErrOperationsError,
-			dn.String(),
-			ErrNotFound,
-		)
-	}
-
-	return &entries[0], nil
+	return &entry, nil
 }
 
 func (server *Bottin) existsEntry(ctx context.Context, dn store.DN) (bool, error) {
-	entries, err := server.store.List(ctx, dn.Prefix(), true)
+	_, err := server.store.Get(ctx, dn.Prefix())
+	if errors.Is(err, store.ErrNotFound) {
+		return false, nil
+	}
+
 	if err != nil {
 		return false, fmt.Errorf("error while checking if entry with DN %q exists: %w", dn.String(), err)
 	}
 
-	return len(entries) == 1, nil
+	return true, nil
 }
 
 func (server *Bottin) Compare(ctx context.Context, state State, r ldap.CompareRequest) (bool, State, error) {
@@ -124,10 +119,20 @@ func (server *Bottin) Search(ctx context.Context, state State, r ldap.SearchRequ
 	}
 
 	baseObjectLevel := baseObject.Level()
-	exact := r.Scope() == ldap.SearchRequestScopeBaseObject
-	entries, err := server.store.List(ctx, baseObject.Prefix(), exact)
-	if err != nil {
-		return nil, state, fmt.Errorf("(%w), error while listing objects: %w", ldapsrv.ErrOperationsError, err)
+
+	var entries []store.Entry
+	if r.Scope() == ldap.SearchRequestScopeBaseObject {
+		entry, err := server.store.Get(ctx, baseObject.Prefix())
+		if err == nil {
+			entries = []store.Entry{entry}
+		} else if !errors.Is(err, store.ErrNotFound) {
+			return nil, state, fmt.Errorf("(%w), error while getting object: %w", ldapsrv.ErrOperationsError, err)
+		}
+	} else {
+		entries, err = server.store.List(ctx, baseObject.Prefix())
+		if err != nil {
+			return nil, state, fmt.Errorf("(%w), error while listing objects: %w", ldapsrv.ErrOperationsError, err)
+		}
 	}
 
 	server.logger.DebugContext(ctx, "retrieved entries", "entries", entries, "base", baseObject)

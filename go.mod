@@ -14,6 +14,7 @@ require (
 	github.com/coreos/go-iptables v0.8.0
 	github.com/daulet/tokenizers v1.27.0
 	github.com/dustin/go-humanize v1.1.0
+	github.com/fergusstrange/embedded-postgres/v2 v2.0.1
 	github.com/go-asn1-ber/asn1-ber v1.5.8
 	github.com/go-ldap/ldap/v3 v3.4.14
 	github.com/go-logr/logr v1.4.4
@@ -29,6 +30,7 @@ require (
 	github.com/lmittmann/tint v1.2.1
 	github.com/minio/minio-go/v7 v7.4.1
 	github.com/nrdcg/desec v0.11.3
+	github.com/pashagolub/pgxmock/v5 v5.2.0
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 	github.com/prometheus/alertmanager v0.34.1
 	github.com/prometheus/client_golang v1.25.0
@@ -46,7 +48,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
-	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/text v0.43.0
 	golang.org/x/tools/gopls v0.23.0
@@ -150,6 +151,7 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260811152304-ee035b5b010f // indirect
 	golang.org/x/mod v0.42.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518 // indirect
