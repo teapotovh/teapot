@@ -1,0 +1,15 @@
+namespace: storage
+namePrefix: postgresql01-
+
+labels:
+- includeSelectors: true
+  pairs:
+    app: pgdog
+    app.kubernetes.io/name: pgdog
+    app.kubernetes.io/part-of: pgdog
+    app.kubernetes.io/managed-by: kustomize
+
+resources:
+- configmap.yaml
+- daemonset.yaml
+- service.yaml
