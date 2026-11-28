@@ -7,7 +7,7 @@ spec:
   path: deploy/infra/envoy-gateway/crd
   prune: true
   dependsOn:
-    - name: gateway-api
+  - name: gateway-api
   sourceRef:
     kind: GitRepository
     name: teapot
@@ -21,8 +21,8 @@ spec:
   path: deploy/infra/envoy-gateway
   prune: true
   dependsOn:
-    - name: gateway-api
-    - name: envoy-gateway-crd
+  - name: gateway-api
+  - name: envoy-gateway-crd
   sourceRef:
     kind: GitRepository
     name: teapot
@@ -36,7 +36,7 @@ spec:
   path: deploy/infra/envoy-gateway/cert
   prune: true
   dependsOn:
-    - name: envoy-gateway
+  - name: envoy-gateway
   sourceRef:
     kind: GitRepository
     name: teapot
@@ -50,7 +50,7 @@ spec:
   path: deploy/infra/envoy-gateway/gateway
   prune: true
   dependsOn:
-    - name: envoy-gateway
+  - name: envoy-gateway
   sourceRef:
     kind: GitRepository
     name: teapot

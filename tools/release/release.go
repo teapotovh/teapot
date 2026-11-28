@@ -75,6 +75,13 @@ func release() (err error) {
 		return fmt.Errorf("could not fetch golangci-lint path: %w", err)
 	}
 
+	manifestcheckPath, err := runfiles.Rlocation(
+		"com_github_teapotovh_teapot/tools/manifestcheck/manifestcheck_/manifestcheck",
+	)
+	if err != nil {
+		return fmt.Errorf("could not fetch manifestcheck path: %w", err)
+	}
+
 	util.SetVerbose(*verbose)
 
 	root, err := util.WorkspaceRoot()
@@ -117,6 +124,13 @@ func release() (err error) {
 	if stdout, _, err := util.Run(nil, golangciLintPath, "run"); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", stdout.String())
 		return fmt.Errorf("golangci-lint failed: %w", err)
+	}
+
+	util.Phase("(check) manifests")
+
+	if stdout, stderr, err := util.Run(nil, manifestcheckPath); err != nil {
+		fmt.Fprintf(os.Stderr, "%s%s", stdout.String(), stderr.String())
+		return fmt.Errorf("manifest check failed: %w", err)
 	}
 
 	util.Phase("(check) clean working tree")

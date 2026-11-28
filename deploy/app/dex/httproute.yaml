@@ -4,20 +4,20 @@ metadata:
   name: httproute
 spec:
   parentRefs:
-    - name: gateway
+  - name: gateway
   hostnames:
-    - oauth.teapot.ovh
+  - oauth.teapot.ovh
   rules:
-    - backendRefs:
-      - group: ""
-        kind: Service
-        name: dex-server
-        port: 8080
-        weight: 1
-      matches:
-      - path:
-          type: PathPrefix
-          value: /
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: dex-server
+      port: 8080
+      weight: 1
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -25,27 +25,27 @@ metadata:
   name: httproute-block-healthz
 spec:
   parentRefs:
-    - name: gateway
+  - name: gateway
   hostnames:
-    - oauth.example.com
+  - oauth.example.com
   rules:
-    - matches:
-        - path:
-            type: Exact
-            value: /healthz
-      filters:
-        - type: ExtensionRef
-          extensionRef:
-            group: gateway.envoyproxy.io
-            kind: HTTPRouteFilter
-            name: return-403
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /healthz/
-      filters:
-        - type: ExtensionRef
-          extensionRef:
-            group: gateway.envoyproxy.io
-            kind: HTTPRouteFilter
-            name: return-403
+  - matches:
+    - path:
+        type: Exact
+        value: /healthz
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: gateway.envoyproxy.io
+        kind: HTTPRouteFilter
+        name: return-403
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /healthz/
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: gateway.envoyproxy.io
+        kind: HTTPRouteFilter
+        name: return-403

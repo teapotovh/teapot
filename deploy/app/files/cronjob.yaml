@@ -12,42 +12,42 @@ spec:
       template:
         spec:
           containers:
-            - name: files-garbagecollectord
-              image: ghcr.io/teapotovh/files-garbagecollectord:latest
-              args:
-                - --log-format=json
-                - --observability-tracing-endpoint=opentelemetry-collector-server.storage:4317
-                - --files-garbagecollector-psql-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/files
-                - --files-garbagecollector-s3=http://$(S3_ID):$(S3_KEY)@garage01-garage.storage:3900
-                - --files-garbagecollector-s3-region=garage
-                - --files-garbagecollector-s3-bucket=files
-                - --files-garbagecollector-grace-period=2h
-              env:
-                - name: DB_USERNAME
-                  valueFrom:
-                    secretKeyRef:
-                      name: postgresql01-user-files
-                      key: username
-                - name: DB_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: postgresql01-user-files
-                      key: password
-                - name: S3_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: garage01-key-files
-                      key: id
-                - name: S3_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: garage01-key-files
-                      key: key
-              resources:
-                requests:
-                  cpu: 50m
-                  memory: 64Mi
-                limits:
-                  cpu: 500m
-                  memory: 64Mi
+          - name: files-garbagecollectord
+            image: ghcr.io/teapotovh/files-garbagecollectord:latest
+            args:
+            - --log-format=json
+            - --observability-tracing-endpoint=opentelemetry-collector-server.storage:4317
+            - --files-garbagecollector-psql-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/files
+            - --files-garbagecollector-s3=http://$(S3_ID):$(S3_KEY)@garage01-garage.storage:3900
+            - --files-garbagecollector-s3-region=garage
+            - --files-garbagecollector-s3-bucket=files
+            - --files-garbagecollector-grace-period=2h
+            env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql01-user-files
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql01-user-files
+                  key: password
+            - name: S3_ID
+              valueFrom:
+                secretKeyRef:
+                  name: garage01-key-files
+                  key: id
+            - name: S3_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: garage01-key-files
+                  key: key
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 500m
+                memory: 64Mi
           restartPolicy: OnFailure

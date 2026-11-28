@@ -33,3 +33,24 @@ alias(
     name = "buildifier",
     actual = "@multitool//tools/buildifier:workspace_root",
 )
+
+alias(
+    name = "kubeconform",
+    actual = "@multitool//tools/kubeconform:workspace_root",
+)
+
+alias(
+    name = "kustomize",
+    actual = "@multitool//tools/kustomize:workspace_root",
+)
+
+alias(
+    name = "manifestcheck",
+    actual = "//tools/manifestcheck",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "yamlfmt",
+    actual = "@multitool//tools/yamlfmt:workspace_root",
+)

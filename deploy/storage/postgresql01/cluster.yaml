@@ -17,7 +17,7 @@ spec:
   storage:
     pvcTemplate:
       accessModes:
-        - ReadWriteOnce
+      - ReadWriteOnce
       resources:
         requests:
           storage: 32Gi
@@ -37,81 +37,81 @@ spec:
   managed:
     services:
       additional:
-        - selectorType: r
-          serviceTemplate:
-            metadata:
-              name: postgresql01-local
-            spec:
-              type: ClusterIP
-              trafficDistribution: PreferSameNode
+      - selectorType: r
+        serviceTemplate:
+          metadata:
+            name: postgresql01-local
+          spec:
+            type: ClusterIP
+            trafficDistribution: PreferSameNode
     roles:
-      - name: bottin
-        ensure: present
-        comment: Access user for the bottin db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-bottin
-      - name: mail
-        ensure: present
-        comment: Access user for the mail db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-mail
-      - name: vaultwarden
-        ensure: present
-        comment: Access user for the vaultwarden db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-vaultwarden
-      - name: dex
-        ensure: present
-        comment: Access user for the dex db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-dex
-      - name: radicale
-        ensure: present
-        comment: Access user for the radicale db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-radicale
-      - name: calendar
-        ensure: present
-        comment: Access user for the calendar db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-calendar
-      - name: files
-        ensure: present
-        comment: Access user for the files db
-        login: true
-        superuser: false
-        inRoles:
-          - pg_monitor
-          - pg_signal_backend
-        passwordSecret:
-          name: postgresql01-user-files
+    - name: bottin
+      ensure: present
+      comment: Access user for the bottin db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-bottin
+    - name: mail
+      ensure: present
+      comment: Access user for the mail db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-mail
+    - name: vaultwarden
+      ensure: present
+      comment: Access user for the vaultwarden db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-vaultwarden
+    - name: dex
+      ensure: present
+      comment: Access user for the dex db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-dex
+    - name: radicale
+      ensure: present
+      comment: Access user for the radicale db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-radicale
+    - name: calendar
+      ensure: present
+      comment: Access user for the calendar db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-calendar
+    - name: files
+      ensure: present
+      comment: Access user for the files db
+      login: true
+      superuser: false
+      inRoles:
+      - pg_monitor
+      - pg_signal_backend
+      passwordSecret:
+        name: postgresql01-user-files

@@ -7,7 +7,7 @@ spec:
   path: deploy/app/mail/storage
   prune: true
   dependsOn:
-    - name: postgresql01
+  - name: postgresql01
   sourceRef:
     kind: GitRepository
     name: teapot
@@ -21,10 +21,10 @@ spec:
   path: deploy/app/mail
   prune: true
   dependsOn:
-    - name: app
-    - name: external-dns-crd
-    - name: mail-storage
-    - name: garage01
+  - name: app
+  - name: external-dns-crd
+  - name: mail-storage
+  - name: garage01
   sourceRef:
     kind: GitRepository
     name: teapot

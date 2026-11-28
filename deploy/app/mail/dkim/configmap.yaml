@@ -27,7 +27,7 @@ data:
     21012026._domainkey.teapot.ovh      teapot.ovh:21012026:/etc/opendkim/keys/teapot.ovh.21012026.key
     21012026._domainkey.cappuccino.ovh  cappuccino.ovh:21012026:/etc/opendkim/keys/cappuccino.ovh.21012026.key
 
-  "SigningTable": |
+  "SigningTable": |-
     *@teapot.ovh      21012026._domainkey.teapot.ovh
     *@cappuccino.ovh  21012026._domainkey.cappuccino.ovh
     *@smtp.teapot.ovh  21012026._domainkey.teapot.ovh

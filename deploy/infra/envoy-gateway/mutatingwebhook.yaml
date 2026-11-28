@@ -5,23 +5,23 @@ metadata:
   labels:
     app.kubernetes.io/component: topology-injector
 webhooks:
-  - name: topology.webhook.gateway.envoyproxy.io
-    admissionReviewVersions: ["v1"]
-    sideEffects: None
-    clientConfig:
-      service:
-        name: envoy-gateway
-        path: "/inject-pod-topology"
-        port: 9443
-    failurePolicy: Ignore
-    rules:
-      - operations: ["CREATE"]
-        apiGroups: [""]
-        apiVersions: ["v1"]
-        resources: ["pods/binding"]
-    namespaceSelector:
-      matchExpressions:
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            - envoy-gateway-system
+- name: topology.webhook.gateway.envoyproxy.io
+  admissionReviewVersions: ["v1"]
+  sideEffects: None
+  clientConfig:
+    service:
+      name: envoy-gateway
+      path: "/inject-pod-topology"
+      port: 9443
+  failurePolicy: Ignore
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods/binding"]
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: In
+      values:
+      - envoy-gateway-system

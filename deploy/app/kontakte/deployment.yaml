@@ -16,64 +16,64 @@ spec:
         prometheus.io/port: "8146"
     spec:
       topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          nodeTaintsPolicy: Honor
-          labelSelector:
-            matchLabels: {}
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels: {}
       containers:
-        - name: kontakte
-          image: ghcr.io/teapotovh/kontakted:latest
-          args:
-            - --log-format=json
-            - --ldap-url=ldap://bottin-server.storage:389
-            - --ldap-root-dn=$(LDAP_BIND_DN)
-            - --ldap-root-passwd=$(LDAP_BIND_PASSWORD)
-            - --httpauth-jwt-secret=$(JWT_SECRET)
-          env:
-            - name: LDAP_BIND_DN
-              valueFrom:
-                secretKeyRef:
-                  name: bottin-admin
-                  key: username
-            - name: LDAP_BIND_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: bottin-admin
-                  key: password
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: kontakte-secrets
-                  key: jwt
-          ports:
-            - name: http
-              containerPort: 8145
-            - name: observability
-              containerPort: 8146
-          livenessProbe:
-            failureThreshold: 2
-            httpGet:
-              path: /livez
-              port: observability
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            successThreshold: 1
-            timeoutSeconds: 5
-          startupProbe:
-            failureThreshold: 6
-            httpGet:
-              path: /readyz
-              port: observability
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 5
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              cpu: 100m
-              memory: 256Mi
+      - name: kontakte
+        image: ghcr.io/teapotovh/kontakted:latest
+        args:
+        - --log-format=json
+        - --ldap-url=ldap://bottin-server.storage:389
+        - --ldap-root-dn=$(LDAP_BIND_DN)
+        - --ldap-root-passwd=$(LDAP_BIND_PASSWORD)
+        - --httpauth-jwt-secret=$(JWT_SECRET)
+        env:
+        - name: LDAP_BIND_DN
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: username
+        - name: LDAP_BIND_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: password
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kontakte-secrets
+              key: jwt
+        ports:
+        - name: http
+          containerPort: 8145
+        - name: observability
+          containerPort: 8146
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /livez
+            port: observability
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        startupProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /readyz
+            port: observability
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi

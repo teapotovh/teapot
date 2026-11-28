@@ -1,6 +1,6 @@
 namespace: teapot-system
 namePrefix: teapot-netd-
- 
+
 labels:
 - includeSelectors: true
   pairs:

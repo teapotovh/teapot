@@ -9,11 +9,11 @@ spec:
   trafficDistribution: PreferSameNode
   externalTrafficPolicy: Local
   ports:
-    - name: imaps
-      port: 993
-      nodePort: 30993
-      targetPort: imaps
-      protocol: TCP
+  - name: imaps
+    port: 993
+    nodePort: 30993
+    targetPort: imaps
+    protocol: TCP
 ---
 apiVersion: v1
 kind: Service
@@ -21,7 +21,7 @@ metadata:
   name: lmtp
 spec:
   ports:
-    - name: lmtp
-      port: 24
-      targetPort: lmtp
-      protocol: TCP
+  - name: lmtp
+    port: 24
+    targetPort: lmtp
+    protocol: TCP

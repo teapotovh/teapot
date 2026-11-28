@@ -16,60 +16,60 @@ spec:
       securityContext:
         fsGroup: 472
         supplementalGroups:
-          - 0
+        - 0
       containers:
-        - name: grafana
-          image: grafana/grafana:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 3000
-              name: http
-              protocol: TCP
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /robots.txt
-              port: http
-              scheme: HTTP
-            initialDelaySeconds: 60
-            periodSeconds: 30
-            successThreshold: 1
-            timeoutSeconds: 2
-          livenessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 90
-            periodSeconds: 30
-            successThreshold: 1
-            tcpSocket:
-              port: 3000
-            timeoutSeconds: 1
-          resources:
-            requests:
-              cpu: 250m
-              memory: 1Gi
-            limits:
-              cpu: 500m
-              memory: 1Gi
-          volumeMounts:
-            - mountPath: /var/lib/grafana
-              name: store
-            - mountPath: /usr/share/grafana/conf
-              name: config
-          env:
-            - name: LDAP_BIND_DN
-              valueFrom:
-                secretKeyRef:
-                  name: bottin-admin
-                  key: username
-            - name: LDAP_BIND_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: bottin-admin
-                  key: password
+      - name: grafana
+        image: grafana/grafana:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /robots.txt
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 2
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          successThreshold: 1
+          tcpSocket:
+            port: 3000
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /var/lib/grafana
+          name: store
+        - mountPath: /usr/share/grafana/conf
+          name: config
+        env:
+        - name: LDAP_BIND_DN
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: username
+        - name: LDAP_BIND_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: password
       volumes:
-        - name: store
-          persistentVolumeClaim:
-            claimName: store
-        - name: config
-          configMap:
-            name: config
+      - name: store
+        persistentVolumeClaim:
+          claimName: store
+      - name: config
+        configMap:
+          name: config

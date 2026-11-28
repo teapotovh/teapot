@@ -4,11 +4,11 @@ metadata:
   name: garage
 spec:
   ports:
-    - name: s3
-      port: 3900
-      targetPort: s3
-      protocol: TCP
-    - name: admin
-      port: 3903
-      targetPort: admin
-      protocol: TCP
+  - name: s3
+    port: 3900
+    targetPort: s3
+    protocol: TCP
+  - name: admin
+    port: 3903
+    targetPort: admin
+    protocol: TCP

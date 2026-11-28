@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: policy-configmap
 data:
-  policy.yaml: |
+  policy.yaml: |-
     apiVersion: "descheduler/v1alpha2"
     kind: "DeschedulerPolicy"
     maxNoOfPodsToEvictPerNode: 1

@@ -7,7 +7,6 @@ labels:
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/part-of: cert-manager
 
-
 resources:
 - letsencrypt-prod.yaml
 - letsencrypt-staging.yaml

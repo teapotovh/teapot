@@ -4,17 +4,17 @@ metadata:
   name: httproute
 spec:
   parentRefs:
-    - name: gateway
+  - name: gateway
   hostnames:
-    - files.teapot.ovh
+  - files.teapot.ovh
   rules:
-    - backendRefs:
-      - group: ""
-        kind: Service
-        name: files-server
-        port: 8080
-        weight: 1
-      matches:
-      - path:
-          type: PathPrefix
-          value: /
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: files-server
+      port: 8080
+      weight: 1
+    matches:
+    - path:
+        type: PathPrefix
+        value: /

@@ -41,25 +41,25 @@ rules:
   - patch
 # required by leader election
 - apiGroups:
-    - ""
+  - ""
   resources:
-    - configmaps
+  - configmaps
   verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - patch
-    - delete
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 - apiGroups:
-    - ""
+  - ""
   resources:
-    - configmaps/status
+  - configmaps/status
   verbs:
-    - get
-    - update
-    - patch
+  - get
+  - update
+  - patch
 - apiGroups:
   - "coordination.k8s.io"
   resources:
@@ -94,12 +94,12 @@ roleRef:
   kind: ClusterRole
   name: crd-controller
 subjects:
-  - kind: ServiceAccount
-    name: kustomize-serviceaccount
-    namespace: flux-system
-  - kind: ServiceAccount
-    name: source-serviceaccount
-    namespace: flux-system
-  - kind: ServiceAccount
-    name: notification-serviceaccount
-    namespace: flux-system
+- kind: ServiceAccount
+  name: kustomize-serviceaccount
+  namespace: flux-system
+- kind: ServiceAccount
+  name: source-serviceaccount
+  namespace: flux-system
+- kind: ServiceAccount
+  name: notification-serviceaccount
+  namespace: flux-system

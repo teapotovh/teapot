@@ -15,58 +15,58 @@ spec:
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  cnpg.io/cluster: postgresql01-cluster
-                  cnpg.io/podRole: instance
-              topologyKey: kubernetes.io/hostname
+          - labelSelector:
+              matchLabels:
+                cnpg.io/cluster: postgresql01-cluster
+                cnpg.io/podRole: instance
+            topologyKey: kubernetes.io/hostname
       containers:
-        - name: pgdog
-          image: ghcr.io/pgdogdev/pgdog:v0.1.66
-          command:
-            - /usr/local/bin/pgdog
-          args:
-            - --config=/pgdog/pgdog.toml
-            - --users=/pgdog/users.toml
-          ports:
-            - name: postgres
-              containerPort: 6432
-            - name: metrics
-              containerPort: 9090
-          readinessProbe:
-            tcpSocket:
-              port: postgres
-            initialDelaySeconds: 2
-            periodSeconds: 3
-          livenessProbe:
-            tcpSocket:
-              port: postgres
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 3
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: config
-              mountPath: /pgdog/pgdog.toml
-              subPath: pgdog.toml
-              readOnly: true
-            - name: config
-              mountPath: /pgdog/users.toml
-              subPath: users.toml
-              readOnly: true
-      volumes:
+      - name: pgdog
+        image: ghcr.io/pgdogdev/pgdog:v0.1.66
+        command:
+        - /usr/local/bin/pgdog
+        args:
+        - --config=/pgdog/pgdog.toml
+        - --users=/pgdog/users.toml
+        ports:
+        - name: postgres
+          containerPort: 6432
+        - name: metrics
+          containerPort: 9090
+        readinessProbe:
+          tcpSocket:
+            port: postgres
+          initialDelaySeconds: 2
+          periodSeconds: 3
+        livenessProbe:
+          tcpSocket:
+            port: postgres
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
         - name: config
-          configMap:
-            name: pgdog-config
+          mountPath: /pgdog/pgdog.toml
+          subPath: pgdog.toml
+          readOnly: true
+        - name: config
+          mountPath: /pgdog/users.toml
+          subPath: users.toml
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: pgdog-config

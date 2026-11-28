@@ -7,7 +7,7 @@ spec:
   path: deploy/dev-app/grafana
   prune: true
   dependsOn:
-    - name: dev-app
+  - name: dev-app
   sourceRef:
     kind: GitRepository
     name: teapot

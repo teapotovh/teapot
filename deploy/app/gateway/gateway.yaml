@@ -12,75 +12,75 @@ spec:
       kind: EnvoyProxy
       name: app-proxy
   listeners:
-    - name: http
-      protocol: HTTP
-      port: 80
-      allowedRoutes:
-        namespaces:
-          from: All # allows cert-manager provisioned HTTPRoutes to be used
+  - name: http
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: All # allows cert-manager provisioned HTTPRoutes to be used
 
-    - name: user-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: user.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: user-teapot-ovh-tls
+  - name: user-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: user.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: user-teapot-ovh-tls
 
-    - name: oauth-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: oauth.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: oauth-teapot-ovh-tls
+  - name: oauth-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: oauth.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: oauth-teapot-ovh-tls
 
-    - name: vault-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: vault.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: vault-teapot-ovh-tls
+  - name: vault-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: vault.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: vault-teapot-ovh-tls
 
-    - name: calendar-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: calendar.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: calendar-teapot-ovh-tls
+  - name: calendar-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: calendar.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: calendar-teapot-ovh-tls
 
-    - name: calendar2-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: calendar2.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: calendar2-teapot-ovh-tls
+  - name: calendar2-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: calendar2.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: calendar2-teapot-ovh-tls
 
-    - name: files-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: files.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: files-teapot-ovh-tls
+  - name: files-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: files.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: files-teapot-ovh-tls
 
-    - name: grafana-teapot-ovh
-      protocol: HTTPS
-      port: 443
-      hostname: grafana.teapot.ovh
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: grafana-teapot-ovh-tls
-      allowedRoutes:
-        namespaces:
-          from: All
+  - name: grafana-teapot-ovh
+    protocol: HTTPS
+    port: 443
+    hostname: grafana.teapot.ovh
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: grafana-teapot-ovh-tls
+    allowedRoutes:
+      namespaces:
+        from: All

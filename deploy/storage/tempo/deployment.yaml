@@ -19,32 +19,32 @@ spec:
       # nodeSelector:
       #   node-role.kubernetes.io/control-plane: ""
       containers:
-        - name: prometheus
-          image: mirror.gcr.io/grafana/tempo:3.0.2
-          args:
-            - -config.file=/etc/tempo/tempo.yaml
-          ports:
-            - name: http
-              containerPort: 3200
-            - name: grpc
-              containerPort: 4317
-          volumeMounts:
-            - name: config
-              mountPath: /etc/tempo/
-            - name: data
-              mountPath: /var/tempo/
-          resources:
-            requests:
-              memory: 256Mi
-              cpu: 100m
-            limits:
-              memory: 512Mi
-              cpu: 200m
-      volumes:
+      - name: prometheus
+        image: mirror.gcr.io/grafana/tempo:3.0.2
+        args:
+        - -config.file=/etc/tempo/tempo.yaml
+        ports:
+        - name: http
+          containerPort: 3200
+        - name: grpc
+          containerPort: 4317
+        volumeMounts:
         - name: config
-          configMap:
-            defaultMode: 420
-            name: config
+          mountPath: /etc/tempo/
         - name: data
-          persistentVolumeClaim:
-            claimName: store
+          mountPath: /var/tempo/
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 200m
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 420
+          name: config
+      - name: data
+        persistentVolumeClaim:
+          claimName: store

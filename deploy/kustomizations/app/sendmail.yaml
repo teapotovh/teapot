@@ -7,8 +7,8 @@ spec:
   path: deploy/app/sendmail
   prune: true
   dependsOn:
-    - name: app
-    - name: external-dns-crd
+  - name: app
+  - name: external-dns-crd
   sourceRef:
     kind: GitRepository
     name: teapot

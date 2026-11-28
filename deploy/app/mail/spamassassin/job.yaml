@@ -9,16 +9,16 @@ spec:
       - name: init-db
         image: mirror.gcr.io/postgres:alpine
         env:
-          - name: PGUSER
-            valueFrom:
-              secretKeyRef:
-                name: postgresql01-user-mail
-                key: username
-          - name: PGPASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: postgresql01-user-mail
-                key: password
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-mail
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-mail
+              key: password
         command:
         - /bin/sh
         - -c
@@ -35,10 +35,10 @@ spec:
 
             echo "Applying Bayes schema..."
             psql -h postgresql01-pooler.storage -d spamassassin -f /tmp/bayes.sql
-            
+
             echo "Applying AWL schema..."
             psql -h postgresql01-pooler.storage -d spamassassin -f /tmp/awl.sql
-            
+
             echo "Database initialization complete."
           fi
       restartPolicy: OnFailure

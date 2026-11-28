@@ -21,55 +21,55 @@ spec:
       securityContext:
         fsGroup: 2000
       containers:
-        - name: reflector
-          securityContext:
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 1000
-          image: mirror.gcr.io/emberstack/kubernetes-reflector:9.1.45
-          imagePullPolicy: IfNotPresent
-          env:
-            - name: ES_Serilog__MinimumLevel__Default
-              value: "Information"
-            - name: ES_Reflector__Watcher__Timeout
-              value: ""
-            - name: ES_Ignite__KubernetesClient__SkipTlsVerify
-              value: "false"
-          ports:
-            - name: http
-              containerPort: 8080
-              protocol: TCP
-          livenessProbe:
-            failureThreshold: 5
-            httpGet:
-              path: /health/live
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 10
-          readinessProbe:
-            failureThreshold: 5
-            httpGet:
-              path: /health/ready
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 10
-          startupProbe:
-            failureThreshold: 5
-            httpGet:
-              path: /health/ready
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 10
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
+      - name: reflector
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+        image: mirror.gcr.io/emberstack/kubernetes-reflector:9.1.45
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ES_Serilog__MinimumLevel__Default
+          value: "Information"
+        - name: ES_Reflector__Watcher__Timeout
+          value: ""
+        - name: ES_Ignite__KubernetesClient__SkipTlsVerify
+          value: "false"
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 10
+        startupProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 10
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi

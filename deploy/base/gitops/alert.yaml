@@ -7,5 +7,5 @@ spec:
     name: github
   eventSeverity: info
   eventSources:
-    - kind: Kustomization
-      name: '*'
+  - kind: Kustomization
+    name: '*'

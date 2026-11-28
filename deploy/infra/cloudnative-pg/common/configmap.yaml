@@ -5,7 +5,7 @@ metadata:
     cnpg.io/reload: ""
   name: default-monitoring
 data:
-  queries: |
+  queries: |-
     backends:
       query: |
        SELECT sa.datname

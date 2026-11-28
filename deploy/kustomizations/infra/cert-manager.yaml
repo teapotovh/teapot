@@ -18,8 +18,8 @@ spec:
   interval: 1h
   path: deploy/infra/cert-manager
   dependsOn:
-    - name: gateway-api
-    - name: cert-manager-crd
+  - name: gateway-api
+  - name: cert-manager-crd
   prune: true
   sourceRef:
     kind: GitRepository
@@ -33,7 +33,7 @@ spec:
   interval: 1h
   path: deploy/infra/cert-manager/issuers
   dependsOn:
-    - name: cert-manager-crd
+  - name: cert-manager-crd
   prune: true
   sourceRef:
     kind: GitRepository

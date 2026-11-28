@@ -7,9 +7,9 @@ spec:
   path: deploy/app/gateway
   prune: true
   dependsOn:
-    - name: app
-    - name: gateway-api
-    - name: envoy-gateway-crd
+  - name: app
+  - name: gateway-api
+  - name: envoy-gateway-crd
   sourceRef:
     kind: GitRepository
     name: teapot

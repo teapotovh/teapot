@@ -4,9 +4,9 @@ metadata:
   name: server
 spec:
   ports:
-    - name: http
-      port: 3200
-      targetPort: http
-    - name: grpc
-      port: 4317
-      targetPort: grpc
+  - name: http
+    port: 3200
+    targetPort: http
+  - name: grpc
+    port: 4317
+    targetPort: grpc

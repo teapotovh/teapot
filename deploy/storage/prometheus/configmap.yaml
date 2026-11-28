@@ -5,7 +5,7 @@ metadata:
 data:
   prometheus.rules: |-
     groups: []
-  prometheus.yml: |
+  prometheus.yml: |-
     global:
       scrape_interval: 20s
       evaluation_interval: 60s
@@ -30,7 +30,7 @@ data:
           - source_labels: [__name__]
             regex: '(container_cpu_usage_seconds_total|container_memory_working_set_bytes|container_network_receive_bytes_total|container_network_transmit_bytes_total|container_fs_usage_bytes|container_fs_limit_bytes)'
             action: keep
-          
+
           # Drop pause/POD containers (infrastructure noise)
           - source_labels: [container]
             regex: 'POD|'
@@ -38,7 +38,7 @@ data:
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod
-        
+
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep

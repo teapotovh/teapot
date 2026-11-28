@@ -7,8 +7,8 @@ spec:
   path: deploy/storage/garage01
   prune: true
   dependsOn:
-    - name: storage
-    - name: garage
+  - name: storage
+  - name: garage
   sourceRef:
     kind: GitRepository
     name: teapot

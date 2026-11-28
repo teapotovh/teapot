@@ -5,7 +5,7 @@ metadata:
 spec:
   secretName: mail-stalwart-certificate
   dnsNames:
-    - imap.teapot.ovh
+  - imap.teapot.ovh
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer

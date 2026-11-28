@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  envoy-gateway.yaml: |
+  envoy-gateway.yaml: |-
     apiVersion: gateway.envoyproxy.io/v1alpha1
     kind: EnvoyGateway
     extensionApis: {}

@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  config.toml: |
+  config.toml: |-
     [session.data]
     domain = [
       "imap.teapot.ovh"
@@ -12,7 +12,6 @@ data:
     [certificate."default"]
     cert = "%{file:/opt/stalwart/etc/tls/tls.crt}%"
     private-key = "%{file:/opt/stalwart/etc/tls/tls.key}%"
-
 
     [server.listener."lmtp"]
     bind = ["[::]:24"]

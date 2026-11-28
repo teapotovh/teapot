@@ -39,130 +39,128 @@ spec:
       initContainers:
       - name: configure-postfix
         image: mirror.gcr.io/dibi/envsubst
-        command: 
-          - sh
-          - -c
-          - |
-            for f in /template/*; do
-              [ -f "$f" ] || continue
-              base=$(basename "$f")
-              if [ "${base##*.}" = "tmpl" ]; then
-                envsubst < "$f" > "/etc/postfix/${base%.tmpl}"
-              else
-                cp "$f" "/etc/postfix/$base"
-              fi
-            done
+        command:
+        - sh
+        - -c
+        - |
+          for f in /template/*; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f")
+            if [ "${base##*.}" = "tmpl" ]; then
+              envsubst < "$f" > "/etc/postfix/${base%.tmpl}"
+            else
+              cp "$f" "/etc/postfix/$base"
+            fi
+          done
         env:
-          - name: LDAP_BIND_DN
-            valueFrom:
-              secretKeyRef:
-                name: bottin-admin
-                key: username
-          - name: LDAP_BIND_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: bottin-admin
-                key: password
+        - name: LDAP_BIND_DN
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: username
+        - name: LDAP_BIND_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: password
         volumeMounts:
         - name: template
           mountPath: /template
         - name: config
           mountPath: /etc/postfix
       containers:
-        - name: postfix
-          image: ghcr.io/teapotovh/postfix:v0.0.16
-          ports:
-            - name: smtp
-              containerPort: 25
-            - name: submission
-              containerPort: 587
-            - name: submissions
-              containerPort: 465
-          volumeMounts:
-            - name: other-config
-              mountPath: /etc/syslog.conf
-              subPath: syslog.conf
-              readOnly: true
-            - name: other-config
-              mountPath: /etc/saslauthd.conf
-              subPath: saslauthd.conf
-              readOnly: true
-            - name: config
-              mountPath: /etc/postfix/master.cf
-              subPath: master.cf
-              readOnly: true
-            - name: config
-              mountPath: /etc/postfix/main.cf
-              subPath: main.cf
-              readOnly: true
-            - name: config
-              mountPath: /etc/postfix/ldap_domains.cf
-              subPath: ldap_domains.cf
-              readOnly: true
-            - name: config
-              mountPath: /etc/postfix/ldap_alias_map.cf
-              subPath: ldap_alias_map.cf
-              readOnly: true
-            - name: config
-              mountPath: /etc/postfix/ldap_sender_map.cf
-              subPath: ldap_sender_map.cf
-              readOnly: true
-            - name: config
-              mountPath: /usr/lib/sasl2/smtpd.conf
-              subPath: smtpd.conf
-              readOnly: true
-            - name: logs
-              mountPath: /var/log/postfix
-            - name: spool
-              mountPath: /var/spool/postfix
-            - name: tls
-              mountPath: /etc/postfix/tls
-              readOnly: true
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
-        - name: postfix-exporter
-          image: mirror.gcr.io/unikum/postfix_exporter
-          ports:
-            - name: metrics
-              containerPort: 9154
-          volumeMounts:
-            - name: logs
-              mountPath: /var/log/postfix
-              readOnly: true
-            - name: spool
-              mountPath: /var/spool/postfix
-              readOnly: true
-          args:
-            - --postfix.logfile_path=/var/log/postfix/mail.log
-            - --postfix.showq_path=/var/spool/postfix/public/showq
-      volumes:
-        - name: template
-          configMap:
-            name: config
+      - name: postfix
+        image: ghcr.io/teapotovh/postfix:v0.0.16
+        ports:
+        - name: smtp
+          containerPort: 25
+        - name: submission
+          containerPort: 587
+        - name: submissions
+          containerPort: 465
+        volumeMounts:
         - name: other-config
-          configMap:
-            name: other-config
+          mountPath: /etc/syslog.conf
+          subPath: syslog.conf
+          readOnly: true
+        - name: other-config
+          mountPath: /etc/saslauthd.conf
+          subPath: saslauthd.conf
+          readOnly: true
         - name: config
-          emptyDir: {}
+          mountPath: /etc/postfix/master.cf
+          subPath: master.cf
+          readOnly: true
+        - name: config
+          mountPath: /etc/postfix/main.cf
+          subPath: main.cf
+          readOnly: true
+        - name: config
+          mountPath: /etc/postfix/ldap_domains.cf
+          subPath: ldap_domains.cf
+          readOnly: true
+        - name: config
+          mountPath: /etc/postfix/ldap_alias_map.cf
+          subPath: ldap_alias_map.cf
+          readOnly: true
+        - name: config
+          mountPath: /etc/postfix/ldap_sender_map.cf
+          subPath: ldap_sender_map.cf
+          readOnly: true
+        - name: config
+          mountPath: /usr/lib/sasl2/smtpd.conf
+          subPath: smtpd.conf
+          readOnly: true
         - name: logs
-          emptyDir: {}
-          volumeMounts:
+          mountPath: /var/log/postfix
+        - name: spool
+          mountPath: /var/spool/postfix
         - name: tls
-          secret:
-            secretName: mail-postfix-certificate
-
-
-  volumeClaimTemplates:
-    - metadata:
-        name: spool
-      spec:
-        accessModes: [ "ReadWriteOnce" ]
-        storageClassName: "local-path-storageclass"
+          mountPath: /etc/postfix/tls
+          readOnly: true
         resources:
           requests:
-            storage: 64Mi
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+      - name: postfix-exporter
+        image: mirror.gcr.io/unikum/postfix_exporter
+        ports:
+        - name: metrics
+          containerPort: 9154
+        volumeMounts:
+        - name: logs
+          mountPath: /var/log/postfix
+          readOnly: true
+        - name: spool
+          mountPath: /var/spool/postfix
+          readOnly: true
+        args:
+        - --postfix.logfile_path=/var/log/postfix/mail.log
+        - --postfix.showq_path=/var/spool/postfix/public/showq
+      volumes:
+      - name: template
+        configMap:
+          name: config
+      - name: other-config
+        configMap:
+          name: other-config
+      - name: config
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      - name: tls
+        secret:
+          secretName: mail-postfix-certificate
+
+  volumeClaimTemplates:
+  - metadata:
+      name: spool
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "local-path-storageclass"
+      resources:
+        requests:
+          storage: 64Mi

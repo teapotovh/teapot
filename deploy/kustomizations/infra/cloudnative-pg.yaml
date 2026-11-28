@@ -19,8 +19,8 @@ spec:
   path: deploy/infra/cloudnative-pg
   prune: true
   dependsOn:
-    - name: cloudnative-pg-crd
-    - name: local-path-provisioner
+  - name: cloudnative-pg-crd
+  - name: local-path-provisioner
   sourceRef:
     kind: GitRepository
     name: teapot

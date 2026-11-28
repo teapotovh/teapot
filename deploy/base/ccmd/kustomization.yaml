@@ -1,6 +1,6 @@
 namespace: teapot-system
 namePrefix: teapot-ccmd-
- 
+
 labels:
 - includeSelectors: true
   pairs:

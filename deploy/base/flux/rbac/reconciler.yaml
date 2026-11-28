@@ -7,6 +7,6 @@ roleRef:
   kind: ClusterRole
   name: cluster-admin
 subjects:
-  - kind: ServiceAccount
-    name: kustomize-serviceaccount
-    namespace: flux-system
+- kind: ServiceAccount
+  name: kustomize-serviceaccount
+  namespace: flux-system

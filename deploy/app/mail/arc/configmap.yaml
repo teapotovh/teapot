@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  "openarc.conf": |
+  "openarc.conf": |-
     Syslog yes
 
     Mode sv

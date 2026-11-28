@@ -17,27 +17,27 @@ spec:
         prometheus.io/port: "8888"
     spec:
       containers:
-        - name: prometheus
-          image: mirror.gcr.io/otel/opentelemetry-collector-contrib:0.156.0
-          args:
-            - --config=/etc/otel/collector.yaml
-          ports:
-            - name: observability
-              containerPort: 8888
-            - name: grpc
-              containerPort: 4317
-          volumeMounts:
-            - name: config
-              mountPath: /etc/otel/
-          resources:
-            requests:
-              memory: 256Mi
-              cpu: 100m
-            limits:
-              memory: 300Mi
-              cpu: 200m
-      volumes:
+      - name: prometheus
+        image: mirror.gcr.io/otel/opentelemetry-collector-contrib:0.156.0
+        args:
+        - --config=/etc/otel/collector.yaml
+        ports:
+        - name: observability
+          containerPort: 8888
+        - name: grpc
+          containerPort: 4317
+        volumeMounts:
         - name: config
-          configMap:
-            defaultMode: 420
-            name: config
+          mountPath: /etc/otel/
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 300Mi
+            cpu: 200m
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 420
+          name: config

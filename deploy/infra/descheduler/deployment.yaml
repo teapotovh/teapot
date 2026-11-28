@@ -15,47 +15,47 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: sa
       containers:
-        - name: descheduler
-          image: registry.k8s.io/descheduler/descheduler:v0.36.0
-          imagePullPolicy: IfNotPresent
-          command:
-            - "/bin/descheduler"
-          args:
-            - "--policy-config-file"
-            - "/policy-dir/policy.yaml"
-            - "--descheduling-interval"
-            - "5m"
-            - "--v"
-            - "3"
-          ports:
-          - containerPort: 10258
-            protocol: TCP
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /healthz
-              port: 10258
-              scheme: HTTPS
-            initialDelaySeconds: 3
-            periodSeconds: 30
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            privileged: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-          volumeMounts:
-            - mountPath: /policy-dir
-              name: policy-volume
+      - name: descheduler
+        image: registry.k8s.io/descheduler/descheduler:v0.36.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - "/bin/descheduler"
+        args:
+        - "--policy-config-file"
+        - "/policy-dir/policy.yaml"
+        - "--descheduling-interval"
+        - "5m"
+        - "--v"
+        - "3"
+        ports:
+        - containerPort: 10258
+          protocol: TCP
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 10258
+            scheme: HTTPS
+          initialDelaySeconds: 3
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /policy-dir
+          name: policy-volume
       volumes:
       - name: policy-volume
         configMap:

@@ -13,14 +13,14 @@ spec:
       - name: ccmd
         image: ghcr.io/teapotovh/ccmd:latest
         args:
-          - --log-format=json
-          - --ccm-node=$(KUBERNETES_NODE)
-          # - --log-level=debug
+        - --log-format=json
+        - --ccm-node=$(KUBERNETES_NODE)
+        # - --log-level=debug
         env:
-          - name: KUBERNETES_NODE
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+        - name: KUBERNETES_NODE
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         resources:
           requests:
             cpu: 10m

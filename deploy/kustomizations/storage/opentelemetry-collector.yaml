@@ -7,7 +7,7 @@ spec:
   path: deploy/storage/opentelemetry-collector
   prune: true
   dependsOn:
-    - name: tempo
+  - name: tempo
   sourceRef:
     kind: GitRepository
     name: teapot
