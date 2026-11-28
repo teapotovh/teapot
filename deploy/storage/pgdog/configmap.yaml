@@ -34,7 +34,25 @@ data:
     port = 5432
     role = "replica"
     database_name = "vaultwarden"
+
+    [[databases]]
+    name = "bottin"
+    host = "postgresql01-cluster-rw.storage"
+    port = 5432
+    role = "primary"
+    database_name = "bottin"
+
+    [[databases]]
+    name = "bottin"
+    host = "postgresql01-local.storage"
+    port = 5432
+    role = "replica"
+    database_name = "bottin"
   users.toml: |
     [[users]]
     name = "vaultwarden"
     database = "vaultwarden"
+
+    [[users]]
+    name = "bottin"
+    database = "bottin"
