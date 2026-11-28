@@ -3,19 +3,20 @@ package store
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"git.sr.ht/~bitfehler/brant"
 	"git.sr.ht/~bitfehler/brant/database/dialect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/httptrace"
 	"github.com/teapotovh/teapot/lib/observability"
-	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/run"
 	"github.com/teapotovh/teapot/lib/s3cache"
 
@@ -25,12 +26,41 @@ import (
 //go:embed migrations/*.sql
 var migraitions embed.FS
 
+// psqlPool is the subset of the psql pool used by the store.
+type psqlPool interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Begin(ctx context.Context) (pgx.Tx, error)
+	Ping(ctx context.Context) error
+	Close()
+}
+
+// Transaction provides access to one calendar store transaction.
+type Transaction interface {
+	// StoreCalendar inserts or updates a calendar.
+	StoreCalendar(ctx context.Context, calendar Calendar) error
+
+	// StoreObjectRef inserts or updates a calendar object reference.
+	StoreObjectRef(ctx context.Context, ref ObjectRef) error
+
+	// DeleteObjectRef removes a calendar object reference.
+	DeleteObjectRef(ctx context.Context, path Path) error
+
+	// Commit saves the changes made through this transaction.
+	Commit(ctx context.Context) error
+
+	// Rollback discards the changes made through this transaction.
+	Rollback(ctx context.Context) error
+}
+
+type psqlTransaction struct {
+	tx      pgx.Tx
+	metrics *metrics
+}
+
 type Online struct {
 	logger *slog.Logger
 
-	pool           *pgxpool.Pool
-	calendarTable  *pgcache.Table[Path, Calendar]
-	objectRefTable *pgcache.Table[Path, objectRef]
+	pool psqlPool
 
 	httpTrace     *httptrace.HTTPTrace
 	s3URL         string
@@ -81,42 +111,12 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 		return nil, fmt.Errorf("error while connecting to psql: %w", err)
 	}
 
-	calendarTable, err := pgcache.NewTable(
-		pool,
-		"calendars",
-		PrefixFromString,
-		listCalendarPSQL,
-		getCalendarPSQL,
-		storeCalendarPSQL,
-		deleteCalendarPSQL,
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
-	}
-
-	objectTable, err := pgcache.NewTable(
-		pool,
-		"objects",
-		PrefixFromString,
-		listObjectRefPSQL,
-		getObjectRefPSQL,
-		storeObjectRefPSQL,
-		deleteObjectRefPSQL,
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error while bulding cachnig table: %w", err)
-	}
-
 	httpTrace := httptrace.NewHTTPTrace()
 
 	p := Online{
 		logger: logger,
 
-		pool:           pool,
-		calendarTable:  calendarTable,
-		objectRefTable: objectTable,
+		pool: pool,
 
 		httpTrace:     httpTrace,
 		s3URL:         s3.URL,
@@ -128,32 +128,64 @@ func NewOnline(ctx context.Context, psql string, s3 StoreS3Config, logger *slog.
 	return &p, nil
 }
 
-// unit may be used with runInTx when no result is expected.
-type unit struct{}
+// Begin starts a transaction over the calendar store tables.
+func (o *Online) Begin(ctx context.Context) (result Transaction, err error) {
+	start := time.Now()
+	defer func() { o.metrics.observeOperation(metricsOperationBegin, start, err) }()
 
-func runInTx[T pgcache.Object[Path], R any](
-	table *pgcache.Table[Path, T],
-	fn func(ctx context.Context, tx *pgcache.TableTx[Path, T]) (R, error),
-) func(context.Context) (R, error) {
-	var empty R
-
-	return func(ctx context.Context) (R, error) {
-		tx, err := table.Begin(ctx)
-		if err != nil {
-			return empty, fmt.Errorf("error while starting transaction: %w", err)
-		}
-
-		result, err := fn(ctx, tx)
-		if err != nil {
-			return empty, fmt.Errorf("error while running transaction body: %w", err)
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return empty, fmt.Errorf("error while committing transaction: %w", err)
-		}
-
-		return result, nil
+	tx, err := o.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not begin psql transaction: %w", err)
 	}
+
+	return &psqlTransaction{tx: tx, metrics: &o.metrics}, nil
+}
+
+func rollbackOnError(ctx context.Context, tx Transaction, err *error) {
+	if *err == nil {
+		return
+	}
+
+	*err = errors.Join(*err, tx.Rollback(ctx))
+}
+
+func runInTx(ctx context.Context, o *Online, fn func(context.Context, Transaction) error) (err error) {
+	tx, err := o.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer rollbackOnError(ctx, tx, &err)
+
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+// Commit implements Transaction.
+func (t *psqlTransaction) Commit(ctx context.Context) (err error) {
+	start := time.Now()
+	defer func() { t.metrics.observeOperation(metricsOperationCommit, start, err) }()
+
+	if err := t.tx.Commit(ctx); err != nil {
+		return fmt.Errorf("error while committing transaction: %w", err)
+	}
+
+	return nil
+}
+
+// Rollback implements Transaction.
+func (t *psqlTransaction) Rollback(ctx context.Context) (err error) {
+	start := time.Now()
+	defer func() { t.metrics.observeOperation(metricsOperationRollback, start, err) }()
+
+	if err := t.tx.Rollback(ctx); err != nil {
+		return fmt.Errorf("error while rolling back transaction: %w", err)
+	}
+
+	return nil
 }
 
 // Ping implements Store.
@@ -181,9 +213,6 @@ func (o *Online) Run(step run.Step) (err error) {
 		return fmt.Errorf("error while building s3 cache: %w", err)
 	}
 
-	step.Add("calendars", o.calendarTable)
-	step.Add("objects", o.objectRefTable)
-	step.Wait()
 	step.Notify()
 
 	<-ctx.Done()
@@ -196,12 +225,18 @@ func (o *Online) WithTracing(tp trace.TracerProvider, tracer trace.Tracer) {
 	o.httpTrace.WithTracing(tp, tracer)
 }
 
-// Metrics implements observability.Metrics.
-func (o *Online) Metrics() []prometheus.Collector {
-	return append(o.calendarTable.Metrics(), o.metrics.backend)
-}
-
 // ReadinessChecks implements run.ReadinessChecks.
 func (o *Online) ReadinessChecks() map[string]observability.Check {
-	return o.calendarTable.ReadinessChecks()
+	return map[string]observability.Check{
+		"calendar/store/psql": observability.CheckFunc(o.Ping),
+	}
 }
+
+// Ensure *Online implements Store.
+var _ Store = (*Online)(nil)
+
+// Ensure *psqlTransaction implements Transaction.
+var _ Transaction = (*psqlTransaction)(nil)
+
+// Ensure *pgxpool.Pool implements psqlPool.
+var _ psqlPool = (*pgxpool.Pool)(nil)

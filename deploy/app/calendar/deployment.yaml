@@ -39,7 +39,7 @@ spec:
         - --ldap-root-dn=$(LDAP_BIND_DN)
         - --ldap-root-passwd=$(LDAP_BIND_PASSWORD)
         - --calendar-store-type=online
-        - --calendar-store-psql-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/calendar
+        - --calendar-store-psql-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pgdog.storage/calendar?sslmode=disable
         - --calendar-store-s3-url=http://$(S3_ID):$(S3_KEY)@garage01-garage.storage:3900
         - --s3cache-bucket=calendar
         - --s3cache-path=/s3cache

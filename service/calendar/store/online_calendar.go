@@ -3,14 +3,11 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"slices"
-	"unicode/utf8"
+	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/teapotovh/teapot/lib/pgcache"
 )
 
 func parseCalendarRows(rows pgx.Rows) (calendars []Calendar, err error) {
@@ -44,13 +41,56 @@ func parseCalendarRows(rows pgx.Rows) (calendars []Calendar, err error) {
 	return calendars, nil
 }
 
-var listCalendarQuery = `
+var (
+	listCalendarQuery = `
 		SELECT path, metadata
-		FROM calendars;
-`
+		FROM calendars
+		ORDER BY path;
+	`
 
-func listCalendarPSQL(ctx context.Context, conn *pgxpool.Pool) ([]Calendar, error) {
-	rows, err := conn.Query(ctx, listCalendarQuery)
+	getCalendarQuery = `
+		SELECT path, metadata
+		FROM calendars
+		WHERE path = $1
+		LIMIT 1;
+	`
+
+	rangeCalendarQuery = `
+		SELECT path, metadata
+		FROM calendars
+		WHERE path >= $1
+			AND path < $2
+		ORDER BY path;
+	`
+
+	storeCalendarQuery = `
+		INSERT INTO calendars (path, metadata)
+		VALUES ($1, $2)
+		ON CONFLICT (path) DO UPDATE
+		SET metadata = EXCLUDED.metadata;
+	`
+)
+
+// ListCalendars implements Store.
+func (o *Online) ListCalendars(ctx context.Context, basePath Path) (calendars []Calendar, err error) {
+	operation := metricsOperationRange
+	if basePath == "" {
+		operation = metricsOperationList
+	}
+
+	start := time.Now()
+	defer func() { o.metrics.observeOperation(operation, start, err) }()
+
+	if basePath == "" {
+		rows, err := o.pool.Query(ctx, listCalendarQuery)
+		if err != nil {
+			return nil, fmt.Errorf("error while listing calendars from psql: %w", err)
+		}
+
+		return parseCalendarRows(rows)
+	}
+
+	rows, err := o.pool.Query(ctx, rangeCalendarQuery, basePath.String(), prefixEnd(basePath).String())
 	if err != nil {
 		return nil, fmt.Errorf("error while listing calendars from psql: %w", err)
 	}
@@ -58,99 +98,64 @@ func listCalendarPSQL(ctx context.Context, conn *pgxpool.Pool) ([]Calendar, erro
 	return parseCalendarRows(rows)
 }
 
-var getCalendarQuery = `
-		SELECT path, metadata
-		FROM calendars
-		WHERE path = ANY($1);
-`
-
-func getCalendarPSQL(ctx context.Context, conn *pgxpool.Pool, paths []Path) ([]Calendar, error) {
-	ps := make([]string, 0, len(paths))
-	for _, path := range paths {
-		ps = append(ps, path.String())
-	}
-
-	rows, err := conn.Query(ctx, getCalendarQuery, ps)
-	if err != nil {
-		return nil, fmt.Errorf("error while listing select calendars from psql: %w", err)
-	}
-
-	return parseCalendarRows(rows)
-}
-
-var storeCalendarQuery = `
-		INSERT INTO calendars (path, metadata)
-		SELECT unnest($1::text[]), unnest($2::jsonb[])
-		ON CONFLICT (path) DO UPDATE
-		SET metadata = EXCLUDED.metadata
-`
-
-func storeCalendarPSQL(ctx context.Context, tx pgx.Tx, calendars []Calendar) error {
-	paths := make([]string, 0, len(calendars))
-	metadata := make([][]byte, 0, len(calendars))
-
-	for i, calendar := range calendars {
-		rawMetadata, err := json.Marshal(calendar.Metadata)
-		if err != nil {
-			return fmt.Errorf("could not marshal metadata of calendar %d for psql: %w", i, err)
-		}
-
-		paths = append(paths, string(calendar.Path))
-		metadata = append(metadata, rawMetadata)
-	}
-
-	_, err := tx.Exec(ctx, storeCalendarQuery, paths, metadata)
-	if err != nil {
-		return fmt.Errorf("error while inserting calendars with psql: %w", err)
-	}
-
-	return nil
-}
-
-var deleteCalendarQuery = `DELETE FROM calendars WHERE path = ANY($1);`
-
-func deleteCalendarPSQL(ctx context.Context, tx pgx.Tx, paths []Path) error {
-	ps := make([]string, 0, len(paths))
-	for _, path := range paths {
-		ps = append(ps, path.String())
-	}
-
-	_, err := tx.Exec(ctx, deleteCalendarQuery, ps)
-	if err != nil {
-		return fmt.Errorf("error while deleting calendars in psql: %w", err)
-	}
-
-	return nil
-}
-
-// ListCalendars implements Store.
-func (o *Online) ListCalendars(ctx context.Context, basePath Path) ([]Calendar, error) {
-	endPath := Path(fmt.Sprintf("%s%c", basePath, utf8.MaxRune))
-	iter := o.calendarTable.Between(basePath, endPath)
-
-	return slices.Collect(iter), nil
-}
-
 // GetCalendar implements Store.
-func (o *Online) GetCalendar(ctx context.Context, path Path) (*Calendar, error) {
-	calendar, found := o.calendarTable.Get(path)
-	if !found {
+func (o *Online) GetCalendar(ctx context.Context, path Path) (calendar *Calendar, err error) {
+	start := time.Now()
+	defer func() { o.metrics.observeOperation(metricsOperationGet, start, err) }()
+
+	return o.getCalendar(ctx, path)
+}
+
+func (o *Online) getCalendar(ctx context.Context, path Path) (*Calendar, error) {
+	rows, err := o.pool.Query(ctx, getCalendarQuery, path.String())
+	if err != nil {
+		return nil, fmt.Errorf("error while getting calendar from psql: %w", err)
+	}
+
+	calendars, err := parseCalendarRows(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(calendars) == 0 {
 		return nil, ErrCalendarNotFound
 	}
 
-	return &calendar, nil
+	return &calendars[0], nil
 }
 
 // PutCalendar implements Store.
 func (o *Online) PutCalendar(ctx context.Context, calendar Calendar) (bool, error) {
-	_, exists := o.calendarTable.Get(calendar.Path)
+	_, err := o.getCalendar(ctx, calendar.Path)
+	exists := err == nil
 
-	_, err := runInTx(o.calendarTable, func(ctx context.Context, tx *pgcache.TableTx[Path, Calendar]) (unit, error) {
-		return unit{}, tx.Store(ctx, []Calendar{calendar})
-	})(ctx)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return false, err
+	}
+
+	err = runInTx(ctx, o, func(ctx context.Context, tx Transaction) error {
+		return tx.StoreCalendar(ctx, calendar)
+	})
 	if err != nil {
 		return false, err
 	}
 
 	return !exists, nil
+}
+
+// StoreCalendar implements Transaction.
+func (t *psqlTransaction) StoreCalendar(ctx context.Context, calendar Calendar) (err error) {
+	start := time.Now()
+	defer func() { t.metrics.observeOperation(metricsOperationStore, start, err) }()
+
+	rawMetadata, err := json.Marshal(calendar.Metadata)
+	if err != nil {
+		return fmt.Errorf("could not marshal metadata of calendar for psql: %w", err)
+	}
+
+	if _, err := t.tx.Exec(ctx, storeCalendarQuery, calendar.Path.String(), rawMetadata); err != nil {
+		return fmt.Errorf("error while inserting calendar with psql: %w", err)
+	}
+
+	return nil
 }

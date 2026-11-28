@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/teapotovh/teapot/lib/observability"
@@ -138,11 +137,6 @@ func (m *Mem) Run(step run.Step) error {
 
 // WithTracing implements observability.Tracing.
 func (m *Mem) WithTracing(_ trace.TracerProvider, _ trace.Tracer) {}
-
-// Metrics implements observability.Metrics.
-func (m *Mem) Metrics() []prometheus.Collector {
-	return []prometheus.Collector{m.metrics.backend}
-}
 
 // ReadinessChecks implements run.ReadinessChecks
 //

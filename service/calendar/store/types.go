@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	ics "github.com/arran4/golang-ical"
 
@@ -28,6 +29,10 @@ func (path Path) Less(p Path) bool {
 
 func (path Path) String() string {
 	return string(path)
+}
+
+func prefixEnd(path Path) Path {
+	return Path(fmt.Sprintf("%s%c", path, utf8.MaxRune))
 }
 
 type Calendar struct {
@@ -79,11 +84,6 @@ type CalendarMetadata struct {
 	Color                 string         `json:"color,omitempty"`
 	Tag                   string         `json:"tag,omitempty"`
 	DeadProperties        DeadProperties `json:"dead-properties,omitempty"`
-}
-
-// Key implements pgcache.Object.
-func (c Calendar) Key() Path {
-	return c.Path
 }
 
 type Object struct {
