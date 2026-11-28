@@ -38,7 +38,7 @@ spec:
             - --ldapsrv-port=389
             - --bottin-passwd=$(ROOT_PASSWORD)
             - --bottin-store-type=psql
-            - --bottin-store-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pooler.storage/bottin
+            - --bottin-store-url=postgresql://$(DB_USERNAME):$(DB_PASSWORD)@postgresql01-pgdog.storage/bottin?sslmode=disable
             - "--bottin-acl=ANONYMOUS::bind:*,ou=users,dc=teapot,dc=ovh:"
             - "--bottin-acl=dc=teapot,dc=ovh::bind:*,ou=users,dc=teapot,dc=ovh:"
             - "--bottin-acl=ANONYMOUS::bind:dc=teapot,dc=ovh:"

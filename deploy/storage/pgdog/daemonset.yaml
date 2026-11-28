@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: pgdog
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   template:
     metadata:
