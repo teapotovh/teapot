@@ -26,6 +26,8 @@ data:
             regex: (.+)
             target_label: __metrics_path__
             replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: kubernetes_node
         metric_relabel_configs:
           - source_labels: [__name__]
             regex: '(container_cpu_usage_seconds_total|container_memory_working_set_bytes|container_network_receive_bytes_total|container_network_transmit_bytes_total|container_fs_usage_bytes|container_fs_limit_bytes)'
@@ -54,7 +56,10 @@ data:
             target_label: __address__
           - action: labelmap
             regex: __meta_kubernetes_pod_label_(.*)
+            replacement: kubernetes_label_${1}
           - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
+            target_label: kubernetes_namespace
           - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
+            target_label: kubernetes_pod
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: kubernetes_node
