@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/xml"
 	"errors"
 	"flag"
 	"fmt"
@@ -114,15 +113,8 @@ func branch() error {
 }
 
 func pushedImages() ([]string, error) {
-	stdout, stderr, err := util.Run(nil, "bazel", "query", "--output=xml",
-		"kind(\"image_push\", //...)")
+	query, err := util.Query[queryResult]("kind(\"image_push\", //...)")
 	if err != nil {
-		return nil, fmt.Errorf("bazel query failed: %w, %s", err, stderr.String())
-	}
-
-	var query queryResult
-
-	if err := parseQuery(stdout.Bytes(), &query); err != nil {
 		return nil, err
 	}
 
@@ -143,20 +135,6 @@ func pushedImages() ([]string, error) {
 	}
 
 	return images, nil
-}
-
-// parseQuery decodes the query output. Bazel emits an xml 1.1 declaration,
-// which is dropped first.
-func parseQuery(data []byte, query *queryResult) error {
-	if bytes.HasPrefix(data, []byte("<?xml")) {
-		_, data, _ = bytes.Cut(data, []byte("\n"))
-	}
-
-	if err := xml.NewDecoder(bytes.NewReader(data)).Decode(query); err != nil {
-		return fmt.Errorf("could not parse query output: %w", err)
-	}
-
-	return nil
 }
 
 func pushImage(rule queryRule) (string, bool) {

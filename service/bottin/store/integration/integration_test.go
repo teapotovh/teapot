@@ -1,5 +1,5 @@
 //nolint:paralleltest // the integration tests share one database.
-package store
+package integration
 
 import (
 	"context"
@@ -12,23 +12,31 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/teapotovh/teapot/service/bottin/store"
+)
+
+const (
+	testAttrObjectClass   store.AttributeKey = "objectclass"
+	testObjectClassPerson string             = "person"
+	testObjectClassTop    string             = "top"
 )
 
 var (
 	testPSQLURL string
-	testPSQL    *PSQL
+	testPSQL    *store.PSQL
 	errTestPSQL error
 )
 
 func TestMain(m *testing.M) {
 	code := eptest.Run(m, func(pg *postgres.EmbeddedPostgres) {
 		testPSQLURL = pg.ConnectionURL()
-		testPSQL, errTestPSQL = NewPSQL(context.Background(), testPSQLURL, slog.New(slog.DiscardHandler))
+		testPSQL, errTestPSQL = store.NewPSQL(context.Background(), testPSQLURL, slog.New(slog.DiscardHandler))
 	})
 	os.Exit(code)
 }
 
-func newIntegrationPSQL(t *testing.T) *PSQL {
+func newIntegrationPSQL(t *testing.T) *store.PSQL {
 	t.Helper()
 
 	require.NoError(t, errTestPSQL)
@@ -56,16 +64,25 @@ func testPostgresConn(t *testing.T) *pgx.Conn {
 	return conn
 }
 
-func newTestEntry(t *testing.T, rawDN string, attributes Attributes) Entry {
+func newTestEntry(t *testing.T, rawDN string, attributes store.Attributes) store.Entry {
 	t.Helper()
 
-	dn, err := ParseDN(rawDN)
+	dn, err := store.ParseDN(rawDN)
 	require.NoError(t, err)
 
-	return NewEntry(dn, attributes)
+	return store.NewEntry(dn, attributes)
 }
 
-func storeTestEntry(t *testing.T, p *PSQL, entry Entry) {
+func mustTestPrefix(t *testing.T, rawDN string) store.Prefix {
+	t.Helper()
+
+	dn, err := store.ParseDN(rawDN)
+	require.NoError(t, err)
+
+	return dn.Prefix()
+}
+
+func storeTestEntry(t *testing.T, p *store.PSQL, entry store.Entry) {
 	t.Helper()
 
 	tx, err := p.Begin(t.Context())
@@ -77,7 +94,7 @@ func storeTestEntry(t *testing.T, p *PSQL, entry Entry) {
 
 func TestPSQLIntegrationStoreGet(t *testing.T) {
 	p := newIntegrationPSQL(t)
-	entry := newTestEntry(t, "uid=alice,ou=people,dc=bauble,dc=test", Attributes{
+	entry := newTestEntry(t, "uid=alice,ou=people,dc=bauble,dc=test", store.Attributes{
 		testAttrObjectClass: {testObjectClassTop, testObjectClassPerson},
 		"uid":               {"alice"},
 		"description":       {"comma, equals = slash / backslash \\ quote \""},
@@ -96,25 +113,25 @@ func TestPSQLIntegrationGetNotFound(t *testing.T) {
 	prefix := mustTestPrefix(t, "uid=missing,ou=people,dc=bauble,dc=test")
 
 	_, err := p.Get(t.Context(), prefix)
-	require.ErrorIs(t, err, ErrNotFound)
+	require.ErrorIs(t, err, store.ErrNotFound)
 }
 
 func TestPSQLIntegrationListAll(t *testing.T) {
 	p := newIntegrationPSQL(t)
 
-	entries := []Entry{
-		newTestEntry(t, "dc=bauble,dc=test", Attributes{testAttrObjectClass: {testObjectClassTop}}),
-		newTestEntry(t, "ou=groups,dc=bauble,dc=test", Attributes{testAttrObjectClass: {"organizationalUnit"}}),
-		newTestEntry(t, "ou=people,dc=bauble,dc=test", Attributes{testAttrObjectClass: {"organizationalUnit"}}),
+	entries := []store.Entry{
+		newTestEntry(t, "dc=bauble,dc=test", store.Attributes{testAttrObjectClass: {testObjectClassTop}}),
+		newTestEntry(t, "ou=groups,dc=bauble,dc=test", store.Attributes{testAttrObjectClass: {"organizationalUnit"}}),
+		newTestEntry(t, "ou=people,dc=bauble,dc=test", store.Attributes{testAttrObjectClass: {"organizationalUnit"}}),
 		newTestEntry(
 			t,
 			"uid=alice,ou=people,dc=bauble,dc=test",
-			Attributes{testAttrObjectClass: {testObjectClassPerson}},
+			store.Attributes{testAttrObjectClass: {testObjectClassPerson}},
 		),
 		newTestEntry(
 			t,
 			"uid=bob,ou=people,dc=bauble,dc=test",
-			Attributes{testAttrObjectClass: {testObjectClassPerson}},
+			store.Attributes{testAttrObjectClass: {testObjectClassPerson}},
 		),
 	}
 
@@ -122,7 +139,7 @@ func TestPSQLIntegrationListAll(t *testing.T) {
 		storeTestEntry(t, p, entry)
 	}
 
-	got, err := p.List(t.Context(), Prefix{})
+	got, err := p.List(t.Context(), store.Prefix{})
 	require.NoError(t, err)
 	require.Len(t, got, len(entries))
 
@@ -134,16 +151,24 @@ func TestPSQLIntegrationListAll(t *testing.T) {
 func TestPSQLIntegrationListPrefix(t *testing.T) {
 	p := newIntegrationPSQL(t)
 
-	base := newTestEntry(t, "dc=bauble,dc=test", Attributes{testAttrObjectClass: {testObjectClassTop}})
-	people := newTestEntry(t, "ou=people,dc=bauble,dc=test", Attributes{testAttrObjectClass: {"organizationalUnit"}})
+	base := newTestEntry(t, "dc=bauble,dc=test", store.Attributes{testAttrObjectClass: {testObjectClassTop}})
+	people := newTestEntry(
+		t,
+		"ou=people,dc=bauble,dc=test",
+		store.Attributes{testAttrObjectClass: {"organizationalUnit"}},
+	)
 	alice := newTestEntry(
 		t,
 		"uid=alice,ou=people,dc=bauble,dc=test",
-		Attributes{testAttrObjectClass: {testObjectClassPerson}},
+		store.Attributes{testAttrObjectClass: {testObjectClassPerson}},
 	)
-	groups := newTestEntry(t, "ou=groups,dc=bauble,dc=test", Attributes{testAttrObjectClass: {"organizationalUnit"}})
+	groups := newTestEntry(
+		t,
+		"ou=groups,dc=bauble,dc=test",
+		store.Attributes{testAttrObjectClass: {"organizationalUnit"}},
+	)
 
-	for _, entry := range []Entry{base, people, alice, groups} {
+	for _, entry := range []store.Entry{base, people, alice, groups} {
 		storeTestEntry(t, p, entry)
 	}
 
@@ -156,7 +181,7 @@ func TestPSQLIntegrationListPrefix(t *testing.T) {
 
 func TestPSQLIntegrationUpdate(t *testing.T) {
 	p := newIntegrationPSQL(t)
-	entry := newTestEntry(t, "uid=alice,ou=people,dc=bauble,dc=test", Attributes{
+	entry := newTestEntry(t, "uid=alice,ou=people,dc=bauble,dc=test", store.Attributes{
 		testAttrObjectClass: {testObjectClassTop, testObjectClassPerson},
 		"uid":               {"alice"},
 		"description":       {"first"},
@@ -164,7 +189,7 @@ func TestPSQLIntegrationUpdate(t *testing.T) {
 
 	storeTestEntry(t, p, entry)
 
-	updated := NewEntry(entry.DN, Attributes{
+	updated := store.NewEntry(entry.DN, store.Attributes{
 		testAttrObjectClass: {testObjectClassTop, testObjectClassPerson},
 		"uid":               {"alice"},
 		"description":       {"second"},
@@ -181,7 +206,7 @@ func TestPSQLIntegrationDelete(t *testing.T) {
 	entry := newTestEntry(
 		t,
 		"uid=alice,ou=people,dc=bauble,dc=test",
-		Attributes{testAttrObjectClass: {testObjectClassPerson}},
+		store.Attributes{testAttrObjectClass: {testObjectClassPerson}},
 	)
 
 	storeTestEntry(t, p, entry)
@@ -192,7 +217,7 @@ func TestPSQLIntegrationDelete(t *testing.T) {
 	require.NoError(t, tx.Commit(t.Context()))
 
 	_, err = p.Get(t.Context(), entry.DN.Prefix())
-	require.ErrorIs(t, err, ErrNotFound)
+	require.ErrorIs(t, err, store.ErrNotFound)
 }
 
 func TestPSQLIntegrationCommitRollback(t *testing.T) {
@@ -200,12 +225,12 @@ func TestPSQLIntegrationCommitRollback(t *testing.T) {
 	committed := newTestEntry(
 		t,
 		"uid=commit,ou=people,dc=bauble,dc=test",
-		Attributes{testAttrObjectClass: {testObjectClassPerson}},
+		store.Attributes{testAttrObjectClass: {testObjectClassPerson}},
 	)
 	discarded := newTestEntry(
 		t,
 		"uid=rollback,ou=people,dc=bauble,dc=test",
-		Attributes{testAttrObjectClass: {testObjectClassPerson}},
+		store.Attributes{testAttrObjectClass: {testObjectClassPerson}},
 	)
 
 	tx, err := p.Begin(t.Context())
@@ -222,7 +247,7 @@ func TestPSQLIntegrationCommitRollback(t *testing.T) {
 	require.NoError(t, tx.Rollback(t.Context()))
 
 	_, err = p.Get(t.Context(), discarded.DN.Prefix())
-	require.ErrorIs(t, err, ErrNotFound)
+	require.ErrorIs(t, err, store.ErrNotFound)
 }
 
 func TestPSQLIntegrationDNCollation(t *testing.T) {

@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "affected_lib",
+    srcs = ["affected.go"],
+    importpath = "github.com/teapotovh/teapot/tools/affected",
+    visibility = ["//visibility:private"],
+    deps = ["//tools/util"],
+)
+
+go_binary(
+    name = "affected",
+    embed = [":affected_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "affected_test",
+    srcs = ["affected_test.go"],
+    embed = [":affected_lib"],
+)

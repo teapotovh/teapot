@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -114,4 +115,28 @@ func GitRun(in io.Reader, args ...string) (string, error) {
 	}
 
 	return strings.TrimSpace(stdout.String()), nil
+}
+
+// Query runs a bazel query and decodes the XML result into a T.
+func Query[T any](expression string) (T, error) {
+	var result T
+
+	stdout, stderr, err := Run(nil, "bazel", "query", "--output=xml", expression)
+	if err != nil {
+		return result, fmt.Errorf("bazel query %q failed: %w, %s", expression, err, stderr.String())
+	}
+
+	data := stdout.Bytes()
+
+	// Bazel emits an XML 1.1 declaration, which the Go decoder rejects.
+	if bytes.HasPrefix(data, []byte("<?xml")) {
+		_, data, _ = bytes.Cut(data, []byte("\n"))
+	}
+
+	decoder := xml.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&result); err != nil {
+		return result, fmt.Errorf("could not decode query output: %w", err)
+	}
+
+	return result, nil
 }
