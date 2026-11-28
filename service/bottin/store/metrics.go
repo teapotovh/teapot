@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,8 +11,9 @@ const (
 	metricsNamespace = "bottin"
 	metricsSubsystem = "store"
 
-	metricsStatusSuccess = "success"
-	metricsStatusError   = "error"
+	metricsStatusSuccess  = "success"
+	metricsStatusError    = "error"
+	metricsStatusNotFound = "not_found"
 
 	metricsOperationList     = "list"
 	metricsOperationGet      = "get"
@@ -54,13 +56,19 @@ func (m *metrics) initMetrics(backend string) {
 	m.backend.WithLabelValues(backend).Add(1)
 }
 
-func (m *metrics) observeOperation(operation string, start time.Time, err error) {
-	status := metricsStatusSuccess
-	if err != nil {
-		status = metricsStatusError
+func status(err error) string {
+	switch {
+	case err == nil:
+		return metricsStatusSuccess
+	case errors.Is(err, ErrNotFound):
+		return metricsStatusNotFound
+	default:
+		return metricsStatusError
 	}
+}
 
-	m.operationDuration.WithLabelValues(operation, status).Observe(time.Since(start).Seconds())
+func (m *metrics) observeOperation(operation string, start time.Time, err error) {
+	m.operationDuration.WithLabelValues(operation, status(err)).Observe(time.Since(start).Seconds())
 }
 
 // Metrics implements observability.Metrics.
