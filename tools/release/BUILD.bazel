@@ -16,6 +16,7 @@ go_binary(
     data = [
         "//bazel:repository_file",
         "//tools:gazelle",
+        "//tools:manifestcheck",
         "@multitool//tools/buildifier",
         "@multitool//tools/golangci-lint",
     ],

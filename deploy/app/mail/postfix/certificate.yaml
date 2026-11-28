@@ -5,7 +5,7 @@ metadata:
 spec:
   secretName: mail-postfix-certificate
   dnsNames:
-    - smtp.teapot.ovh
+  - smtp.teapot.ovh
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer

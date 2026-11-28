@@ -19,35 +19,35 @@ spec:
       # nodeSelector:
       #   node-role.kubernetes.io/control-plane: ""
       containers:
-        - name: prometheus
-          image: mirror.gcr.io/prom/prometheus:v3.12.0-distroless
-          imagePullPolicy: IfNotPresent
-          args:
-            - "--storage.tsdb.retention.time=7d"
-            - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--storage.tsdb.path=/data/"
-            - '--web.enable-lifecycle'
-          ports:
-            - name: http
-              containerPort: 9090
-          volumeMounts:
-            - name: config
-              mountPath: /etc/prometheus/
-            - name: data
-              mountPath: /data/
-          resources:
-            requests:
-              memory: 256Mi
-              cpu: 300m
-            limits:
-              memory: 512Mi
-              cpu: 500m
-      volumes:
+      - name: prometheus
+        image: mirror.gcr.io/prom/prometheus:v3.12.0-distroless
+        imagePullPolicy: IfNotPresent
+        args:
+        - "--storage.tsdb.retention.time=7d"
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.path=/data/"
+        - '--web.enable-lifecycle'
+        ports:
+        - name: http
+          containerPort: 9090
+        volumeMounts:
         - name: config
-          configMap:
-            defaultMode: 420
-            name: config
+          mountPath: /etc/prometheus/
         - name: data
-          persistentVolumeClaim:
-            claimName: store
+          mountPath: /data/
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 300m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 420
+          name: config
+      - name: data
+        persistentVolumeClaim:
+          claimName: store
       serviceAccountName: serviceaccount

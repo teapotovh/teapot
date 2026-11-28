@@ -14,14 +14,14 @@ spec:
         image: ghcr.io/teapotovh/netd:latest
         imagePullPolicy: Always
         args:
-          - --log-format=json
-          - --net-node=$(KUBERNETES_NODE)
-          # - --log-level=debug
+        - --log-format=json
+        - --net-node=$(KUBERNETES_NODE)
+        # - --log-level=debug
         env:
-          - name: KUBERNETES_NODE
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+        - name: KUBERNETES_NODE
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         securityContext:
           privileged: true
         volumeMounts:

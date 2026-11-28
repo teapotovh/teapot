@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  fluent-bit.conf: |
+  fluent-bit.conf: |-
     [SERVICE]
         Flush        5
         Daemon       Off

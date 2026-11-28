@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  "config.yaml": |
+  "config.yaml": |-
     # The base path of Dex and the external name of the OpenID Connect service.
     # This is the canonical URL that all clients MUST use to refer to Dex. If a
     # path is provided, Dex's HTTP service will listen at a non-root URL.

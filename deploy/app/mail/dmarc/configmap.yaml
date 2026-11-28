@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  "opendmarc.conf": |
+  "opendmarc.conf": |-
     Syslog true
     SyslogFacility mail
 

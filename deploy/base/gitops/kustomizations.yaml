@@ -5,6 +5,7 @@ metadata:
 spec:
   interval: 1h
   path: deploy/kustomizations
+  prune: false
   sourceRef:
     kind: GitRepository
     name: teapot

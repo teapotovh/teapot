@@ -21,33 +21,33 @@ spec:
         labelSelector:
           matchLabels: {}
       containers:
-        - name: opendkim
-          image: mirror.gcr.io/instrumentisto/opendkim:2.11-alpine
-          ports:
-            - name: milter
-              containerPort: 8891
-          volumeMounts:
-            - name: config
-              mountPath: /etc/opendkim
-              readOnly: true
-            - name: keys
-              mountPath: /etc/opendkim/keys
-              readOnly: true
-          resources:
-            requests:
-              cpu: 5m
-              memory: 16Mi
-            limits:
-              cpu: 50m
-              memory: 64Mi
-      volumes:
+      - name: opendkim
+        image: mirror.gcr.io/instrumentisto/opendkim:2.11-alpine
+        ports:
+        - name: milter
+          containerPort: 8891
+        volumeMounts:
         - name: config
-          configMap:
-            name: config
+          mountPath: /etc/opendkim
+          readOnly: true
         - name: keys
-          secret:
-            secretName: mail-dkim-keys
+          mountPath: /etc/opendkim/keys
+          readOnly: true
+        resources:
+          requests:
+            cpu: 5m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+      volumes:
+      - name: config
+        configMap:
+          name: config
+      - name: keys
+        secret:
+          secretName: mail-dkim-keys
       dnsPolicy: None
       dnsConfig:
         nameservers:
-          - 10.43.0.53
+        - 10.43.0.53

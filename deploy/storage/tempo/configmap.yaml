@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  tempo.yaml: |
+  tempo.yaml: |-
     server:
       http_listen_port: 3200
 

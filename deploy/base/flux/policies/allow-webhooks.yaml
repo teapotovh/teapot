@@ -4,10 +4,10 @@ metadata:
   name: allow-webhooks
 spec:
   policyTypes:
-    - Ingress
+  - Ingress
   ingress:
-    - from:
-        - namespaceSelector: {}
+  - from:
+    - namespaceSelector: {}
   podSelector:
     matchLabels:
       app: notification-controller

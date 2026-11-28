@@ -7,8 +7,8 @@ spec:
   path: deploy/storage/postgresql01
   prune: true
   dependsOn:
-    - name: storage
-    - name: cloudnative-pg-crd
+  - name: storage
+  - name: cloudnative-pg-crd
   sourceRef:
     kind: GitRepository
     name: teapot

@@ -7,8 +7,8 @@ spec:
     pods: "1000"
   scopeSelector:
     matchExpressions:
-      - operator: In
-        scopeName: PriorityClass
-        values:
-          - system-node-critical
-          - system-cluster-critical
+    - operator: In
+      scopeName: PriorityClass
+      values:
+      - system-node-critical
+      - system-cluster-critical

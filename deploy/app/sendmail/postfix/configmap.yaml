@@ -39,5 +39,5 @@ data:
 
   "sender_access": |
     /@sendmail\.teapot\.ovh$/  OK
-  "header_checks": |
+  "header_checks": |-
     /^From:.*@sendmail\.teapot\.ovh/ PREPEND Reply-To: dump@teapot.ovh

@@ -7,10 +7,10 @@ spec:
     domain: teapot.ovh
   type: ClusterIP
   ports:
-    - name: http
-      port: 7979
-      targetPort: http
-      protocol: TCP
+  - name: http
+    port: 7979
+    targetPort: http
+    protocol: TCP
 ---
 apiVersion: v1
 kind: Service
@@ -21,7 +21,7 @@ spec:
     domain: teapot.ovh
   type: ClusterIP
   ports:
-    - name: http
-      port: 7979
-      targetPort: http
-      protocol: TCP
+  - name: http
+    port: 7979
+    targetPort: http
+    protocol: TCP

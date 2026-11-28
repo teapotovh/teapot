@@ -14,65 +14,65 @@ spec:
   template:
     spec:
       topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          nodeTaintsPolicy: Honor
-          labelSelector:
-            matchLabels: {}
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels: {}
       initContainers:
       - name: configure-radicale
         image: mirror.gcr.io/dibi/envsubst
-        command: 
-          - sh
-          - -c
-          - envsubst < /template/config.tmpl > /etc/radicale/config
+        command:
+        - sh
+        - -c
+        - envsubst < /template/config.tmpl > /etc/radicale/config
         env:
-          - name: DB_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: postgresql01-user-radicale
-                key: username
-          - name: DB_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: postgresql01-user-radicale
-                key: password
-          - name: LDAP_BIND_DN
-            valueFrom:
-              secretKeyRef:
-                name: bottin-admin
-                key: username
-          - name: LDAP_BIND_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: bottin-admin
-                key: password
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-radicale
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-radicale
+              key: password
+        - name: LDAP_BIND_DN
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: username
+        - name: LDAP_BIND_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bottin-admin
+              key: password
         volumeMounts:
         - name: template
           mountPath: /template
         - name: config
           mountPath: /etc/radicale
       containers:
-        - name: radicale
-          image: ghcr.io/teapotovh/radicale:v0.0.19
-          ports:
-            - name: http
-              containerPort: 5232
-          volumeMounts:
-            - name: config
-              mountPath: /etc/radicale
-              readOnly: true
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              cpu: 100m
-              memory: 256Mi
-      volumes:
-        - name: template
-          configMap:
-            name: config
+      - name: radicale
+        image: ghcr.io/teapotovh/radicale:v0.0.19
+        ports:
+        - name: http
+          containerPort: 5232
+        volumeMounts:
         - name: config
-          emptyDir: {}
+          mountPath: /etc/radicale
+          readOnly: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
+      volumes:
+      - name: template
+        configMap:
+          name: config
+      - name: config
+        emptyDir: {}

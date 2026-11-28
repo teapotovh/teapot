@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "manifestcheck_lib",
+    srcs = ["manifestcheck.go"],
+    importpath = "github.com/teapotovh/teapot/tools/manifestcheck",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//tools/util",
+        "@io_k8s_apiextensions_apiserver//pkg/apis/apiextensions",
+        "@io_k8s_apiextensions_apiserver//pkg/apis/apiextensions/v1:apiextensions",
+        "@io_k8s_apiextensions_apiserver//pkg/apiserver/validation",
+        "@io_k8s_apimachinery//pkg/util/yaml",
+        "@io_k8s_kube_openapi//pkg/validation/spec",
+        "@rules_go//go/runfiles",
+    ],
+)
+
+go_binary(
+    name = "manifestcheck",
+    data = [
+        "@multitool//tools/kubeconform",
+        "@multitool//tools/kustomize",
+        "@multitool//tools/yamlfmt",
+    ],
+    embed = [":manifestcheck_lib"],
+    visibility = ["//visibility:public"],
+)

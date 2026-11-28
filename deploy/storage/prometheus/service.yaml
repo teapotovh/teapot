@@ -4,6 +4,6 @@ metadata:
   name: server
 spec:
   ports:
-    - name: http
-      port: 9090
-      targetPort: http
+  - name: http
+    port: 9090
+    targetPort: http

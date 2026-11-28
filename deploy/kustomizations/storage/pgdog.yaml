@@ -7,7 +7,7 @@ spec:
   path: deploy/storage/pgdog
   prune: true
   dependsOn:
-    - name: postgresql01
+  - name: postgresql01
   sourceRef:
     kind: GitRepository
     name: teapot

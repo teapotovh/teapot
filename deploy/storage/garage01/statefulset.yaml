@@ -29,65 +29,65 @@ spec:
         labelSelector:
           matchLabels: {}
       initContainers:
-        # Copies garage.toml from configmap to temporary etc volume and 
-        # replaces RPC secret placeholder
-        - name: garage-init
-          image: mirror.gcr.io/dibi/envsubst
-          command:
-            - sh
-            - -c
-            - envsubst < /mnt/garage.toml > /mnt/etc/garage.toml
-          env:
-            - name: RPC_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: garage01-secret
-                  key: rpcSecret
-          volumeMounts:
-            - name: configmap
-              mountPath: /mnt/garage.toml
-              subPath: garage.toml
-            - name: etc
-              mountPath: /mnt/etc
-      containers:
-        - name: garage
-          securityContext:
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-          image: mirror.gcr.io/dxflrs/amd64_garage:v2.3.0
-          ports:
-            - containerPort: 3900
-              name: s3
-            - containerPort: 3903
-              name: admin
-          volumeMounts:
-            - name: meta
-              mountPath: /mnt/meta
-            - name: data
-              mountPath: /mnt/data
-            - name: etc
-              mountPath: /etc/garage.toml
-              subPath: garage.toml
-          resources:
-            requests:
-              cpu: 500m
-              memory: 512Mi
-            limits:
-              cpu: "2"
-              memory: 2Gi
-      volumes:
+      # Copies garage.toml from configmap to temporary etc volume and
+      # replaces RPC secret placeholder
+      - name: garage-init
+        image: mirror.gcr.io/dibi/envsubst
+        command:
+        - sh
+        - -c
+        - envsubst < /mnt/garage.toml > /mnt/etc/garage.toml
+        env:
+        - name: RPC_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: garage01-secret
+              key: rpcSecret
+        volumeMounts:
         - name: configmap
-          configMap:
-            name: config
+          mountPath: /mnt/garage.toml
+          subPath: garage.toml
         - name: etc
-          emptyDir: {}
+          mountPath: /mnt/etc
+      containers:
+      - name: garage
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        image: mirror.gcr.io/dxflrs/amd64_garage:v2.3.0
+        ports:
+        - containerPort: 3900
+          name: s3
+        - containerPort: 3903
+          name: admin
+        volumeMounts:
+        - name: meta
+          mountPath: /mnt/meta
+        - name: data
+          mountPath: /mnt/data
+        - name: etc
+          mountPath: /etc/garage.toml
+          subPath: garage.toml
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+      volumes:
+      - name: configmap
+        configMap:
+          name: config
+      - name: etc
+        emptyDir: {}
   volumeClaimTemplates:
   - metadata:
       name: meta
     spec:
-      accessModes: [ "ReadWriteOnce" ]
+      accessModes: ["ReadWriteOnce"]
       storageClassName: "local-path-storageclass"
       resources:
         requests:
@@ -95,7 +95,7 @@ spec:
   - metadata:
       name: data
     spec:
-      accessModes: [ "ReadWriteOnce" ]
+      accessModes: ["ReadWriteOnce"]
       storageClassName: "local-path-storageclass"
       resources:
         requests:

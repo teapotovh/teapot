@@ -28,16 +28,16 @@ spec:
         image: mirror.gcr.io/dibi/envsubst
         command: ["sh", "-c", "envsubst < /tmpl/local.cf.tmpl > /etc/mail/spamassassin/local.cf"]
         env:
-          - name: DB_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: postgresql01-user-mail
-                key: username
-          - name: DB_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: postgresql01-user-mail
-                key: password
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-mail
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql01-user-mail
+              key: password
         volumeMounts:
         - name: template
           mountPath: /tmpl
@@ -55,7 +55,7 @@ spec:
         readinessProbe:
           exec:
             command: ["spamc", "-4", "-K"]
-          initialDelaySeconds: 10 
+          initialDelaySeconds: 10
           periodSeconds: 30
           timeoutSeconds: 5
           successThreshold: 1

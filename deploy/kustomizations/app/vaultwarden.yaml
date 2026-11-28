@@ -7,7 +7,7 @@ spec:
   path: deploy/app/vaultwarden/storage
   prune: true
   dependsOn:
-    - name: postgresql01
+  - name: postgresql01
   sourceRef:
     kind: GitRepository
     name: teapot
@@ -21,9 +21,9 @@ spec:
   path: deploy/app/vaultwarden
   prune: true
   dependsOn:
-    - name: app
-    - name: vaultwarden-storage
-    - name: bottin
+  - name: app
+  - name: vaultwarden-storage
+  - name: bottin
   sourceRef:
     kind: GitRepository
     name: teapot

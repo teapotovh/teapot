@@ -19,8 +19,8 @@ spec:
   path: deploy/infra/external-dns
   prune: true
   dependsOn:
-    - name: external-dns-crd
-    - name: sealed-secrets
+  - name: external-dns-crd
+  - name: sealed-secrets
   sourceRef:
     kind: GitRepository
     name: teapot

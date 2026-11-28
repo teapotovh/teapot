@@ -7,8 +7,8 @@ spec:
   path: deploy/app/kontakte
   prune: true
   dependsOn:
-    - name: app
-    - name: bottin
+  - name: app
+  - name: bottin
   sourceRef:
     kind: GitRepository
     name: teapot

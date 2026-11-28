@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  local.cf.tmpl: |
+  local.cf.tmpl: |-
     use_bayes 1
     bayes_auto_learn 1
     bayes_store_module Mail::SpamAssassin::BayesStore::PgSQL
@@ -13,13 +13,13 @@ data:
 
     # Group all bayes learnings in global metrics
     bayes_sql_override_username global_user
-    
+
     use_auto_welcomelist 1
     auto_welcomelist_factory Mail::SpamAssassin::SQLBasedAddrList
     user_awl_dsn DBI:Pg:dbname=spamassassin;host=postgresql01-pooler.storage;port=5432
     user_awl_sql_username ${DB_USERNAME}
     user_awl_sql_password ${DB_PASSWORD}
-    
+
     # Network tests
     use_razor2 1
     use_pyzor 1

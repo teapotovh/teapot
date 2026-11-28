@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  "opendkim.conf": |
+  "opendkim.conf": |-
     Syslog yes
     SyslogSuccess yes
     LogWhy yes

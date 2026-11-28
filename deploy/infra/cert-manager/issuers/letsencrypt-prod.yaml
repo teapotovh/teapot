@@ -8,11 +8,11 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod-account-key
     solvers:
-      - http01:
-          # ingress:
-          #   ingressClassName: ingress-nginx-ingressclass
-          gatewayHTTPRoute:
-            parentRefs:
-              - name: gateway
-                namespace: app
-                kind: Gateway
+    - http01:
+        # ingress:
+        #   ingressClassName: ingress-nginx-ingressclass
+        gatewayHTTPRoute:
+          parentRefs:
+          - name: gateway
+            namespace: app
+            kind: Gateway

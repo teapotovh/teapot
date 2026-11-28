@@ -20,51 +20,51 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: cert-manager-controller
-          image: quay.io/jetstack/cert-manager-controller:v1.17.0
-          imagePullPolicy: IfNotPresent
-          args:
-          - --v=2
-          - --cluster-resource-namespace=$(POD_NAMESPACE)
-          - --leader-election-namespace=$(POD_NAMESPACE)
-          - --acme-http01-solver-image=quay.io/jetstack/cert-manager-acmesolver:v1.17.0
-          - --max-concurrent-challenges=60
-          - --enable-gateway-api
-          ports:
-          - containerPort: 9402
-            name: http-metrics
-            protocol: TCP
-          - containerPort: 9403
-            name: http-healthz
-            protocol: TCP
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
-          env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          # LivenessProbe settings are based on those used for the Kubernetes
-          # controller-manager. See:
-          # https://github.com/kubernetes/kubernetes/blob/806b30170c61a38fedd54cc9ede4cd6275a1ad3b/cmd/kubeadm/app/util/staticpod/utils.go#L241-L245
-          livenessProbe:
-            httpGet:
-              port: http-healthz
-              path: /livez
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            timeoutSeconds: 15
-            successThreshold: 1
-            failureThreshold: 8
+      - name: cert-manager-controller
+        image: quay.io/jetstack/cert-manager-controller:v1.17.0
+        imagePullPolicy: IfNotPresent
+        args:
+        - --v=2
+        - --cluster-resource-namespace=$(POD_NAMESPACE)
+        - --leader-election-namespace=$(POD_NAMESPACE)
+        - --acme-http01-solver-image=quay.io/jetstack/cert-manager-acmesolver:v1.17.0
+        - --max-concurrent-challenges=60
+        - --enable-gateway-api
+        ports:
+        - containerPort: 9402
+          name: http-metrics
+          protocol: TCP
+        - containerPort: 9403
+          name: http-healthz
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # LivenessProbe settings are based on those used for the Kubernetes
+        # controller-manager. See:
+        # https://github.com/kubernetes/kubernetes/blob/806b30170c61a38fedd54cc9ede4cd6275a1ad3b/cmd/kubeadm/app/util/staticpod/utils.go#L241-L245
+        livenessProbe:
+          httpGet:
+            port: http-healthz
+            path: /livez
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 15
+          successThreshold: 1
+          failureThreshold: 8

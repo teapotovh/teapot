@@ -21,27 +21,27 @@ spec:
         labelSelector:
           matchLabels: {}
       containers:
-        - name: opendmarc
-          image: mirror.gcr.io/instrumentisto/opendmarc:1.4-alpine
-          ports:
-            - name: milter
-              containerPort: 8893
-          volumeMounts:
-            - name: config
-              mountPath: /etc/opendmarc
-              readOnly: true
-          resources:
-            requests:
-              cpu: 5m
-              memory: 16Mi
-            limits:
-              cpu: 50m
-              memory: 64Mi
-      volumes:
+      - name: opendmarc
+        image: mirror.gcr.io/instrumentisto/opendmarc:1.4-alpine
+        ports:
+        - name: milter
+          containerPort: 8893
+        volumeMounts:
         - name: config
-          configMap:
-            name: config
+          mountPath: /etc/opendmarc
+          readOnly: true
+        resources:
+          requests:
+            cpu: 5m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+      volumes:
+      - name: config
+        configMap:
+          name: config
       dnsPolicy: None
       dnsConfig:
         nameservers:
-          - 10.43.0.53
+        - 10.43.0.53

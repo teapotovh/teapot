@@ -4,6 +4,6 @@ metadata:
   name: server
 spec:
   ports:
-    - name: http
-      port: 3100
-      targetPort: http
+  - name: http
+    port: 3100
+    targetPort: http

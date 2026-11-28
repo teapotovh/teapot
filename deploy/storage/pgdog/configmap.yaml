@@ -48,7 +48,7 @@ data:
     port = 5432
     role = "replica"
     database_name = "bottin"
-  users.toml: |
+  users.toml: |-
     [[users]]
     name = "vaultwarden"
     database = "vaultwarden"

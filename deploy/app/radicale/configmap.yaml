@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  "config.tmpl": |
+  "config.tmpl": |-
     # Config file for Radicale - A simple calendar server
     #
     # Place it into /etc/radicale/config (global)
@@ -41,7 +41,6 @@ data:
     # TCP traffic between Radicale and a reverse proxy
     #certificate_authority =
 
-
     [encoding]
 
     # Encoding for responding requests
@@ -49,7 +48,6 @@ data:
 
     # Encoding for storing local collections
     stock = utf-8
-
 
     [auth]
 
@@ -77,7 +75,6 @@ data:
     # File for rights management from_file
     # file = /etc/radicale/rights
 
-
     [storage]
 
     # Storage backend
@@ -90,7 +87,6 @@ data:
     # Web interface backend
     # Value: none | internal
     #type = internal
-
 
     [logging]
 

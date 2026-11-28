@@ -2271,7 +2271,6 @@ data:
     # Allow uploading SVG files without sanitization.
     allow_unsanitized_svg_upload = false
 
-
     #################################### Search ################################################
 
     [search]
@@ -2287,7 +2286,6 @@ data:
     # This is a temporary settings that might be removed in the future.
     index_update_interval = 10s
 
-
     # Move an app plugin referenced by its id (including all its pages) to a specific navigation section
     # Format: <Plugin ID> = <Section ID> <Sort Weight>
     [navigation.app_sections]
@@ -2295,7 +2293,6 @@ data:
     # Move a specific app plugin page (referenced by its `path` field) to a specific navigation section
     # Format: <Page URL> = <Section ID> <Sort Weight>
     [navigation.app_standalone_pages]
-
 
     #################################### Secure Socks5 Datasource Proxy #####################################
     [secure_socks_datasource_proxy]
@@ -2459,7 +2456,7 @@ data:
     # Please note that sharing the same index_path between multiple running Grafana instances is not supported.
     index_path =
 
-  "ldap.toml": |
+  "ldap.toml": |-
     # To troubleshoot and get more log info enable ldap debug logging in grafana.ini
     # [log]
     # filters = ldap:debug

@@ -186,7 +186,7 @@ data:
   "syslog.conf": |
     mail.* /var/log/postfix/mail.log
     mail.* /dev/stdout
-  "saslauthd.conf": |
+  "saslauthd.conf": |-
     ldap_servers: ldap://bottin-server.storage:389
     ldap_auth_method: fastbind
     ldap_filter: cn=%u,ou=users,dc=teapot,dc=ovh

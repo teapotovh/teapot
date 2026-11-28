@@ -11,9 +11,9 @@ spec:
       provider:
         type: OpenTelemetry
         backendRefs:
-          - name: opentelemetry-collector-server
-            namespace: storage
-            port: 4317
+        - name: opentelemetry-collector-server
+          namespace: storage
+          port: 4317
   provider:
     type: Kubernetes
     kubernetes:

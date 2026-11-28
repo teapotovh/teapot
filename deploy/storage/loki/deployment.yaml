@@ -19,30 +19,30 @@ spec:
       nodeSelector:
         node-role.kubernetes.io/control-plane: ""
       containers:
-        - name: prometheus
-          image: mirror.gcr.io/grafana/loki:3.7.2
-          args:
-            - -config.file=/etc/loki/loki.yaml
-          ports:
-            - name: http
-              containerPort: 3100
-          volumeMounts:
-            - name: config
-              mountPath: /etc/loki/
-            - name: data
-              mountPath: /loki/
-          resources:
-            requests:
-              memory: 128Mi
-              cpu: 100m
-            limits:
-              memory: 256Mi
-              cpu: 200m
-      volumes:
+      - name: prometheus
+        image: mirror.gcr.io/grafana/loki:3.7.2
+        args:
+        - -config.file=/etc/loki/loki.yaml
+        ports:
+        - name: http
+          containerPort: 3100
+        volumeMounts:
         - name: config
-          configMap:
-            defaultMode: 420
-            name: config
+          mountPath: /etc/loki/
         - name: data
-          persistentVolumeClaim:
-            claimName: store
+          mountPath: /loki/
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 100m
+          limits:
+            memory: 256Mi
+            cpu: 200m
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 420
+          name: config
+      - name: data
+        persistentVolumeClaim:
+          claimName: store

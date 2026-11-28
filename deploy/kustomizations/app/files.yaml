@@ -7,7 +7,7 @@ spec:
   path: deploy/app/files/storage
   prune: true
   dependsOn:
-    - name: postgresql01
+  - name: postgresql01
   sourceRef:
     kind: GitRepository
     name: teapot
@@ -21,10 +21,10 @@ spec:
   path: deploy/app/files
   prune: true
   dependsOn:
-    - name: app
-    - name: files-storage
-    - name: bottin
-    - name: garage01
+  - name: app
+  - name: files-storage
+  - name: bottin
+  - name: garage01
   sourceRef:
     kind: GitRepository
     name: teapot
