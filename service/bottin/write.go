@@ -21,7 +21,7 @@ var (
 )
 
 //nolint:gocyclo
-func (server *Bottin) Add(ctx context.Context, state State, r ldap.AddRequest) (State, error) {
+func (server *Bottin) Add(ctx context.Context, state State, r ldap.AddRequest) (_ State, err error) {
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
 		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
@@ -137,6 +137,8 @@ func (server *Bottin) Add(ctx context.Context, state State, r ldap.AddRequest) (
 		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
+	defer rollbackOnError(ctx, tx, &err)
+
 	// This ensures the dn[].Type attribute is set to the appropriate value
 	entry := store.NewEntry(dn, attrs)
 	if err = tx.Store(ctx, entry); err != nil {
@@ -164,7 +166,7 @@ func (server *Bottin) Add(ctx context.Context, state State, r ldap.AddRequest) (
 }
 
 //nolint:gocyclo
-func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (State, error) {
+func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (_ State, err error) {
 	dn, err := server.parseDN(string(r), false)
 	if err != nil {
 		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
@@ -182,7 +184,7 @@ func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (
 	server.logger.InfoContext(ctx, "deleting entry", "dn", dn)
 
 	// Check that this LDAP entry exists and has no children
-	entries, err := server.store.List(ctx, dn.Prefix(), false)
+	entries, err := server.store.List(ctx, dn.Prefix())
 	if err != nil {
 		return state, fmt.Errorf(
 			"(%w) error while fetching entry with DN %q from store: %w",
@@ -213,6 +215,8 @@ func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (
 	if err != nil {
 		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
+
+	defer rollbackOnError(ctx, tx, &err)
 
 	// Delete the LDAP entry
 	if err = tx.Delete(ctx, dn); err != nil {
@@ -264,7 +268,7 @@ func (server *Bottin) Del(ctx context.Context, state State, r ldap.DelRequest) (
 }
 
 //nolint:gocyclo
-func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequest) (State, error) {
+func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequest) (_ State, err error) {
 	dn, err := server.parseDN(string(r.Object()), false)
 	if err != nil {
 		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
@@ -483,6 +487,8 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
+	defer rollbackOnError(ctx, tx, &err)
+
 	// Save the edited values
 	entry := store.NewEntry(prevEntry.DN, attrs)
 	if err = tx.Store(ctx, entry); err != nil {
@@ -510,7 +516,7 @@ func (server *Bottin) Modify(ctx context.Context, state State, r ldap.ModifyRequ
 }
 
 //nolint:gocyclo
-func (server *Bottin) ModifyDN(ctx context.Context, state State, r ldap.ModifyDNRequest) (State, error) {
+func (server *Bottin) ModifyDN(ctx context.Context, state State, r ldap.ModifyDNRequest) (_ State, err error) {
 	dn, err := server.parseDN(string(r.Entry()), false)
 	if err != nil {
 		return state, fmt.Errorf("(%w) %w", ldapsrv.ErrInvalidDNSyntax, err)
@@ -565,7 +571,7 @@ func (server *Bottin) ModifyDN(ctx context.Context, state State, r ldap.ModifyDN
 		return state, err
 	}
 
-	children, err := server.store.List(ctx, dn.Prefix(), false)
+	children, err := server.store.List(ctx, dn.Prefix())
 	if err != nil {
 		return state, fmt.Errorf("(%w) error while listing children: %w", ldapsrv.ErrOperationsError, err)
 	}
@@ -627,6 +633,8 @@ func (server *Bottin) ModifyDN(ctx context.Context, state State, r ldap.ModifyDN
 		return state, fmt.Errorf("(%w) error while beginning transaction: %w", ldapsrv.ErrOperationsError, err)
 	}
 
+	defer rollbackOnError(ctx, tx, &err)
+
 	if err := tx.Store(ctx, store.Entry{DN: newDN, Attributes: attrs}); err != nil {
 		return state, fmt.Errorf("(%w) error while storing renamed entry: %w", ldapsrv.ErrOperationsError, err)
 	}
@@ -652,7 +660,7 @@ func (server *Bottin) renameReferences(
 	oldDN store.DN,
 	newDN store.DN,
 ) error {
-	entries, err := server.store.List(ctx, server.baseDN.Prefix(), false)
+	entries, err := server.store.List(ctx, server.baseDN.Prefix())
 	if err != nil {
 		return err
 	}

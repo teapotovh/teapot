@@ -8,25 +8,29 @@ import (
 	"time"
 
 	"github.com/teapotovh/teapot/lib/observability"
-	"github.com/teapotovh/teapot/lib/run"
 )
 
 var (
+	// ErrInvalidBackend means the configured store backend is unknown.
 	ErrInvalidBackend = errors.New("invalid backend")
+
+	// ErrNotFound means the requested entry does not exist.
+	ErrNotFound = errors.New("not found")
 )
 
 // Store provides an interface implemented by all types of stores for LDAP entries.
 type Store interface {
-	run.Runnable
 	observability.Metrics
 	observability.ReadinessChecks
 
 	// Ping allows pinging the store to verify that it is ready to accept requests
 	Ping(ctx context.Context) error
 
-	// Lists all entries under the provided prefix DN. If exact is true, only
-	// entries exactly matching this DN.
-	List(ctx context.Context, prefix Prefix, exact bool) ([]Entry, error)
+	// Get returns the entry with the provided prefix.
+	Get(ctx context.Context, prefix Prefix) (Entry, error)
+
+	// List returns the entry and all its descendants under the provided prefix.
+	List(ctx context.Context, prefix Prefix) ([]Entry, error)
 
 	// Begin starts a transaction through which the contents on the store can be modified.
 	Begin(ctx context.Context) (Transaction, error)
@@ -42,6 +46,9 @@ type Transaction interface {
 
 	// Commit permanently saves the changes made through this transaction to the store.
 	Commit(ctx context.Context) error
+
+	// Rollback discards the changes made through this transaction.
+	Rollback(ctx context.Context) error
 }
 
 type StoreConfig struct {

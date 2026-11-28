@@ -217,6 +217,22 @@ func TestPrefixOperations(t *testing.T) {
 	assert.True(t, prefix.Equal(slash.Prefix()))
 }
 
+func TestPrefixEndBoundsChildren(t *testing.T) {
+	t.Parallel()
+
+	base, err := ParseDN("dc=teapot,dc=ovh")
+	require.NoError(t, err)
+
+	child, err := ParseDN("ou=users,dc=teapot,dc=ovh")
+	require.NoError(t, err)
+
+	end := prefixEnd(base.Prefix())
+
+	assert.True(t, base.Prefix().Less(child.Prefix()))
+	assert.True(t, child.Prefix().Less(end))
+	assert.Nil(t, prefixEnd(Prefix{}))
+}
+
 func TestContainsFold(t *testing.T) {
 	t.Parallel()
 

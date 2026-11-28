@@ -138,15 +138,6 @@ func ParseDN(rawDN string) (DN, error) {
 // Checking if strings.HasPrefix(PR1, PR2) will tell you if one is subtree of the other.
 type Prefix []Component
 
-func PrefixFromString(rawPrefix string) (*Prefix, error) {
-	p, err := ParsePrefix(rawPrefix)
-	if err != nil {
-		return nil, err
-	}
-
-	return &p, nil
-}
-
 func (prefix Prefix) Less(p Prefix) bool {
 	return strings.Compare(prefix.String(), p.String()) == -1
 }
@@ -219,11 +210,6 @@ func NewEntry(dn DN, attributes Attributes) Entry {
 	}
 
 	return Entry{DN: dn, Attributes: attrs}
-}
-
-// Key implements pgcache.Object.
-func (e Entry) Key() Prefix {
-	return e.DN.Prefix()
 }
 
 func (attrs Attributes) Get(key AttributeKey) AttributeValue {
