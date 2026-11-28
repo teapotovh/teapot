@@ -35,6 +35,7 @@ go_test(
     srcs = [
         "fuzz_test.go",
         "mem_test.go",
+        "metrics_test.go",
         "psql_integration_test.go",
         "psql_test.go",
         "types_test.go",
