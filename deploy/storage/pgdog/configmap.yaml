@@ -48,6 +48,20 @@ data:
     port = 5432
     role = "replica"
     database_name = "bottin"
+
+    [[databases]]
+    name = "calendar"
+    host = "postgresql01-cluster-rw.storage"
+    port = 5432
+    role = "primary"
+    database_name = "calendar"
+
+    [[databases]]
+    name = "calendar"
+    host = "postgresql01-local.storage"
+    port = 5432
+    role = "replica"
+    database_name = "calendar"
   users.toml: |-
     [[users]]
     name = "vaultwarden"
@@ -56,3 +70,7 @@ data:
     [[users]]
     name = "bottin"
     database = "bottin"
+
+    [[users]]
+    name = "calendar"
+    database = "calendar"

@@ -6,23 +6,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 	"time"
-	"unicode/utf8"
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/teapotovh/teapot/lib/pgcache"
 	"github.com/teapotovh/teapot/lib/s3cache"
 )
 
 const MaxRequestsInParallel = 8
 
-type objectRef struct {
+// ObjectRef is a calendar object reference stored in psql.
+type ObjectRef struct {
 	Path    Path
 	ModTime time.Time
 
@@ -30,26 +27,21 @@ type objectRef struct {
 	ETag s3cache.Hash
 }
 
-// Key implements pgcache.Object.
-func (ref objectRef) Key() Path {
-	return ref.Path
-}
-
-func (ref objectRef) s3Key() string {
+func (ref ObjectRef) s3Key() string {
 	return ref.Ref.String()
 }
 
-func parseObjectRows(rows pgx.Rows) (refs []objectRef, err error) {
+func parseObjectRows(rows pgx.Rows) (refs []ObjectRef, err error) {
 	defer rows.Close()
 
 	for rows.Next() {
 		var (
-			ref   objectRef
+			ref   ObjectRef
 			refID pgtype.UUID
 		)
 
 		if err := rows.Scan(&ref.Path, &ref.ModTime, &refID, &ref.ETag); err != nil {
-			return nil, fmt.Errorf("could not extract three columns from psql list: %w", err)
+			return nil, fmt.Errorf("could not extract four columns from psql list: %w", err)
 		}
 
 		ref.Ref = uuid.UUID(refID.Bytes)
@@ -64,94 +56,52 @@ func parseObjectRows(rows pgx.Rows) (refs []objectRef, err error) {
 	return refs, nil
 }
 
-var listObjectQuery = `
-		SELECT path, mod_time, ref, etag
-		FROM object_refs;
-`
-
-func listObjectRefPSQL(ctx context.Context, conn *pgxpool.Pool) ([]objectRef, error) {
-	rows, err := conn.Query(ctx, listObjectQuery)
-	if err != nil {
-		return nil, fmt.Errorf("error while listing object refs from psql: %w", err)
-	}
-
-	return parseObjectRows(rows)
-}
-
-var getObjectQuery = `
+var (
+	listObjectQuery = `
 		SELECT path, mod_time, ref, etag
 		FROM object_refs
-		WHERE path = ANY($1);
-`
+		ORDER BY path;
+	`
 
-func getObjectRefPSQL(ctx context.Context, conn *pgxpool.Pool, paths []Path) ([]objectRef, error) {
-	ps := make([]string, 0, len(paths))
-	for _, path := range paths {
-		ps = append(ps, path.String())
-	}
+	getObjectQuery = `
+		SELECT path, mod_time, ref, etag
+		FROM object_refs
+		WHERE path = $1
+		LIMIT 1;
+	`
 
-	rows, err := conn.Query(ctx, getObjectQuery, ps)
-	if err != nil {
-		return nil, fmt.Errorf("error while listing select object refs from psql: %w", err)
-	}
+	rangeObjectQuery = `
+		SELECT path, mod_time, ref, etag
+		FROM object_refs
+		WHERE path >= $1
+			AND path < $2
+		ORDER BY path;
+	`
 
-	return parseObjectRows(rows)
-}
-
-var storeObjectQuery = `
+	storeObjectQuery = `
 		INSERT INTO object_refs (path, mod_time, ref, etag)
-		SELECT unnest($1::text[]), unnest($2::timestamptz[]), unnest($3::uuid[]), unnest($4::text[])
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (path) DO UPDATE
 		SET mod_time = EXCLUDED.mod_time, etag = EXCLUDED.etag;
-`
+	`
 
-func storeObjectRefPSQL(ctx context.Context, tx pgx.Tx, refs []objectRef) error {
-	paths := make([]string, 0, len(refs))
-	modTimes := make([]time.Time, 0, len(refs))
-	uuids := make([]pgtype.UUID, 0, len(refs))
-	etags := make([]string, 0, len(refs))
-
-	for _, ref := range refs {
-		paths = append(paths, string(ref.Path))
-		modTimes = append(modTimes, ref.ModTime)
-		uuids = append(uuids, pgtype.UUID{Bytes: ref.Ref, Valid: true})
-		etags = append(etags, ref.ETag.String())
-	}
-
-	_, err := tx.Exec(ctx, storeObjectQuery, paths, modTimes, uuids, etags)
-	if err != nil {
-		return fmt.Errorf("error while inserting object refs with psql: %w", err)
-	}
-
-	return nil
-}
-
-var deleteObjectQuery = `DELETE FROM object_refs WHERE path = ANY($1);`
-
-func deleteObjectRefPSQL(ctx context.Context, tx pgx.Tx, paths []Path) error {
-	ps := make([]string, 0, len(paths))
-	for _, path := range paths {
-		ps = append(ps, path.String())
-	}
-
-	_, err := tx.Exec(ctx, deleteObjectQuery, ps)
-	if err != nil {
-		return fmt.Errorf("error while deleting object refs in psql: %w", err)
-	}
-
-	return nil
-}
+	deleteObjectQuery = `DELETE FROM object_refs WHERE path = $1;`
+)
 
 // PutCalendarObject implements Store.
 func (o *Online) PutCalendarObject(ctx context.Context, object Object) (bool, error) {
 	// First, check if we already have an object under this path. In that case,
 	// we want to reuse the Ref as the S3's key.
-	ref, exists := o.objectRefTable.Get(object.Path)
+	ref, err := o.getObjectRef(ctx, object.Path)
+	created := errors.Is(err, ErrCalendarObjectNotFound)
 
-	created := !exists
-	if !exists {
+	if err != nil && !created {
+		return false, err
+	}
+
+	if created {
 		// Let's create a new object ref for this path
-		ref = objectRef{
+		ref = ObjectRef{
 			Path:    object.Path,
 			ModTime: object.ModTime,
 			Ref:     uuid.New(),
@@ -169,9 +119,9 @@ func (o *Online) PutCalendarObject(ctx context.Context, object Object) (bool, er
 	// Ensure we store the correct etag
 	ref.ETag = etag
 
-	_, err = runInTx(o.objectRefTable, func(ctx context.Context, tx *pgcache.TableTx[Path, objectRef]) (unit, error) {
-		return unit{}, tx.Store(ctx, []objectRef{ref})
-	})(ctx)
+	err = runInTx(ctx, o, func(ctx context.Context, tx Transaction) error {
+		return tx.StoreObjectRef(ctx, ref)
+	})
 	if err != nil {
 		return false, err
 	}
@@ -180,12 +130,40 @@ func (o *Online) PutCalendarObject(ctx context.Context, object Object) (bool, er
 }
 
 // ListCalendarObjects implements Store.
-func (o *Online) ListCalendarObjects(ctx context.Context, basePath Path) ([]Object, error) {
-	endPath := Path(fmt.Sprintf("%s%c", basePath, utf8.MaxRune))
-	iter := o.objectRefTable.Between(basePath, endPath)
-	refs := slices.Collect(iter)
+func (o *Online) ListCalendarObjects(ctx context.Context, basePath Path) (objects []Object, err error) {
+	operation := metricsOperationRange
+	if basePath == "" {
+		operation = metricsOperationList
+	}
 
-	objects := make([]Object, len(refs))
+	start := time.Now()
+	defer func() { o.metrics.observeOperation(operation, start, err) }()
+
+	var refs []ObjectRef
+
+	if basePath == "" {
+		rows, err := o.pool.Query(ctx, listObjectQuery)
+		if err != nil {
+			return nil, fmt.Errorf("error while listing object refs from psql: %w", err)
+		}
+
+		refs, err = parseObjectRows(rows)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rows, err := o.pool.Query(ctx, rangeObjectQuery, basePath.String(), prefixEnd(basePath).String())
+		if err != nil {
+			return nil, fmt.Errorf("error while listing object refs from psql: %w", err)
+		}
+
+		refs, err = parseObjectRows(rows)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	objects = make([]Object, len(refs))
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(MaxRequestsInParallel)
 
@@ -210,30 +188,55 @@ func (o *Online) ListCalendarObjects(ctx context.Context, basePath Path) ([]Obje
 }
 
 // GetCalendarObject implements Store.
-func (o *Online) GetCalendarObject(ctx context.Context, path Path) (*Object, error) {
-	ref, found := o.objectRefTable.Get(path)
-	if !found {
-		return nil, ErrCalendarObjectNotFound
-	}
+func (o *Online) GetCalendarObject(ctx context.Context, path Path) (object *Object, err error) {
+	start := time.Now()
+	defer func() { o.metrics.observeOperation(metricsOperationGet, start, err) }()
 
-	object, err := o.getObjectFromRef(ctx, ref)
+	ref, err := o.getObjectRef(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 
-	return &object, nil
+	got, err := o.getObjectFromRef(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	return &got, nil
+}
+
+func (o *Online) getObjectRef(ctx context.Context, path Path) (ObjectRef, error) {
+	rows, err := o.pool.Query(ctx, getObjectQuery, path.String())
+	if err != nil {
+		return ObjectRef{}, fmt.Errorf("error while getting object ref from psql: %w", err)
+	}
+
+	refs, err := parseObjectRows(rows)
+	if err != nil {
+		return ObjectRef{}, err
+	}
+
+	if len(refs) == 0 {
+		return ObjectRef{}, ErrCalendarObjectNotFound
+	}
+
+	return refs[0], nil
 }
 
 // DeleteCalendarObject implements Store.
 func (o *Online) DeleteCalendarObject(ctx context.Context, path Path) error {
-	ref, exists := o.objectRefTable.Get(path)
-	if !exists {
-		return fmt.Errorf("attempted to delete missing calendar object at %q: %w", path, ErrCalendarObjectNotFound)
+	ref, err := o.getObjectRef(ctx, path)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return fmt.Errorf("attempted to delete missing calendar object at %q: %w", path, ErrCalendarObjectNotFound)
+		}
+
+		return err
 	}
 
-	_, err := runInTx(o.objectRefTable, func(ctx context.Context, tx *pgcache.TableTx[Path, objectRef]) (unit, error) {
-		return unit{}, tx.Delete(ctx, []Path{path})
-	})(ctx)
+	err = runInTx(ctx, o, func(ctx context.Context, tx Transaction) error {
+		return tx.DeleteObjectRef(ctx, path)
+	})
 	if err != nil {
 		return fmt.Errorf("error while removing object ref: %w", err)
 	}
@@ -245,7 +248,39 @@ func (o *Online) DeleteCalendarObject(ctx context.Context, path Path) error {
 	return nil
 }
 
-func (o *Online) getObjectFromRef(ctx context.Context, ref objectRef) (Object, error) {
+// StoreObjectRef implements Transaction.
+func (t *psqlTransaction) StoreObjectRef(ctx context.Context, ref ObjectRef) (err error) {
+	start := time.Now()
+	defer func() { t.metrics.observeOperation(metricsOperationStore, start, err) }()
+
+	_, err = t.tx.Exec(
+		ctx,
+		storeObjectQuery,
+		ref.Path.String(),
+		ref.ModTime,
+		pgtype.UUID{Bytes: ref.Ref, Valid: true},
+		ref.ETag.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("error while inserting object ref with psql: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteObjectRef implements Transaction.
+func (t *psqlTransaction) DeleteObjectRef(ctx context.Context, path Path) (err error) {
+	start := time.Now()
+	defer func() { t.metrics.observeOperation(metricsOperationDelete, start, err) }()
+
+	if _, err := t.tx.Exec(ctx, deleteObjectQuery, path.String()); err != nil {
+		return fmt.Errorf("error while deleting object ref in psql: %w", err)
+	}
+
+	return nil
+}
+
+func (o *Online) getObjectFromRef(ctx context.Context, ref ObjectRef) (Object, error) {
 	reader, etag, err := o.objectCache.Get(ctx, ref.s3Key(), ref.ETag)
 	if err != nil {
 		return Object{}, fmt.Errorf("error while fetching calendar object from S3: %w", err)

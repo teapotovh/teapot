@@ -15,13 +15,13 @@ go_library(
     embedsrcs = [
         "migrations/00001_calendars.sql",
         "migrations/00002_object_refs.sql",
+        "migrations/00003_paths_collation.sql",
     ],
     importpath = "github.com/teapotovh/teapot/service/calendar/store",
     visibility = ["//visibility:public"],
     deps = [
         "//lib/httptrace",
         "//lib/observability",
-        "//lib/pgcache",
         "//lib/run",
         "//lib/s3cache",
         "//lib/webdav/caldav",
@@ -43,12 +43,17 @@ go_test(
     name = "store_test",
     srcs = [
         "mem_test.go",
+        "online_test.go",
         "types_test.go",
     ],
     embed = [":store"],
     deps = [
+        "//lib/s3cache",
         "//lib/webdav/caldav",
         "@com_github_arran4_golang_ical//:golang-ical",
+        "@com_github_jackc_pgx_v5//pgtype",
+        "@com_github_pashagolub_pgxmock_v5//:pgxmock",
+        "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
 )
