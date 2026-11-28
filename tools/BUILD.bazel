@@ -25,6 +25,11 @@ alias(
 )
 
 alias(
+    name = "affected",
+    actual = "//tools/affected",
+)
+
+alias(
     name = "golangci-lint",
     actual = "@multitool//tools/golangci-lint:workspace_root",
 )

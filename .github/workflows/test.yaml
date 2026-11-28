@@ -5,22 +5,86 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    # Run the full suite every week so that target selection cannot hide a
+    # broken test.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  bazel:
+  unit:
     name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
-          disk-cache: ${{ github.workflow }}
+          disk-cache: ${{ github.workflow }}-unit
           repository-cache: true
           cache-save: ${{ github.event_name != 'pull_request' }}
 
+      - name: Select targets
+        id: targets
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          file="${RUNNER_TEMP}/targets.txt"
+          if [[ -z "${BASE}" ]]; then
+            echo "//..." > "${file}"
+          else
+            bazel run //tools:affected -- targets --base "${BASE}" > "${file}"
+          fi
+          echo "file=${file}" >> "${GITHUB_OUTPUT}"
+
       - name: Test
-        run: bazel test //...
+        env:
+          TARGETS_FILE: ${{ steps.targets.outputs.file }}
+        run: |
+          if [[ ! -s "${TARGETS_FILE}" ]]; then
+            echo "No affected tests."
+            exit 0
+          fi
+          bazel test --test_tag_filters=-integration --target_pattern_file="${TARGETS_FILE}"
+
+  integration:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-integration
+          repository-cache: true
+          cache-save: ${{ github.event_name != 'pull_request' }}
+
+      - name: Select targets
+        id: targets
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          file="${RUNNER_TEMP}/targets.txt"
+          if [[ -z "${BASE}" ]]; then
+            echo "//..." > "${file}"
+          else
+            bazel run //tools:affected -- targets --base "${BASE}" --tag integration > "${file}"
+          fi
+          echo "file=${file}" >> "${GITHUB_OUTPUT}"
+
+      - name: Test
+        env:
+          TARGETS_FILE: ${{ steps.targets.outputs.file }}
+        run: |
+          if [[ ! -s "${TARGETS_FILE}" ]]; then
+            echo "No affected tests."
+            exit 0
+          fi
+          bazel test --test_tag_filters=integration --target_pattern_file="${TARGETS_FILE}"

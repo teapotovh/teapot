@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "integration_test",
+    size = "medium",
+    srcs = ["integration_test.go"],
+    tags = ["integration"],
+    deps = [
+        "//service/bottin/store",
+        "@com_github_fergusstrange_embedded_postgres_v2//:embedded-postgres",
+        "@com_github_fergusstrange_embedded_postgres_v2//eptest",
+        "@com_github_jackc_pgx_v5//:pgx",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

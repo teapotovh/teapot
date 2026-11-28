@@ -6,12 +6,19 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   verify:
     name: Build Files
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
@@ -19,5 +26,17 @@ jobs:
           repository-cache: true
           cache-save: ${{ github.event_name != 'pull_request' }}
 
+      - name: Check changes
+        id: changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ -z "${BASE}" ]]; then
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "changed=$(bazel run //tools:affected -- matches --base "${BASE}" --filter build)" >> "${GITHUB_OUTPUT}"
+
       - name: Check build files
+        if: steps.changes.outputs.changed == 'true'
         run: bazel run //tools/buildcheck -- -verbose
